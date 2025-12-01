@@ -1,5 +1,5 @@
 // GENERATED CODE DO NOT EDIT!
-// Run `bun regenerate-contracts` to regenerate this file
+// Run `bun regenerate-exports` to regenerate this file
 export { Container } from "./container/contracts/Container";
 export { Application } from "./core/contracts/Application";
 export { Configuration } from "./core/contracts/Configuration";

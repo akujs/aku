@@ -14,7 +14,7 @@ export function getGeneratedFileContent(project: SourceProject): Record<string, 
 		rawFiles,
 		(content) =>
 			"// GENERATED CODE DO NOT EDIT!\n" +
-			"// Run `bun regenerate-contracts` to regenerate this file\n" +
+			"// Run `bun regenerate-exports` to regenerate this file\n" +
 			content,
 	);
 }
@@ -107,10 +107,10 @@ function generateFacadesFileContent(project: SourceProject): string {
 
 			imports.push(`import { ${contractName} as ${contractAlias} } from "./${file.importPath}";`);
 			facades.push(
-				"",
-				"/**",
-				` * Facade for ${contractName}. See TODO link to facades docs page.`,
-				" */",
+				``,
+				`/**`,
+				` * Facade for ${contractName}`,
+				` */`,
 				`export const ${contractName}: ${contractAlias} = createFacade(${contractAlias});`,
 			);
 		}

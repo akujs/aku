@@ -1,5 +1,5 @@
 // GENERATED CODE DO NOT EDIT!
-// Run `bun regenerate-contracts` to regenerate this file
+// Run `bun regenerate-exports` to regenerate this file
 import { createFacade } from "./core/facade";
 import { Container as ContainerContract } from "./container/contracts/Container";
 import { Application as ApplicationContract } from "./core/contracts/Application";
@@ -13,51 +13,51 @@ import { Storage as StorageContract } from "./storage/contracts/Storage";
 import { ViewRenderer as ViewRendererContract } from "./view/contracts/ViewRenderer";
 
 /**
- * Facade for Container. See TODO link to facades docs page.
+ * Facade for Container
  */
 export const Container: ContainerContract = createFacade(ContainerContract);
 
 /**
- * Facade for Application. See TODO link to facades docs page.
+ * Facade for Application
  */
 export const Application: ApplicationContract = createFacade(ApplicationContract);
 
 /**
- * Facade for Configuration. See TODO link to facades docs page.
+ * Facade for Configuration
  */
 export const Configuration: ConfigurationContract = createFacade(ConfigurationContract);
 
 /**
- * Facade for Dispatcher. See TODO link to facades docs page.
+ * Facade for Dispatcher
  */
 export const Dispatcher: DispatcherContract = createFacade(DispatcherContract);
 
 /**
- * Facade for Cookies. See TODO link to facades docs page.
+ * Facade for Cookies
  */
 export const Cookies: CookiesContract = createFacade(CookiesContract);
 
 /**
- * Facade for Headers. See TODO link to facades docs page.
+ * Facade for Headers
  */
 export const Headers: HeadersContract = createFacade(HeadersContract);
 
 /**
- * Facade for KeepAlive. See TODO link to facades docs page.
+ * Facade for KeepAlive
  */
 export const KeepAlive: KeepAliveContract = createFacade(KeepAliveContract);
 
 /**
- * Facade for RequestLocals. See TODO link to facades docs page.
+ * Facade for RequestLocals
  */
 export const RequestLocals: RequestLocalsContract = createFacade(RequestLocalsContract);
 
 /**
- * Facade for Storage. See TODO link to facades docs page.
+ * Facade for Storage
  */
 export const Storage: StorageContract = createFacade(StorageContract);
 
 /**
- * Facade for ViewRenderer. See TODO link to facades docs page.
+ * Facade for ViewRenderer
  */
 export const ViewRenderer: ViewRendererContract = createFacade(ViewRendererContract);

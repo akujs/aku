@@ -24,7 +24,7 @@ describe("codebase invariants", () => {
 		const actualContent = await readFile(filePath, "utf-8");
 
 		if (expectedContent !== actualContent) {
-			console.error(`💥 ${filename} content needs updating, run 'bun regenerate-contracts'`);
+			console.error(`💥 ${filename} content needs updating, run 'bun regenerate-exports'`);
 		}
 		expect(actualContent).toEqual(expectedContent);
 	});
