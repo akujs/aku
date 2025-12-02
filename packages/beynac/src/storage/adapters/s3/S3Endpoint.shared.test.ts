@@ -1,15 +1,15 @@
 import { S3Client, S3Errors } from "@bradenmacdonald/s3-lite-client";
-import { randomId } from "../../../helpers/str/random";
+import { randomId } from "../../../helpers/str/random.ts";
 import {
 	ensureDockerServicesRunning,
 	MINIO_ENDPOINT,
 	MINIO_ROOT_PASSWORD,
 	MINIO_ROOT_USER,
-} from "../../../test-utils/docker";
-import type { SharedTestConfig } from "../../storage-test-utils";
-import { S3Endpoint } from "./S3Endpoint";
-import type { S3StorageConfig } from "./S3StorageConfig";
-import { s3Storage } from "./s3Storage";
+} from "../../../test-utils/docker.ts";
+import type { SharedTestConfig } from "../../storage-test-utils.ts";
+import { S3Endpoint } from "./S3Endpoint.ts";
+import type { S3StorageConfig } from "./S3StorageConfig.ts";
+import { s3Storage } from "./s3Storage.ts";
 
 /**
  * Shared test configuration for S3 storage adapter.

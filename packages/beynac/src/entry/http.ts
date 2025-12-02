@@ -1,10 +1,10 @@
-export { AbortException, abort, abortExceptionKey } from "../http/abort";
+export { AbortException, abort, abortExceptionKey } from "../http/abort.ts";
 export {
 	BaseController,
 	type Controller,
 	type ControllerContext,
 	type ControllerReturn,
-} from "../http/Controller";
+} from "../http/Controller.ts";
 
 export {
 	any,
@@ -22,17 +22,17 @@ export {
 	type ResourceOptions,
 	redirect,
 	resource,
-} from "../http/helpers";
-export { RequestHandledEvent } from "../http/http-events";
+} from "../http/helpers.ts";
+export { RequestHandledEvent } from "../http/http-events.ts";
 export {
 	BaseMiddleware,
 	type MiddlewareNext,
 	type MiddlewareReference,
-} from "../http/Middleware";
-export { ResourceController } from "../http/ResourceController";
+} from "../http/Middleware.ts";
+export { ResourceController } from "../http/ResourceController.ts";
 export type {
 	RouteGroupOptions,
 	RouteOptions,
 	Routes,
-} from "../http/router-types";
-export { StatusPagesMiddleware } from "../http/StatusPagesMiddleware";
+} from "../http/router-types.ts";
+export { StatusPagesMiddleware } from "../http/StatusPagesMiddleware.ts";

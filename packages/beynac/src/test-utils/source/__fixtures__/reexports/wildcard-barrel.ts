@@ -1,2 +1,2 @@
 // Test export * functionality
-export * from "./source";
+export * from "./source.ts";

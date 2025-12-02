@@ -1,6 +1,6 @@
-import type { StorageAdapter } from "../../contracts/Storage";
-import { FilesystemEndpoint } from "./FilesystemEndpoint";
-import type { FilesystemStorageConfig } from "./FilesystemStorageConfig";
+import type { StorageAdapter } from "../../contracts/Storage.ts";
+import { FilesystemEndpoint } from "./FilesystemEndpoint.ts";
+import type { FilesystemStorageConfig } from "./FilesystemStorageConfig.ts";
 
 /**
  * Create storage backed by the filesystem

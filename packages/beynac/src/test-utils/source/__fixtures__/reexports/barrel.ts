@@ -7,11 +7,11 @@ export type {
 	OriginalInterface as RenamedInterface,
 	OriginalType,
 	OriginalType as RenamedType,
-} from "./source";
+} from "./source.ts";
 export {
 	OriginalClass,
 	OriginalClass as RenamedClass,
 	originalFunc,
 	originalValue,
 	originalValue as renamedValue,
-} from "./source";
+} from "./source.ts";

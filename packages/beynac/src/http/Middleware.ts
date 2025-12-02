@@ -1,5 +1,5 @@
-import { BaseClass, type NoArgConstructor } from "../utils";
-import type { ControllerContext } from "./Controller";
+import { BaseClass, type NoArgConstructor } from "../utils.ts";
+import type { ControllerContext } from "./Controller.ts";
 
 /**
  * The type of the `next` function passed as the second argument to middleware handlers

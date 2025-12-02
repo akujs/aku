@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { createTestApplication } from "../../../test-utils/http-test-utils";
-import { createTestDirectory } from "../../../testing/test-directories";
-import { mockPlatformPaths } from "../../path-operations";
-import { filesystemStorage } from "./filesystemStorage";
+import { createTestApplication } from "../../../test-utils/http-test-utils.ts";
+import { createTestDirectory } from "../../../testing/test-directories.ts";
+import { mockPlatformPaths } from "../../path-operations.ts";
+import { filesystemStorage } from "./filesystemStorage.ts";
 
 beforeEach(() => {
 	mockPlatformPaths("posix");

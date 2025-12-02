@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, expectTypeOf, test } from "bun:test";
-import { ContainerImpl } from "../container/ContainerImpl";
-import type { Container } from "../container/contracts/Container";
-import { Configuration } from "../core/contracts/Configuration";
-import { createTestApplication, mockMiddleware } from "../test-utils/http-test-utils";
-import type { ControllerContext } from "./Controller";
-import { apiResource, group, resource } from "./helpers";
-import { ResourceController } from "./ResourceController";
-import { RouteUrlGenerator } from "./RouteUrlGenerator";
-import type { Routes } from "./router-types";
+import { ContainerImpl } from "../container/ContainerImpl.ts";
+import type { Container } from "../container/contracts/Container.ts";
+import { Configuration } from "../core/contracts/Configuration.ts";
+import { createTestApplication, mockMiddleware } from "../test-utils/http-test-utils.ts";
+import type { ControllerContext } from "./Controller.ts";
+import { apiResource, group, resource } from "./helpers.ts";
+import { ResourceController } from "./ResourceController.ts";
+import { RouteUrlGenerator } from "./RouteUrlGenerator.ts";
+import type { Routes } from "./router-types.ts";
 
 beforeEach(() => {
 	mockMiddleware.reset();

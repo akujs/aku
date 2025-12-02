@@ -1,5 +1,5 @@
 import { spyOn } from "bun:test";
-import { getPrototypeChain } from "../utils";
+import { getPrototypeChain } from "../utils.ts";
 
 /**
  * Spy on all methods of an object or instance

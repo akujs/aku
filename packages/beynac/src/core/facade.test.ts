@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import type { IntegrationContext } from "../integrations/IntegrationContext";
-import { ApplicationImpl } from "./ApplicationImpl";
-import { createFacade, setFacadeApplication } from "./facade";
+import type { IntegrationContext } from "../integrations/IntegrationContext.ts";
+import { ApplicationImpl } from "./ApplicationImpl.ts";
+import { createFacade, setFacadeApplication } from "./facade.ts";
 
 // Mock service for testing
 class MockService {

@@ -1,14 +1,14 @@
 import { S3Client, S3Errors } from "@bradenmacdonald/s3-lite-client";
-import { md5 } from "../../../helpers/hash/digest";
-import { BaseClass, withoutUndefinedValues } from "../../../utils";
+import { md5 } from "../../../helpers/hash/digest.ts";
+import { BaseClass, withoutUndefinedValues } from "../../../utils.ts";
 import type {
 	StorageEndpoint,
 	StorageEndpointFileInfoResult,
 	StorageEndpointFileReadResult,
 	StorageEndpointWriteOptions,
-} from "../../contracts/Storage";
-import { NotFoundError, PermissionsError, StorageUnknownError } from "../../storage-errors";
-import type { S3StorageConfig } from "./S3StorageConfig";
+} from "../../contracts/Storage.ts";
+import { NotFoundError, PermissionsError, StorageUnknownError } from "../../storage-errors.ts";
+import type { S3StorageConfig } from "./S3StorageConfig.ts";
 
 export class S3Endpoint extends BaseClass implements StorageEndpoint {
 	readonly name = "s3" as const;

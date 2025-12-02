@@ -1,14 +1,13 @@
-/** @jsxImportSource ../view */
-
 import { STATUS_CODES } from "node:http";
-import { inject } from "../container/inject";
-import { ViewRenderer } from "../view/contracts/ViewRenderer";
-import { AbortException, abort, abortExceptionKey } from "./abort";
-import type { ControllerContext } from "./Controller";
-import { RequestLocals } from "./contracts/RequestLocals";
-import { BaseMiddleware, type MiddlewareNext } from "./Middleware";
-import type { RouteDefinition, StatusPages } from "./router-types";
-import { CurrentRouteDefinition, type StatusPageComponent } from "./router-types";
+import { inject } from "../container/inject.ts";
+import { ViewRenderer } from "../view/contracts/ViewRenderer.ts";
+import { jsx } from "../view/jsx.ts";
+import { AbortException, abort, abortExceptionKey } from "./abort.ts";
+import type { ControllerContext } from "./Controller.ts";
+import { RequestLocals } from "./contracts/RequestLocals.ts";
+import { BaseMiddleware, type MiddlewareNext } from "./Middleware.ts";
+import type { RouteDefinition, StatusPages } from "./router-types.ts";
+import { CurrentRouteDefinition, type StatusPageComponent } from "./router-types.ts";
 
 /**
  * Middleware that renders custom error pages for 4xx and 5xx responses.
@@ -57,16 +56,14 @@ export class StatusPagesMiddleware extends BaseMiddleware {
 					}
 
 					const statusText = STATUS_CODES[response.status];
-					const jsx = (
-						<StatusPageComponent
-							status={response.status}
-							statusText={statusText}
-							error={abortException?.cause ?? abortException}
-						/>
-					);
+					const element = jsx(StatusPageComponent, {
+						status: response.status,
+						statusText: statusText,
+						error: abortException?.cause ?? abortException,
+					});
 
 					// Return rendered response with original status code (never streamed)
-					return this.viewRenderer.renderResponse(jsx, {
+					return this.viewRenderer.renderResponse(element, {
 						status: response.status,
 						streaming: false,
 					});

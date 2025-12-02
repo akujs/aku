@@ -77,4 +77,15 @@ TSDoc comments, markdown files and test names are all "documentation"
 
 ## Linting
 
-- **Lint rules**: Do not add lint-disable comments. These must only be added by humans. If you do not find a way to make the linter pass without adding disabled comments, then leave the lint errors there and list them in the summary when you have finished. It is perfectly acceptable to leave lint errors you couldn't fix in the code. It is not acceptable to add disable comments unless directly instructed to.
+**CRITICAL: Never add lint-disable comments.** This includes:
+- `// oxlint-disable`
+- `// eslint-disable`
+- `// biome-ignore`
+- Any similar suppression comment
+
+If a lint rule blocks your implementation:
+1. Leave the lint error in place
+2. Report it in your summary when finished
+3. Let the human decide how to handle it
+
+It is acceptable to leave unfixable lint errors. It is NOT acceptable to add disable comments.

@@ -1,4 +1,4 @@
-import { onResetAllMocks } from "./mocks";
+import { onResetAllMocks } from "./mocks.ts";
 
 let originalDate: DateConstructor | null = null;
 let originalDateNow: (() => number) | null = null;

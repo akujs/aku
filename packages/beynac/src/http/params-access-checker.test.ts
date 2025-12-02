@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { throwOnMissingPropertyAccess } from "./params-access-checker";
+import { throwOnMissingPropertyAccess } from "./params-access-checker.ts";
 
 describe("throwOnMissingPropertyAccess", () => {
 	test("valid property access returns same value as plain object", () => {

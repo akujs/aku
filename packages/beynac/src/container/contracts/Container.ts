@@ -1,7 +1,7 @@
-import type { AnyFunction, MethodNames, NoArgConstructor } from "../../utils";
-import type { ContextualBindingBuilder } from "../ContextualBindingBuilder";
-import type { KeyOrClass, TypeToken } from "../container-key";
-import { createTypeToken } from "../container-key";
+import type { AnyFunction, MethodNames, NoArgConstructor } from "../../utils.ts";
+import type { ContextualBindingBuilder } from "../ContextualBindingBuilder.ts";
+import type { KeyOrClass, TypeToken } from "../container-key.ts";
+import { createTypeToken } from "../container-key.ts";
 
 export type FactoryFunction<T> = (container: Container) => {
 	[K in keyof T]: T[K];

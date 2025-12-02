@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 // oxlint-disable-next-line no-restricted-imports
 import * as path from "node:path";
-import { randomId } from "../helpers/str/random";
+import { randomId } from "../helpers/str/random.ts";
 
 const BEYNAC_TEST_ROOT = path.join(os.tmpdir(), "beynac-test");
 const PID_FOLDER = path.join(BEYNAC_TEST_ROOT, String(process.pid));

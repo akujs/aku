@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, test } from "bun:test";
-import { createKey } from "../core/Key";
-import { RequestLocalsImpl } from "./RequestLocalsImpl";
+import { createKey } from "../core/Key.ts";
+import { RequestLocalsImpl } from "./RequestLocalsImpl.ts";
 
 describe(RequestLocalsImpl, () => {
 	test("get returns undefined for unset keys", () => {

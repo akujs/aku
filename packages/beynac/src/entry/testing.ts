@@ -1,4 +1,4 @@
-export { mockCurrentTime, resetMockTime } from "../testing/mock-time";
+export { mockCurrentTime, resetMockTime } from "../testing/mock-time.ts";
 export {
 	isMockable,
 	mock,
@@ -6,5 +6,5 @@ export {
 	onResetAllMocks,
 	resetAllMocks,
 	resetMock,
-} from "../testing/mocks";
-export { createTestDirectory } from "../testing/test-directories";
+} from "../testing/mocks.ts";
+export { createTestDirectory } from "../testing/test-directories.ts";

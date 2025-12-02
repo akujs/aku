@@ -1,4 +1,4 @@
-import { BeynacError } from "../core/core-errors";
+import { BeynacError } from "../core/core-errors.ts";
 
 export type ErrorKind =
 	| "content-function-error"

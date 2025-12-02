@@ -1,8 +1,8 @@
-import { BeynacError } from "../../core/core-errors";
-import { BeynacEvent } from "../../core/core-events";
-import { isMockable } from "../../testing/mocks";
-import { BaseClass, getPrototypeChain } from "../../utils";
-import type { SourceFile } from "./SourceFile";
+import { BeynacError } from "../../core/core-errors.ts";
+import { BeynacEvent } from "../../core/core-events.ts";
+import { isMockable } from "../../testing/mocks.ts";
+import { BaseClass, getPrototypeChain } from "../../utils.ts";
+import type { SourceFile } from "./SourceFile.ts";
 
 /**
  * Returns an array of error messages for invariant violations in a source file.
@@ -35,8 +35,8 @@ export function getFileErrors(file: SourceFile): string[] {
 				}
 
 				const exportFiles = exp.getAliases().map((e) => e.file.path);
-				const entryFileName = moduleNameToEntryFile(moduleName);
-				const expectedExportFiles = ["errors.ts", `entry/${entryFileName}.ts`];
+				const entryFilePath = moduleNameToEntryFile(moduleName);
+				const expectedExportFiles = ["errors.ts", `${entryFilePath}.ts`];
 				if (!setsEqual(exportFiles, expectedExportFiles)) {
 					errors.push(
 						`${exp.name} in ${file.path} should be exported twice in ${expectedExportFiles.join(" and ")}, but the files exporting it are: ${exportFiles.join(", ")}`,
@@ -66,11 +66,11 @@ export function getFileErrors(file: SourceFile): string[] {
 				}
 
 				const exportFiles = exp.getAliases().map((e) => e.file.path);
-				const entryFileName = moduleNameToEntryFile(moduleName);
-				const expectedExportFiles = ["events.ts", `entry/${entryFileName}.ts`];
+				const entryFilePath = moduleNameToEntryFile(moduleName);
+				const expectedExportFiles = ["events.ts", `${entryFilePath}.ts`];
 				if (!setsEqual(exportFiles, expectedExportFiles)) {
 					errors.push(
-						`${exp.name} in ${file.path} should be exported twice in ${expectedExportFiles.join(" and ")}, but the files exporting it are: ${exportFiles.join(", ")}`,
+						`${exp.name} in ${file.path} should be exported twice in ${expectedExportFiles.join(" and ")}, but the files exporting it are: ${exportFiles.join(", ") || "(no files)"}`,
 					);
 				}
 			} else {
@@ -103,6 +103,14 @@ export function getFileErrors(file: SourceFile): string[] {
 		if (exp.reexport && exp.reexport.originalName !== exp.name) {
 			errors.push(
 				`File ${file.path} renames export "${exp.name}". Use 'export { foo }' not 'export { foo as bar }'`,
+			);
+		}
+
+		// Check barrel file parent directory re-exports (only for index.ts barrel files, not entry files)
+		const isBarrelFile = file.basename === "index.ts" && !file.path.startsWith("entry/");
+		if (isBarrelFile && exp.reexport && exp.reexport.originalFile.startsWith("../")) {
+			errors.push(
+				`File ${file.path} re-exports from parent directory "${exp.reexport.originalFile}". Files should only re-export from the current directory or subdirectories.`,
 			);
 		}
 
@@ -174,7 +182,7 @@ export function getFileErrors(file: SourceFile): string[] {
 
 	// Check for imports from central contracts.ts file
 	for (const imp of file.imports) {
-		if (imp.path.endsWith("/contracts")) {
+		if (imp.path.endsWith("/contracts.ts")) {
 			errors.push(
 				`${file.path} imports from the central contracts.ts file. Import from module-specific contract files instead.`,
 			);
@@ -182,22 +190,53 @@ export function getFileErrors(file: SourceFile): string[] {
 		}
 	}
 
-	// Check for imports with file extensions
+	// Check that relative imports have .ts or .tsx extensions
 	for (const imp of file.imports) {
-		if (/\.[jt]sx?/.test(imp.path)) {
+		if (isRelativePath(imp.path) && !imp.path.endsWith(".ts") && !imp.path.endsWith(".tsx")) {
 			errors.push(
-				`${file.path} imports "${imp.path}" with file extension. Import paths should not include .js or .ts extensions.`,
+				`${file.path} imports "${imp.path}" without .ts or .tsx extension. Relative imports must include the file extension.`,
 			);
 		}
 	}
 
-	// Check for re-exports with file extensions
+	// Check that relative re-exports have .ts or .tsx extensions
 	for (const exp of file.exports) {
 		if (exp.reexport) {
 			const originalFile = exp.reexport.originalFile;
-			if (originalFile.endsWith(".js") || originalFile.endsWith(".ts")) {
+			if (
+				isRelativePath(originalFile) &&
+				!originalFile.endsWith(".ts") &&
+				!originalFile.endsWith(".tsx")
+			) {
 				errors.push(
-					`${file.path} imports "${originalFile}" with file extension. Import paths should not include .js or .ts extensions.`,
+					`${file.path} re-exports from "${originalFile}" without .ts or .tsx extension. Relative imports must include the file extension.`,
+				);
+			}
+		}
+	}
+
+	if (file.path.includes("/contracts/")) {
+		const contractName = file.basename.replace(/\.ts$/, "");
+
+		// Check for type/interface export with the same name as the file
+		if (!file.getExportOrNull(contractName, "type")) {
+			errors.push(
+				`${file.path} is a contract file but does not export a type or interface named "${contractName}".`,
+			);
+		}
+
+		// Check for const type token export with the same name and correct token name
+		const constExport = file.getExportOrNull(contractName, "const");
+		if (!constExport) {
+			errors.push(
+				`${file.path} is a contract file but does not export a const type token named "${contractName}".`,
+			);
+		} else {
+			const expectedToString = `[${contractName}]`;
+			const actualToString = constExport.runtimeValue?.toString();
+			if (actualToString !== expectedToString) {
+				errors.push(
+					`${file.path} type token export "${contractName}" has incorrect name "${actualToString}"`,
 				);
 			}
 		}
@@ -212,8 +251,14 @@ const setsEqual = <T>(a: T[], b: T[]): boolean => {
 	return b.every((bItem) => aSet.has(bItem));
 };
 
-/** Maps module name to entry file name. "core" -> "index", others remain unchanged. */
+/** Maps module name to the path of the entry file (relative to src/). */
 const moduleNameToEntryFile = (moduleName: string): string => {
-	if (moduleName === "core") return "index";
-	return moduleName;
+	if (moduleName === "core") return "entry/index";
+	// Database module has entry point directly in module folder
+	if (moduleName === "database") return "database/database-entry-point";
+	return `entry/${moduleName}`;
+};
+
+const isRelativePath = (path: string): boolean => {
+	return path.startsWith("./") || path.startsWith("../");
 };

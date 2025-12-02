@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { ContainerImpl } from "../container/ContainerImpl";
-import { inject } from "../container/inject";
-import { BaseListener } from "./BaseListener";
-import { DispatcherImpl } from "./DispatcherImpl";
+import { ContainerImpl } from "../container/ContainerImpl.ts";
+import { inject } from "../container/inject.ts";
+import { BaseListener } from "./BaseListener.ts";
+import { DispatcherImpl } from "./DispatcherImpl.ts";
 
 let container: ContainerImpl;
 let dispatcher: DispatcherImpl;

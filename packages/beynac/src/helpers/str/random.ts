@@ -1,5 +1,5 @@
 import { webcrypto as crypto } from "node:crypto";
-import { mockable } from "../../testing/mocks";
+import { mockable } from "../../testing/mocks.ts";
 
 const DEFAULT_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 

@@ -1,13 +1,13 @@
-import { sha256 } from "../../../helpers/hash/digest";
-import { BaseClass, describeType } from "../../../utils";
+import { sha256 } from "../../../helpers/hash/digest.ts";
+import { BaseClass, describeType } from "../../../utils.ts";
 import type {
 	StorageEndpoint,
 	StorageEndpointFileInfoResult,
 	StorageEndpointFileReadResult,
 	StorageEndpointWriteOptions,
-} from "../../contracts/Storage";
-import { NotFoundError } from "../../storage-errors";
-import type { MemoryStorageConfig } from "./MemoryStorageConfig";
+} from "../../contracts/Storage.ts";
+import { NotFoundError } from "../../storage-errors.ts";
+import type { MemoryStorageConfig } from "./MemoryStorageConfig.ts";
 
 interface MemoryFile {
 	data: Uint8Array;

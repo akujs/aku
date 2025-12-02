@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mockable } from "../../testing/mocks";
+import { mockable } from "../../testing/mocks.ts";
 
 type HashEncoding = "hex" | "base64";
 

@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createTestApplication } from "../../../test-utils/http-test-utils";
-import { createTestDirectory } from "../../../testing/test-directories";
-import { mockPlatformPaths } from "../../path-operations";
-import { PermissionsError } from "../../storage-errors";
-import { mockEndpointBuilder } from "../../storage-test-utils";
-import { filesystemStorage } from "../filesystem/filesystemStorage";
-import { memoryStorage } from "../memory/memoryStorage";
-import { readOnlyStorage } from "./readOnlyStorage";
+import { createTestApplication } from "../../../test-utils/http-test-utils.ts";
+import { createTestDirectory } from "../../../testing/test-directories.ts";
+import { mockPlatformPaths } from "../../path-operations.ts";
+import { PermissionsError } from "../../storage-errors.ts";
+import { mockEndpointBuilder } from "../../storage-test-utils.ts";
+import { filesystemStorage } from "../filesystem/filesystemStorage.ts";
+import { memoryStorage } from "../memory/memoryStorage.ts";
+import { readOnlyStorage } from "./readOnlyStorage.ts";
 
 beforeEach(() => {
 	mockPlatformPaths("posix");

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { createTestApplication } from "../test-utils/http-test-utils";
-import { memoryStorage } from "./adapters/memory/memoryStorage";
-import { Storage } from "./contracts/Storage";
-import { FileWrittenEvent } from "./storage-events";
+import { createTestApplication } from "../test-utils/http-test-utils.ts";
+import { memoryStorage } from "./adapters/memory/memoryStorage.ts";
+import { Storage } from "./contracts/Storage.ts";
+import { FileWrittenEvent } from "./storage-events.ts";
 
 describe("Storage integration with Application", () => {
 	test("storage integrates with application configuration and DI container", async () => {

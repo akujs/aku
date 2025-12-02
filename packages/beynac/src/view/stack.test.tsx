@@ -1,12 +1,12 @@
-/** @jsxImportSource ./ */
+/** @jsxImportSource beynac/view */
 import { expect, test } from "bun:test";
-import { createKey } from "../core/Key";
-import { asyncGate, nextTick } from "../test-utils/async-gate";
-import { render, renderStream } from "../test-utils/view-test-utils";
-import type { Component } from "./Component";
-import { Once } from "./once";
-import { createStack } from "./stack";
-import type { Context } from "./view-types";
+import { createKey } from "../core/Key.ts";
+import { asyncGate, nextTick } from "../test-utils/async-gate.ts";
+import { render, renderStream } from "../test-utils/view-test-utils.ts";
+import type { Component } from "./Component.ts";
+import { Once } from "./once.ts";
+import { createStack } from "./stack.ts";
+import type { Context } from "./view-types.ts";
 
 test("basic Stack push and out functionality", async () => {
 	const MyStack = createStack();

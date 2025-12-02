@@ -1,7 +1,7 @@
-import { Configuration } from "../core/contracts/Configuration";
-import { ServiceProvider } from "../core/ServiceProvider";
-import { DevModeAutoRefreshMiddleware } from "./DevModeAutoRefreshMiddleware";
-import { DevModeWatchService } from "./DevModeWatchService";
+import { Configuration } from "../core/contracts/Configuration.ts";
+import { ServiceProvider } from "../core/ServiceProvider.ts";
+import { DevModeAutoRefreshMiddleware } from "./DevModeAutoRefreshMiddleware.ts";
+import { DevModeWatchService } from "./DevModeWatchService.ts";
 
 export class DevelopmentServiceProvider extends ServiceProvider {
 	override register(): void {

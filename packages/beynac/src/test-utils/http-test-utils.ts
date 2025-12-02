@@ -1,15 +1,15 @@
 import type { Mock } from "bun:test";
 import { mock } from "bun:test";
-import type { Container } from "../container/contracts/Container";
-import type { Application } from "../core/contracts/Application";
-import type { Configuration } from "../core/contracts/Configuration";
-import { createApplication } from "../core/createApplication";
-import type { BaseController, ControllerContext, FunctionController } from "../http/Controller";
-import { type ControllerReturn } from "../http/Controller";
-import { type ClassMiddleware } from "../http/Middleware";
-import { ResourceController } from "../http/ResourceController";
-import { Router } from "../http/Router";
-import type { IntegrationContext } from "../integrations/IntegrationContext";
+import type { Container } from "../container/contracts/Container.ts";
+import type { Application } from "../core/contracts/Application.ts";
+import type { Configuration } from "../core/contracts/Configuration.ts";
+import { createApplication } from "../core/createApplication.ts";
+import type { BaseController, ControllerContext, FunctionController } from "../http/Controller.ts";
+import { type ControllerReturn } from "../http/Controller.ts";
+import { type ClassMiddleware } from "../http/Middleware.ts";
+import { ResourceController } from "../http/ResourceController.ts";
+import { Router } from "../http/Router.ts";
+import type { IntegrationContext } from "../integrations/IntegrationContext.ts";
 
 export class MockController extends ResourceController {
 	override handle: Mock<BaseController["handle"]>;

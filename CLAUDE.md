@@ -4,9 +4,12 @@ When I ask questions, answer briefly to minimise time taken to read response. I'
 
 ## General instructions for tasks
 
+Before working on a task, we will agree a plan. Follow this plan closely. If the agreed approach turns out to be impossible or significantly more complex than expected, **STOP and summarise the problems**. In particular, don't make changes to build files, project setup, or code outside the scope of what you're working on.
+
 - After you have finished a task, run the formatter then check for issues with `bun check`. Only fix issues that are related to the code you're working on. If there are unrelated lint or test issues elsewhere in the codebase report them but no not fix them.
 - Once the tests and lint check have passed, review your code against CLAUDE_CODING_GUIDELINES.md to ensure all guidelines are followed.
 - After reviewing against guidelines, check for any other issues and potential improvements but DO NOT make them yet. Report these to me and let me decide if I want to make the changes.
+- **DO NOT USE `git checkout `**. In the past it has led to significant loss of work where all changes are lost, when you only intended a more minor reset. Instead, if believe you need to use a checkout operation, stop and report the issue to the user to decide what to do and ensure that no work is lost.
 
 ## Soft port process
 
@@ -29,3 +32,4 @@ After you have completed the initial port, go over your work and verify that non
 - **Run unit tests**: `bun test`
 - **Run lint and format test**: `bun check:lint`
 - **Apply correct formatting to files**: `bun format` - IMPORTANT: always run checks (`bun check`) THEN format (`bun format`) after completing functionality changes
+- If S3 tests fail with "XMinioStorageFull", restart MinIO: `docker compose down && docker compose up -d`

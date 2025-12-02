@@ -1,4 +1,4 @@
-import type { PHCFields } from "./phc";
+import type { PHCFields } from "./phc.ts";
 
 // Test vectors extracted from @phc/format library
 // Source: https://github.com/simonepri/phc-format/blob/master/test/fixtures/serialize-deserialize.js

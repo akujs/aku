@@ -1,7 +1,11 @@
-import type { Dispatcher } from "../core/contracts/Dispatcher";
-import type { StorageDirectoryOperations, StorageDisk, StorageEndpoint } from "./contracts/Storage";
-import { DelegatesToDirectory } from "./DelegatesToDirectory";
-import { StorageDirectoryImpl } from "./StorageDirectoryImpl";
+import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
+import type {
+	StorageDirectoryOperations,
+	StorageDisk,
+	StorageEndpoint,
+} from "./contracts/Storage.ts";
+import { DelegatesToDirectory } from "./DelegatesToDirectory.ts";
+import { StorageDirectoryImpl } from "./StorageDirectoryImpl.ts";
 
 export class StorageDiskImpl extends DelegatesToDirectory implements StorageDisk {
 	readonly name: string;

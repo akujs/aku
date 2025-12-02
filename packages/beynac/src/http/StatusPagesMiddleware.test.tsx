@@ -1,16 +1,16 @@
-/** @jsxImportSource ../view */
+/** @jsxImportSource beynac/view */
 
 import { describe, expect, mock, test } from "bun:test";
-import { controllerContext } from "../test-utils/http-test-utils";
-import { mockViewRenderer } from "../test-utils/view-test-utils";
-import type { FunctionComponent } from "../view/Component";
-import { BaseComponent } from "../view/Component";
-import type { Context } from "../view/view-types";
-import { AbortException } from "./abort";
-import { get } from "./helpers";
-import { RequestLocalsImpl } from "./RequestLocalsImpl";
-import type { RouteDefinition, StatusPageComponent, StatusPages } from "./router-types";
-import { StatusPagesMiddleware } from "./StatusPagesMiddleware";
+import { controllerContext } from "../test-utils/http-test-utils.ts";
+import { mockViewRenderer } from "../test-utils/view-test-utils.ts";
+import type { FunctionComponent } from "../view/Component.ts";
+import { BaseComponent } from "../view/Component.ts";
+import type { Context } from "../view/view-types.ts";
+import { AbortException } from "./abort.ts";
+import { get } from "./helpers.ts";
+import { RequestLocalsImpl } from "./RequestLocalsImpl.ts";
+import type { RouteDefinition, StatusPageComponent, StatusPages } from "./router-types.ts";
+import { StatusPagesMiddleware } from "./StatusPagesMiddleware.ts";
 
 const mockComponent =
 	(content: string): FunctionComponent =>

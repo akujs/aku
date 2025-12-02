@@ -1,4 +1,4 @@
-import { BaseClass } from "../../../../utils";
+import { BaseClass } from "../../../../utils.ts";
 
 // These are not re-exported from the entry point, so they don't need doc comments
 

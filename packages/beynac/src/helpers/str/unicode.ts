@@ -1,7 +1,7 @@
-import { mapObjectValues } from "../../utils";
-import type { Replacer } from "./misc";
-import { compileMultiReplace, multiReplace } from "./misc";
-import { unicodeReplacements } from "./replacements";
+import { mapObjectValues } from "../../utils.ts";
+import type { Replacer } from "./misc.ts";
+import { compileMultiReplace, multiReplace } from "./misc.ts";
+import { unicodeReplacements } from "./replacements.ts";
 
 /**
  * Remove unicode combining marks and ligatures from a string.

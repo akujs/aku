@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { addRoute } from "./add-route";
-import { createMatcher as _createMatcher } from "./create-matcher";
-import { findRoute } from "./find-route";
-import type { MatcherContext, Node } from "./types";
+import { addRoute } from "./add-route.ts";
+import { createMatcher as _createMatcher } from "./create-matcher.ts";
+import { findRoute } from "./find-route.ts";
+import type { MatcherContext, Node } from "./types.ts";
 
 type TestRoute = {
 	data: { path: string };

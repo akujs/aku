@@ -1,9 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ES2022",
+    "module": "nodenext",
     "lib": ["ES2022"],
-    "moduleResolution": "bundler",
+    "moduleResolution": "nodenext",
+    "customConditions": ["source"],
+    "rewriteRelativeImportExtensions": true,
     "rootDir": "./src",
     "outDir": "./dist",
     "jsx": "react-jsx",
@@ -29,6 +31,7 @@
     "skipLibCheck": true,
     "isolatedDeclarations": true,
     "declaration": true,
+    "verbatimModuleSyntax": true,
     "types": ["bun-types"]
   },
   "include": ["src/**/*"],

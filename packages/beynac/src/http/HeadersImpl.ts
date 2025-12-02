@@ -1,7 +1,7 @@
-import { inject } from "../container/inject";
-import { IntegrationContext } from "../integrations/IntegrationContext";
-import { BaseClass } from "../utils";
-import type { Headers } from "./contracts/Headers";
+import { inject } from "../container/inject.ts";
+import { IntegrationContext } from "../integrations/IntegrationContext.ts";
+import { BaseClass } from "../utils.ts";
+import type { Headers } from "./contracts/Headers.ts";
 
 export class HeadersImpl extends BaseClass implements Headers {
 	#keys: string[] | undefined;

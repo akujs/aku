@@ -1,7 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { createTestApplication } from "../test-utils/http-test-utils";
-import { abort } from "./abort";
-import { get } from "./helpers";
+import { createTestApplication } from "../test-utils/http-test-utils.ts";
+import { abort } from "./abort.ts";
+import { get } from "./helpers.ts";
 
 async function getResponse(f: () => void) {
 	const { router, handle } = createTestApplication();

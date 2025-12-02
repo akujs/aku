@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { getFileErrors } from "./getFileErrors";
-import { SourceProject } from "./SourceProject";
+import { getFileErrors } from "./getFileErrors.ts";
+import { SourceProject } from "./SourceProject.ts";
 
 const fixturesPath = join(import.meta.dir, "__fixtures__");
 
@@ -68,7 +68,7 @@ describe(getFileErrors, () => {
 		const errors = getFileErrors(file);
 
 		expect(errors).toEqual([
-			'File errors/bad-barrel-file-import/index.ts re-exports from parent directory "../parent-export". Files should only re-export from the current directory or subdirectories.',
+			'File errors/bad-barrel-file-import/index.ts re-exports from parent directory "../parent-export.ts". Files should only re-export from the current directory or subdirectories.',
 		]);
 	});
 
@@ -91,15 +91,15 @@ describe(getFileErrors, () => {
 		]);
 	});
 
-	test("detects imports with file extensions", () => {
+	test("detects imports missing file extensions", () => {
 		const file = project.getFile("errors/bad-import-extension.ts");
 		const errors = getFileErrors(file);
 
 		expect(errors).toEqual([
 			// from import
-			'errors/bad-import-extension.ts imports "./extension-helper.js" with file extension. Import paths should not include .js or .ts extensions.',
-			// from export
-			'errors/bad-import-extension.ts imports "./extension-helper.js" with file extension. Import paths should not include .js or .ts extensions.',
+			'errors/bad-import-extension.ts imports "./extension-helper.js" without .ts or .tsx extension. Relative imports must include the file extension.',
+			// from re-export
+			'errors/bad-import-extension.ts re-exports from "./extension-helper.js" without .ts or .tsx extension. Relative imports must include the file extension.',
 		]);
 	});
 

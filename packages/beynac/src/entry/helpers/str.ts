@@ -11,8 +11,8 @@ export {
 	titleCase,
 	uppercase,
 	uppercaseFirst,
-} from "../../helpers/str/case";
-export { compileMultiReplace, multiReplace } from "../../helpers/str/misc";
+} from "../../helpers/str/case.ts";
+export { compileMultiReplace, multiReplace } from "../../helpers/str/misc.ts";
 export {
 	isUlid,
 	isUuid,
@@ -23,5 +23,10 @@ export {
 	ulid,
 	uuid,
 	uuidV4,
-} from "../../helpers/str/random";
-export { slug, transliterate, withoutComplexChars, withoutMarks } from "../../helpers/str/unicode";
+} from "../../helpers/str/random.ts";
+export {
+	slug,
+	transliterate,
+	withoutComplexChars,
+	withoutMarks,
+} from "../../helpers/str/unicode.ts";

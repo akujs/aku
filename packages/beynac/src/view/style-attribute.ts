@@ -1,6 +1,6 @@
 // No-unit CSS properties based on React's implementation
 
-import type { CSSProperties } from "./view-types";
+import type { CSSProperties } from "./view-types.ts";
 
 // Source: https://github.com/facebook/react/blob/main/packages/react-dom-bindings/src/shared/isUnitlessNumber.js
 const noUnitProperties = new Set([

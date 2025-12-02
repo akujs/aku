@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { sleep } from "../utils";
-import { mock, mockable, onResetAllMocks, resetAllMocks, resetMock } from "./mocks";
+import { sleep } from "../utils.ts";
+import { mock, mockable, onResetAllMocks, resetAllMocks, resetMock } from "./mocks.ts";
 
 describe(mockable, () => {
 	test("creates a mockable function", () => {

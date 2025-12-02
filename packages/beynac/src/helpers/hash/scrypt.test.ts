@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { mock } from "../../testing/mocks";
-import { scrypt, scryptSync, verifyScrypt, verifyScryptSync } from "./scrypt";
+import { mock } from "../../testing/mocks.ts";
+import { scrypt, scryptSync, verifyScrypt, verifyScryptSync } from "./scrypt.ts";
 
 // Use minimal rounds for fast testing
 const FAST_PARAMS = { N: 1024, r: 2, p: 2 };

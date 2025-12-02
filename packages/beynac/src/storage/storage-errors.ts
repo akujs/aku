@@ -1,6 +1,6 @@
 import { STATUS_CODES } from "node:http";
-import { BeynacError } from "../core/core-errors";
-import type { StorageEndpoint } from "./contracts/Storage";
+import { BeynacError } from "../core/core-errors.ts";
+import type { StorageEndpoint } from "./contracts/Storage.ts";
 
 /**
  * Base class for all storage-related errors

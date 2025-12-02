@@ -1,1 +1,1 @@
-export * from "../../integrations/next";
+export * from "../../integrations/next.ts";

@@ -1,6 +1,6 @@
-import type { Dispatcher } from "../core/contracts/Dispatcher";
-import { durationStringToDate } from "../helpers/time";
-import { BaseClass } from "../utils";
+import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
+import { durationStringToDate } from "../helpers/time.ts";
+import { BaseClass } from "../utils.ts";
 import type {
 	StorageData,
 	StorageDisk,
@@ -13,9 +13,9 @@ import type {
 	StorageFileSignedUrlOptions,
 	StorageFileUploadUrlOptions,
 	StorageFileUrlOptions,
-} from "./contracts/Storage";
-import { mimeTypeFromFileName } from "./file-names";
-import { InvalidPathError } from "./storage-errors";
+} from "./contracts/Storage.ts";
+import { mimeTypeFromFileName } from "./file-names.ts";
+import { InvalidPathError } from "./storage-errors.ts";
 import {
 	FileCopiedEvent,
 	FileCopyingEvent,
@@ -33,8 +33,8 @@ import {
 	FileUrlGeneratingEvent,
 	FileWritingEvent,
 	FileWrittenEvent,
-} from "./storage-events";
-import { storageOperation } from "./storage-operation";
+} from "./storage-events.ts";
+import { storageOperation } from "./storage-operation.ts";
 
 export class StorageFileImpl extends BaseClass implements StorageFile {
 	readonly type = "file" as const;

@@ -1,5 +1,5 @@
-import { createTypeToken, type TypeToken } from "../../container/container-key";
-import type { Container } from "../../container/contracts/Container";
+import { createTypeToken, type TypeToken } from "../../container/container-key.ts";
+import type { Container } from "../../container/contracts/Container.ts";
 
 /**
  * A manager for storage disks

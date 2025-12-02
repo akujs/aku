@@ -1,10 +1,10 @@
-import { BaseClass } from "../utils";
+import { BaseClass } from "../utils.ts";
 import type {
 	StorageDirectory,
 	StorageDirectoryOperations,
 	StorageFile,
 	StorageFilePutPayload,
-} from "./contracts/Storage";
+} from "./contracts/Storage.ts";
 
 export abstract class DelegatesToDirectory extends BaseClass implements StorageDirectoryOperations {
 	protected abstract getDirectoryForDelegation(): StorageDirectoryOperations;

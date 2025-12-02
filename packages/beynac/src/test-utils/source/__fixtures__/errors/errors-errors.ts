@@ -1,5 +1,5 @@
-import { BeynacError } from "../../../../core/core-errors";
-import { BaseClass } from "../../../../utils";
+import { BeynacError } from "../../../../core/core-errors.ts";
+import { BaseClass } from "../../../../utils.ts";
 
 // Good: ends with Error and extends BeynacError
 export class GoodError extends BeynacError {

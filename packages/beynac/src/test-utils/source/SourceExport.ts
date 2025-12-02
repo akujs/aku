@@ -1,7 +1,7 @@
-import { BaseClass } from "../../utils";
-import { parseExports, type SourceKind, UNRESOLVED_TYPE } from "./parseSource";
-import type { SourceFile } from "./SourceFile";
-import type { SourceProject } from "./SourceProject";
+import { BaseClass } from "../../utils.ts";
+import { parseExports, type SourceKind, UNRESOLVED_TYPE } from "./parseSource.ts";
+import type { SourceFile } from "./SourceFile.ts";
+import type { SourceProject } from "./SourceProject.ts";
 
 /**
  * Represents an exported symbol from a source file.

@@ -1,26 +1,26 @@
-/** @jsxImportSource ../view */
+/** @jsxImportSource beynac/view */
 import { beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
-import { ContainerImpl } from "../container/ContainerImpl";
-import { createTypeToken } from "../container/container-key";
-import { Container } from "../container/contracts/Container";
-import { BaseListener } from "../core/BaseListener";
-import { Configuration } from "../core/contracts/Configuration";
-import { Dispatcher } from "../core/contracts/Dispatcher";
-import { RequestHandledEvent } from "../events";
+import { ContainerImpl } from "../container/ContainerImpl.ts";
+import { createTypeToken } from "../container/container-key.ts";
+import { Container } from "../container/contracts/Container.ts";
+import { BaseListener } from "../core/BaseListener.ts";
+import { Configuration } from "../core/contracts/Configuration.ts";
+import { Dispatcher } from "../core/contracts/Dispatcher.ts";
+import { RequestHandledEvent } from "../events.ts";
 import {
 	createTestApplication,
 	MockController,
 	mockMiddleware,
-} from "../test-utils/http-test-utils";
-import { abort } from "./abort";
-import type { ClassController, Controller } from "./Controller";
-import { BaseController, type ControllerContext, type ControllerReturn } from "./Controller";
-import { any, get, group, post, redirect } from "./helpers";
-import type { FunctionMiddleware } from "./Middleware";
-import { BaseMiddleware } from "./Middleware";
-import { MiddlewareSet } from "./MiddlewareSet";
-import { Router } from "./Router";
-import { StatusPagesMiddleware } from "./StatusPagesMiddleware";
+} from "../test-utils/http-test-utils.ts";
+import { abort } from "./abort.ts";
+import type { ClassController, Controller } from "./Controller.ts";
+import { BaseController, type ControllerContext, type ControllerReturn } from "./Controller.ts";
+import { any, get, group, post, redirect } from "./helpers.ts";
+import type { FunctionMiddleware } from "./Middleware.ts";
+import { BaseMiddleware } from "./Middleware.ts";
+import { MiddlewareSet } from "./MiddlewareSet.ts";
+import { Router } from "./Router.ts";
+import { StatusPagesMiddleware } from "./StatusPagesMiddleware.ts";
 
 let container: Container;
 let router: Router;

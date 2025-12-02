@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { SourceFolder } from "./SourceFolder";
-import { SourceProject } from "./SourceProject";
+import { SourceFolder } from "./SourceFolder.ts";
+import { SourceProject } from "./SourceProject.ts";
 
 const fixturesPath = join(import.meta.dir, "__fixtures__");
 
@@ -69,19 +69,15 @@ describe(SourceProject, () => {
 		expect(exportsForValue[0].name).toBe("publicString");
 	});
 
-	test("path includes extension, importPath does not", () => {
-		// path has full file path with extension
-		expect(project.getFile("exports.ts").path).toBe("exports.ts");
-		expect(project.getFile("module/source.ts").path).toBe("module/source.ts");
-		expect(project.getFile("module/submodule/file.ts").path).toBe("module/submodule/file.ts");
-		expect(project.getFile("module/index.ts").path).toBe("module/index.ts");
-
-		// importPath has no extension, barrel files use folder path
-		expect(project.getFile("exports.ts").importPath).toBe("exports");
-		expect(project.getFile("module/source.ts").importPath).toBe("module/source");
-		expect(project.getFile("module/submodule/file.ts").importPath).toBe("module/submodule/file");
-		expect(project.getFile("module/index.ts").importPath).toBe("module");
-		expect(project.getFile("module/submodule/index.ts").importPath).toBe("module/submodule");
+	test("importPath includes extension for ESM compatibility", () => {
+		// importPath now returns full path with extension
+		expect(project.getFile("exports.ts").importPath).toBe("exports.ts");
+		expect(project.getFile("module/source.ts").importPath).toBe("module/source.ts");
+		expect(project.getFile("module/submodule/file.ts").importPath).toBe("module/submodule/file.ts");
+		expect(project.getFile("module/index.ts").importPath).toBe("module/index.ts");
+		expect(project.getFile("module/submodule/index.ts").importPath).toBe(
+			"module/submodule/index.ts",
+		);
 	});
 
 	test("throws for invalid entry point", () => {
@@ -153,7 +149,7 @@ describe(SourceProject, () => {
 		expect(nonRenamedExport.kind).toBe("reexport");
 		expect(nonRenamedExport.reexport).toEqual({
 			originalName: "SourceClass",
-			originalFile: "./source",
+			originalFile: "./source.ts",
 		});
 
 		// Direct exports have no reexport metadata
@@ -170,7 +166,7 @@ describe(SourceProject, () => {
 		expect(simpleValue.kind).toBe("reexport");
 		expect(simpleValue.reexport).toEqual({
 			originalName: "originalValue",
-			originalFile: "./source",
+			originalFile: "./source.ts",
 		});
 
 		// Renamed value re-export
@@ -178,7 +174,7 @@ describe(SourceProject, () => {
 		expect(renamedValue.kind).toBe("reexport");
 		expect(renamedValue.reexport).toEqual({
 			originalName: "originalValue",
-			originalFile: "./source",
+			originalFile: "./source.ts",
 		});
 
 		// Simple type re-export
@@ -186,7 +182,7 @@ describe(SourceProject, () => {
 		expect(simpleType.kind).toBe("reexport");
 		expect(simpleType.reexport).toEqual({
 			originalName: "OriginalInterface",
-			originalFile: "./source",
+			originalFile: "./source.ts",
 		});
 
 		// Renamed type re-export
@@ -194,7 +190,7 @@ describe(SourceProject, () => {
 		expect(renamedType.kind).toBe("reexport");
 		expect(renamedType.reexport).toEqual({
 			originalName: "OriginalInterface",
-			originalFile: "./source",
+			originalFile: "./source.ts",
 		});
 	});
 
@@ -204,7 +200,7 @@ describe(SourceProject, () => {
 		const publicInterface = exportsFile.getExport("PublicInterface");
 		expect(publicInterface.kind).toBe("type");
 		expect(typeof publicInterface.runtimeValue).toBe("symbol");
-		expect(publicInterface.runtimeValue).toBe(Symbol.for("type:exports:PublicInterface"));
+		expect(publicInterface.runtimeValue).toBe(Symbol.for("type:exports.ts:PublicInterface"));
 	});
 
 	test("can navigate around hierarchy", () => {
@@ -222,10 +218,10 @@ describe(SourceProject, () => {
 		expect(file.folder.parent?.path).toBe("module");
 		expect(file.project).toBe(project);
 
-		// Barrel file importPath matches folder path
+		// Barrel file importPath includes full path
 		const barrel = project.getFile("module/index.ts");
 		expect(barrel.folder.path).toBe("module");
-		expect(barrel.importPath).toBe("module");
+		expect(barrel.importPath).toBe("module/index.ts");
 	});
 
 	test("handles export * from wildcard re-exports for public API detection", () => {
@@ -237,7 +233,7 @@ describe(SourceProject, () => {
 		expect(wildcardBarrel.exports[0].name).toBe("*");
 		expect(wildcardBarrel.exports[0].reexport).toEqual({
 			originalName: "*",
-			originalFile: "./source",
+			originalFile: "./source.ts",
 		});
 
 		// The "*" export should be in the value map for all source exports

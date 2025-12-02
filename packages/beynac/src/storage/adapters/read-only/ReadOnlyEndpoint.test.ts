@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, spyOn, test } from "bun:test";
-import type { StorageEndpoint } from "../../contracts/Storage";
-import { PermissionsError } from "../../storage-errors";
-import { type SharedTestConfig } from "../../storage-test-utils";
-import { MemoryEndpoint } from "../memory/MemoryEndpoint";
-import { ReadOnlyEndpoint } from "./ReadOnlyEndpoint";
-import { readOnlyStorage } from "./readOnlyStorage";
+import type { StorageEndpoint } from "../../contracts/Storage.ts";
+import { PermissionsError } from "../../storage-errors.ts";
+import { type SharedTestConfig } from "../../storage-test-utils.ts";
+import { MemoryEndpoint } from "../memory/MemoryEndpoint.ts";
+import { ReadOnlyEndpoint } from "./ReadOnlyEndpoint.ts";
+import { readOnlyStorage } from "./readOnlyStorage.ts";
 
 // Dummy factory for tests - never called since we pass StorageEndpoint directly
 const dummyStorageFactory = () => {

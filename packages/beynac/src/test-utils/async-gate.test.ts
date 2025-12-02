@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { asyncGate } from "./async-gate";
+import { asyncGate } from "./async-gate.ts";
 
 test("asyncGate throws on empty checkpoints array", () => {
 	expect(() => asyncGate([])).toThrow("Checkpoints array cannot be empty");

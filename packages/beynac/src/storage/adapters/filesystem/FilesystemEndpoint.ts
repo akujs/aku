@@ -1,18 +1,18 @@
 import { createHash } from "node:crypto";
 import { pipeline, Readable } from "node:stream";
 import { promisify } from "node:util";
-import { BaseClass } from "../../../utils";
+import { BaseClass } from "../../../utils.ts";
 import type {
 	StorageEndpoint,
 	StorageEndpointFileInfoResult,
 	StorageEndpointFileReadResult,
 	StorageEndpointWriteOptions,
-} from "../../contracts/Storage";
-import { joinSlashPaths } from "../../file-names";
-import { type Dir, fsOps, type Stats } from "../../filesystem-operations";
-import { platform } from "../../path-operations";
-import { NotFoundError, PermissionsError, StorageUnknownError } from "../../storage-errors";
-import type { FilesystemStorageConfig } from "./FilesystemStorageConfig";
+} from "../../contracts/Storage.ts";
+import { joinSlashPaths } from "../../file-names.ts";
+import { type Dir, fsOps, type Stats } from "../../filesystem-operations.ts";
+import { platform } from "../../path-operations.ts";
+import { NotFoundError, PermissionsError, StorageUnknownError } from "../../storage-errors.ts";
+import type { FilesystemStorageConfig } from "./FilesystemStorageConfig.ts";
 
 const pipelineAsync = promisify(pipeline);
 

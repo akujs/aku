@@ -1,7 +1,7 @@
-import { BaseClass } from "../utils";
-import type { FactoryFunction } from "./ContainerImpl";
-import type { KeyOrClass } from "./container-key";
-import type { Container } from "./contracts/Container";
+import { BaseClass } from "../utils.ts";
+import type { FactoryFunction } from "./ContainerImpl.ts";
+import type { KeyOrClass } from "./container-key.ts";
+import type { Container } from "./contracts/Container.ts";
 
 type AddCallback = (need: KeyOrClass, factory: FactoryFunction<unknown>) => void;
 

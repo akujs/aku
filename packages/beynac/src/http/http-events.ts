@@ -1,5 +1,5 @@
-import { BeynacEvent } from "../core/core-events";
-import type { ControllerContext } from "./Controller";
+import { BeynacEvent } from "../core/core-events.ts";
+import type { ControllerContext } from "./Controller.ts";
 
 /**
  * Event dispatched after a request has been successfully handled.

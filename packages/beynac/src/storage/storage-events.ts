@@ -1,6 +1,6 @@
-import { BeynacEvent } from "../core/core-events";
-import type { StorageData, StorageDisk, StorageFileInfo } from "./contracts/Storage";
-import type { StorageError } from "./storage-errors";
+import { BeynacEvent } from "../core/core-events.ts";
+import type { StorageData, StorageDisk, StorageFileInfo } from "./contracts/Storage.ts";
+import type { StorageError } from "./storage-errors.ts";
 
 /**
  * Operation types for storage events

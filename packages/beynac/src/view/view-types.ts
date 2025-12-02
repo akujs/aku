@@ -1,6 +1,6 @@
-import type { Key } from "../core/Key";
-import type * as CSS from "../vendor/csstype";
-import type { IntrinsicElements as IntrinsicElementsDefined } from "./intrinsic-element-types";
+import type { Key } from "../core/Key.ts";
+import type * as CSS from "../vendor/csstype.ts";
+import type { IntrinsicElements as IntrinsicElementsDefined } from "./intrinsic-element-types.ts";
 
 export type RenderOptions = {
 	mode?: "html" | "xml" | undefined;

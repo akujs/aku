@@ -1,5 +1,5 @@
-import type { TypeToken } from "../container/container-key";
-import { createTypeToken } from "../container/container-key";
+import type { TypeToken } from "../container/container-key.ts";
+import { createTypeToken } from "../container/container-key.ts";
 
 /**
  * The interface used by framework integrations to provide access to the request

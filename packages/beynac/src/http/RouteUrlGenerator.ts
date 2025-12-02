@@ -1,13 +1,13 @@
-import { Container } from "../container/contracts/Container";
-import { inject } from "../container/inject";
-import type { QueryParams } from "../core/contracts/Application";
-import { Configuration } from "../core/contracts/Configuration";
-import { IntegrationContext } from "../integrations/IntegrationContext";
-import { arrayWrapOptional, BaseClass } from "../utils";
-import type { Headers } from "./contracts/Headers";
-import { HeadersImpl } from "./HeadersImpl";
-import { type RouteDefinition, type Routes } from "./router-types";
-import { replaceRouteParams } from "./syntax";
+import { Container } from "../container/contracts/Container.ts";
+import { inject } from "../container/inject.ts";
+import type { QueryParams } from "../core/contracts/Application.ts";
+import { Configuration } from "../core/contracts/Configuration.ts";
+import { IntegrationContext } from "../integrations/IntegrationContext.ts";
+import { arrayWrapOptional, BaseClass } from "../utils.ts";
+import type { Headers } from "./contracts/Headers.ts";
+import { HeadersImpl } from "./HeadersImpl.ts";
+import { type RouteDefinition, type Routes } from "./router-types.ts";
+import { replaceRouteParams } from "./syntax.ts";
 
 export class RouteUrlGenerator extends BaseClass {
 	#namedRoutes = new Map<string, RouteDefinition>();

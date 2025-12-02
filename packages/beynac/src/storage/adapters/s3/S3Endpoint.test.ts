@@ -1,9 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { MINIO_ENDPOINT, shouldSkipDockerTests } from "../../../test-utils/docker";
-import { mockCurrentTime, resetMockTime } from "../../../testing/mock-time";
-import { PermissionsError } from "../../storage-errors";
-import { createS3, createS3WithUniqueBucket, createUniqueBucket } from "./S3Endpoint.shared.test";
-import { s3Storage } from "./s3Storage";
+import { MINIO_ENDPOINT, shouldSkipDockerTests } from "../../../test-utils/docker.ts";
+import { mockCurrentTime, resetMockTime } from "../../../testing/mock-time.ts";
+import { PermissionsError } from "../../storage-errors.ts";
+import {
+	createS3,
+	createS3WithUniqueBucket,
+	createUniqueBucket,
+} from "./S3Endpoint.shared.test.ts";
+import { s3Storage } from "./s3Storage.ts";
 
 describe.skipIf(shouldSkipDockerTests())(s3Storage, () => {
 	describe("S3-specific configuration", () => {

@@ -1,7 +1,7 @@
 import { basename } from "node:path";
-import { mapObjectValues } from "../../utils";
-import { ENTRY_POINTS } from "../entryPoints";
-import type { SourceProject } from "./SourceProject";
+import { mapObjectValues } from "../../utils.ts";
+import { ENTRY_POINTS } from "../entryPoints.ts";
+import type { SourceProject } from "./SourceProject.ts";
 
 export function getGeneratedFileContent(project: SourceProject): Record<string, string> {
 	const rawFiles = {
@@ -20,7 +20,6 @@ export function getGeneratedFileContent(project: SourceProject): Record<string, 
 }
 
 function getContractFiles(project: SourceProject) {
-	// Find all contract files by filtering all files in the project
 	return project.root
 		.allFiles()
 		.filter((file) => file.path.includes("/contracts/"))
@@ -33,15 +32,7 @@ function generateContractsFileContent(project: SourceProject): string {
 	const contractFiles = getContractFiles(project);
 
 	for (const file of contractFiles) {
-		// Get the contract const export (matches the file basename without extension)
-		const expectedContractName = file.basenameWithoutExt;
-		const contractExport = file.exports.find(
-			(exp) => exp.kind === "const" && exp.name === expectedContractName && !exp.reexport,
-		);
-
-		if (contractExport) {
-			lines.push(`export { ${contractExport.name} } from "./${file.importPath}";`);
-		}
+		lines.push(`export { ${file.basenameWithoutExt} } from "./${file.importPath}";`);
 	}
 
 	return lines.join("\n") + "\n";
@@ -86,7 +77,7 @@ function generateEventsFileContent(project: SourceProject): string {
 }
 
 function generateFacadesFileContent(project: SourceProject): string {
-	const lines: string[] = ['import { createFacade } from "./core/facade";'];
+	const lines: string[] = ['import { createFacade } from "./core/facade.ts";'];
 
 	const contractFiles = getContractFiles(project);
 
@@ -121,8 +112,10 @@ function generateFacadesFileContent(project: SourceProject): string {
 	return lines.join("\n") + "\n";
 }
 
-export function getPackageExports(): Record<string, string | { types: string; default: string }> {
-	const exports: Record<string, string | { types: string; default: string }> = {};
+type ExportEntry = { source: string; types: string; default: string };
+
+export function getPackageExports(): Record<string, string | ExportEntry> {
+	const exports: Record<string, string | ExportEntry> = {};
 
 	for (const [entryKey, sourcePath] of Object.entries(ENTRY_POINTS)) {
 		const exportKey = entryKey === "index" ? "." : `./${entryKey}`;
@@ -130,26 +123,18 @@ export function getPackageExports(): Record<string, string | { types: string; de
 		const jsPath = `./dist/${entryKey}.mjs`;
 
 		const sourceBasename = basename(sourcePath, ".ts");
+
+		// There is a bug in TSdown where it generates.d.ts files at the root,
+		// even if the source file is located in a sub-directory. This causes
+		// type checking errors that we need to resolve by wiring up each export
+		// to the correct types.
 		const dtsPath = `./dist/${sourceBasename}.d.mts`;
 
-		const jsPathWithoutExt = `./dist/${entryKey}`;
-		const dtsPathWithoutExt = `./dist/${sourceBasename}`;
-
-		// The issue we are fixing here, and the reason we generate our package
-		// exports rather than relying on tsdown to do this, is that for nested
-		// entry points, tsdown generates a dist/subfolder/foo.mjs file and a
-		// dist/foo.d.ts file - note the lack of a subfolder in the .d.ts. We
-		// therefore need a type mapping in the export entry to correctly locate
-		// the types. If a future version of tsdown correctly generates exports
-		// by setting the `exports: true` option, we can remove this code.
-		if (jsPathWithoutExt === dtsPathWithoutExt) {
-			exports[exportKey] = jsPath;
-		} else {
-			exports[exportKey] = {
-				types: dtsPath,
-				default: jsPath,
-			};
-		}
+		exports[exportKey] = {
+			source: `./${sourcePath}`,
+			types: dtsPath,
+			default: jsPath,
+		};
 	}
 
 	exports["./package.json"] = "./package.json";

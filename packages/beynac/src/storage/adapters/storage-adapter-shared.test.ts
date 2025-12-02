@@ -1,16 +1,16 @@
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { shouldSkipDockerTests } from "../../test-utils/docker";
-import { expectError } from "../../test-utils/error";
-import { mockDispatcher } from "../../test-utils/internal-mocks";
-import type { StorageDisk, StorageEndpoint } from "../contracts/Storage";
-import { StorageImpl } from "../StorageImpl";
-import { NotFoundError } from "../storage-errors";
-import { mockEndpointBuilder, type SharedTestConfig } from "../storage-test-utils";
-import { filesystemStorageSharedTestConfig } from "./filesystem/FilesystemEndpoint.test";
-import { MemoryEndpoint } from "./memory/MemoryEndpoint";
-import { memoryStorageSharedTestConfig } from "./memory/MemoryEndpoint.test";
-import { s3StorageSharedTestConfig } from "./s3/S3Endpoint.shared.test";
-import { scopedStorageSharedTestConfig } from "./scoped/ScopedStorageEndpoint.test";
+import { shouldSkipDockerTests } from "../../test-utils/docker.ts";
+import { expectError } from "../../test-utils/error.ts";
+import { mockDispatcher } from "../../test-utils/internal-mocks.ts";
+import type { StorageDisk, StorageEndpoint } from "../contracts/Storage.ts";
+import { StorageImpl } from "../StorageImpl.ts";
+import { NotFoundError } from "../storage-errors.ts";
+import { mockEndpointBuilder, type SharedTestConfig } from "../storage-test-utils.ts";
+import { filesystemStorageSharedTestConfig } from "./filesystem/FilesystemEndpoint.test.ts";
+import { memoryStorageSharedTestConfig } from "./memory/MemoryEndpoint.test.ts";
+import { MemoryEndpoint } from "./memory/MemoryEndpoint.ts";
+import { s3StorageSharedTestConfig } from "./s3/S3Endpoint.shared.test.ts";
+import { scopedStorageSharedTestConfig } from "./scoped/ScopedStorageEndpoint.test.ts";
 
 const adapterConfigs: SharedTestConfig[] = [
 	memoryStorageSharedTestConfig,

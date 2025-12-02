@@ -1,5 +1,5 @@
-import { regExpEscape } from "../../utils";
-import { withoutComplexChars } from "./unicode";
+import { regExpEscape } from "../../utils.ts";
+import { withoutComplexChars } from "./unicode.ts";
 
 // From https://apastyle.apa.org/style-grammar-guidelines/capitalization/title-case
 const APA_MINOR_WORDS = [

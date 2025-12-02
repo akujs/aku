@@ -1,5 +1,5 @@
-import type { KeyOrClass } from "../container/container-key";
-import type { Application } from "./contracts/Application";
+import type { KeyOrClass } from "../container/container-key.ts";
+import type { Application } from "./contracts/Application.ts";
 
 type UnknownRecord = Record<string | symbol, unknown>;
 

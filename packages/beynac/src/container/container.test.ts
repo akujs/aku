@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, expectTypeOf, mock, spyOn, test } from "bun:test";
-import { asyncGate } from "../test-utils/async-gate";
-import { sleep } from "../utils";
-import { ContainerImpl } from "./ContainerImpl";
-import type { KeyOrClass } from "./container-key";
-import { createTypeToken } from "./container-key";
-import type { Container } from "./contracts/Container";
-import { inject, injectFactory, injectFactoryOptional, injectOptional } from "./inject";
+import { asyncGate } from "../test-utils/async-gate.ts";
+import { sleep } from "../utils.ts";
+import { ContainerImpl } from "./ContainerImpl.ts";
+import type { KeyOrClass } from "./container-key.ts";
+import { createTypeToken } from "./container-key.ts";
+import type { Container } from "./contracts/Container.ts";
+import { inject, injectFactory, injectFactoryOptional, injectOptional } from "./inject.ts";
 
 let container: Container;
 

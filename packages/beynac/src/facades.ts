@@ -1,16 +1,17 @@
 // GENERATED CODE DO NOT EDIT!
 // Run `bun regenerate-exports` to regenerate this file
-import { createFacade } from "./core/facade";
-import { Container as ContainerContract } from "./container/contracts/Container";
-import { Application as ApplicationContract } from "./core/contracts/Application";
-import { Configuration as ConfigurationContract } from "./core/contracts/Configuration";
-import { Dispatcher as DispatcherContract } from "./core/contracts/Dispatcher";
-import { Cookies as CookiesContract } from "./http/contracts/Cookies";
-import { Headers as HeadersContract } from "./http/contracts/Headers";
-import { KeepAlive as KeepAliveContract } from "./http/contracts/KeepAlive";
-import { RequestLocals as RequestLocalsContract } from "./http/contracts/RequestLocals";
-import { Storage as StorageContract } from "./storage/contracts/Storage";
-import { ViewRenderer as ViewRendererContract } from "./view/contracts/ViewRenderer";
+import { createFacade } from "./core/facade.ts";
+import { Container as ContainerContract } from "./container/contracts/Container.ts";
+import { Application as ApplicationContract } from "./core/contracts/Application.ts";
+import { Configuration as ConfigurationContract } from "./core/contracts/Configuration.ts";
+import { Dispatcher as DispatcherContract } from "./core/contracts/Dispatcher.ts";
+import { Database as DatabaseContract } from "./database/contracts/Database.ts";
+import { Cookies as CookiesContract } from "./http/contracts/Cookies.ts";
+import { Headers as HeadersContract } from "./http/contracts/Headers.ts";
+import { KeepAlive as KeepAliveContract } from "./http/contracts/KeepAlive.ts";
+import { RequestLocals as RequestLocalsContract } from "./http/contracts/RequestLocals.ts";
+import { Storage as StorageContract } from "./storage/contracts/Storage.ts";
+import { ViewRenderer as ViewRendererContract } from "./view/contracts/ViewRenderer.ts";
 
 /**
  * Facade for Container
@@ -31,6 +32,11 @@ export const Configuration: ConfigurationContract = createFacade(ConfigurationCo
  * Facade for Dispatcher
  */
 export const Dispatcher: DispatcherContract = createFacade(DispatcherContract);
+
+/**
+ * Facade for Database
+ */
+export const Database: DatabaseContract = createFacade(DatabaseContract);
 
 /**
  * Facade for Cookies

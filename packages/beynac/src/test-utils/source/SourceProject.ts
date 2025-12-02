@@ -1,8 +1,8 @@
-import { BaseClass } from "../../utils";
-import { UNRESOLVED_TYPE } from "./parseSource";
-import type { SourceExport } from "./SourceExport";
-import { SourceFile } from "./SourceFile";
-import { SourceFolder } from "./SourceFolder";
+import { BaseClass } from "../../utils.ts";
+import { UNRESOLVED_TYPE } from "./parseSource.ts";
+import type { SourceExport } from "./SourceExport.ts";
+import { SourceFile } from "./SourceFile.ts";
+import { SourceFolder } from "./SourceFolder.ts";
 
 /**
  * Represents a loaded source code project with metadata about its structure and exports.

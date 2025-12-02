@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { ContainerImpl } from "../container/ContainerImpl";
-import type { Dispatcher } from "../core/contracts/Dispatcher";
-import { DispatcherImpl } from "../core/DispatcherImpl";
-import { expectError } from "../test-utils/error";
-import { mockDispatcher } from "../test-utils/internal-mocks";
-import { mockCurrentTime } from "../testing/mock-time";
-import { MemoryEndpoint } from "./adapters/memory/MemoryEndpoint";
-import type { StorageDirectory, StorageEndpoint } from "./contracts/Storage";
-import { mockPlatformPaths } from "./path-operations";
-import { StorageDirectoryImpl } from "./StorageDirectoryImpl";
-import { StorageDiskImpl } from "./StorageDiskImpl";
-import { StorageFileImpl } from "./StorageFileImpl";
-import { InvalidPathError } from "./storage-errors";
+import { ContainerImpl } from "../container/ContainerImpl.ts";
+import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
+import { DispatcherImpl } from "../core/DispatcherImpl.ts";
+import { expectError } from "../test-utils/error.ts";
+import { mockDispatcher } from "../test-utils/internal-mocks.ts";
+import { mockCurrentTime } from "../testing/mock-time.ts";
+import { MemoryEndpoint } from "./adapters/memory/MemoryEndpoint.ts";
+import type { StorageDirectory, StorageEndpoint } from "./contracts/Storage.ts";
+import { mockPlatformPaths } from "./path-operations.ts";
+import { StorageDirectoryImpl } from "./StorageDirectoryImpl.ts";
+import { StorageDiskImpl } from "./StorageDiskImpl.ts";
+import { StorageFileImpl } from "./StorageFileImpl.ts";
+import { InvalidPathError } from "./storage-errors.ts";
 import {
 	DirectoryDeletedEvent,
 	DirectoryDeletingEvent,
@@ -21,7 +21,7 @@ import {
 	DirectoryListingEvent,
 	FileWritingEvent,
 	FileWrittenEvent,
-} from "./storage-events";
+} from "./storage-events.ts";
 
 function getPaths(items: Array<{ path: string }>): string[] {
 	return items.map((item) => item.path);

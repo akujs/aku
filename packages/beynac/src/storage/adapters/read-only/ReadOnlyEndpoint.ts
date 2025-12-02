@@ -1,15 +1,15 @@
-import { injectFactory } from "../../../container/inject";
+import { injectFactory } from "../../../container/inject.ts";
 import type {
 	Storage,
 	StorageEndpoint,
 	StorageEndpointFileInfoResult,
 	StorageEndpointFileReadResult,
 	StorageEndpointWriteOptions,
-} from "../../contracts/Storage";
-import { Storage as StorageKey } from "../../contracts/Storage";
-import { PermissionsError } from "../../storage-errors";
-import { WrappedEndpoint } from "../../storage-utils";
-import type { ReadOnlyStorageConfig } from "./ReadOnlyStorageConfig";
+} from "../../contracts/Storage.ts";
+import { Storage as StorageKey } from "../../contracts/Storage.ts";
+import { PermissionsError } from "../../storage-errors.ts";
+import { WrappedEndpoint } from "../../storage-utils.ts";
+import type { ReadOnlyStorageConfig } from "./ReadOnlyStorageConfig.ts";
 
 export class ReadOnlyEndpoint extends WrappedEndpoint implements StorageEndpoint {
 	readonly name = "read-only" as const;

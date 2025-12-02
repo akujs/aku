@@ -1,6 +1,6 @@
-import { BaseClass } from "../utils";
-import type { Storage, StorageAdapter, StorageDisk, StorageEndpoint } from "./contracts/Storage";
-import { StorageDiskImpl } from "./StorageDiskImpl";
+import { BaseClass } from "../utils.ts";
+import type { Storage, StorageAdapter, StorageDisk, StorageEndpoint } from "./contracts/Storage.ts";
+import { StorageDiskImpl } from "./StorageDiskImpl.ts";
 
 export function isConfiguredStorageDriver(value: unknown): value is StorageAdapter {
 	return typeof (value as StorageAdapter | null)?.build === "function";

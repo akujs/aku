@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { render } from "../test-utils/view-test-utils";
-import { html } from "./html";
-import { raw } from "./raw";
+import { render } from "../test-utils/view-test-utils.ts";
+import { html } from "./html.ts";
+import { raw } from "./raw.ts";
 
 describe("html template literal", () => {
 	describe("basic functionality", () => {

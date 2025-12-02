@@ -1,8 +1,8 @@
 import { readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { BaseClass } from "../../utils";
-import { SourceFile } from "./SourceFile";
-import type { SourceProject } from "./SourceProject";
+import { BaseClass } from "../../utils.ts";
+import { SourceFile } from "./SourceFile.ts";
+import type { SourceProject } from "./SourceProject.ts";
 
 /**
  * Represents a folder in the source tree.

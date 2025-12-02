@@ -1,4 +1,4 @@
-import { sleep } from "../utils";
+import { sleep } from "../utils.ts";
 
 type CheckpointFunction = (name: string) => Promise<void>;
 

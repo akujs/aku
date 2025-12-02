@@ -1,1 +1,1 @@
-export * from "../../view/jsx-runtime";
+export * from "../../view/jsx-runtime.ts";

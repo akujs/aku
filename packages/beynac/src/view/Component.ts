@@ -1,7 +1,7 @@
-import type { Key } from "../core/Key";
-import { createKey } from "../core/Key";
-import { BaseClass } from "../utils";
-import type { Context, JSX, Props } from "./view-types";
+import type { Key } from "../core/Key.ts";
+import { createKey } from "../core/Key.ts";
+import { BaseClass } from "../utils.ts";
+import type { Context, JSX, Props } from "./view-types.ts";
 
 /**
  * A Function Component

@@ -1,7 +1,7 @@
-import { inject } from "../container/inject";
-import { IntegrationContext } from "../integrations/IntegrationContext";
-import { BaseClass } from "../utils";
-import type { KeepAlive } from "./contracts/KeepAlive";
+import { inject } from "../container/inject.ts";
+import { IntegrationContext } from "../integrations/IntegrationContext.ts";
+import { BaseClass } from "../utils.ts";
+import type { KeepAlive } from "./contracts/KeepAlive.ts";
 
 export class KeepAliveImpl extends BaseClass implements KeepAlive {
 	constructor(private integrationContext: IntegrationContext = inject(IntegrationContext)) {

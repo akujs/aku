@@ -1,14 +1,14 @@
-import { injectFactory } from "../../../container/inject";
+import { injectFactory } from "../../../container/inject.ts";
 import type {
 	Storage,
 	StorageEndpoint,
 	StorageEndpointFileInfoResult,
 	StorageEndpointFileReadResult,
 	StorageEndpointWriteOptions,
-} from "../../contracts/Storage";
-import { Storage as StorageKey } from "../../contracts/Storage";
-import { WrappedEndpoint } from "../../storage-utils";
-import type { ScopedStorageConfig } from "./ScopedStorageConfig";
+} from "../../contracts/Storage.ts";
+import { Storage as StorageKey } from "../../contracts/Storage.ts";
+import { WrappedEndpoint } from "../../storage-utils.ts";
+import type { ScopedStorageConfig } from "./ScopedStorageConfig.ts";
 
 export class ScopedEndpoint extends WrappedEndpoint implements StorageEndpoint {
 	readonly name = "scoped" as const;

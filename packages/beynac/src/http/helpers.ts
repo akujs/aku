@@ -1,9 +1,9 @@
-import { arrayWrapOptional } from "../utils";
-import type { Controller, ControllerContext } from "./Controller";
-import { MiddlewareSet } from "./MiddlewareSet";
-import type { ApiResourceAction, ResourceAction } from "./ResourceController";
-import type { RedirectOptions } from "./redirect";
-import { redirectStatus } from "./redirect";
+import { arrayWrapOptional } from "../utils.ts";
+import type { Controller, ControllerContext } from "./Controller.ts";
+import { MiddlewareSet } from "./MiddlewareSet.ts";
+import type { ApiResourceAction, ResourceAction } from "./ResourceController.ts";
+import type { RedirectOptions } from "./redirect.ts";
+import { redirectStatus } from "./redirect.ts";
 import type {
 	ExtractDomainAndPathParams,
 	FilteredApiResourceRouteMap,
@@ -17,8 +17,12 @@ import type {
 	RouteOptions,
 	Routes,
 	StatusPages,
-} from "./router-types";
-import { validateDomainSyntax, validateGroupPathSyntax, validateRoutePathSyntax } from "./syntax";
+} from "./router-types.ts";
+import {
+	validateDomainSyntax,
+	validateGroupPathSyntax,
+	validateRoutePathSyntax,
+} from "./syntax.ts";
 
 /**
  * Create a constraint that matches one of the given values

@@ -1,4 +1,4 @@
-import { BeynacError } from "../core/core-errors";
+import { BeynacError } from "../core/core-errors.ts";
 
 export function throwOnMissingPropertyAccess<T extends Record<string, unknown>>(params: T): T {
 	return new Proxy(params, {

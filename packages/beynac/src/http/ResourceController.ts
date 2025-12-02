@@ -1,5 +1,5 @@
-import { abort } from "./abort";
-import { BaseController, type ControllerContext, type ControllerReturn } from "./Controller";
+import { abort } from "./abort.ts";
+import { BaseController, type ControllerContext, type ControllerReturn } from "./Controller.ts";
 
 export type ApiResourceAction = "index" | "store" | "show" | "update" | "destroy";
 

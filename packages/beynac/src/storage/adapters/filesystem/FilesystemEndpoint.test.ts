@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { createTestDirectory } from "../../../testing/test-directories";
-import { sleep } from "../../../utils";
-import type { StorageEndpoint } from "../../contracts/Storage";
-import { mockPlatformPaths } from "../../path-operations";
-import { StorageUnknownError } from "../../storage-errors";
-import type { SharedTestConfig } from "../../storage-test-utils";
-import { FilesystemEndpoint } from "./FilesystemEndpoint";
-import { filesystemStorage } from "./filesystemStorage";
+import { createTestDirectory } from "../../../testing/test-directories.ts";
+import { sleep } from "../../../utils.ts";
+import type { StorageEndpoint } from "../../contracts/Storage.ts";
+import { mockPlatformPaths } from "../../path-operations.ts";
+import { StorageUnknownError } from "../../storage-errors.ts";
+import type { SharedTestConfig } from "../../storage-test-utils.ts";
+import { FilesystemEndpoint } from "./FilesystemEndpoint.ts";
+import { filesystemStorage } from "./filesystemStorage.ts";
 
 beforeEach(() => {
 	mockPlatformPaths("posix");

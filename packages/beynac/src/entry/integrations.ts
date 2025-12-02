@@ -1,1 +1,1 @@
-export { IntegrationContext } from "../integrations/IntegrationContext";
+export { IntegrationContext } from "../integrations/IntegrationContext.ts";

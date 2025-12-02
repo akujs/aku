@@ -1,6 +1,6 @@
-import type { Container } from "../container/contracts/Container";
-import { BaseClass } from "../utils";
-import type { Application } from "./contracts/Application";
+import type { Container } from "../container/contracts/Container.ts";
+import { BaseClass } from "../utils.ts";
+import type { Application } from "./contracts/Application.ts";
 
 /**
  * Base class for service providers.

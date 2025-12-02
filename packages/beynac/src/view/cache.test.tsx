@@ -1,11 +1,11 @@
-/** @jsxImportSource ./ */
+/** @jsxImportSource beynac/view */
 import { expect, test } from "bun:test";
-import { createKey } from "../core/Key";
-import { render } from "../test-utils/view-test-utils";
-import type { Component } from "./Component";
-import { Cache } from "./cache";
-import { Once } from "./once";
-import { createStack } from "./stack";
+import { createKey } from "../core/Key.ts";
+import { render } from "../test-utils/view-test-utils.ts";
+import type { Component } from "./Component.ts";
+import { Cache } from "./cache.ts";
+import { Once } from "./once.ts";
+import { createStack } from "./stack.ts";
 
 test("caches rendered content on first render", async () => {
 	const map = new Map<string, string>();

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { jsFrom } from "./js-from";
+import { jsFrom } from "./js-from.ts";
 
 describe("jsFrom", () => {
 	test("serializes simple values", () => {

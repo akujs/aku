@@ -1,7 +1,7 @@
-import { inject } from "../container/inject";
-import { Configuration } from "../core/contracts/Configuration";
-import type { ControllerContext } from "../http/Controller";
-import { BaseMiddleware, type MiddlewareNext } from "../http/Middleware";
+import { inject } from "../container/inject.ts";
+import { Configuration } from "../core/contracts/Configuration.ts";
+import type { ControllerContext } from "../http/Controller.ts";
+import { BaseMiddleware, type MiddlewareNext } from "../http/Middleware.ts";
 
 export class DevModeAutoRefreshMiddleware extends BaseMiddleware {
 	private reloadListeners = new Set<(reload: boolean) => void>();

@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mockDispatcher } from "../test-utils/internal-mocks";
-import { mockCurrentTime, resetMockTime } from "../testing/mock-time";
-import type { StorageDisk } from "./contracts/Storage";
-import { InvalidPathError, StorageUnknownError } from "./storage-errors";
+import { mockDispatcher } from "../test-utils/internal-mocks.ts";
+import { mockCurrentTime, resetMockTime } from "../testing/mock-time.ts";
+import type { StorageDisk } from "./contracts/Storage.ts";
+import { InvalidPathError, StorageUnknownError } from "./storage-errors.ts";
 import {
 	FileDeletedEvent,
 	FileDeletingEvent,
 	FileReadingEvent,
 	FileWritingEvent,
 	FileWrittenEvent,
-} from "./storage-events";
-import { storageOperation } from "./storage-operation";
+} from "./storage-events.ts";
+import { storageOperation } from "./storage-operation.ts";
 
 describe(storageOperation, () => {
 	afterEach(() => {

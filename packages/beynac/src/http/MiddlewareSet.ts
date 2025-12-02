@@ -1,6 +1,6 @@
-import type { Container } from "../container/contracts/Container";
-import { arrayWrapOptional, BaseClass } from "../utils";
-import { isClassMiddleware, type MiddlewareNext, type MiddlewareReference } from "./Middleware";
+import type { Container } from "../container/contracts/Container.ts";
+import { arrayWrapOptional, BaseClass } from "../utils.ts";
+import { isClassMiddleware, type MiddlewareNext, type MiddlewareReference } from "./Middleware.ts";
 
 export class MiddlewareSet extends BaseClass {
 	#middleware: Set<MiddlewareReference>;

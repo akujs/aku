@@ -1,7 +1,7 @@
 /** @jsxRuntime automatic **/
-/** @jsxImportSource . **/
+/** @jsxImportSource beynac/view **/
 import { describe, expect, test } from "bun:test";
-import { getPrototypeChain } from "./utils";
+import { getPrototypeChain } from "./utils.ts";
 
 describe(getPrototypeChain, () => {
 	class A {}

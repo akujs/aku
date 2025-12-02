@@ -1,13 +1,13 @@
 import type { WriteStream } from "node:fs";
 import { ReadStream } from "node:fs";
 import { Writable } from "node:stream";
-import { ContainerImpl } from "../container/ContainerImpl";
-import { spyOnAll } from "../test-utils/spy-on-all";
-import { BaseClass } from "../utils";
-import type { StorageAdapter, StorageEndpoint } from "./contracts/Storage";
-import type { Dir, FilesystemOps, Stats } from "./filesystem-operations";
-import type { StorageEndpointBuilder } from "./StorageEndpointBuilder";
-import { isConfiguredStorageDriver } from "./storage-utils";
+import { ContainerImpl } from "../container/ContainerImpl.ts";
+import { spyOnAll } from "../test-utils/spy-on-all.ts";
+import { BaseClass } from "../utils.ts";
+import type { StorageAdapter, StorageEndpoint } from "./contracts/Storage.ts";
+import type { Dir, FilesystemOps, Stats } from "./filesystem-operations.ts";
+import type { StorageEndpointBuilder } from "./StorageEndpointBuilder.ts";
+import { isConfiguredStorageDriver } from "./storage-utils.ts";
 
 export type SharedTestConfig = {
 	name: string;

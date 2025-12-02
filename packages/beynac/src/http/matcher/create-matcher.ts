@@ -1,5 +1,5 @@
-import { NullProtoObj } from "./matcher-utils";
-import type { MatcherContext } from "./types";
+import { NullProtoObj } from "./matcher-utils.ts";
+import type { MatcherContext } from "./types.ts";
 
 export function createMatcher<T = unknown>(): MatcherContext<T> {
 	const ctx: MatcherContext<T> = {

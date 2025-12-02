@@ -1,17 +1,21 @@
 import { afterEach, describe, expect, expectTypeOf, test } from "bun:test";
-import { Cookies, Headers } from "../facades";
-import type { ControllerContext } from "../http/Controller";
-import { BaseController } from "../http/Controller";
-import { get, group } from "../http/helpers";
-import type { Routes } from "../http/router-types";
-import { integrationContext, MockController, mockMiddleware } from "../test-utils/http-test-utils";
-import { ApplicationImpl } from "./ApplicationImpl";
-import type { Application, ServiceProviderReference } from "./contracts/Application";
-import { Dispatcher } from "./contracts/Dispatcher";
-import { createApplication } from "./createApplication";
-import { DispatcherImpl } from "./DispatcherImpl";
-import { setFacadeApplication } from "./facade";
-import { ServiceProvider } from "./ServiceProvider";
+import { Cookies, Headers } from "../facades.ts";
+import type { ControllerContext } from "../http/Controller.ts";
+import { BaseController } from "../http/Controller.ts";
+import { get, group } from "../http/helpers.ts";
+import type { Routes } from "../http/router-types.ts";
+import {
+	integrationContext,
+	MockController,
+	mockMiddleware,
+} from "../test-utils/http-test-utils.ts";
+import { ApplicationImpl } from "./ApplicationImpl.ts";
+import type { Application, ServiceProviderReference } from "./contracts/Application.ts";
+import { Dispatcher } from "./contracts/Dispatcher.ts";
+import { createApplication } from "./createApplication.ts";
+import { DispatcherImpl } from "./DispatcherImpl.ts";
+import { setFacadeApplication } from "./facade.ts";
+import { ServiceProvider } from "./ServiceProvider.ts";
 
 afterEach(() => {
 	setFacadeApplication(null);

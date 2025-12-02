@@ -5,6 +5,7 @@
 export const ENTRY_POINTS = {
 	container: "src/entry/container.ts",
 	contracts: "src/contracts.ts",
+	database: "src/database/database-entry-point.ts",
 	errors: "src/errors.ts",
 	events: "src/events.ts",
 	facades: "src/facades.ts",

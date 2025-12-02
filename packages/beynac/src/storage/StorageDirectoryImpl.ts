@@ -1,6 +1,6 @@
-import type { Dispatcher } from "../core/contracts/Dispatcher";
-import { parseAttributeHeader } from "../helpers/headers";
-import { BaseClass } from "../utils";
+import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
+import { parseAttributeHeader } from "../helpers/headers.ts";
+import { BaseClass } from "../utils.ts";
 import type {
 	StorageData,
 	StorageDirectory,
@@ -8,11 +8,11 @@ import type {
 	StorageEndpoint,
 	StorageFile,
 	StorageFilePutPayload,
-} from "./contracts/Storage";
-import { createFileName, mimeTypeFromFileName, sanitiseName } from "./file-names";
-import { posix } from "./path-operations";
-import { StorageFileImpl } from "./StorageFileImpl";
-import { InvalidPathError } from "./storage-errors";
+} from "./contracts/Storage.ts";
+import { createFileName, mimeTypeFromFileName, sanitiseName } from "./file-names.ts";
+import { posix } from "./path-operations.ts";
+import { StorageFileImpl } from "./StorageFileImpl.ts";
+import { InvalidPathError } from "./storage-errors.ts";
 import {
 	DirectoryDeletedEvent,
 	DirectoryDeletingEvent,
@@ -20,8 +20,8 @@ import {
 	DirectoryExistenceCheckingEvent,
 	DirectoryListedEvent,
 	DirectoryListingEvent,
-} from "./storage-events";
-import { storageOperation } from "./storage-operation";
+} from "./storage-events.ts";
+import { storageOperation } from "./storage-operation.ts";
 
 export class StorageDirectoryImpl extends BaseClass implements StorageDirectory {
 	readonly type = "directory" as const;

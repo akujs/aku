@@ -1,27 +1,27 @@
-import { Container } from "../container/contracts/Container";
-import { inject } from "../container/inject";
-import { Configuration, resolveEnvironmentChoice } from "../core/contracts/Configuration";
-import { Dispatcher } from "../core/contracts/Dispatcher";
-import { BaseClass } from "../utils";
-import { ViewRenderer } from "../view/contracts/ViewRenderer";
-import { isJsxElement, type JSX } from "../view/view-types";
-import { AbortException, abortExceptionKey } from "./abort";
-import type { BaseController } from "./Controller";
+import { Container } from "../container/contracts/Container.ts";
+import { inject } from "../container/inject.ts";
+import { Configuration, resolveEnvironmentChoice } from "../core/contracts/Configuration.ts";
+import { Dispatcher } from "../core/contracts/Dispatcher.ts";
+import { BaseClass } from "../utils.ts";
+import { ViewRenderer } from "../view/contracts/ViewRenderer.ts";
+import { isJsxElement, type JSX } from "../view/view-types.ts";
+import { AbortException, abortExceptionKey } from "./abort.ts";
+import type { BaseController } from "./Controller.ts";
 import {
 	type Controller,
 	type ControllerContext,
 	type ControllerReturn,
 	isClassController,
-} from "./Controller";
-import { RequestLocals } from "./contracts/RequestLocals";
-import { RequestHandledEvent } from "./http-events";
-import { throwOnMissingPropertyAccess } from "./params-access-checker";
+} from "./Controller.ts";
+import { RequestLocals } from "./contracts/RequestLocals.ts";
+import { RequestHandledEvent } from "./http-events.ts";
+import { throwOnMissingPropertyAccess } from "./params-access-checker.ts";
 import {
 	CurrentControllerContext,
 	CurrentRouteDefinition,
 	type RouteDefinition,
 	type RouteWithParams,
-} from "./router-types";
+} from "./router-types.ts";
 
 export class RequestHandler extends BaseClass {
 	#throwOnInvalidParam: boolean;

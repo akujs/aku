@@ -1,8 +1,8 @@
 import { type FSWatcher, watch } from "node:fs";
-import { inject } from "../container/inject";
-import { Configuration } from "../core/contracts/Configuration";
-import { BaseClass, pluralCount } from "../utils";
-import { DevModeAutoRefreshMiddleware } from "./DevModeAutoRefreshMiddleware";
+import { inject } from "../container/inject.ts";
+import { Configuration } from "../core/contracts/Configuration.ts";
+import { BaseClass, pluralCount } from "../utils.ts";
+import { DevModeAutoRefreshMiddleware } from "./DevModeAutoRefreshMiddleware.ts";
 
 declare global {
 	// oxlint-disable-next-line no-var -- var declaration required for mutable global variable

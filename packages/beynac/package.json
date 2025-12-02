@@ -5,42 +5,98 @@
   "type": "module",
   "main": "./dist/index.mjs",
   "exports": {
-    "./container": "./dist/container.mjs",
-    "./contracts": "./dist/contracts.mjs",
-    "./errors": "./dist/errors.mjs",
-    "./events": "./dist/events.mjs",
-    "./facades": "./dist/facades.mjs",
+    "./container": {
+      "source": "./src/entry/container.ts",
+      "types": "./dist/container.d.mts",
+      "default": "./dist/container.mjs"
+    },
+    "./contracts": {
+      "source": "./src/contracts.ts",
+      "types": "./dist/contracts.d.mts",
+      "default": "./dist/contracts.mjs"
+    },
+    "./database": {
+      "source": "./src/database/database-entry-point.ts",
+      "types": "./dist/database-entry-point.d.mts",
+      "default": "./dist/database.mjs"
+    },
+    "./errors": {
+      "source": "./src/errors.ts",
+      "types": "./dist/errors.d.mts",
+      "default": "./dist/errors.mjs"
+    },
+    "./events": {
+      "source": "./src/events.ts",
+      "types": "./dist/events.d.mts",
+      "default": "./dist/events.mjs"
+    },
+    "./facades": {
+      "source": "./src/facades.ts",
+      "types": "./dist/facades.d.mts",
+      "default": "./dist/facades.mjs"
+    },
     "./helpers/hash": {
+      "source": "./src/entry/helpers/hash.ts",
       "types": "./dist/hash.d.mts",
       "default": "./dist/helpers/hash.mjs"
     },
     "./helpers/headers": {
+      "source": "./src/helpers/headers.ts",
       "types": "./dist/headers.d.mts",
       "default": "./dist/helpers/headers.mjs"
     },
     "./helpers/str": {
+      "source": "./src/entry/helpers/str.ts",
       "types": "./dist/str.d.mts",
       "default": "./dist/helpers/str.mjs"
     },
     "./helpers/time": {
+      "source": "./src/helpers/time.ts",
       "types": "./dist/time.d.mts",
       "default": "./dist/helpers/time.mjs"
     },
-    "./http": "./dist/http.mjs",
-    ".": "./dist/index.mjs",
-    "./integrations": "./dist/integrations.mjs",
+    "./http": {
+      "source": "./src/entry/http.ts",
+      "types": "./dist/http.d.mts",
+      "default": "./dist/http.mjs"
+    },
+    ".": {
+      "source": "./src/entry/index.ts",
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./integrations": {
+      "source": "./src/entry/integrations.ts",
+      "types": "./dist/integrations.d.mts",
+      "default": "./dist/integrations.mjs"
+    },
     "./integrations/next": {
+      "source": "./src/entry/integrations/next.ts",
       "types": "./dist/next.d.mts",
       "default": "./dist/integrations/next.mjs"
     },
-    "./storage": "./dist/storage.mjs",
-    "./testing": "./dist/testing.mjs",
-    "./view": "./dist/view.mjs",
+    "./storage": {
+      "source": "./src/entry/storage.ts",
+      "types": "./dist/storage.d.mts",
+      "default": "./dist/storage.mjs"
+    },
+    "./testing": {
+      "source": "./src/entry/testing.ts",
+      "types": "./dist/testing.d.mts",
+      "default": "./dist/testing.mjs"
+    },
+    "./view": {
+      "source": "./src/entry/view.ts",
+      "types": "./dist/view.d.mts",
+      "default": "./dist/view.mjs"
+    },
     "./view/jsx-dev-runtime": {
+      "source": "./src/entry/view/jsx-dev-runtime.ts",
       "types": "./dist/jsx-dev-runtime.d.mts",
       "default": "./dist/view/jsx-dev-runtime.mjs"
     },
     "./view/jsx-runtime": {
+      "source": "./src/entry/view/jsx-runtime.ts",
       "types": "./dist/jsx-runtime.d.mts",
       "default": "./dist/view/jsx-runtime.mjs"
     },
@@ -49,7 +105,7 @@
   "sideEffects": false,
   "scripts": {
     "check": "bun run check:tsc && bun run check:test && bun run check:lint && bun run check:format",
-    "check:test": "bun test --only-failures",
+    "check:test": "bun --conditions=source test --only-failures",
     "check:tsc": "tsgo --noEmit",
     "check:lint": "oxlint --type-aware src/",
     "check:format": "biome check",
