@@ -24,16 +24,3 @@ export class QueryError extends DatabaseError {
 		super(`Query failed: ${error.message}`, error);
 	}
 }
-
-/**
- * Thrown when a transaction operation fails.
- */
-export class TransactionError extends DatabaseError {
-	constructor(
-		public readonly operation: "begin" | "commit" | "rollback" | "savepoint" | "release",
-		cause: unknown,
-	) {
-		const error = cause instanceof Error ? cause : new Error(String(cause));
-		super(`Transaction ${operation} failed: ${error.message}`, error);
-	}
-}

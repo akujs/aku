@@ -5,8 +5,8 @@ import { existsSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname } from "node:path";
 import { BaseClass } from "../../../utils.ts";
-import type { Database, ExecuteResult, QueryResult, Statement } from "../../contracts/Database.ts";
-import { QueryError, TransactionError } from "../../database-errors.ts";
+import type { Database, Statement, StatementResult } from "../../contracts/Database.ts";
+import { QueryError } from "../../database-errors.ts";
 
 const require = createRequire(import.meta.url);
 
@@ -59,8 +59,8 @@ export interface SqliteDatabaseConfig {
 }
 
 export class SqliteDatabase extends BaseClass implements Database {
-	private readonly db: DatabaseObject;
-	private readonly transactionStorage = new AsyncLocalStorage<TransactionContext>();
+	readonly #db: DatabaseObject;
+	readonly #transactionStorage = new AsyncLocalStorage<TransactionContext>();
 
 	constructor(config: SqliteDatabaseConfig) {
 		super();
@@ -79,143 +79,99 @@ export class SqliteDatabase extends BaseClass implements Database {
 
 		if (typeof Bun !== "undefined") {
 			const Database: typeof BunDatabase = require("bun:sqlite").Database;
-			this.db = new Database(config.path, {
+			this.#db = new Database(config.path, {
 				strict: true,
 				readonly: config.readOnly ?? false,
-				// Don't pass create when readonly - Bun ignores readonly if create is true
 				create: config.readOnly ? false : shouldCreate,
 			}) as BunDatabase;
 		} else {
 			const { DatabaseSync } = require("node:sqlite");
-			this.db = new DatabaseSync(config.path, {
+			this.#db = new DatabaseSync(config.path, {
 				readOnly: config.readOnly ?? false,
 			}) as DatabaseObject;
 		}
 
-		// Enable WAL mode by default for file-based databases
 		if (!isMemory && config.useWalMode !== false) {
-			this.db.exec("PRAGMA journal_mode=WAL");
+			this.#db.exec("PRAGMA journal_mode=WAL");
 		}
 	}
 
-	async query(statement: Statement): Promise<QueryResult> {
-		return Promise.resolve(this.querySync(statement));
+	async run(statement: Statement): Promise<StatementResult> {
+		return Promise.resolve(this.#runSync(statement));
 	}
 
-	async execute(statement: Statement): Promise<ExecuteResult> {
-		return Promise.resolve(this.executeSync(statement));
-	}
-
-	async batch(statements: Statement[]): Promise<ExecuteResult[]> {
-		const ctx = this.transactionStorage.getStore();
-
-		if (ctx) {
-			// Already in a transaction, just execute statements
-			return Promise.resolve(statements.map((stmt) => this.executeSync(stmt)));
-		}
-
-		// Not in a transaction, wrap in one for atomicity
+	async batch(statements: Statement[]): Promise<StatementResult[]> {
 		return this.transaction(async () => {
-			return statements.map((stmt) => this.executeSync(stmt));
+			return statements.map((stmt) => this.#runSync(stmt));
 		});
 	}
 
 	async transaction<T>(fn: () => Promise<T>): Promise<T> {
-		const ctx = this.transactionStorage.getStore();
+		const ctx = this.#transactionStorage.getStore();
 
 		if (ctx) {
 			// Nested transaction - use savepoint
-			return this.nestedTransaction(fn, ctx);
+			return this.#nestedTransaction(fn, ctx);
 		}
 
 		// Top-level transaction
-		return this.topLevelTransaction(fn);
+		return this.#topLevelTransaction(fn);
 	}
 
-	private querySync(statement: Statement): QueryResult {
+	#runSync(statement: Statement): StatementResult {
 		try {
-			const prepared = this.db.prepare(statement.sql);
-			const rows = prepared.all(...statement.params);
+			const prepared = this.#db.prepare(statement.sql);
 			const columnNames = prepared.columnNames ?? prepared.columns?.().map((c) => c.name) ?? [];
-			return { columnNames, rows };
-		} catch (error) {
-			throw new QueryError(statement.sql, error);
-		}
-	}
+			const returnsData = columnNames.length > 0;
 
-	private executeSync(statement: Statement): ExecuteResult {
-		try {
-			const prepared = this.db.prepare(statement.sql);
-			const result = prepared.run(...statement.params);
-			return { rowsAffected: result.changes };
-		} catch (error) {
-			throw new QueryError(statement.sql, error);
-		}
-	}
-
-	private async topLevelTransaction<T>(fn: () => Promise<T>): Promise<T> {
-		try {
-			this.db.exec("BEGIN");
-		} catch (error) {
-			throw new TransactionError("begin", error);
-		}
-
-		try {
-			const result = await this.transactionStorage.run({ depth: 0 }, fn);
-
-			try {
-				this.db.exec("COMMIT");
-			} catch (error) {
-				throw new TransactionError("commit", error);
+			if (returnsData) {
+				const rows = prepared.all(...statement.params);
+				return { columnNames, rows, rowsAffected: rows.length };
 			}
+			const result = prepared.run(...statement.params);
+			return { columnNames: [], rows: [], rowsAffected: result.changes };
+		} catch (error) {
+			throw new QueryError(statement.sql, error);
+		}
+	}
 
+	#execSync(sql: string): void {
+		try {
+			this.#db.exec(sql);
+		} catch (error) {
+			throw new QueryError(sql, error);
+		}
+	}
+
+	async #topLevelTransaction<T>(fn: () => Promise<T>): Promise<T> {
+		this.#execSync("BEGIN");
+		try {
+			const result = await this.#transactionStorage.run({ depth: 0 }, fn);
+			this.#execSync("COMMIT");
 			return result;
 		} catch (error) {
-			try {
-				this.db.exec("ROLLBACK");
-			} catch (rollbackError) {
-				// Rollback failed, but we still want to throw the original error
-				throw new TransactionError("rollback", rollbackError);
-			}
+			this.#execSync("ROLLBACK");
 			throw error;
 		}
 	}
 
-	private async nestedTransaction<T>(
-		fn: () => Promise<T>,
-		parentCtx: TransactionContext,
-	): Promise<T> {
+	async #nestedTransaction<T>(fn: () => Promise<T>, parentCtx: TransactionContext): Promise<T> {
 		const depth = parentCtx.depth + 1;
 		const savepointName = `sp_${depth}`;
 
+		this.#execSync(`SAVEPOINT ${savepointName}`);
 		try {
-			this.db.exec(`SAVEPOINT ${savepointName}`);
-		} catch (error) {
-			throw new TransactionError("savepoint", error);
-		}
-
-		try {
-			const result = await this.transactionStorage.run({ depth }, fn);
-
-			try {
-				this.db.exec(`RELEASE SAVEPOINT ${savepointName}`);
-			} catch (error) {
-				throw new TransactionError("release", error);
-			}
-
+			const result = await this.#transactionStorage.run({ depth }, fn);
+			this.#execSync(`RELEASE SAVEPOINT ${savepointName}`);
 			return result;
 		} catch (error) {
-			try {
-				this.db.exec(`ROLLBACK TO SAVEPOINT ${savepointName}`);
-			} catch (rollbackError) {
-				throw new TransactionError("rollback", rollbackError);
-			}
+			this.#execSync(`ROLLBACK TO SAVEPOINT ${savepointName}`);
 			throw error;
 		}
 	}
 
 	close(): void {
-		this.db.close();
+		this.#db.close();
 	}
 }
 

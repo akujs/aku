@@ -34,12 +34,12 @@ describe("SqliteDatabase", () => {
 
 		// Create database and add a table
 		const db1 = new SqliteDatabase({ path: dbPath });
-		await db1.execute({ sql: "CREATE TABLE test (id INTEGER)", params: [] });
+		await db1.run({ sql: "CREATE TABLE test (id INTEGER)", params: [] });
 		db1.close();
 
 		// Reopen as read-only
 		const db2 = new SqliteDatabase({ path: dbPath, readOnly: true });
-		expect(db2.execute({ sql: "INSERT INTO test (id) VALUES (1)", params: [] })).rejects.toThrow();
+		expect(db2.run({ sql: "INSERT INTO test (id) VALUES (1)", params: [] })).rejects.toThrow();
 		db2.close();
 	});
 
@@ -48,7 +48,7 @@ describe("SqliteDatabase", () => {
 		const dbPath = join(testDir, "subdir", "nested", "test.db");
 
 		const db = new SqliteDatabase({ path: dbPath });
-		await db.execute({ sql: "CREATE TABLE test (id INTEGER)", params: [] });
+		await db.run({ sql: "CREATE TABLE test (id INTEGER)", params: [] });
 		db.close();
 
 		expect(existsSync(dbPath)).toBe(true);
@@ -68,7 +68,7 @@ describe("SqliteDatabase", () => {
 		const dbPath = join(testDir, "test.db");
 
 		const db = new SqliteDatabase({ path: dbPath });
-		const result = await db.query({ sql: "PRAGMA journal_mode", params: [] });
+		const result = await db.run({ sql: "PRAGMA journal_mode", params: [] });
 		expect(result.rows[0].journal_mode).toBe("wal");
 		db.close();
 	});
@@ -78,7 +78,7 @@ describe("SqliteDatabase", () => {
 		const dbPath = join(testDir, "test.db");
 
 		const db = new SqliteDatabase({ path: dbPath, useWalMode: false });
-		const result = await db.query({ sql: "PRAGMA journal_mode", params: [] });
+		const result = await db.run({ sql: "PRAGMA journal_mode", params: [] });
 		expect(result.rows[0].journal_mode).toBe("delete");
 		db.close();
 	});

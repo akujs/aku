@@ -24,6 +24,7 @@
     "phc",
     "reexport",
     "replacer",
+    "savepoint",
     "shouty",
     "sortable",
     "ulid",

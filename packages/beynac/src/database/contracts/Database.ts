@@ -5,12 +5,9 @@ export interface Statement {
 	params: unknown[];
 }
 
-export interface QueryResult {
+export interface StatementResult {
 	columnNames: string[];
 	rows: Record<string, unknown>[];
-}
-
-export interface ExecuteResult {
 	rowsAffected: number;
 }
 
@@ -20,26 +17,26 @@ export interface ExecuteResult {
  */
 export interface Database {
 	/**
-	 * Execute a query statement and return the result
+	 * Execute a statement and return the result. Works for all statement types:
+	 * SELECT, INSERT, UPDATE, DELETE, and DDL statements like CREATE TABLE.
+	 *
+	 * For SELECT statements, `rows` contains the returned data and `rowsAffected`
+	 * equals `rows.length`. For INSERT/UPDATE/DELETE, `rows` is empty and
+	 * `rowsAffected` is the number of modified rows. For DDL, both are 0/empty.
 	 */
-	query(statement: Statement): Promise<QueryResult>;
-
-	/**
-	 * Execute a statement that does not generate results, like INSERT, UPDATE, DELETE or CREATE TABLE
-	 */
-	execute(statement: Statement): Promise<ExecuteResult>;
+	run(statement: Statement): Promise<StatementResult>;
 
 	/**
 	 * Execute a batch of statements atomically. These are wrapped in a
 	 * transaction and if any statement fails the whole batch is rolled back.
 	 */
-	batch(statements: Statement[]): Promise<ExecuteResult[]>;
+	batch(statements: Statement[]): Promise<StatementResult[]>;
 
 	/**
 	 * Execute an interactive transaction. Within this transaction, any calls to
-	 * execute, query will become part of the transaction, and will be rolled
-	 * back if the transaction fails. Calls to transaction or batch will create
-	 * nested transactions that can roll back independently.
+	 * run will become part of the transaction, and will be rolled back if the
+	 * transaction fails. Calls to transaction or batch will create nested
+	 * transactions that can roll back independently.
 	 */
 	transaction<T>(fn: () => Promise<T>): Promise<T>;
 }
