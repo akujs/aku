@@ -1,4 +1,3 @@
-import { basename } from "node:path";
 import { mapObjectValues } from "../../utils.ts";
 import { ENTRY_POINTS } from "../entryPoints.ts";
 import type { SourceProject } from "./SourceProject.ts";
@@ -112,7 +111,7 @@ function generateFacadesFileContent(project: SourceProject): string {
 	return lines.join("\n") + "\n";
 }
 
-type ExportEntry = { source: string; types: string; default: string };
+type ExportEntry = { source: string; default: string };
 
 export function getPackageExports(): Record<string, string | ExportEntry> {
 	const exports: Record<string, string | ExportEntry> = {};
@@ -122,22 +121,11 @@ export function getPackageExports(): Record<string, string | ExportEntry> {
 
 		const jsPath = `./dist/${entryKey}.mjs`;
 
-		const sourceBasename = basename(sourcePath, ".ts");
-
-		// There is a bug in TSdown where it generates.d.ts files at the root,
-		// even if the source file is located in a sub-directory. This causes
-		// type checking errors that we need to resolve by wiring up each export
-		// to the correct types.
-		const dtsPath = `./dist/${sourceBasename}.d.mts`;
-
 		exports[exportKey] = {
 			source: `./${sourcePath}`,
-			types: dtsPath,
 			default: jsPath,
 		};
 	}
-
-	exports["./package.json"] = "./package.json";
 
 	return exports;
 }

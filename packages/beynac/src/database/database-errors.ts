@@ -16,11 +16,28 @@ export abstract class DatabaseError extends BeynacError {
  * Thrown when a SQL query fails to execute.
  */
 export class QueryError extends DatabaseError {
+	/**
+	 * The error code from the underlying database driver if available, e.g. "SQLITE_BUSY" or "privilege_not_granted".
+	 */
+	public readonly code: string | undefined;
+
+	/**
+	 * The error code from the underlying database driver if available. This
+	 * will correspond to the code e.g. 5 (the numeric value of SQLITE_BUSY) or
+	 * 01007 (the numeric value of privilege_not_granted in Postgres).
+	 */
+	public readonly errorNumber?: number | undefined;
+
 	constructor(
 		public readonly sql: string,
+		message: string,
 		cause: unknown,
+		code?: string,
+		errorNumber?: number,
 	) {
 		const error = cause instanceof Error ? cause : new Error(String(cause));
-		super(`Query failed: ${error.message}`, error);
+		super(message, error);
+		this.code = code;
+		this.errorNumber = errorNumber;
 	}
 }

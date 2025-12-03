@@ -2,6 +2,7 @@ import * as assert from "node:assert";
 import { join } from "node:path";
 import { test } from "node:test";
 import { createTestDirectory } from "../../../testing/test-directories.ts";
+import { QueryError } from "../../database-errors.ts";
 import { sql } from "../../sql.ts";
 import { SqliteDatabase } from "./SqliteDatabase.ts";
 
@@ -57,7 +58,7 @@ void test("readOnly prevents writes in Node.js", async () => {
 	const db2 = new SqliteDatabase({ path: dbPath, readOnly: true });
 	await assert.rejects(
 		db2.run(sql`INSERT INTO test (id) VALUES (1)`),
-		/attempt to write a readonly database/,
+		"QueryError: SQLITE_READONLY (Attempt to write a readonly database)",
 	);
 	db2.close();
 });
@@ -80,4 +81,26 @@ void test("useWalMode=false disables WAL in Node.js", async () => {
 	const result = await db.run(sql`PRAGMA journal_mode`);
 	assert.strictEqual(result.rows[0].journal_mode, "delete");
 	db.close();
+});
+
+void test("QueryError captures error code in Node.js", async () => {
+	const testDir = createTestDirectory({ prefix: "sqlite-node-error-" });
+	const dbPath = join(testDir, "test.db");
+
+	// Create database and table
+	const db1 = new SqliteDatabase({ path: dbPath });
+	await db1.run(sql`CREATE TABLE test (id INTEGER)`);
+	db1.close();
+
+	// Reopen as read-only and try to write
+	const db2 = new SqliteDatabase({ path: dbPath, readOnly: true });
+	try {
+		await db2.run(sql`INSERT INTO test (id) VALUES (1)`);
+		assert.fail("Should have thrown");
+	} catch (e) {
+		assert.ok(e instanceof QueryError);
+		assert.strictEqual(e.code, "SQLITE_READONLY");
+		assert.strictEqual(e.errorNumber, 8);
+	}
+	db2.close();
 });
