@@ -699,7 +699,7 @@ describe("context handling", () => {
 		expect(result).toBe("<div>start level1-level2 end</div>");
 	});
 
-	test.skip("context isolation between parallel siblings", async () => {
+	test("context isolation between parallel siblings", async () => {
 		const key1 = createKey<string>({ displayName: "key1" });
 		const key2 = createKey<string>({ displayName: "key2" });
 
@@ -746,45 +746,34 @@ describe("context handling", () => {
 		expect(await render(stream)).toBe("<div>1-011-10</div>");
 	});
 
-	test.skip("async siblings can not pollute each other's context when running concurrently", async () => {
-		const sibling1Start = asyncGate();
-		const sibling1Read = asyncGate();
-		const sibling2Start = asyncGate();
-		const sibling2Read = asyncGate();
-
+	test("async siblings have isolated contexts", async () => {
+		const gate1 = asyncGate();
+		const gate2 = asyncGate();
 		const token = createKey<string>();
 
 		const stream = new MarkupStream(null, null, [
 			[
 				async (ctx) => {
-					await sibling1Start.block();
 					ctx.set(token, "value1");
-					await sibling1Read.block();
+					await gate1.block();
 					return `s1=${ctx.get(token)};`;
 				},
 				async (ctx) => {
-					await sibling2Start.block();
-					ctx.set(token, "value2");
-					await sibling2Read.block();
+					await gate2.block();
+					ctx.set(token, "value2"); // would pollute sibling1 if contexts were shared
 					return `s2=${ctx.get(token)};`;
 				},
 			],
 		]);
 		const renderPromise = render(stream);
 
-		// Release all checkpoints to let the render complete
-		await sibling1Start.hasBlocked();
-		await sibling2Start.hasBlocked();
-		sibling1Start.release();
-		sibling2Start.release();
-		await sibling1Read.hasBlocked();
-		await sibling2Read.hasBlocked();
-		sibling1Read.release();
-		sibling2Read.release();
+		await gate1.hasBlocked(); // sibling1 has set value1 and is waiting
+		await gate2.releaseAndWaitTick(); // let sibling2 set value2
+		await gate1.releaseAndWaitTick(); // let sibling1 read - should still see value1
 
 		const result = await renderPromise;
 
-		expect(result).toMatchInlineSnapshot(`"s1=value1;s2=value2;"`);
+		expect(result).toBe("s1=value1;s2=value2;");
 	});
 });
 

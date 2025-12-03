@@ -249,7 +249,7 @@ test("Stack works with Once using number and symbol keys", async () => {
 	expect(result).toBe("<div>Number 1SymbolNumber 2</div>");
 });
 
-test.skip("Stack push works inside Once", async () => {
+test("Stack push works inside Once", async () => {
 	const MyStack = createStack();
 
 	const result = await render(
