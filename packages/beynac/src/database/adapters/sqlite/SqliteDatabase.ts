@@ -60,6 +60,7 @@ export interface SqliteDatabaseConfig {
 }
 
 export class SqliteDatabase extends BaseClass implements Database {
+	readonly supportsTransactions = true;
 	readonly #connectionStorage = new AsyncLocalStorage<ConnectionContext>();
 	readonly #useWalMode: boolean;
 	readonly #path: string;
@@ -91,7 +92,7 @@ export class SqliteDatabase extends BaseClass implements Database {
 	}
 
 	async run(statement: Statement): Promise<StatementResult> {
-		return this.#withConnection(async ({ connection }) => {
+		return this.#withConnection(async ({ connection }): Promise<StatementResult> => {
 			try {
 				const prepared = connection.prepare(statement.sql);
 				const columnNames = prepared.columnNames ?? prepared.columns?.().map((c) => c.name) ?? [];
@@ -99,10 +100,10 @@ export class SqliteDatabase extends BaseClass implements Database {
 
 				if (returnsData) {
 					const rows = prepared.all(...statement.params);
-					return { columnNames, rows, rowsAffected: rows.length };
+					return { rows, rowsAffected: rows.length };
 				}
 				const result = prepared.run(...statement.params);
-				return { columnNames: [], rows: [], rowsAffected: result.changes };
+				return { rows: [], rowsAffected: result.changes };
 			} catch (error) {
 				throw makeQueryError(statement, error);
 			}
@@ -126,7 +127,6 @@ export class SqliteDatabase extends BaseClass implements Database {
 			const commit = depth === 0 ? "COMMIT" : `RELEASE SAVEPOINT sp_${depth}`;
 			const rollback = depth === 0 ? "ROLLBACK" : `ROLLBACK TO SAVEPOINT sp_${depth}`;
 
-			// Top-level transaction
 			this.#exec(begin, ctx.connection);
 			try {
 				++ctx.depth;

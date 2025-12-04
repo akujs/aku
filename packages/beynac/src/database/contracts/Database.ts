@@ -6,7 +6,6 @@ export interface Statement {
 }
 
 export interface StatementResult {
-	columnNames: string[];
 	rows: Record<string, unknown>[];
 	rowsAffected: number;
 }
@@ -17,12 +16,25 @@ export interface StatementResult {
  */
 export interface Database {
 	/**
-	 * Execute a statement and return the result. Works for all statement types:
-	 * SELECT, INSERT, UPDATE, DELETE, and DDL statements like CREATE TABLE.
+	 * Whether this database supports interactive transactions via
+	 * `transaction()`. Databases accessed via HTTP APIs like Cloudflare D1 tend
+	 * not to.
 	 *
-	 * For SELECT statements, `rows` contains the returned data and `rowsAffected`
-	 * equals `rows.length`. For INSERT/UPDATE/DELETE, `rows` is empty and
-	 * `rowsAffected` is the number of modified rows. For DDL, both are 0/empty.
+	 * For those databases, this is false and `transaction()` will throw - use
+	 * batch() instead.
+	 */
+	readonly supportsTransactions: boolean;
+
+	/**
+	 * Execute a statement and return the result.
+	 *
+	 * The returned object has `rows` and `rowsAffected` properties.
+	 *
+	 * - For statements that return rows (e.g. SELECT), `rows` contains the
+	 *   returned data and `rowsAffected` equals `rows.length`.
+	 * - For modification queries (e.g. INSERT/UPDATE etc), `rows` is empty and
+	 *   `rowsAffected` is the number of modified rows.
+	 * - For DDL (e.g. CREATE TABLE etc), both are 0/empty.
 	 */
 	run(statement: Statement): Promise<StatementResult>;
 

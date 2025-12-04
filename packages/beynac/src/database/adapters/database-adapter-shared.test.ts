@@ -1,19 +1,23 @@
-import { beforeEach, describe, expect, test } from "bun:test";
+import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import type { Database } from "../contracts/Database.ts";
 import { QueryError } from "../database-errors.ts";
 import type { SharedTestConfig } from "../database-test-utils.ts";
 import { sql } from "../sql.ts";
+import { d1SharedTestConfig } from "./d1/D1Database.test.ts";
 import { sqliteSharedTestConfig } from "./sqlite/SqliteDatabase.test.ts";
 
-const adapterConfigs: SharedTestConfig[] = [sqliteSharedTestConfig];
+const adapterConfigs: SharedTestConfig[] = [sqliteSharedTestConfig, d1SharedTestConfig];
 
-describe.each(adapterConfigs)("$name", ({ createDatabase }) => {
+describe.each(adapterConfigs)("$name", ({ createDatabase, supportsTransactions }) => {
 	let db: Database;
 
-	beforeEach(async () => {
+	beforeAll(async () => {
 		db = await createDatabase();
 		await db.run(sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)`);
-		await db.run(sql`CREATE TABLE posts (id INTEGER PRIMARY KEY, user_id INTEGER, title TEXT)`);
+	});
+
+	beforeEach(async () => {
+		await db.run(sql`DELETE FROM users`);
 	});
 
 	describe("run()", () => {
@@ -117,90 +121,92 @@ describe.each(adapterConfigs)("$name", ({ createDatabase }) => {
 		});
 	});
 
-	describe("transaction()", () => {
-		test("commits on success", async () => {
-			await db.transaction(async () => {
-				await db.run(sql`INSERT INTO users (name, age) VALUES ('Alice', 30)`);
-				await db.run(sql`INSERT INTO users (name, age) VALUES ('Bob', 25)`);
-			});
-
-			const result = await db.run(sql`SELECT * FROM users ORDER BY name`);
-			expect(result.rows).toHaveLength(2);
-		});
-
-		test("rolls back on error", async () => {
-			expect(
-				db.transaction(async () => {
+	if (supportsTransactions) {
+		describe("transaction()", () => {
+			test("commits on success", async () => {
+				await db.transaction(async () => {
 					await db.run(sql`INSERT INTO users (name, age) VALUES ('Alice', 30)`);
-					throw new Error("Simulated failure");
-				}),
-			).rejects.toThrow("Simulated failure");
+					await db.run(sql`INSERT INTO users (name, age) VALUES ('Bob', 25)`);
+				});
 
-			const result = await db.run(sql`SELECT * FROM users`);
-			expect(result.rows).toEqual([]);
-		});
-
-		test("returns value from callback", async () => {
-			const result = await db.transaction(async () => {
-				await db.run(sql`INSERT INTO users (name, age) VALUES ('Alice', 30)`);
-				return "success";
+				const result = await db.run(sql`SELECT * FROM users ORDER BY name`);
+				expect(result.rows).toHaveLength(2);
 			});
 
-			expect(result).toBe("success");
-		});
-
-		test("supports nested transactions with savepoints", async () => {
-			await db.transaction(async () => {
-				await db.run(sql`INSERT INTO users (name, age) VALUES ('Alice', 30)`);
-
-				// Nested transaction that fails
+			test("rolls back on error", async () => {
 				expect(
 					db.transaction(async () => {
-						await db.run(sql`INSERT INTO users (name, age) VALUES ('Bob', 25)`);
-						throw new Error("Nested failure");
+						await db.run(sql`INSERT INTO users (name, age) VALUES ('Alice', 30)`);
+						throw new Error("Simulated failure");
 					}),
-				).rejects.toThrow("Nested failure");
+				).rejects.toThrow("Simulated failure");
 
-				// Continue with outer transaction
-				await db.run(sql`INSERT INTO users (name, age) VALUES ('Charlie', 35)`);
+				const result = await db.run(sql`SELECT * FROM users`);
+				expect(result.rows).toEqual([]);
 			});
 
-			const result = await db.run(sql`SELECT name FROM users ORDER BY name`);
-			expect(result.rows).toEqual([{ name: "Alice" }, { name: "Charlie" }]);
-		});
+			test("returns value from callback", async () => {
+				const result = await db.transaction(async () => {
+					await db.run(sql`INSERT INTO users (name, age) VALUES ('Alice', 30)`);
+					return "success";
+				});
 
-		test("supports deeply nested transactions", async () => {
-			await db.transaction(async () => {
-				await db.run(sql`INSERT INTO users (name, age) VALUES ('Level0', 0)`);
+				expect(result).toBe("success");
+			});
 
+			test("supports nested transactions with savepoints", async () => {
 				await db.transaction(async () => {
-					await db.run(sql`INSERT INTO users (name, age) VALUES ('Level1', 1)`);
+					await db.run(sql`INSERT INTO users (name, age) VALUES ('Alice', 30)`);
+
+					// Nested transaction that fails
+					expect(
+						db.transaction(async () => {
+							await db.run(sql`INSERT INTO users (name, age) VALUES ('Bob', 25)`);
+							throw new Error("Nested failure");
+						}),
+					).rejects.toThrow("Nested failure");
+
+					// Continue with outer transaction
+					await db.run(sql`INSERT INTO users (name, age) VALUES ('Charlie', 35)`);
+				});
+
+				const result = await db.run(sql`SELECT name FROM users ORDER BY name`);
+				expect(result.rows).toEqual([{ name: "Alice" }, { name: "Charlie" }]);
+			});
+
+			test("supports deeply nested transactions", async () => {
+				await db.transaction(async () => {
+					await db.run(sql`INSERT INTO users (name, age) VALUES ('Level0', 0)`);
 
 					await db.transaction(async () => {
-						await db.run(sql`INSERT INTO users (name, age) VALUES ('Level2', 2)`);
+						await db.run(sql`INSERT INTO users (name, age) VALUES ('Level1', 1)`);
+
+						await db.transaction(async () => {
+							await db.run(sql`INSERT INTO users (name, age) VALUES ('Level2', 2)`);
+						});
 					});
 				});
+
+				const result = await db.run(sql`SELECT name FROM users ORDER BY age`);
+				expect(result.rows).toEqual([{ name: "Level0" }, { name: "Level1" }, { name: "Level2" }]);
 			});
 
-			const result = await db.run(sql`SELECT name FROM users ORDER BY age`);
-			expect(result.rows).toEqual([{ name: "Level0" }, { name: "Level1" }, { name: "Level2" }]);
-		});
+			test("batch inside transaction creates nested transaction", async () => {
+				await db.transaction(async () => {
+					await db.run(sql`INSERT INTO users (name, age) VALUES ('Alice', 30)`);
 
-		test("batch inside transaction creates nested transaction", async () => {
-			await db.transaction(async () => {
-				await db.run(sql`INSERT INTO users (name, age) VALUES ('Alice', 30)`);
+					try {
+						await db.batch([
+							sql`INSERT INTO users (name, age) VALUES ('Bob', 30)`,
+							sql`INSERT INTO whoopsie! (name, age) VALUES ('Bob', 25)`,
+						]);
+					} catch {}
+				});
 
-				try {
-					await db.batch([
-						sql`INSERT INTO users (name, age) VALUES ('Bob', 30)`,
-						sql`INSERT INTO whoopsie! (name, age) VALUES ('Bob', 25)`,
-					]);
-				} catch {}
+				const result = await db.run(sql`SELECT * FROM users ORDER BY name`);
+				expect(result.rows).toHaveLength(1);
+				expect(result.rows[0].name).toBe("Alice");
 			});
-
-			const result = await db.run(sql`SELECT * FROM users ORDER BY name`);
-			expect(result.rows).toHaveLength(1);
-			expect(result.rows[0].name).toBe("Alice");
 		});
-	});
+	}
 });

@@ -3,7 +3,7 @@ import { BeynacError } from "../core/core-errors.ts";
 /**
  * Base class for all database-related errors
  */
-export abstract class DatabaseError extends BeynacError {
+export class DatabaseError extends BeynacError {
 	public override readonly cause?: Error | undefined;
 
 	constructor(message: string, cause?: Error) {

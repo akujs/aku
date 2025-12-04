@@ -9,8 +9,9 @@ import { sql } from "../../sql.ts";
 import { SqliteDatabase, sqliteDatabase } from "./SqliteDatabase.ts";
 
 export const sqliteSharedTestConfig: SharedTestConfig = {
-	name: "SqliteDatabase",
+	name: SqliteDatabase.name,
 	createDatabase: () => sqliteDatabase({ path: ":memory:" }),
+	supportsTransactions: true,
 };
 
 describe("SqliteDatabase", () => {

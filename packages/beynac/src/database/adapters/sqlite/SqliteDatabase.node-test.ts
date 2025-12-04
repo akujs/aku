@@ -23,7 +23,6 @@ void test("SqliteDatabase works Node.js", async () => {
 
 	// Test run for SELECT
 	const queryResult = await db.run({ sql: "SELECT * FROM users", params: [] });
-	assert.deepStrictEqual(queryResult.columnNames, ["id", "name"]);
 	assert.strictEqual(queryResult.rows.length, 1);
 	assert.strictEqual(queryResult.rows[0].name, "Alice");
 
