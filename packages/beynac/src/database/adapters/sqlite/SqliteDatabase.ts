@@ -7,6 +7,7 @@ import { dirname } from "node:path";
 import { BaseClass, exclusiveRunner, parallelRunner, type Runner } from "../../../utils.ts";
 import type { Database, Statement, StatementResult } from "../../contracts/Database.ts";
 import { QueryError } from "../../database-errors.ts";
+import { renderStatementSql } from "../../sql.ts";
 
 const require = createRequire(import.meta.url);
 
@@ -95,8 +96,9 @@ export class SqliteDatabase extends BaseClass implements Database {
 
 	async run(statement: Statement): Promise<StatementResult> {
 		return this.#withConnection(async ({ connection }): Promise<StatementResult> => {
+			const sqlString = toSql(statement);
 			try {
-				const prepared = connection.prepare(statement.sql);
+				const prepared = connection.prepare(sqlString);
 				const columnNames = prepared.columnNames ?? prepared.columns?.().map((c) => c.name) ?? [];
 				const returnsData = columnNames.length > 0;
 
@@ -107,7 +109,7 @@ export class SqliteDatabase extends BaseClass implements Database {
 				const result = prepared.run(...statement.params);
 				return { rows: [], rowsAffected: result.changes };
 			} catch (error) {
-				throw makeQueryError(statement, error);
+				throw makeQueryError(sqlString, error);
 			}
 		});
 	}
@@ -203,11 +205,11 @@ export class SqliteDatabase extends BaseClass implements Database {
 		try {
 			connection.exec(sql);
 		} catch (error) {
-			throw makeQueryError({ sql, params: [] }, error);
+			throw makeQueryError(sql, error);
 		}
 	}
 
-	close(): void {
+	dispose(): void {
 		this.#mainConnection?.close();
 		this.#mainConnection = null;
 	}
@@ -215,6 +217,10 @@ export class SqliteDatabase extends BaseClass implements Database {
 
 export function sqliteDatabase(config: SqliteDatabaseConfig): Database {
 	return new SqliteDatabase(config);
+}
+
+function toSql(statement: Statement): string {
+	return renderStatementSql(statement, () => "?");
 }
 
 interface PlatformError {
@@ -226,7 +232,7 @@ interface PlatformError {
 	message?: string;
 }
 
-function makeQueryError(statement: Statement, cause: unknown): QueryError {
+function makeQueryError(sql: string, cause: unknown): QueryError {
 	const error = cause as PlatformError;
 
 	const errorNumber = error.errno ?? error.errcode;
@@ -249,13 +255,7 @@ function makeQueryError(statement: Statement, cause: unknown): QueryError {
 		message = `${code} (${message})`;
 	}
 
-	return new QueryError(
-		statement.sql,
-		message ?? error.message ?? String(error),
-		error,
-		code,
-		errorNumber,
-	);
+	return new QueryError(sql, message ?? error.message ?? String(error), error, code, errorNumber);
 }
 
 const sqliteErrorCodes = new Map<number, [string, string]>([

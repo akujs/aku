@@ -46,12 +46,12 @@ describe("SqliteDatabase", () => {
 		const dbPath = join(testDir, "test.db");
 
 		const db1 = new SqliteDatabase({ path: dbPath });
-		await db1.run({ sql: "CREATE TABLE test (id INTEGER)", params: [] });
-		db1.close();
+		await db1.run(sql`CREATE TABLE test (id INTEGER)`);
+		db1.dispose();
 
 		const db2 = new SqliteDatabase({ path: dbPath, readOnly: true });
-		expect(db2.run({ sql: "INSERT INTO test (id) VALUES (1)", params: [] })).rejects.toThrow();
-		db2.close();
+		expect(db2.run(sql`INSERT INTO test (id) VALUES (1)`)).rejects.toThrow();
+		db2.dispose();
 	});
 
 	test("create option creates parent directories by default", async () => {
@@ -59,8 +59,8 @@ describe("SqliteDatabase", () => {
 		const dbPath = join(testDir, "subdir", "nested", "test.db");
 
 		const db = new SqliteDatabase({ path: dbPath });
-		await db.run({ sql: "CREATE TABLE test (id INTEGER)", params: [] });
-		db.close();
+		await db.run(sql`CREATE TABLE test (id INTEGER)`);
+		db.dispose();
 
 		expect(existsSync(dbPath)).toBe(true);
 	});
@@ -79,9 +79,9 @@ describe("SqliteDatabase", () => {
 		const dbPath = join(testDir, "test.db");
 
 		const db = new SqliteDatabase({ path: dbPath });
-		const result = await db.run({ sql: "PRAGMA journal_mode", params: [] });
+		const result = await db.run(sql`PRAGMA journal_mode`);
 		expect(result.rows[0].journal_mode).toBe("wal");
-		db.close();
+		db.dispose();
 	});
 
 	test("useWalMode=false disables WAL", async () => {
@@ -89,9 +89,9 @@ describe("SqliteDatabase", () => {
 		const dbPath = join(testDir, "test.db");
 
 		const db = new SqliteDatabase({ path: dbPath, useWalMode: false });
-		const result = await db.run({ sql: "PRAGMA journal_mode", params: [] });
+		const result = await db.run(sql`PRAGMA journal_mode`);
 		expect(result.rows[0].journal_mode).toBe("delete");
-		db.close();
+		db.dispose();
 	});
 
 	test("uncommitted transaction writes are not visible outside transaction", async () => {
@@ -123,7 +123,7 @@ describe("SqliteDatabase", () => {
 		const afterCommit = await db.run(sql`SELECT value FROM test`);
 		expect(afterCommit.rows).toEqual([{ value: "from-tx" }]);
 
-		db.close();
+		db.dispose();
 	});
 
 	test("concurrent transaction uses different connection", async () => {
@@ -163,7 +163,7 @@ describe("SqliteDatabase", () => {
 		expect(results).toContain("tx1: initial");
 		expect(results).toContain("tx2: initial");
 
-		db.close();
+		db.dispose();
 	});
 
 	test("concurrent write transactions can throw SQLITE_BUSY", async () => {
@@ -205,6 +205,6 @@ describe("SqliteDatabase", () => {
 		expect((t2Error as unknown as QueryError).code).toBe("SQLITE_BUSY");
 		expect((t2Error as unknown as QueryError).errorNumber).toBe(5);
 
-		db.close();
+		db.dispose();
 	});
 });

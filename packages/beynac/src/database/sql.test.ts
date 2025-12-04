@@ -1,106 +1,60 @@
 import { describe, expect, test } from "bun:test";
-import { sql } from "./sql.ts";
+import { renderStatementForLogs, renderStatementSql, sql } from "./sql.ts";
 
 describe(sql, () => {
-	test("creates statement with no parameters", () => {
+	test("returns fragments and params from template literal", () => {
+		const stmt = sql`SELECT * FROM users WHERE id = ${123} AND name = ${"Alice"}`;
+		expect(stmt).toEqual({
+			fragments: ["SELECT * FROM users WHERE id = ", " AND name = ", ""],
+			params: [123, "Alice"],
+		});
+	});
+});
+
+describe(renderStatementSql, () => {
+	test("renders with $N placeholders (Postgres style)", () => {
+		const stmt = sql`SELECT * FROM users WHERE id = ${123} AND name = ${"Alice"}`;
+		expect(renderStatementSql(stmt, (i) => `$${i + 1}`)).toBe(
+			"SELECT * FROM users WHERE id = $1 AND name = $2",
+		);
+	});
+
+	test("renders statement without params", () => {
 		const stmt = sql`SELECT * FROM users`;
-		expect(stmt).toEqual({
-			sql: "SELECT * FROM users",
-			params: [],
-		});
+		expect(renderStatementSql(stmt, () => "?")).toBe("SELECT * FROM users");
+	});
+});
+
+describe(renderStatementForLogs, () => {
+	test("renders statement with params", () => {
+		const stmt = sql`SELECT * FROM users WHERE id = ${123} AND name = ${"Alice"}`;
+		expect(renderStatementForLogs(stmt)).toBe(
+			'SELECT * FROM users WHERE id = [Param#1: 123] AND name = [Param#2: "Alice"]',
+		);
 	});
 
-	test("creates statement with single parameter", () => {
-		const userId = 123;
-		const stmt = sql`SELECT * FROM users WHERE id = ${userId}`;
-		expect(stmt).toEqual({
-			sql: "SELECT * FROM users WHERE id = ?",
-			params: [123],
-		});
+	test("renders statement without params", () => {
+		const stmt = sql`SELECT * FROM users`;
+		expect(renderStatementForLogs(stmt)).toBe("SELECT * FROM users");
 	});
 
-	test("creates statement with multiple parameters", () => {
-		const name = "Alice";
-		const age = 30;
-		const stmt = sql`INSERT INTO users (name, age) VALUES (${name}, ${age})`;
-		expect(stmt).toEqual({
-			sql: "INSERT INTO users (name, age) VALUES (?, ?)",
-			params: ["Alice", 30],
-		});
+	test("truncates long params", () => {
+		const longString = "x".repeat(150);
+		const stmt = sql`SELECT ${longString}`;
+		const rendered = renderStatementForLogs(stmt);
+		expect(rendered).toContain("...hiding 52 more chars");
+		expect(rendered.length).toBeLessThan(300);
 	});
 
-	test("handles null and undefined parameters", () => {
-		const stmt = sql`INSERT INTO users (name, email) VALUES (${null}, ${undefined})`;
-		expect(stmt).toEqual({
-			sql: "INSERT INTO users (name, email) VALUES (?, ?)",
-			params: [null, undefined],
-		});
+	test("handles non-JSON-serialisable values", () => {
+		const circular: Record<string, unknown> = {};
+		circular.self = circular;
+		const stmt = sql`SELECT ${circular}`;
+		expect(renderStatementForLogs(stmt)).toBe("SELECT [Param#1: [object Object]]");
 	});
 
-	test("handles empty string parameter", () => {
-		const stmt = sql`INSERT INTO users (name) VALUES (${""})`; // eslint-disable-line @typescript-eslint/no-inferrable-types
-		expect(stmt).toEqual({
-			sql: "INSERT INTO users (name) VALUES (?)",
-			params: [""],
-		});
-	});
-
-	test("handles numeric zero parameter", () => {
-		const stmt = sql`UPDATE users SET balance = ${0} WHERE id = ${1}`;
-		expect(stmt).toEqual({
-			sql: "UPDATE users SET balance = ? WHERE id = ?",
-			params: [0, 1],
-		});
-	});
-
-	test("handles boolean parameters", () => {
-		const stmt = sql`UPDATE users SET active = ${true} WHERE deleted = ${false}`;
-		expect(stmt).toEqual({
-			sql: "UPDATE users SET active = ? WHERE deleted = ?",
-			params: [true, false],
-		});
-	});
-
-	test("handles parameter at start of query", () => {
-		const table = "users";
-		// Note: This is for testing purposes - in practice, table names shouldn't be parameterized
-		const stmt = sql`${table}`;
-		expect(stmt).toEqual({
-			sql: "?",
-			params: ["users"],
-		});
-	});
-
-	test("handles consecutive parameters", () => {
-		const a = 1;
-		const b = 2;
-		const c = 3;
-		const stmt = sql`VALUES (${a}, ${b}, ${c})`;
-		expect(stmt).toEqual({
-			sql: "VALUES (?, ?, ?)",
-			params: [1, 2, 3],
-		});
-	});
-
-	test("preserves whitespace in SQL", () => {
-		const id = 1;
-		const stmt = sql`
-			SELECT *
-			FROM users
-			WHERE id = ${id}
-		`;
-		expect(stmt.sql).toContain("\n");
-		expect(stmt.sql).toContain("\t");
-		expect(stmt.params).toEqual([1]);
-	});
-
-	test("handles complex types as parameters", () => {
-		const date = new Date("2024-01-01");
-		const buffer = Buffer.from("hello");
-		const stmt = sql`INSERT INTO logs (timestamp, data) VALUES (${date}, ${buffer})`;
-		expect(stmt).toEqual({
-			sql: "INSERT INTO logs (timestamp, data) VALUES (?, ?)",
-			params: [date, buffer],
-		});
+	test("renders null and undefined", () => {
+		const stmt = sql`SELECT ${null}, ${undefined}`;
+		expect(renderStatementForLogs(stmt)).toBe("SELECT [Param#1: null], [Param#2: undefined]");
 	});
 });

@@ -5,6 +5,7 @@ import { QueryError } from "../database-errors.ts";
 import type { SharedTestConfig } from "../database-test-utils.ts";
 import { sql } from "../sql.ts";
 import { d1SharedTestConfig } from "./d1/D1Database.test.ts";
+import { postgresSharedTestConfig } from "./postgres/PostgresDatabase.test.ts";
 import {
 	sqliteFileSharedTestConfig,
 	sqliteMemorySharedTestConfig,
@@ -14,6 +15,7 @@ const adapterConfigs: SharedTestConfig[] = [
 	sqliteMemorySharedTestConfig,
 	sqliteFileSharedTestConfig,
 	d1SharedTestConfig,
+	postgresSharedTestConfig,
 ];
 
 describe.each(adapterConfigs)("$name", ({ createDatabase, supportsTransactions }) => {
@@ -21,7 +23,7 @@ describe.each(adapterConfigs)("$name", ({ createDatabase, supportsTransactions }
 
 	beforeAll(async () => {
 		db = await createDatabase();
-		await db.run(sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)`);
+		await db.run(sql`CREATE TABLE users (name TEXT, age INTEGER)`);
 	});
 
 	beforeEach(async () => {
@@ -50,7 +52,7 @@ describe.each(adapterConfigs)("$name", ({ createDatabase, supportsTransactions }
 		test("interpolates parameters", async () => {
 			await db.run(sql`INSERT INTO users (name, age) VALUES (${"Alice"}, ${30})`);
 			await db.run(sql`INSERT INTO users (name, age) VALUES (${null}, ${null})`);
-			const result = await db.run(sql`SELECT name, age FROM users ORDER BY id`);
+			const result = await db.run(sql`SELECT name, age FROM users ORDER BY name NULLS LAST`);
 			expect(result.rows).toEqual([
 				{ name: "Alice", age: 30 },
 				{ name: null, age: null },
@@ -103,10 +105,10 @@ describe.each(adapterConfigs)("$name", ({ createDatabase, supportsTransactions }
 			expect(results[0].rowsAffected).toBe(1);
 			expect(results[1].rowsAffected).toBe(1);
 
-			const queryResult = await db.run(sql`SELECT * FROM users ORDER BY name`);
+			const queryResult = await db.run(sql`SELECT name, age FROM users ORDER BY name`);
 			expect(queryResult.rows).toEqual([
-				{ id: 1, name: "Alice", age: 30 },
-				{ id: 2, name: "Bob", age: 25 },
+				{ name: "Alice", age: 30 },
+				{ name: "Bob", age: 25 },
 			]);
 		});
 

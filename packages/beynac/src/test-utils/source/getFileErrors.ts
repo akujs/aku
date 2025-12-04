@@ -119,14 +119,14 @@ export function getFileErrors(file: SourceFile): string[] {
 			// Check public API doc comments (skip re-exports - doc should be on original)
 			if (exp.isPublicApi() && !exp.isDocumented()) {
 				errors.push(
-					`${exp.name} in ${file.path} is part of the public API but has no doc comment.`,
+					`${exp.name} in ${file.path} is part of the public API but has no doc comment. NOTE TO AI AGENTS: Did you just add this to the public API without being told to? If so the solution is probably to remove it from a public API. Don't modify the public API unless requested.`,
 				);
 			}
 
 			// Check non-public API exports with doc comments (only when entry points are defined)
 			if (!exp.isPublicApi() && exp.isDocumented()) {
 				errors.push(
-					`${exp.name} in ${file.path} is not part of the public API but has a doc comment. Remove the comment (preferred unless we're explaining something really important that's not clear from the name).`,
+					`${exp.name} in ${file.path} is not part of the public API but has a doc comment. NOTE TO AI AGENTS: the default solution is to remove the comment, unless we're explaining something really important that's not clear from the name, in which case use // line comments.`,
 				);
 			}
 		}

@@ -123,11 +123,18 @@ describe("public API doc comments", () => {
 		const errors = getFileErrors(file);
 
 		expect(errors).toEqual([
-			"UndocumentedClass in public-api/undocumented.ts is part of the public API but has no doc comment.",
-			"undocumentedFunction in public-api/undocumented.ts is part of the public API but has no doc comment.",
-			// UNDOCUMENTED_CONST is excluded - primitives don't need doc comments
-			"UndocumentedType in public-api/undocumented.ts is part of the public API but has no doc comment.",
-			"UndocumentedInterface in public-api/undocumented.ts is part of the public API but has no doc comment.",
+			expect.stringContaining(
+				"UndocumentedClass in public-api/undocumented.ts is part of the public API but has no doc comment.",
+			),
+			expect.stringContaining(
+				"undocumentedFunction in public-api/undocumented.ts is part of the public API but has no doc comment.",
+			),
+			expect.stringContaining(
+				"UndocumentedType in public-api/undocumented.ts is part of the public API but has no doc comment.",
+			),
+			expect.stringContaining(
+				"UndocumentedInterface in public-api/undocumented.ts is part of the public API but has no doc comment.",
+			),
 		]);
 	});
 
@@ -157,10 +164,18 @@ describe("public API doc comments", () => {
 		const errors = getFileErrors(file);
 
 		expect(errors).toEqual([
-			"NonPublicDocumentedClass in public-api/non-public-with-doc.ts is not part of the public API but has a doc comment. Remove the comment (preferred unless we're explaining something really important that's not clear from the name).",
-			"nonPublicDocumentedFunction in public-api/non-public-with-doc.ts is not part of the public API but has a doc comment. Remove the comment (preferred unless we're explaining something really important that's not clear from the name).",
-			"NonPublicDocumentedType in public-api/non-public-with-doc.ts is not part of the public API but has a doc comment. Remove the comment (preferred unless we're explaining something really important that's not clear from the name).",
-			"NonPublicDocumentedInterface in public-api/non-public-with-doc.ts is not part of the public API but has a doc comment. Remove the comment (preferred unless we're explaining something really important that's not clear from the name).",
+			expect.stringContaining(
+				"NonPublicDocumentedClass in public-api/non-public-with-doc.ts is not part of the public API but has a doc comment",
+			),
+			expect.stringContaining(
+				"nonPublicDocumentedFunction in public-api/non-public-with-doc.ts is not part of the public API but has a doc comment",
+			),
+			expect.stringContaining(
+				"NonPublicDocumentedType in public-api/non-public-with-doc.ts is not part of the public API but has a doc comment",
+			),
+			expect.stringContaining(
+				"NonPublicDocumentedInterface in public-api/non-public-with-doc.ts is not part of the public API but has a doc comment",
+			),
 		]);
 	});
 });

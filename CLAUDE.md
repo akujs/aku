@@ -4,7 +4,7 @@ When I ask questions, answer briefly to minimise time taken to read response. I'
 
 ## General instructions for tasks
 
-Before working on a task, we will agree a plan. Follow this plan closely. If the agreed approach turns out to be impossible or significantly more complex than expected, **STOP and summarise the problems**. In particular, don't make changes to build files, project setup, or code outside the scope of what you're working on.
+Before working on a task, we will agree a plan. Follow this plan closely. If the agreed approach turns out to be impossible or significantly more complex than expected, **STOP and summarise the problems**. In particular, don't install packages, make changes to build files, project setup, or code outside the scope of what you're working on.
 
 - After you have finished a task, run the formatter then check for issues with `bun check`. Only fix issues that are related to the code you're working on. If there are unrelated lint or test issues elsewhere in the codebase report them but no not fix them.
 - Once the tests and lint check have passed, review your code against CLAUDE_CODING_GUIDELINES.md to ensure all guidelines are followed.

@@ -22,13 +22,13 @@ void test("SqliteDatabase works Node.js", async () => {
 	assert.strictEqual(insertResult.rowsAffected, 1);
 
 	// Test run for SELECT
-	const queryResult = await db.run({ sql: "SELECT * FROM users", params: [] });
+	const queryResult = await db.run(sql`SELECT * FROM users`);
 	assert.strictEqual(queryResult.rows.length, 1);
 	assert.strictEqual(queryResult.rows[0].name, "Alice");
 
 	// Test transaction
 	await db.transaction(async () => {
-		await db.run({ sql: "INSERT INTO users (name) VALUES (?)", params: ["Bob"] });
+		await db.run(sql`INSERT INTO users (name) VALUES (${"Bob"})`);
 	});
 	const afterTx = await db.run(sql`SELECT COUNT(*) as count FROM users`);
 	assert.strictEqual(afterTx.rows[0].count, 2);
@@ -41,7 +41,7 @@ void test("SqliteDatabase works Node.js", async () => {
 	const afterBatch = await db.run(sql`SELECT COUNT(*) as count FROM users`);
 	assert.strictEqual(afterBatch.rows[0].count, 4);
 
-	db.close();
+	db.dispose();
 });
 
 void test("readOnly prevents writes in Node.js", async () => {
@@ -51,7 +51,7 @@ void test("readOnly prevents writes in Node.js", async () => {
 	// Create database and add a table
 	const db1 = new SqliteDatabase({ path: dbPath });
 	await db1.run(sql`CREATE TABLE test (id INTEGER)`);
-	db1.close();
+	db1.dispose();
 
 	// Reopen as read-only
 	const db2 = new SqliteDatabase({ path: dbPath, readOnly: true });
@@ -59,7 +59,7 @@ void test("readOnly prevents writes in Node.js", async () => {
 		db2.run(sql`INSERT INTO test (id) VALUES (1)`),
 		"QueryError: SQLITE_READONLY (Attempt to write a readonly database)",
 	);
-	db2.close();
+	db2.dispose();
 });
 
 void test("useWalMode enables WAL by default in Node.js", async () => {
@@ -69,7 +69,7 @@ void test("useWalMode enables WAL by default in Node.js", async () => {
 	const db = new SqliteDatabase({ path: dbPath });
 	const result = await db.run(sql`PRAGMA journal_mode`);
 	assert.strictEqual(result.rows[0].journal_mode, "wal");
-	db.close();
+	db.dispose();
 });
 
 void test("useWalMode=false disables WAL in Node.js", async () => {
@@ -79,7 +79,7 @@ void test("useWalMode=false disables WAL in Node.js", async () => {
 	const db = new SqliteDatabase({ path: dbPath, useWalMode: false });
 	const result = await db.run(sql`PRAGMA journal_mode`);
 	assert.strictEqual(result.rows[0].journal_mode, "delete");
-	db.close();
+	db.dispose();
 });
 
 void test("QueryError captures error code in Node.js", async () => {
@@ -89,7 +89,7 @@ void test("QueryError captures error code in Node.js", async () => {
 	// Create database and table
 	const db1 = new SqliteDatabase({ path: dbPath });
 	await db1.run(sql`CREATE TABLE test (id INTEGER)`);
-	db1.close();
+	db1.dispose();
 
 	// Reopen as read-only and try to write
 	const db2 = new SqliteDatabase({ path: dbPath, readOnly: true });
@@ -101,5 +101,5 @@ void test("QueryError captures error code in Node.js", async () => {
 		assert.strictEqual(e.code, "SQLITE_READONLY");
 		assert.strictEqual(e.errorNumber, 8);
 	}
-	db2.close();
+	db2.dispose();
 });

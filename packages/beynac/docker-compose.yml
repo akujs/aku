@@ -16,3 +16,20 @@ services:
       interval: 5s
       timeout: 3s
       retries: 3
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: beynac-postgres-test
+    ports:
+      - "22857:5432"
+    environment:
+      POSTGRES_USER: beynac
+      POSTGRES_PASSWORD: beynac
+      POSTGRES_DB: beynac_test
+    tmpfs:
+      - /var/lib/postgresql/data:size=1G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beynac -d beynac_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 3

@@ -1,8 +1,8 @@
 import { createTypeToken, type TypeToken } from "../../container/container-key.ts";
 
 export interface Statement {
-	sql: string;
-	params: unknown[];
+	readonly fragments: readonly string[];
+	readonly params: unknown[];
 }
 
 export interface StatementResult {
@@ -51,6 +51,13 @@ export interface Database {
 	 * transactions that can roll back independently.
 	 */
 	transaction<T>(fn: () => Promise<T>): Promise<T>;
+
+	/**
+	 * Clean up any resources created by this adapter. Some adapters accept
+	 * connections through the constructor and these will not be affected by
+	 * this method. Safe to call multiple times.
+	 */
+	dispose(): void | Promise<void>;
 }
 
 export const Database: TypeToken<Database> = createTypeToken("Database");

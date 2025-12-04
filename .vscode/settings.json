@@ -23,6 +23,7 @@
     "nanoid",
     "oxlint",
     "phc",
+    "pipelining",
     "reexport",
     "replacer",
     "savepoint",
