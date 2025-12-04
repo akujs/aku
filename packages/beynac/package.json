@@ -115,6 +115,7 @@
   "devDependencies": {
     "@bradenmacdonald/s3-lite-client": "npm:@jsr/bradenmacdonald__s3-lite-client@0.9.4",
     "@cloudflare/workers-types": "^4.20251202.0",
+    "@electric-sql/pglite": "^0.3.14",
     "@types/bun": "1.2.19",
     "@typescript/native-preview": "^7.0.0-dev.20251023.1",
     "beynac": "workspace:",
@@ -125,14 +126,14 @@
     "next": "^15.0.0",
     "oxlint": "^1.24.0",
     "oxlint-tsgolint": "^0.2.1",
-    "postgres": "^3.4.5",
+    "postgres": "^3.4.7",
     "tsdown": "0.17.0-beta.5",
     "typescript": "^5.8.3"
   },
   "peerDependencies": {
     "@cloudflare/workers-types": ">=4.20251202.0",
     "next": ">=15.0.0",
-    "postgres": ">=3.4.5"
+    "postgres": ">=3.4.7"
   },
   "peerDependenciesMeta": {
     "next": {

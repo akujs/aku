@@ -5,6 +5,7 @@ import { QueryError } from "../database-errors.ts";
 import type { SharedTestConfig } from "../database-test-utils.ts";
 import { sql } from "../sql.ts";
 import { d1SharedTestConfig } from "./d1/D1Database.test.ts";
+import { pgLiteSharedTestConfig } from "./pglite/PGLiteDatabase.test.ts";
 import { postgresSharedTestConfig } from "./postgres/PostgresDatabase.test.ts";
 import {
 	sqliteFileSharedTestConfig,
@@ -14,6 +15,7 @@ import {
 const adapterConfigs: SharedTestConfig[] = [
 	sqliteMemorySharedTestConfig,
 	sqliteFileSharedTestConfig,
+	pgLiteSharedTestConfig,
 	d1SharedTestConfig,
 	postgresSharedTestConfig,
 ];
