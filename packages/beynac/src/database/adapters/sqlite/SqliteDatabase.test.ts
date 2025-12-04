@@ -8,9 +8,18 @@ import type { SharedTestConfig } from "../../database-test-utils.ts";
 import { sql } from "../../sql.ts";
 import { SqliteDatabase, sqliteDatabase } from "./SqliteDatabase.ts";
 
-export const sqliteSharedTestConfig: SharedTestConfig = {
-	name: SqliteDatabase.name,
+export const sqliteMemorySharedTestConfig: SharedTestConfig = {
+	name: "SqliteDatabase (memory)",
 	createDatabase: () => sqliteDatabase({ path: ":memory:" }),
+	supportsTransactions: true,
+};
+
+export const sqliteFileSharedTestConfig: SharedTestConfig = {
+	name: "SqliteDatabase (file)",
+	createDatabase: () => {
+		const testDir = createTestDirectory();
+		return sqliteDatabase({ path: join(testDir, "test.db") });
+	},
 	supportsTransactions: true,
 };
 

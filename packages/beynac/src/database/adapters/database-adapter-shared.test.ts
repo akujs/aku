@@ -1,12 +1,20 @@
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { asyncGate } from "../../test-utils/async-gate.ts";
 import type { Database } from "../contracts/Database.ts";
 import { QueryError } from "../database-errors.ts";
 import type { SharedTestConfig } from "../database-test-utils.ts";
 import { sql } from "../sql.ts";
 import { d1SharedTestConfig } from "./d1/D1Database.test.ts";
-import { sqliteSharedTestConfig } from "./sqlite/SqliteDatabase.test.ts";
+import {
+	sqliteFileSharedTestConfig,
+	sqliteMemorySharedTestConfig,
+} from "./sqlite/SqliteDatabase.test.ts";
 
-const adapterConfigs: SharedTestConfig[] = [sqliteSharedTestConfig, d1SharedTestConfig];
+const adapterConfigs: SharedTestConfig[] = [
+	sqliteMemorySharedTestConfig,
+	sqliteFileSharedTestConfig,
+	d1SharedTestConfig,
+];
 
 describe.each(adapterConfigs)("$name", ({ createDatabase, supportsTransactions }) => {
 	let db: Database;
@@ -206,6 +214,26 @@ describe.each(adapterConfigs)("$name", ({ createDatabase, supportsTransactions }
 				const result = await db.run(sql`SELECT * FROM users ORDER BY name`);
 				expect(result.rows).toHaveLength(1);
 				expect(result.rows[0].name).toBe("Alice");
+			});
+
+			test("supports concurrent transactions", async () => {
+				const gate = asyncGate();
+
+				// Start a transaction that holds the connection
+				const txPromise = db.transaction(async () => {
+					await gate.block();
+					await db.run(sql`INSERT INTO users (name) VALUES ('Alice')`);
+				});
+
+				await gate.hasBlocked();
+
+				const writePromise = db.run(sql`INSERT INTO users (name) VALUES ('Bob')`);
+
+				await gate.releaseAndWaitTick();
+				await Promise.all([txPromise, writePromise]);
+
+				const result = await db.run(sql`SELECT name FROM users ORDER BY name`);
+				expect(result.rows).toEqual([{ name: "Alice" }, { name: "Bob" }]);
 			});
 		});
 	}

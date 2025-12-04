@@ -4,7 +4,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { existsSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname } from "node:path";
-import { BaseClass } from "../../../utils.ts";
+import { BaseClass, exclusiveRunner, parallelRunner, type Runner } from "../../../utils.ts";
 import type { Database, Statement, StatementResult } from "../../contracts/Database.ts";
 import { QueryError } from "../../database-errors.ts";
 
@@ -62,6 +62,7 @@ export interface SqliteDatabaseConfig {
 export class SqliteDatabase extends BaseClass implements Database {
 	readonly supportsTransactions = true;
 	readonly #connectionStorage = new AsyncLocalStorage<ConnectionContext>();
+	readonly #connectionRunner: Runner;
 	readonly #useWalMode: boolean;
 	readonly #path: string;
 	readonly #readOnly: boolean;
@@ -75,6 +76,7 @@ export class SqliteDatabase extends BaseClass implements Database {
 		const isMemory = config.path === ":memory:";
 		const shouldCreate = config.create !== false;
 
+		this.#connectionRunner = isMemory ? exclusiveRunner() : parallelRunner();
 		this.#useWalMode = !isMemory && config.useWalMode !== false;
 		this.#path = config.path;
 		this.#readOnly = config.readOnly ?? false;
@@ -148,25 +150,27 @@ export class SqliteDatabase extends BaseClass implements Database {
 			return f(existingCtx);
 		}
 
-		let connection: DatabaseObject | undefined;
-		let useMainConnection = !this.#mainConnectionInUse;
+		return this.#connectionRunner(async () => {
+			let connection: DatabaseObject | undefined;
+			let useMainConnection = !this.#mainConnectionInUse;
 
-		try {
-			if (useMainConnection) {
-				connection = this.#getMainConnection();
-				this.#mainConnectionInUse = true;
-			} else {
-				connection = this.#createConnection();
+			try {
+				if (useMainConnection) {
+					connection = this.#getMainConnection();
+					this.#mainConnectionInUse = true;
+				} else {
+					connection = this.#createConnection();
+				}
+				const ctx: ConnectionContext = { connection, depth: 0 };
+				return await this.#connectionStorage.run(ctx, () => f(ctx));
+			} finally {
+				if (useMainConnection) {
+					this.#mainConnectionInUse = false;
+				} else {
+					connection?.close();
+				}
 			}
-			const ctx: ConnectionContext = { connection, depth: 0 };
-			return await this.#connectionStorage.run(ctx, () => f(ctx));
-		} finally {
-			if (useMainConnection) {
-				this.#mainConnectionInUse = false;
-			} else {
-				connection?.close();
-			}
-		}
+		});
 	}
 
 	#getMainConnection(): DatabaseObject {

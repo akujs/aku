@@ -181,3 +181,29 @@ export const mapObjectValues = <K extends string | number | symbol, V, R>(
 
 export const sleep = (ms: number): Promise<void> =>
 	new Promise((resolve) => setTimeout(resolve, ms));
+
+export type Runner = <T>(f: () => Promise<T>) => Promise<T>;
+
+export function exclusiveRunner(): Runner {
+	let lock: Promise<void> = Promise.resolve();
+
+	return async <T>(f: () => Promise<T>): Promise<T> => {
+		const previousLock = lock;
+		let releaseLock!: () => void;
+		lock = new Promise((resolve) => {
+			releaseLock = resolve;
+		});
+
+		await previousLock;
+
+		try {
+			return await f();
+		} finally {
+			releaseLock();
+		}
+	};
+}
+
+export function parallelRunner(): Runner {
+	return (f) => f();
+}
