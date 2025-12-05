@@ -33,7 +33,7 @@
       "peerDependencies": {
         "@cloudflare/workers-types": ">=4.20251202.0",
         "next": ">=15.0.0",
-        "postgres": "^3.4.7",
+        "postgres": ">=3.4.7",
       },
       "optionalPeers": [
         "next",

@@ -5,7 +5,7 @@ import type { Database } from "../../contracts/Database.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { SharedTestConfig } from "../../database-test-utils.ts";
 import { sql } from "../../sql.ts";
-import { postgresDatabase } from "./PostgresDatabase.ts";
+import { PostgresDatabase, postgresDatabase } from "./PostgresDatabase.ts";
 
 const POSTGRES_URL = "postgres://beynac:beynac@localhost:22857/beynac_test";
 
@@ -23,7 +23,7 @@ async function createDatabase() {
 	return db;
 }
 
-const resetSchema = sql`DROP SCHEMA public CASCADE; CREATE SCHEMA public`;
+const resetSchema = sql`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public`;
 
 export const postgresSharedTestConfig: SharedTestConfig = {
 	name: "PostgresDatabase",
@@ -31,7 +31,7 @@ export const postgresSharedTestConfig: SharedTestConfig = {
 	supportsTransactions: true,
 };
 
-describe(postgresDatabase, () => {
+describe(PostgresDatabase, () => {
 	let db: Database;
 
 	beforeAll(async () => {

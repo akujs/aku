@@ -1,0 +1,162 @@
+#!/usr/bin/env bun
+import { readdir } from "node:fs/promises";
+import { join } from "node:path";
+import { Glob } from "bun";
+
+const srcDir = join(import.meta.dir, "..", "src");
+const cwd = join(import.meta.dir, "..");
+
+/**
+ * Configuration for parallel test execution.
+ * - `true`: run the entire folder as one parallel process
+ * - `string[]`: run each pattern as a separate process, plus a fallback for unmatched tests
+ */
+const parallelConfig: Record<string, string[] | true> = {
+	database: ["PGLiteDatabase", "D1Database", "PostgresDatabase"],
+	storage: true,
+};
+
+interface TestResult {
+	name: string;
+	exitCode: number;
+	stdout: string;
+	stderr: string;
+}
+
+async function runTestGroup(args: string[]): Promise<TestResult> {
+	const fullArgs = ["bun", "--conditions=source", "test", "--only-failures", ...args];
+	const name = fullArgs.join(" ");
+	const proc = Bun.spawn(fullArgs, {
+		cwd,
+		env: { ...process.env, FORCE_COLOR: "1" },
+		stdout: "pipe",
+		stderr: "pipe",
+	});
+
+	const [stdout, stderr, exitCode] = await Promise.all([
+		new Response(proc.stdout).text(),
+		new Response(proc.stderr).text(),
+		proc.exited,
+	]);
+
+	console.log(`$ ${name}`);
+	if (stdout) console.log(stdout);
+	if (stderr) console.error(stderr);
+
+	return { name, exitCode, stdout, stderr };
+}
+
+function buildExcludePattern(patterns: string[]): string {
+	return `^(?!.*(${patterns.join("|")}))`;
+}
+
+async function main() {
+	const args = process.argv.slice(2);
+	const passthrough = args.filter((a) => a !== "--serial");
+
+	if (args.length > 0) {
+		// Any arguments trigger serial mode, passing args directly to bun test
+		const fullArgs = ["bun", "--conditions=source", "test", ...passthrough];
+		console.log("$", fullArgs.join(" "));
+		const proc = Bun.spawnSync(fullArgs, {
+			cwd,
+			env: { ...process.env, FORCE_COLOR: "1" },
+			stdout: "inherit",
+			stderr: "inherit",
+		});
+		process.exit(proc.exitCode);
+	}
+
+	const startTime = performance.now();
+
+	// Validate config keys match real folders
+	const entries = await readdir(srcDir, { withFileTypes: true });
+	const folders = new Set(entries.filter((e) => e.isDirectory()).map((e) => e.name));
+
+	for (const folder of Object.keys(parallelConfig)) {
+		if (!folders.has(folder)) {
+			throw new Error(`parallelConfig references non-existent folder: ${folder}`);
+		}
+	}
+
+	// Glob all test files
+	const glob = new Glob("**/*.test.{ts,tsx}");
+	const allTestFiles: string[] = [];
+	for await (const file of glob.scan(srcDir)) {
+		allTestFiles.push(file);
+	}
+
+	// Track which folders are handled by config
+	const configuredFolders = new Set(Object.keys(parallelConfig));
+
+	// Build list of test processes
+	const testPromises: Promise<TestResult>[] = [];
+
+	// Process configured folders
+	for (const [folder, config] of Object.entries(parallelConfig)) {
+		if (config === true) {
+			// Run entire folder as one process
+			testPromises.push(runTestGroup([`src/${folder}`]));
+		} else {
+			// Run each pattern as separate process
+			for (const pattern of config) {
+				testPromises.push(runTestGroup([`src/${folder}`, "-t", pattern]));
+			}
+			// Add fallback for unmatched tests in this folder
+			const excludePattern = buildExcludePattern(config);
+			testPromises.push(runTestGroup([`src/${folder}`, "-t", excludePattern]));
+		}
+	}
+
+	// Collect remaining folders and root test files not in configured folders
+	const remainingFolders = new Set<string>();
+	const rootTestFiles: string[] = [];
+
+	for (const file of allTestFiles) {
+		const parts = file.split("/");
+		if (parts.length === 1) {
+			// Root-level test file
+			rootTestFiles.push(`src/${file}`);
+		} else {
+			const topFolder = parts[0];
+			if (!configuredFolders.has(topFolder)) {
+				remainingFolders.add(topFolder);
+			}
+		}
+	}
+
+	const remainingPaths: string[] = [...rootTestFiles];
+	for (const folder of remainingFolders) {
+		remainingPaths.push(`src/${folder}`);
+	}
+
+	if (remainingPaths.length > 0) {
+		testPromises.push(runTestGroup(remainingPaths));
+	}
+
+	// Wait for all tests to complete
+	const results = await Promise.all(testPromises);
+
+	// Print results sequentially
+	let hasFailures = false;
+	for (const result of results) {
+		console.log(`$ ${result.name}`);
+		if (result.stdout) console.log(result.stdout);
+		if (result.stderr) console.error(result.stderr);
+		if (result.exitCode !== 0) {
+			hasFailures = true;
+		}
+	}
+
+	const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+	console.log(`Total time: ${elapsed}s`);
+
+	if (hasFailures) {
+		process.exit(1);
+	}
+}
+
+main().catch((error) => {
+	console.error("Error running tests:", error);
+	process.exit(1);
+});

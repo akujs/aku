@@ -85,7 +85,7 @@
   "sideEffects": false,
   "scripts": {
     "check": "bun run check:tsc && bun run check:test && bun run check:lint && bun run check:format",
-    "check:test": "bun --conditions=source test --only-failures",
+    "check:test": "bun scripts/test-parallel.ts",
     "check:tsc": "tsgo --noEmit",
     "check:lint": "oxlint --type-aware src/",
     "check:format": "biome check",
