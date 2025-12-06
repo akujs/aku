@@ -8,9 +8,9 @@
   "scripts": {
     "build": "bun run --filter='*' build",
     "clean": "bun run --filter='*' clean",
-    "check": "bun run check:test && bun run check:tsc && bun run check:lint && bun run check:format",
+    "check": "bun run check:test && bun run check:ts && bun run check:lint && bun run check:format",
     "check:test": "bun run --filter='*' check:test",
-    "check:tsc": "bun run --filter='*' check:tsc",
+    "check:ts": "bun run --filter='*' check:ts",
     "check:lint": "bun run --filter=* lint",
     "check:format": "biome check .",
     "format": "biome check --write .",

@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.common.json",
+  "compilerOptions": {
+    "lib": ["ES2024"],
+    "types": ["bun"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.node.ts", "src/**/*.node-test.ts"]
+}

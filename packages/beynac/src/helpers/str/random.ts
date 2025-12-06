@@ -1,6 +1,10 @@
 import { webcrypto as crypto } from "node:crypto";
 import { mockable } from "../../testing/mocks.ts";
 
+function toHex(bytes: Uint8Array): string {
+	return Buffer.from(bytes).toString("hex");
+}
+
 const DEFAULT_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
 const POOL_SIZE = 2048;
@@ -223,15 +227,15 @@ export const uuid: (time?: Date | number) => string = mockable(function uuid(
 	bytes[8] = (bytes[8]! & 0x3f) | 0x80;
 
 	return (
-		bytes.slice(0, 4).toHex() +
+		toHex(bytes.slice(0, 4)) +
 		"-" +
-		bytes.slice(4, 6).toHex() +
+		toHex(bytes.slice(4, 6)) +
 		"-" +
-		bytes.slice(6, 8).toHex() +
+		toHex(bytes.slice(6, 8)) +
 		"-" +
-		bytes.slice(8, 10).toHex() +
+		toHex(bytes.slice(8, 10)) +
 		"-" +
-		bytes.slice(10).toHex()
+		toHex(bytes.slice(10))
 	);
 });
 

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { createTestApplication } from "../../../test-utils/http-test-utils.ts";
+import { createTestApplication } from "../../../test-utils/http-test-utils.bun.ts";
 import { createTestDirectory } from "../../../testing/test-directories.ts";
 import { mockPlatformPaths } from "../../path-operations.ts";
 import { filesystemStorage } from "../filesystem/filesystemStorage.ts";

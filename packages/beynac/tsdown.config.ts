@@ -12,6 +12,7 @@ export default defineConfig({
   outDir: "dist",
   dts: {
     resolve: true,
+    build: true,
   },
   clean: true,
   external: (dep) => {

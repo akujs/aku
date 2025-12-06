@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, expectTypeOf, test } from "bun:test";
 import { ContainerImpl } from "../container/ContainerImpl.ts";
 import type { Container } from "../container/contracts/Container.ts";
 import { Configuration } from "../core/contracts/Configuration.ts";
-import { createTestApplication, mockMiddleware } from "../test-utils/http-test-utils.ts";
+import { createTestApplication, mockMiddleware } from "../test-utils/http-test-utils.bun.ts";
 import type { ControllerContext } from "./Controller.ts";
 import { apiResource, group, resource } from "./helpers.ts";
 import { ResourceController } from "./ResourceController.ts";

@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import postgres, { type Notice } from "postgres";
-import { asyncGate } from "../../../test-utils/async-gate.ts";
+import { asyncGate } from "../../../test-utils/async-gate.bun.ts";
 import type { Database } from "../../contracts/Database.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { SharedTestConfig } from "../../database-test-utils.ts";

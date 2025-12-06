@@ -1,4 +1,4 @@
 [test]
 
 exclude = ["**/dist/**"]
-preload = ["./src/test-utils/test-setup.ts"]
+preload = ["./src/test-utils/test-setup.bun.ts"]

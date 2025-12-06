@@ -1,7 +1,7 @@
 /** @jsxImportSource beynac/view */
 import { describe, expect, expectTypeOf, test } from "bun:test";
 import { createKey } from "../core/Key.ts";
-import { render } from "../test-utils/view-test-utils.ts";
+import { render } from "../test-utils/view-test-utils.bun.ts";
 import { type Component } from "./Component.ts";
 import { ContextImpl } from "./context.ts";
 import { MarkupStream } from "./markup-stream.ts";

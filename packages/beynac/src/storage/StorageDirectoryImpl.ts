@@ -1,6 +1,6 @@
 import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
 import { parseAttributeHeader } from "../helpers/headers.ts";
-import { BaseClass } from "../utils.ts";
+import { arrayFromAsync, BaseClass } from "../utils.ts";
 import type {
 	StorageData,
 	StorageDirectory,
@@ -53,7 +53,7 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 	}
 
 	async list(): Promise<Array<StorageFile | StorageDirectory>> {
-		return Array.fromAsync(this.listStreaming());
+		return arrayFromAsync(this.listStreaming());
 	}
 
 	listStreaming(): AsyncGenerator<StorageFile | StorageDirectory, void> {
@@ -83,7 +83,7 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 	}
 
 	async listFiles(options?: { recursive?: boolean }): Promise<Array<StorageFile>> {
-		return Array.fromAsync(this.listFilesStreaming(options));
+		return arrayFromAsync(this.listFilesStreaming(options));
 	}
 
 	listFilesStreaming(options?: { recursive?: boolean }): AsyncGenerator<StorageFile, void> {
@@ -119,7 +119,7 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 	}
 
 	async listDirectories(): Promise<Array<StorageDirectory>> {
-		return Array.fromAsync(this.listDirectoriesStreaming());
+		return arrayFromAsync(this.listDirectoriesStreaming());
 	}
 
 	listDirectoriesStreaming(): AsyncGenerator<StorageDirectory, void> {

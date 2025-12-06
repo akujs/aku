@@ -213,9 +213,9 @@ export function parseExports(content: string): ParsedExport[] {
 	const results: ParsedExport[] = [];
 	const extracted = extractStatements(content, "export");
 
-	// Pattern for direct exports: export [abstract] const/function/class/interface/type/namespace name
+	// Pattern for direct exports: export [abstract] [async] const/function/class/interface/type/namespace name
 	const directPattern =
-		/\bexport\s+(?:abstract\s+)?(const|function|class|interface|type|namespace)\s+(\w+)/;
+		/\bexport\s+(?:abstract\s+)?(?:async\s+)?(const|function|class|interface|type|namespace)\s+(\w+)/;
 
 	// Pattern for destructuring exports: export const { a, b, c } = expression
 	const destructuringPattern = /^export\s+const\s+\{([^}]+)\}\s*=/;

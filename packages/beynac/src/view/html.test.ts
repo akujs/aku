@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { render } from "../test-utils/view-test-utils.ts";
+import { render } from "../test-utils/view-test-utils.bun.ts";
 import { html } from "./html.ts";
 import { raw } from "./raw.ts";
 

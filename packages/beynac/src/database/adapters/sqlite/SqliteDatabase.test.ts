@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { asyncGate } from "../../../test-utils/async-gate.ts";
+import { asyncGate } from "../../../test-utils/async-gate.bun.ts";
 import { createTestDirectory } from "../../../testing/test-directories.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { SharedTestConfig } from "../../database-test-utils.ts";

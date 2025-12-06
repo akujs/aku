@@ -1,32 +1,14 @@
-// oxlint-disable-next-line no-restricted-imports
-import type { Database as BunDatabase } from "bun:sqlite";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { existsSync, mkdirSync } from "node:fs";
-import { createRequire } from "node:module";
 import { dirname } from "node:path";
 import { BaseClass, exclusiveRunner, parallelRunner, type Runner } from "../../../utils.ts";
 import type { Database, Statement, StatementResult } from "../../contracts/Database.ts";
 import { QueryError } from "../../database-errors.ts";
 import { renderStatementSql } from "../../sql.ts";
-
-const require = createRequire(import.meta.url);
-
-interface PreparedStatement {
-	all(...params: unknown[]): Record<string, unknown>[];
-	run(...params: unknown[]): { changes: number };
-	// node:sqlite and better-sqlite3 use columns(), bun:sqlite uses columnNames
-	columns?: () => Array<{ name: string }>;
-	columnNames?: string[];
-}
-
-interface DatabaseObject {
-	prepare(sql: string): PreparedStatement;
-	exec(sql: string): void;
-	close(): void;
-}
+import type { SqliteConnection, SqliteOps } from "./SqliteOps.ts";
 
 interface ConnectionContext {
-	connection: DatabaseObject;
+	connection: SqliteConnection;
 	depth: number; // 0 = no transaction, 1+ = in transaction (depth indicates nesting level)
 }
 
@@ -68,8 +50,9 @@ export class SqliteDatabase extends BaseClass implements Database {
 	readonly #path: string;
 	readonly #readOnly: boolean;
 	readonly #create: boolean;
-	#mainConnection: DatabaseObject | null = null;
+	#mainConnection: SqliteConnection | null = null;
 	#mainConnectionInUse = false;
+	#sqliteOps: SqliteOps | null = null;
 
 	constructor(config: SqliteDatabaseConfig) {
 		super();
@@ -99,10 +82,8 @@ export class SqliteDatabase extends BaseClass implements Database {
 			const sqlString = toSql(statement);
 			try {
 				const prepared = connection.prepare(sqlString);
-				const columnNames = prepared.columnNames ?? prepared.columns?.().map((c) => c.name) ?? [];
-				const returnsData = columnNames.length > 0;
 
-				if (returnsData) {
+				if (prepared.isQuery) {
 					const rows = prepared.all(...statement.params);
 					return { rows, rowsAffected: rows.length };
 				}
@@ -153,15 +134,15 @@ export class SqliteDatabase extends BaseClass implements Database {
 		}
 
 		return this.#connectionRunner(async () => {
-			let connection: DatabaseObject | undefined;
+			let connection: SqliteConnection | undefined;
 			let useMainConnection = !this.#mainConnectionInUse;
 
 			try {
 				if (useMainConnection) {
-					connection = this.#getMainConnection();
 					this.#mainConnectionInUse = true;
+					connection = await this.#getMainConnection();
 				} else {
-					connection = this.#createConnection();
+					connection = await this.#createConnection();
 				}
 				const ctx: ConnectionContext = { connection, depth: 0 };
 				return await this.#connectionStorage.run(ctx, () => f(ctx));
@@ -175,9 +156,9 @@ export class SqliteDatabase extends BaseClass implements Database {
 		});
 	}
 
-	#getMainConnection(): DatabaseObject {
+	async #getMainConnection(): Promise<SqliteConnection> {
 		if (!this.#mainConnection) {
-			this.#mainConnection = this.#createConnection();
+			this.#mainConnection = await this.#createConnection();
 			if (this.#useWalMode !== false) {
 				this.#mainConnection.exec("PRAGMA journal_mode=WAL");
 			}
@@ -185,23 +166,28 @@ export class SqliteDatabase extends BaseClass implements Database {
 		return this.#mainConnection;
 	}
 
-	#createConnection(): DatabaseObject {
-		if (typeof Bun !== "undefined") {
-			const Database: typeof BunDatabase = require("bun:sqlite").Database;
-			return new Database(this.#path, {
-				strict: true,
-				readonly: this.#readOnly ?? false,
-				create: this.#create,
-			}) as DatabaseObject;
-		} else {
-			const { DatabaseSync } = require("node:sqlite");
-			return new DatabaseSync(this.#path, {
-				readOnly: this.#readOnly,
-			}) as DatabaseObject;
+	async #getSqliteOps(): Promise<SqliteOps> {
+		if (!this.#sqliteOps) {
+			if ("Bun" in globalThis) {
+				const { sqliteOps } = await import("./SqliteOps.bun.ts" as string);
+				this.#sqliteOps = sqliteOps;
+			} else {
+				const { sqliteOps } = await import("./SqliteOps.node.ts" as string);
+				this.#sqliteOps = sqliteOps;
+			}
 		}
+		return this.#sqliteOps!;
 	}
 
-	#exec(sql: string, connection: DatabaseObject): void {
+	async #createConnection(): Promise<SqliteConnection> {
+		const ops = await this.#getSqliteOps();
+		return ops.createConnection(this.#path, {
+			readonly: this.#readOnly,
+			create: this.#create,
+		});
+	}
+
+	#exec(sql: string, connection: SqliteConnection): void {
 		try {
 			connection.exec(sql);
 		} catch (error) {

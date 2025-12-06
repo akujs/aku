@@ -3,7 +3,7 @@ import { expect, test } from "bun:test";
 import { ContainerImpl } from "../container/ContainerImpl.ts";
 import { createTypeToken } from "../container/container-key.ts";
 import { createKey } from "../core/Key.ts";
-import { render } from "../test-utils/view-test-utils.ts";
+import { render } from "../test-utils/view-test-utils.bun.ts";
 import type { Component } from "./Component.ts";
 import { BaseComponent } from "./Component.ts";
 import { ViewRendererImpl } from "./ViewRendererImpl.ts";

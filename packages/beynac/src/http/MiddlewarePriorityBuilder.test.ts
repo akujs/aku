@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { mockMiddleware } from "../test-utils/http-test-utils.ts";
+import { mockMiddleware } from "../test-utils/http-test-utils.bun.ts";
 import { MiddlewarePriorityBuilder } from "./MiddlewarePriorityBuilder.ts";
 
 // Test middleware classes

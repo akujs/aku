@@ -1,8 +1,8 @@
 /** @jsxImportSource beynac/view */
 
 import { describe, expect, mock, test } from "bun:test";
-import { controllerContext } from "../test-utils/http-test-utils.ts";
-import { mockViewRenderer } from "../test-utils/view-test-utils.ts";
+import { controllerContext } from "../test-utils/http-test-utils.bun.ts";
+import { mockViewRenderer } from "../test-utils/view-test-utils.bun.ts";
 import type { FunctionComponent } from "../view/Component.ts";
 import { BaseComponent } from "../view/Component.ts";
 import type { Context } from "../view/view-types.ts";

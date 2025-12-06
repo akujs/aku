@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
-import { expectError } from "../test-utils/error.ts";
-import { mockDispatcher } from "../test-utils/internal-mocks.ts";
-import { spyOnAll } from "../test-utils/spy-on-all.ts";
+import { expectError } from "../test-utils/error.bun.ts";
+import { mockDispatcher } from "../test-utils/internal-mocks.bun.ts";
+import { spyOnAll } from "../test-utils/spy-on-all.bun.ts";
 import { resetAllMocks } from "../testing/mocks.ts";
 import { MemoryEndpoint } from "./adapters/memory/MemoryEndpoint.ts";
 import { memoryStorage } from "./adapters/memory/memoryStorage.ts";
@@ -11,7 +11,7 @@ import { StorageDiskImpl } from "./StorageDiskImpl.ts";
 import type { StorageEndpointBuilder } from "./StorageEndpointBuilder.ts";
 import { StorageImpl } from "./StorageImpl.ts";
 import { DiskNotFoundError } from "./storage-errors.ts";
-import { mockEndpointBuilder } from "./storage-test-utils.ts";
+import { mockEndpointBuilder } from "./storage-test-utils.bun.ts";
 
 function createStorageImpl(
 	config: { disks?: Record<string, StorageAdapter>; defaultDisk?: string },

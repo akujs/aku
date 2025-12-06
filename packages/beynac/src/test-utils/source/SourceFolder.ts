@@ -94,7 +94,8 @@ export class SourceFolder extends BaseClass {
 		return (
 			(filename.endsWith(".ts") || filename.endsWith(".tsx")) &&
 			!filename.endsWith(".d.ts") &&
-			!filename.includes(".test.")
+			!filename.includes(".test.") &&
+			!filename.includes(".node.")
 		);
 	}
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createTestApplication } from "../test-utils/http-test-utils.ts";
+import { createTestApplication } from "../test-utils/http-test-utils.bun.ts";
 import { memoryStorage } from "./adapters/memory/memoryStorage.ts";
 import { Storage } from "./contracts/Storage.ts";
 import { FileWrittenEvent } from "./storage-events.ts";

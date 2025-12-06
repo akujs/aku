@@ -5,6 +5,14 @@ export const arrayWrap = <T>(value: T | T[]): T[] => {
 export const arrayWrapOptional = <T>(value: T | T[] | null | undefined): T[] =>
 	value == null ? [] : arrayWrap(value);
 
+export async function arrayFromAsync<T>(iterable: AsyncIterable<T>): Promise<T[]> {
+	const result: T[] = [];
+	for await (const item of iterable) {
+		result.push(item);
+	}
+	return result;
+}
+
 export const describeType = (value: unknown): string =>
 	value == null ? String(value) : typeof value;
 

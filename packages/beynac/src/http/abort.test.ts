@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { createTestApplication } from "../test-utils/http-test-utils.ts";
+import { createTestApplication } from "../test-utils/http-test-utils.bun.ts";
 import { abort } from "./abort.ts";
 import { get } from "./helpers.ts";
 

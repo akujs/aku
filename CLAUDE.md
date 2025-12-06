@@ -30,6 +30,7 @@ After you have completed the initial port, go over your work and verify that non
 ## Build & Test Commands
 
 - **Run unit tests**: `bun check:test` (extra params can be added directly, e.g. `bun check:test file-pattern -t TestNamePattern`)
+- **Run type checking**: `bun check:ts`
 - **Run lint and format test**: `bun check:lint`
 - **Apply correct formatting to files**: `bun format` - IMPORTANT: always run checks (`bun check`) THEN format (`bun format`) after completing functionality changes
 - If S3 tests fail with "XMinioStorageFull", restart MinIO: `docker compose down && docker compose up -d`

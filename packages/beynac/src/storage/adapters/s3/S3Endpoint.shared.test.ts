@@ -5,8 +5,8 @@ import {
 	MINIO_ENDPOINT,
 	MINIO_ROOT_PASSWORD,
 	MINIO_ROOT_USER,
-} from "../../../test-utils/docker.ts";
-import type { SharedTestConfig } from "../../storage-test-utils.ts";
+} from "../../../test-utils/docker.bun.ts";
+import type { SharedTestConfig } from "../../storage-test-utils.bun.ts";
 import { S3Endpoint } from "./S3Endpoint.ts";
 import type { S3StorageConfig } from "./S3StorageConfig.ts";
 import { s3Storage } from "./s3Storage.ts";

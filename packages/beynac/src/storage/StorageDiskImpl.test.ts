@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { mockDispatcher } from "../test-utils/internal-mocks.ts";
-import { spyOnAll } from "../test-utils/spy-on-all.ts";
+import { mockDispatcher } from "../test-utils/internal-mocks.bun.ts";
+import { spyOnAll } from "../test-utils/spy-on-all.bun.ts";
 import { MemoryEndpoint } from "./adapters/memory/MemoryEndpoint.ts";
 import type {
 	StorageDirectoryOperations,

@@ -86,7 +86,7 @@
   "scripts": {
     "check": "bun run check:tsc && bun run check:test && bun run check:lint && bun run check:format",
     "check:test": "bun scripts/test-parallel.ts",
-    "check:tsc": "tsgo --noEmit",
+    "check:tsc": "tsgo --build",
     "check:lint": "oxlint --type-aware src/",
     "check:format": "biome check",
     "format": "biome check --write .",
@@ -117,6 +117,7 @@
     "@cloudflare/workers-types": "^4.20251202.0",
     "@electric-sql/pglite": "^0.3.14",
     "@types/bun": "1.2.19",
+    "@types/node": "^24.10.1",
     "@typescript/native-preview": "^7.0.0-dev.20251023.1",
     "beynac": "workspace:",
     "bun-types": "1.2.19",

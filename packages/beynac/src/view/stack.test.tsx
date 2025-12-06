@@ -1,8 +1,8 @@
 /** @jsxImportSource beynac/view */
 import { expect, test } from "bun:test";
 import { createKey } from "../core/Key.ts";
-import { asyncGate } from "../test-utils/async-gate.ts";
-import { render, renderStream } from "../test-utils/view-test-utils.ts";
+import { asyncGate } from "../test-utils/async-gate.bun.ts";
+import { render, renderStream } from "../test-utils/view-test-utils.bun.ts";
 import type { Component } from "./Component.ts";
 import { Once } from "./once.ts";
 import { createStack } from "./stack.ts";

@@ -6,7 +6,7 @@ import { sleep } from "../../../utils.ts";
 import type { StorageEndpoint } from "../../contracts/Storage.ts";
 import { mockPlatformPaths } from "../../path-operations.ts";
 import { StorageUnknownError } from "../../storage-errors.ts";
-import type { SharedTestConfig } from "../../storage-test-utils.ts";
+import type { SharedTestConfig } from "../../storage-test-utils.bun.ts";
 import { FilesystemEndpoint } from "./FilesystemEndpoint.ts";
 import { filesystemStorage } from "./filesystemStorage.ts";
 

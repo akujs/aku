@@ -72,7 +72,7 @@
       }
     },
     {
-      "files": ["scripts/**/*", "src/**/*.test.{ts,tsx,mts}", "src/**/*.test.mts", "src/test-utils/**"],
+      "files": ["scripts/**/*", "src/**/*.test.{ts,tsx,mts}", "src/**/*.test.mts", "src/test-utils/**", "src/**/*.bun.ts"],
       "rules": {
         "typescript/no-explicit-any": "off",
         "typescript/unbound-method": "off",

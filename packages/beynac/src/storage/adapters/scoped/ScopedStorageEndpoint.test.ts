@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, spyOn, test } from "bun:test";
-import { mockDispatcher } from "../../../test-utils/internal-mocks.ts";
+import { mockDispatcher } from "../../../test-utils/internal-mocks.bun.ts";
 import type { StorageEndpoint } from "../../contracts/Storage.ts";
 import { StorageImpl } from "../../StorageImpl.ts";
-import { mockEndpointBuilder, type SharedTestConfig } from "../../storage-test-utils.ts";
+import { mockEndpointBuilder, type SharedTestConfig } from "../../storage-test-utils.bun.ts";
 import { MemoryEndpoint } from "../memory/MemoryEndpoint.ts";
 import { ScopedEndpoint } from "./ScopedEndpoint.ts";
 import { scopedStorage } from "./scopedStorage.ts";

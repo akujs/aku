@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, expectTypeOf, test } from "bun:test";
 import { ContainerImpl } from "../container/ContainerImpl.ts";
 import { Configuration } from "../core/contracts/Configuration.ts";
-import { MockController, mockController } from "../test-utils/http-test-utils.ts";
+import { MockController, mockController } from "../test-utils/http-test-utils.bun.ts";
 import { delete_, get, group, isIn, match, options, patch, post, put } from "./helpers.ts";
 import { BaseMiddleware } from "./Middleware.ts";
 import { MiddlewareSet } from "./MiddlewareSet.ts";
