@@ -29,6 +29,10 @@
       "source": "./src/facades.ts",
       "default": "./dist/facades.mjs"
     },
+    "./helpers/async": {
+      "source": "./src/entry/helpers/async.ts",
+      "default": "./dist/helpers/async.mjs"
+    },
     "./helpers/hash": {
       "source": "./src/entry/helpers/hash.ts",
       "default": "./dist/helpers/hash.mjs"

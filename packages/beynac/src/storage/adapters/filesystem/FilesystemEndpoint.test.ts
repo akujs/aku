@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { sleep } from "bun";
 import { createTestDirectory } from "../../../testing/test-directories.ts";
-import { sleep } from "../../../utils.ts";
 import type { StorageEndpoint } from "../../contracts/Storage.ts";
 import { mockPlatformPaths } from "../../path-operations.ts";
 import { StorageUnknownError } from "../../storage-errors.ts";
@@ -141,7 +141,7 @@ describe(filesystemStorage, () => {
 			const info1 = await storage.getInfoSingle("/test.txt");
 
 			// Wait a bit to ensure mtime changes
-			await sleep(10);
+			await sleep(2);
 
 			await storage.writeSingle({ path: "/test.txt", data: "content2", mimeType: null });
 			const info2 = await storage.getInfoSingle("/test.txt");

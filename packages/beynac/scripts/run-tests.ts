@@ -16,14 +16,7 @@ const parallelConfig: Record<string, string[] | true> = {
 	storage: true,
 };
 
-interface TestResult {
-	name: string;
-	exitCode: number;
-	stdout: string;
-	stderr: string;
-}
-
-async function runBunTests(args: string[]): Promise<TestResult> {
+async function runBunTests(args: string[]): Promise<boolean> {
 	const fullArgs = ["bun", "--conditions=source", "test", "--only-failures", ...args];
 	return runCommand(fullArgs);
 }
@@ -37,7 +30,7 @@ const nodeTestArgs = [
 	"src/**/*.node-test.ts",
 ];
 
-async function runNodeTests(): Promise<TestResult> {
+async function runNodeTests(): Promise<boolean> {
 	return runCommand(nodeTestArgs);
 }
 
@@ -52,8 +45,7 @@ function runNodeTestsSync(): number {
 	return proc.exitCode;
 }
 
-async function runCommand(fullArgs: string[]): Promise<TestResult> {
-	const name = fullArgs.join(" ");
+async function runCommand(fullArgs: string[]): Promise<boolean> {
 	const proc = Bun.spawn(fullArgs, {
 		cwd,
 		stdout: "pipe",
@@ -66,11 +58,18 @@ async function runCommand(fullArgs: string[]): Promise<TestResult> {
 		proc.exited,
 	]);
 
-	console.log(`$ ${name}`);
-	if (stdout) console.log(stdout);
-	if (stderr) console.error(stderr);
+	const ok = exitCode === 0;
 
-	return { name, exitCode, stdout, stderr };
+	const argsString = fullArgs.join(" ");
+	if (ok) {
+		console.log(`✔ ${argsString}`);
+	} else {
+		console.log(`✘ ${argsString}`);
+		if (stdout) console.log(stdout);
+		if (stderr) console.error(stderr);
+	}
+
+	return ok;
 }
 
 function buildExcludePattern(patterns: string[]): string {
@@ -126,7 +125,7 @@ async function main() {
 	const configuredFolders = new Set(Object.keys(parallelConfig));
 
 	// Build list of test processes
-	const testPromises: Promise<TestResult>[] = [];
+	const testPromises: Promise<boolean>[] = [];
 
 	// Process configured folders
 	for (const [folder, config] of Object.entries(parallelConfig)) {
@@ -177,15 +176,7 @@ async function main() {
 	const results = await Promise.all(testPromises);
 
 	// Print results sequentially
-	let hasFailures = false;
-	for (const result of results) {
-		console.log(`$ ${result.name}`);
-		if (result.stdout) console.log(result.stdout);
-		if (result.stderr) console.error(result.stderr);
-		if (result.exitCode !== 0) {
-			hasFailures = true;
-		}
-	}
+	let hasFailures = results.some((result) => !result);
 
 	const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
 	console.log(hasFailures ? "💥  Tests failed" : "✅  All tests passed");

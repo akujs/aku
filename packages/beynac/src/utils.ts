@@ -187,9 +187,6 @@ export const mapObjectValues = <K extends string | number | symbol, V, R>(
 	) as Record<K, R>;
 };
 
-export const sleep = (ms: number): Promise<void> =>
-	new Promise((resolve) => setTimeout(resolve, ms));
-
 export type Runner = <T>(f: () => Promise<T>) => Promise<T>;
 
 export function exclusiveRunner(): Runner {

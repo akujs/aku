@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { sleep } from "../utils.ts";
+import { sleep } from "bun";
 import { mock, mockable, onResetAllMocks, resetAllMocks, resetMock } from "./mocks.ts";
 
 describe(mockable, () => {

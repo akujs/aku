@@ -9,6 +9,7 @@ export const ENTRY_POINTS = {
 	errors: "src/errors.ts",
 	events: "src/events.ts",
 	facades: "src/facades.ts",
+	"helpers/async": "src/entry/helpers/async.ts",
 	"helpers/hash": "src/entry/helpers/hash.ts",
 	"helpers/headers": "src/helpers/headers.ts",
 	"helpers/str": "src/entry/helpers/str.ts",
