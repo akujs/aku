@@ -188,6 +188,7 @@ async function main() {
 	}
 
 	const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+	console.log(hasFailures ? "💥  Tests failed" : "✅  All tests passed");
 	console.log(`Total time: ${elapsed}s`);
 
 	if (hasFailures) {

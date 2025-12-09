@@ -33,11 +33,15 @@
       },
       "peerDependencies": {
         "@cloudflare/workers-types": ">=4.20251202.0",
+        "@electric-sql/pglite": ">=0.3.14",
         "next": ">=15.0.0",
         "postgres": ">=3.4.7",
       },
       "optionalPeers": [
+        "@cloudflare/workers-types",
+        "@electric-sql/pglite",
         "next",
+        "postgres",
       ],
     },
     "packages/create-beynac": {

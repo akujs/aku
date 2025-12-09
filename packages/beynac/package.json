@@ -85,7 +85,7 @@
   "sideEffects": false,
   "scripts": {
     "check": "bun run check:ts && bun run check:test && bun run check:lint && bun run check:format",
-    "check:test": "bun scripts/test.ts",
+    "check:test": "FORCE_COLOR=1 bun scripts/run-tests.ts",
     "check:ts": "tsgo --build",
     "check:lint": "oxlint --type-aware src/",
     "check:format": "biome check",
@@ -133,7 +133,7 @@
   },
   "peerDependencies": {
     "@cloudflare/workers-types": ">=4.20251202.0",
-    "@electric-sql/pglite": "^0.3.14",
+    "@electric-sql/pglite": ">=0.3.14",
     "next": ">=15.0.0",
     "postgres": ">=3.4.7"
   },
