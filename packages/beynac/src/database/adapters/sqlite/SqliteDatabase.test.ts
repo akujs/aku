@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { asyncGate } from "../../../test-utils/async-gate.bun.ts";
+import { mockDispatcher } from "../../../test-utils/internal-mocks.bun.ts";
 import { createTestDirectory } from "../../../testing/test-directories.ts";
+import { DatabaseConnectionImpl } from "../../DatabaseConnectionImpl.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { SharedTestConfig } from "../../database-test-utils.ts";
 import { sql } from "../../sql.ts";
@@ -29,22 +31,28 @@ describe("SqliteDatabase", () => {
 		const testDir = createTestDirectory();
 		const dbPath = join(testDir, "test.db");
 
-		const db1 = new SqliteDatabaseAdapter({ path: dbPath });
-		await db1.run(sql`CREATE TABLE test (id INTEGER)`);
-		db1.dispose();
+		const adapter1 = new SqliteDatabaseAdapter({ path: dbPath });
+		const conn1 = await adapter1.acquireConnection();
+		await adapter1.run(sql`CREATE TABLE test (id INTEGER)`, conn1);
+		adapter1.releaseConnection(conn1);
+		adapter1.dispose();
 
-		const db2 = new SqliteDatabaseAdapter({ path: dbPath, readOnly: true });
-		expect(db2.run(sql`INSERT INTO test (id) VALUES (1)`)).rejects.toThrow();
-		db2.dispose();
+		const adapter2 = new SqliteDatabaseAdapter({ path: dbPath, readOnly: true });
+		const conn2 = await adapter2.acquireConnection();
+		expect(adapter2.run(sql`INSERT INTO test (id) VALUES (1)`, conn2)).rejects.toThrow();
+		adapter2.releaseConnection(conn2);
+		adapter2.dispose();
 	});
 
 	test("create option creates parent directories by default", async () => {
 		const testDir = createTestDirectory();
 		const dbPath = join(testDir, "subdir", "nested", "test.db");
 
-		const db = new SqliteDatabaseAdapter({ path: dbPath });
-		await db.run(sql`CREATE TABLE test (id INTEGER)`);
-		db.dispose();
+		const adapter = new SqliteDatabaseAdapter({ path: dbPath });
+		const conn = await adapter.acquireConnection();
+		await adapter.run(sql`CREATE TABLE test (id INTEGER)`, conn);
+		adapter.releaseConnection(conn);
+		adapter.dispose();
 
 		expect(existsSync(dbPath)).toBe(true);
 	});
@@ -62,27 +70,32 @@ describe("SqliteDatabase", () => {
 		const testDir = createTestDirectory();
 		const dbPath = join(testDir, "test.db");
 
-		const db = new SqliteDatabaseAdapter({ path: dbPath });
-		const result = await db.run(sql`PRAGMA journal_mode`);
+		const adapter = new SqliteDatabaseAdapter({ path: dbPath });
+		const conn = await adapter.acquireConnection();
+		const result = await adapter.run(sql`PRAGMA journal_mode`, conn);
 		expect(result.rows[0].journal_mode).toBe("wal");
-		db.dispose();
+		adapter.releaseConnection(conn);
+		adapter.dispose();
 	});
 
 	test("useWalMode=false disables WAL", async () => {
 		const testDir = createTestDirectory();
 		const dbPath = join(testDir, "test.db");
 
-		const db = new SqliteDatabaseAdapter({ path: dbPath, useWalMode: false });
-		const result = await db.run(sql`PRAGMA journal_mode`);
+		const adapter = new SqliteDatabaseAdapter({ path: dbPath, useWalMode: false });
+		const conn = await adapter.acquireConnection();
+		const result = await adapter.run(sql`PRAGMA journal_mode`, conn);
 		expect(result.rows[0].journal_mode).toBe("delete");
-		db.dispose();
+		adapter.releaseConnection(conn);
+		adapter.dispose();
 	});
 
 	test("uncommitted transaction writes are not visible outside transaction", async () => {
 		const testDir = createTestDirectory();
 		const dbPath = join(testDir, "test.db");
 
-		const db = new SqliteDatabaseAdapter({ path: dbPath });
+		const adapter = new SqliteDatabaseAdapter({ path: dbPath });
+		const db = new DatabaseConnectionImpl(adapter, mockDispatcher());
 		await db.run(sql`CREATE TABLE test (value TEXT)`);
 
 		const gate = asyncGate();
@@ -114,7 +127,8 @@ describe("SqliteDatabase", () => {
 		const testDir = createTestDirectory({ prefix: "sqlite-conn-" });
 		const dbPath = join(testDir, "test.db");
 
-		const db = new SqliteDatabaseAdapter({ path: dbPath });
+		const adapter = new SqliteDatabaseAdapter({ path: dbPath });
+		const db = new DatabaseConnectionImpl(adapter, mockDispatcher());
 		await db.run(sql`CREATE TABLE test (value TEXT)`);
 		await db.run(sql`INSERT INTO test (value) VALUES ('initial')`);
 
@@ -154,7 +168,8 @@ describe("SqliteDatabase", () => {
 		const testDir = createTestDirectory({ prefix: "sqlite-busy-" });
 		const dbPath = join(testDir, "test.db");
 
-		const db = new SqliteDatabaseAdapter({ path: dbPath });
+		const adapter = new SqliteDatabaseAdapter({ path: dbPath });
+		const db = new DatabaseConnectionImpl(adapter, mockDispatcher());
 		await db.run(sql`CREATE TABLE test (value INTEGER)`);
 		await db.run(sql`INSERT INTO test (value) VALUES (0)`);
 

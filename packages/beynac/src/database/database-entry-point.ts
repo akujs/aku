@@ -9,4 +9,5 @@ export { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 export type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 export type { DatabaseConnection } from "./DatabaseConnection.ts";
 export * from "./database-errors.ts";
+export * from "./database-events.ts";
 export { type Sql, sql } from "./sql.ts";

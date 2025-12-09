@@ -1,10 +1,19 @@
 import * as assert from "node:assert";
 import { join } from "node:path";
 import { test } from "node:test";
+import type { Dispatcher } from "../../../core/contracts/Dispatcher.ts";
 import { createTestDirectory } from "../../../testing/test-directories.ts";
+import { DatabaseConnectionImpl } from "../../DatabaseConnectionImpl.ts";
 import { QueryError } from "../../database-errors.ts";
 import { sql } from "../../sql.ts";
 import { SqliteDatabaseAdapter } from "./SqliteDatabaseAdapter.ts";
+
+const noopDispatcher: Dispatcher = {
+	addListener: () => {},
+	removeListener: () => {},
+	dispatch: () => {},
+	dispatchIfHasListeners: (() => {}) as unknown as Dispatcher["dispatchIfHasListeners"],
+};
 
 // IMPORTANT: This file contains basic smoke tests for Node ensuring that the
 // database setup and configuration works. The majority of local SQLite database
@@ -12,7 +21,8 @@ import { SqliteDatabaseAdapter } from "./SqliteDatabaseAdapter.ts";
 // that the underlying SQLite implementation works identically on both platforms.
 
 void test("SqliteDatabase works Node.js", async () => {
-	const db = new SqliteDatabaseAdapter({ path: ":memory:" });
+	const adapter = new SqliteDatabaseAdapter({ path: ":memory:" });
+	const db = new DatabaseConnectionImpl(adapter, noopDispatcher);
 
 	// Test run for DDL
 	await db.run(sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)`);
@@ -49,37 +59,45 @@ void test("readOnly prevents writes in Node.js", async () => {
 	const dbPath = join(testDir, "test.db");
 
 	// Create database and add a table
-	const db1 = new SqliteDatabaseAdapter({ path: dbPath });
-	await db1.run(sql`CREATE TABLE test (id INTEGER)`);
-	db1.dispose();
+	const adapter1 = new SqliteDatabaseAdapter({ path: dbPath });
+	const conn1 = await adapter1.acquireConnection();
+	await adapter1.run(sql`CREATE TABLE test (id INTEGER)`, conn1);
+	adapter1.releaseConnection(conn1);
+	adapter1.dispose();
 
 	// Reopen as read-only
-	const db2 = new SqliteDatabaseAdapter({ path: dbPath, readOnly: true });
+	const adapter2 = new SqliteDatabaseAdapter({ path: dbPath, readOnly: true });
+	const conn2 = await adapter2.acquireConnection();
 	await assert.rejects(
-		db2.run(sql`INSERT INTO test (id) VALUES (1)`),
+		adapter2.run(sql`INSERT INTO test (id) VALUES (1)`, conn2),
 		"QueryError: SQLITE_READONLY (Attempt to write a readonly database)",
 	);
-	db2.dispose();
+	adapter2.releaseConnection(conn2);
+	adapter2.dispose();
 });
 
 void test("useWalMode enables WAL by default in Node.js", async () => {
 	const testDir = createTestDirectory({ prefix: "sqlite-node-wal-" });
 	const dbPath = join(testDir, "test.db");
 
-	const db = new SqliteDatabaseAdapter({ path: dbPath });
-	const result = await db.run(sql`PRAGMA journal_mode`);
+	const adapter = new SqliteDatabaseAdapter({ path: dbPath });
+	const conn = await adapter.acquireConnection();
+	const result = await adapter.run(sql`PRAGMA journal_mode`, conn);
 	assert.strictEqual(result.rows[0].journal_mode, "wal");
-	db.dispose();
+	adapter.releaseConnection(conn);
+	adapter.dispose();
 });
 
 void test("useWalMode=false disables WAL in Node.js", async () => {
 	const testDir = createTestDirectory({ prefix: "sqlite-node-nowal-" });
 	const dbPath = join(testDir, "test.db");
 
-	const db = new SqliteDatabaseAdapter({ path: dbPath, useWalMode: false });
-	const result = await db.run(sql`PRAGMA journal_mode`);
+	const adapter = new SqliteDatabaseAdapter({ path: dbPath, useWalMode: false });
+	const conn = await adapter.acquireConnection();
+	const result = await adapter.run(sql`PRAGMA journal_mode`, conn);
 	assert.strictEqual(result.rows[0].journal_mode, "delete");
-	db.dispose();
+	adapter.releaseConnection(conn);
+	adapter.dispose();
 });
 
 void test("QueryError captures error code in Node.js", async () => {
@@ -87,19 +105,23 @@ void test("QueryError captures error code in Node.js", async () => {
 	const dbPath = join(testDir, "test.db");
 
 	// Create database and table
-	const db1 = new SqliteDatabaseAdapter({ path: dbPath });
-	await db1.run(sql`CREATE TABLE test (id INTEGER)`);
-	db1.dispose();
+	const adapter1 = new SqliteDatabaseAdapter({ path: dbPath });
+	const conn1 = await adapter1.acquireConnection();
+	await adapter1.run(sql`CREATE TABLE test (id INTEGER)`, conn1);
+	adapter1.releaseConnection(conn1);
+	adapter1.dispose();
 
 	// Reopen as read-only and try to write
-	const db2 = new SqliteDatabaseAdapter({ path: dbPath, readOnly: true });
+	const adapter2 = new SqliteDatabaseAdapter({ path: dbPath, readOnly: true });
+	const conn2 = await adapter2.acquireConnection();
 	try {
-		await db2.run(sql`INSERT INTO test (id) VALUES (1)`);
+		await adapter2.run(sql`INSERT INTO test (id) VALUES (1)`, conn2);
 		assert.fail("Should have thrown");
 	} catch (e) {
 		assert.ok(e instanceof QueryError);
 		assert.strictEqual(e.code, "SQLITE_READONLY");
 		assert.strictEqual(e.errorNumber, 8);
 	}
-	db2.dispose();
+	adapter2.releaseConnection(conn2);
+	adapter2.dispose();
 });

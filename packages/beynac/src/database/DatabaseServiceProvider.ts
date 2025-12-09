@@ -1,4 +1,5 @@
 import { Configuration } from "../core/contracts/Configuration.ts";
+import { Dispatcher } from "../core/contracts/Dispatcher.ts";
 import { ServiceProvider } from "../core/ServiceProvider.ts";
 import { Database } from "./contracts/Database.ts";
 import type { DatabaseAdapter, DatabaseConfig } from "./DatabaseAdapter.ts";
@@ -9,9 +10,10 @@ export class DatabaseServiceProvider extends ServiceProvider {
 		const config = this.container.get(Configuration);
 		if (config.database) {
 			const { defaultAdapter, additionalAdapters } = normalizeDatabaseConfig(config.database);
+			const dispatcher = this.container.get(Dispatcher);
 			this.container.singletonInstance(
 				Database,
-				new DatabaseImpl(defaultAdapter, additionalAdapters),
+				new DatabaseImpl(defaultAdapter, additionalAdapters, dispatcher),
 			);
 		}
 	}

@@ -1,4 +1,4 @@
-import { abort } from "../http/abort.ts";
+import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
 import { BaseClass } from "../utils.ts";
 import type {
 	Database,
@@ -8,88 +8,11 @@ import type {
 	StatementResult,
 } from "./contracts/Database.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
-import { ConnectionNotFoundError, DatabaseError, QueryError } from "./database-errors.ts";
-
-// Implementation of a single database connection.
-export class DatabaseConnectionImpl extends BaseClass implements DatabaseConnection {
-	readonly #adapter: DatabaseAdapter;
-	readonly supportsTransactions: boolean;
-
-	constructor(adapter: DatabaseAdapter) {
-		super();
-		this.#adapter = adapter;
-		this.supportsTransactions = typeof adapter.transaction === "function";
-	}
-
-	run(statement: Statement): Promise<StatementResult> {
-		return this.#adapter.run(statement);
-	}
-
-	batch(statements: Statement[]): Promise<StatementResult[]> {
-		return this.#adapter.batch(statements);
-	}
-
-	transaction<T>(fn: () => Promise<T>): Promise<T> {
-		if (!this.#adapter.transaction) {
-			throw new DatabaseError(
-				"This database adapter does not support interactive transactions. Use batch() instead.",
-			);
-		}
-		return this.#adapter.transaction(fn);
-	}
-
-	dispose(): void | Promise<void> {
-		return this.#adapter.dispose();
-	}
-
-	async all<T = Row>(statement: Statement): Promise<T[]> {
-		const result = await this.run(statement);
-		return result.rows as T[];
-	}
-
-	async first<T = Row>(statement: Statement): Promise<T> {
-		const result = await this.run(statement);
-		if (result.rows.length === 0) {
-			throw new DatabaseError("Query returned no rows");
-		}
-		return result.rows[0] as T;
-	}
-
-	async firstOrNull<T = Row>(statement: Statement): Promise<T | null> {
-		const result = await this.run(statement);
-		return (result.rows[0] as T) ?? null;
-	}
-
-	async firstOrFail<T = Row>(statement: Statement): Promise<T> {
-		const result = await this.run(statement);
-		if (result.rows.length === 0) {
-			throw new QueryError(statement.renderForLogs(), "Query returned no rows", undefined);
-		}
-		return result.rows[0] as T;
-	}
-
-	async firstOrNotFound<T = Row>(statement: Statement): Promise<T> {
-		const result = await this.run(statement);
-		if (result.rows.length === 0) {
-			abort.notFound();
-		}
-		return result.rows[0] as T;
-	}
-
-	async scalar<T = unknown>(statement: Statement): Promise<T> {
-		const firstRow = await this.firstOrFail(statement);
-		return Object.values(firstRow)[0] as T;
-	}
-
-	async column<T = unknown>(statement: Statement): Promise<T[]> {
-		const rows = await this.all(statement);
-		return rows.map((row) => Object.values(row)[0]) as T[];
-	}
-}
+import { DatabaseConnectionImpl } from "./DatabaseConnectionImpl.ts";
+import { ConnectionNotFoundError } from "./database-errors.ts";
 
 const DEFAULT_CONNECTION_NAME = "default";
 
-// Implementation of the Database manager that holds multiple connections.
 export class DatabaseImpl extends BaseClass implements Database {
 	readonly #connections: Map<string, DatabaseConnectionImpl> = new Map();
 	readonly #defaultConnectionName: string;
@@ -97,13 +20,17 @@ export class DatabaseImpl extends BaseClass implements Database {
 	constructor(
 		defaultAdapter: DatabaseAdapter,
 		additionalAdapters: Record<string, DatabaseAdapter> = {},
+		dispatcher: Dispatcher,
 	) {
 		super();
 		this.#defaultConnectionName = DEFAULT_CONNECTION_NAME;
-		this.#connections.set(DEFAULT_CONNECTION_NAME, new DatabaseConnectionImpl(defaultAdapter));
+		this.#connections.set(
+			DEFAULT_CONNECTION_NAME,
+			new DatabaseConnectionImpl(defaultAdapter, dispatcher),
+		);
 
 		for (const [name, adapter] of Object.entries(additionalAdapters)) {
-			this.#connections.set(name, new DatabaseConnectionImpl(adapter));
+			this.#connections.set(name, new DatabaseConnectionImpl(adapter, dispatcher));
 		}
 	}
 
@@ -122,6 +49,18 @@ export class DatabaseImpl extends BaseClass implements Database {
 		return this.#defaultConnection.supportsTransactions;
 	}
 
+	get transactionId(): number | null {
+		return this.#defaultConnection.transactionId;
+	}
+
+	get outerTransactionId(): number | null {
+		return this.#defaultConnection.outerTransactionId;
+	}
+
+	get transactionDepth(): number {
+		return this.#defaultConnection.transactionDepth;
+	}
+
 	get #defaultConnection(): DatabaseConnectionImpl {
 		return this.#connections.get(this.#defaultConnectionName)!;
 	}
@@ -138,16 +77,9 @@ export class DatabaseImpl extends BaseClass implements Database {
 		return this.#defaultConnection.transaction(fn);
 	}
 
-	dispose(): void | Promise<void> {
-		const disposePromises: Promise<void>[] = [];
+	dispose(): void {
 		for (const conn of this.#connections.values()) {
-			const result = conn.dispose();
-			if (result instanceof Promise) {
-				disposePromises.push(result);
-			}
-		}
-		if (disposePromises.length > 0) {
-			return Promise.all(disposePromises).then(() => undefined);
+			conn.dispose();
 		}
 	}
 

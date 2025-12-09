@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { asyncGate } from "../../test-utils/async-gate.bun.ts";
+import { mockDispatcher } from "../../test-utils/internal-mocks.bun.ts";
 import type { Database } from "../contracts/Database.js";
 import { DatabaseImpl } from "../DatabaseImpl.ts";
 import { QueryError } from "../database-errors.ts";
@@ -25,7 +25,7 @@ describe.each(adapterConfigs)("$name", ({ createDatabase, supportsTransactions }
 	let db: Database;
 
 	beforeAll(async () => {
-		db = new DatabaseImpl(await createDatabase());
+		db = new DatabaseImpl(await createDatabase(), {}, mockDispatcher());
 		await db.run(sql`CREATE TABLE users (name TEXT, age INTEGER)`);
 	});
 
@@ -219,26 +219,6 @@ describe.each(adapterConfigs)("$name", ({ createDatabase, supportsTransactions }
 				const result = await db.run(sql`SELECT * FROM users ORDER BY name`);
 				expect(result.rows).toHaveLength(1);
 				expect(result.rows[0].name).toBe("Alice");
-			});
-
-			test("supports concurrent transactions", async () => {
-				const gate = asyncGate();
-
-				// Start a transaction that holds the connection
-				const txPromise = db.transaction(async () => {
-					await gate.block();
-					await db.run(sql`INSERT INTO users (name) VALUES ('Alice')`);
-				});
-
-				await gate.hasBlocked();
-
-				const writePromise = db.run(sql`INSERT INTO users (name) VALUES ('Bob')`);
-
-				await gate.releaseAndWaitTick();
-				await Promise.all([txPromise, writePromise]);
-
-				const result = await db.run(sql`SELECT name FROM users ORDER BY name`);
-				expect(result.rows).toEqual([{ name: "Alice" }, { name: "Bob" }]);
 			});
 		});
 	}

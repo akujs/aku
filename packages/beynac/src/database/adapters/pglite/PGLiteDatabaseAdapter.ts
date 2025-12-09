@@ -1,97 +1,57 @@
-import { AsyncLocalStorage } from "node:async_hooks";
 import { PGlite } from "@electric-sql/pglite";
-import { BaseClass, exclusiveRunner, type Runner } from "../../../utils.ts";
+import { BaseClass, type FifoLock, fifoLock } from "../../../utils.ts";
 import type { Statement, StatementResult } from "../../contracts/Database.ts";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { PGLiteDatabaseAdapterConfig } from "./PGLiteDatabaseAdapterConfig.ts";
 
-export class PGLiteDatabaseAdapter extends BaseClass implements DatabaseAdapter {
-	readonly #connectionStorage = new AsyncLocalStorage<ConnectionContext>();
-	readonly #connectionRunner: Runner = exclusiveRunner();
+// PGLite only supports single-connection access, so we use the PGlite instance
+// itself as the "connection" type and serialize access via fifoLock
+export class PGLiteDatabaseAdapter extends BaseClass implements DatabaseAdapter<PGlite> {
+	readonly supportsTransactions = true;
+
 	readonly #db: PGlite;
+	readonly #lock: FifoLock<PGlite>;
 
 	constructor(config: PGLiteDatabaseAdapterConfig = {}) {
 		super();
 		this.#db = config.db ?? new PGlite();
+		this.#lock = fifoLock(this.#db);
 	}
 
-	async run(statement: Statement): Promise<StatementResult> {
-		return this.#withConnection(async (): Promise<StatementResult> => {
-			const sql = statement.renderSql((i) => `$${i + 1}`);
-			try {
-				await this.#db.waitReady;
-				const result = await this.#db.query(sql, statement.params);
-				return {
-					rows: result.rows as Record<string, unknown>[],
-					rowsAffected: result.rows.length > 0 ? result.rows.length : (result.affectedRows ?? 0),
-				};
-			} catch (error) {
-				throw makeQueryError(sql, error);
-			}
-		});
+	async acquireConnection(): Promise<PGlite> {
+		await this.#db.waitReady;
+		return this.#lock.acquire();
 	}
 
-	async batch(statements: Statement[]): Promise<StatementResult[]> {
-		return this.transaction(async () => {
-			const results: StatementResult[] = [];
-			for (const stmt of statements) {
-				results.push(await this.run(stmt));
-			}
-			return results;
-		});
+	releaseConnection(_connection: PGlite): void {
+		this.#lock.release();
 	}
 
-	async transaction<T>(fn: () => Promise<T>): Promise<T> {
-		return this.#withConnection(async (ctx) => {
-			const { depth } = ctx;
-			const begin = depth === 0 ? "BEGIN" : `SAVEPOINT sp_${depth}`;
-			const commit = depth === 0 ? "COMMIT" : `RELEASE SAVEPOINT sp_${depth}`;
-			const rollback = depth === 0 ? "ROLLBACK" : `ROLLBACK TO SAVEPOINT sp_${depth}`;
-
-			await this.#exec(begin);
-			try {
-				++ctx.depth;
-				const result = await fn();
-				await this.#exec(commit);
-				return result;
-			} catch (error) {
-				await this.#exec(rollback);
-				throw error;
-			} finally {
-				--ctx.depth;
-			}
-		});
-	}
-
-	async #withConnection<T>(f: (ctx: ConnectionContext) => Promise<T>): Promise<T> {
-		const existingCtx = this.#connectionStorage.getStore();
-		if (existingCtx) {
-			return f(existingCtx);
-		}
-
-		return this.#connectionRunner(async () => {
-			const ctx: ConnectionContext = { depth: 0 };
-			return await this.#connectionStorage.run(ctx, () => f(ctx));
-		});
-	}
-
-	async #exec(sql: string): Promise<void> {
+	async run(statement: Statement, connection: PGlite): Promise<StatementResult> {
+		const sql = statement.renderSql((i) => `$${i + 1}`);
 		try {
-			await this.#db.waitReady;
-			await this.#db.query(sql);
+			const result = await connection.query(sql, statement.params);
+			return {
+				rows: result.rows as Record<string, unknown>[],
+				rowsAffected: result.rows.length > 0 ? result.rows.length : (result.affectedRows ?? 0),
+			};
 		} catch (error) {
 			throw makeQueryError(sql, error);
 		}
 	}
 
-	async dispose(): Promise<void> {
-		await this.#db.close();
+	async batch(statements: Statement[], connection: PGlite): Promise<StatementResult[]> {
+		const results: StatementResult[] = [];
+		for (const stmt of statements) {
+			results.push(await this.run(stmt, connection));
+		}
+		return results;
 	}
-}
 
-interface ConnectionContext {
-	depth: number;
+	dispose(): void {
+		void this.#db.close();
+	}
 }
 
 interface PGLiteError {

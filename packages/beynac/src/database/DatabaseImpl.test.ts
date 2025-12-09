@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { AbortException } from "../http/abort.ts";
 import { createTestApplication, integrationContext } from "../test-utils/http-test-utils.bun.ts";
+import { mockDispatcher } from "../test-utils/internal-mocks.bun.ts";
 import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
-import { DatabaseConnectionImpl, DatabaseImpl } from "./DatabaseImpl.ts";
+import { DatabaseConnectionImpl } from "./DatabaseConnectionImpl.ts";
+import { DatabaseImpl } from "./DatabaseImpl.ts";
 import { ConnectionNotFoundError, QueryError } from "./database-errors.ts";
 import { sql } from "./sql.ts";
 
@@ -11,7 +13,7 @@ describe("DatabaseImpl", () => {
 	describe("supportsTransactions", () => {
 		test("reflects adapter capability", async () => {
 			const adapter = sqliteDatabase({ path: ":memory:" });
-			const db = new DatabaseImpl(adapter);
+			const db = new DatabaseImpl(adapter, {}, mockDispatcher());
 
 			expect(db.supportsTransactions).toBe(true);
 
@@ -25,7 +27,7 @@ describe("DatabaseImpl", () => {
 
 		beforeEach(async () => {
 			adapter = sqliteDatabase({ path: ":memory:" });
-			db = new DatabaseImpl(adapter);
+			db = new DatabaseImpl(adapter, {}, mockDispatcher());
 			await db.run(sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`);
 			await db.run(sql`INSERT INTO test (name) VALUES ('Alice'), ('Bob')`);
 		});
@@ -120,11 +122,11 @@ describe("DatabaseImpl", () => {
 			defaultAdapter = sqliteDatabase({ path: ":memory:" });
 			additionalAdapter = sqliteDatabase({ path: ":memory:" });
 
-			await new DatabaseConnectionImpl(defaultAdapter).batch([
+			await new DatabaseConnectionImpl(defaultAdapter, mockDispatcher()).batch([
 				sql`CREATE TABLE info (db_name TEXT)`,
 				sql`INSERT INTO info (db_name) VALUES ('default')`,
 			]);
-			await new DatabaseConnectionImpl(additionalAdapter).batch([
+			await new DatabaseConnectionImpl(additionalAdapter, mockDispatcher()).batch([
 				sql`CREATE TABLE info (db_name TEXT)`,
 				sql`INSERT INTO info (db_name) VALUES ('additional')`,
 			]);
@@ -139,7 +141,11 @@ describe("DatabaseImpl", () => {
 		});
 
 		test("connection() queries default database", async () => {
-			const db = new DatabaseImpl(defaultAdapter, { additional: additionalAdapter });
+			const db = new DatabaseImpl(
+				defaultAdapter,
+				{ additional: additionalAdapter },
+				mockDispatcher(),
+			);
 
 			const dbName = await db.connection().scalar(sql`SELECT db_name FROM info`);
 			expect(dbName).toBe("default");
@@ -161,14 +167,18 @@ describe("DatabaseImpl", () => {
 		});
 
 		test("connection() queries named database", async () => {
-			const db = new DatabaseImpl(defaultAdapter, { additional: additionalAdapter });
+			const db = new DatabaseImpl(
+				defaultAdapter,
+				{ additional: additionalAdapter },
+				mockDispatcher(),
+			);
 
 			const dbName = await db.connection("additional").scalar(sql`SELECT db_name FROM info`);
 			expect(dbName).toBe("additional");
 		});
 
 		test("connection() throws ConnectionNotFoundError for unknown name", () => {
-			const db = new DatabaseImpl(defaultAdapter);
+			const db = new DatabaseImpl(defaultAdapter, {}, mockDispatcher());
 
 			expect(() => db.connection("nonexistent")).toThrow(ConnectionNotFoundError);
 		});

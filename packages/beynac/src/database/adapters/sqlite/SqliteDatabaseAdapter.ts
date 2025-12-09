@@ -1,37 +1,38 @@
-import { AsyncLocalStorage } from "node:async_hooks";
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { BaseClass, exclusiveRunner, parallelRunner, type Runner } from "../../../utils.ts";
+import { BaseClass, type FifoLock, fifoLock } from "../../../utils.ts";
 import type { Statement, StatementResult } from "../../contracts/Database.ts";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { SqliteDatabaseAdapterConfig } from "./SqliteDatabaseAdapterConfig.ts";
 import type { SqliteConnection, SqliteOps } from "./SqliteOps.ts";
 
-export class SqliteDatabaseAdapter extends BaseClass implements DatabaseAdapter {
-	readonly #connectionStorage = new AsyncLocalStorage<ConnectionContext>();
-	readonly #connectionRunner: Runner;
+export class SqliteDatabaseAdapter extends BaseClass implements DatabaseAdapter<SqliteConnection> {
+	readonly supportsTransactions = true;
+
 	readonly #useWalMode: boolean;
 	readonly #path: string;
 	readonly #readOnly: boolean;
 	readonly #create: boolean;
+	readonly #isMemory: boolean;
+
 	#mainConnection: SqliteConnection | null = null;
 	#mainConnectionInUse = false;
+	#mainConnectionLock: FifoLock<SqliteConnection> | null = null;
 	#sqliteOps: SqliteOps | null = null;
 
 	constructor(config: SqliteDatabaseAdapterConfig) {
 		super();
 
-		const isMemory = config.path === ":memory:";
+		this.#isMemory = config.path === ":memory:";
 		const shouldCreate = config.create !== false;
 
-		this.#connectionRunner = isMemory ? exclusiveRunner() : parallelRunner();
-		this.#useWalMode = !isMemory && config.useWalMode !== false;
+		this.#useWalMode = !this.#isMemory && config.useWalMode !== false;
 		this.#path = config.path;
 		this.#readOnly = config.readOnly ?? false;
 		this.#create = !this.#readOnly && config.create !== false;
 
-		if (!isMemory) {
+		if (!this.#isMemory) {
 			if (shouldCreate) {
 				mkdirSync(dirname(config.path), { recursive: true });
 			} else if (!existsSync(config.path)) {
@@ -42,93 +43,77 @@ export class SqliteDatabaseAdapter extends BaseClass implements DatabaseAdapter 
 		}
 	}
 
-	async run(statement: Statement): Promise<StatementResult> {
-		return this.#withConnection(async ({ connection }): Promise<StatementResult> => {
-			const sqlString = toSql(statement);
-			try {
-				const prepared = connection.prepare(sqlString);
-
-				if (prepared.isQuery) {
-					const rows = prepared.all(...statement.params);
-					return { rows, rowsAffected: rows.length };
-				}
-				const result = prepared.run(...statement.params);
-				return { rows: [], rowsAffected: result.changes };
-			} catch (error) {
-				throw makeQueryError(sqlString, error);
-			}
-		});
-	}
-
-	async batch(statements: Statement[]): Promise<StatementResult[]> {
-		return this.transaction(async () => {
-			const results: StatementResult[] = [];
-			for (const stmt of statements) {
-				results.push(await this.run(stmt));
-			}
-			return results;
-		});
-	}
-
-	async transaction<T>(fn: () => Promise<T>): Promise<T> {
-		return this.#withConnection(async (ctx) => {
-			const { depth } = ctx;
-			const begin = depth === 0 ? "BEGIN" : `SAVEPOINT sp_${depth}`;
-			const commit = depth === 0 ? "COMMIT" : `RELEASE SAVEPOINT sp_${depth}`;
-			const rollback = depth === 0 ? "ROLLBACK" : `ROLLBACK TO SAVEPOINT sp_${depth}`;
-
-			this.#exec(begin, ctx.connection);
-			try {
-				++ctx.depth;
-				const result = await fn();
-				this.#exec(commit, ctx.connection);
-				return result;
-			} catch (error) {
-				this.#exec(rollback, ctx.connection);
-				throw error;
-			} finally {
-				--ctx.depth;
-			}
-		});
-	}
-
-	async #withConnection<T>(f: (ctx: ConnectionContext) => Promise<T>): Promise<T> {
-		const existingCtx = this.#connectionStorage.getStore();
-		if (existingCtx) {
-			return f(existingCtx);
+	async acquireConnection(): Promise<SqliteConnection> {
+		if (this.#isMemory) {
+			// Memory databases share a single connection with exclusive access
+			const lock = await this.#getMainConnectionLock();
+			return lock.acquire();
 		}
 
-		return this.#connectionRunner(async () => {
-			let connection: SqliteConnection | undefined;
-			let useMainConnection = !this.#mainConnectionInUse;
-
-			try {
-				if (useMainConnection) {
-					this.#mainConnectionInUse = true;
-					connection = await this.#getMainConnection();
-				} else {
-					connection = await this.#createConnection();
-				}
-				const ctx: ConnectionContext = { connection, depth: 0 };
-				return await this.#connectionStorage.run(ctx, () => f(ctx));
-			} finally {
-				if (useMainConnection) {
-					this.#mainConnectionInUse = false;
-				} else {
-					connection?.close();
-				}
-			}
-		});
-	}
-
-	async #getMainConnection(): Promise<SqliteConnection> {
+		// File-based databases: try to use main connection, otherwise create overflow
 		if (!this.#mainConnection) {
 			this.#mainConnection = await this.#createConnection();
-			if (this.#useWalMode !== false) {
+			if (this.#useWalMode) {
 				this.#mainConnection.exec("PRAGMA journal_mode=WAL");
 			}
 		}
-		return this.#mainConnection;
+
+		// For file-based SQLite with WAL mode, we can use multiple connections.
+		// Prefer the main connection for efficiency, create overflow connections
+		// only when the main connection is already in use.
+		if (!this.#mainConnectionInUse) {
+			this.#mainConnectionInUse = true;
+			return this.#mainConnection;
+		}
+
+		// Main connection is in use, create an overflow connection
+		return this.#createConnection();
+	}
+
+	releaseConnection(connection: SqliteConnection): void {
+		if (this.#isMemory) {
+			// Memory databases use the lock - release it
+			this.#mainConnectionLock?.release();
+		} else if (connection === this.#mainConnection) {
+			// Releasing main connection - mark it as available
+			this.#mainConnectionInUse = false;
+		} else {
+			// Overflow connection - close it
+			connection.close();
+		}
+	}
+
+	async run(statement: Statement, connection: SqliteConnection): Promise<StatementResult> {
+		const sqlString = toSql(statement);
+		try {
+			const prepared = connection.prepare(sqlString);
+
+			if (prepared.isQuery) {
+				const rows = prepared.all(...statement.params);
+				return { rows, rowsAffected: rows.length };
+			}
+			const result = prepared.run(...statement.params);
+			return { rows: [], rowsAffected: result.changes };
+		} catch (error) {
+			throw makeQueryError(sqlString, error);
+		}
+	}
+
+	async batch(statements: Statement[], connection: SqliteConnection): Promise<StatementResult[]> {
+		const results: StatementResult[] = [];
+		for (const stmt of statements) {
+			results.push(await this.run(stmt, connection));
+		}
+		return results;
+	}
+
+	async #getMainConnectionLock(): Promise<FifoLock<SqliteConnection>> {
+		if (!this.#mainConnectionLock) {
+			const connection = await this.#createConnection();
+			this.#mainConnection = connection;
+			this.#mainConnectionLock = fifoLock(connection);
+		}
+		return this.#mainConnectionLock;
 	}
 
 	async #getSqliteOps(): Promise<SqliteOps> {
@@ -152,23 +137,11 @@ export class SqliteDatabaseAdapter extends BaseClass implements DatabaseAdapter 
 		});
 	}
 
-	#exec(sql: string, connection: SqliteConnection): void {
-		try {
-			connection.exec(sql);
-		} catch (error) {
-			throw makeQueryError(sql, error);
-		}
-	}
-
 	dispose(): void {
 		this.#mainConnection?.close();
 		this.#mainConnection = null;
+		this.#mainConnectionLock = null;
 	}
-}
-
-interface ConnectionContext {
-	connection: SqliteConnection;
-	depth: number; // 0 = no transaction, 1+ = in transaction (depth indicates nesting level)
 }
 
 interface PlatformError {

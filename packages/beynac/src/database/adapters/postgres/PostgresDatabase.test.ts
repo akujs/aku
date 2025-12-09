@@ -1,9 +1,10 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import postgres, { type Notice } from "postgres";
 import { asyncGate } from "../../../test-utils/async-gate.bun.ts";
-import type { Database } from "../../contracts/Database.ts";
+import { mockDispatcher } from "../../../test-utils/internal-mocks.bun.ts";
+import type { DatabaseConnection } from "../../contracts/Database.ts";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
-import { DatabaseImpl } from "../../DatabaseImpl.ts";
+import { DatabaseConnectionImpl } from "../../DatabaseConnectionImpl.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { SharedTestConfig } from "../../database-test-utils.ts";
 import { sql } from "../../sql.ts";
@@ -12,8 +13,10 @@ import { postgresDatabase } from "./postgresDatabase.ts";
 
 const POSTGRES_URL = "postgres://beynac:beynac@localhost:22857/beynac_test";
 
-async function createAdapter(): Promise<DatabaseAdapter> {
-	const sql = postgres(POSTGRES_URL, {
+const resetSchema = sql`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public`;
+
+function createAdapter(): DatabaseAdapter {
+	const pgSql = postgres(POSTGRES_URL, {
 		onnotice: (notice: Notice) => {
 			if (notice.severity !== "NOTICE") {
 				throw new Error(`Unexpected PostgreSQL ${notice.severity}: ${notice.message}`);
@@ -21,12 +24,8 @@ async function createAdapter(): Promise<DatabaseAdapter> {
 		},
 	});
 
-	const adapter = postgresDatabase({ sql });
-	await adapter.run(resetSchema);
-	return adapter;
+	return postgresDatabase({ sql: pgSql });
 }
-
-const resetSchema = sql`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public`;
 
 export const postgresSharedTestConfig: SharedTestConfig = {
 	name: "PostgresDatabase",
@@ -35,10 +34,12 @@ export const postgresSharedTestConfig: SharedTestConfig = {
 };
 
 describe(PostgresDatabaseAdapter, () => {
-	let db: Database;
+	let db: DatabaseConnection;
 
 	beforeAll(async () => {
-		db = new DatabaseImpl(await createAdapter());
+		const adapter = createAdapter();
+		db = new DatabaseConnectionImpl(adapter, mockDispatcher());
+		await db.run(resetSchema);
 	});
 
 	test("uncommitted transaction writes are isolated", async () => {

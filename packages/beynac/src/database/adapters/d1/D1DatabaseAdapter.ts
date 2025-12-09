@@ -9,7 +9,15 @@ import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { D1DatabaseAdapterConfig } from "./D1DatabaseAdapterConfig.ts";
 
-export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter {
+// D1 doesn't have a connection concept - we use the binding directly
+// and use a symbol as the "connection" token
+const D1_CONNECTION = Symbol("D1Connection");
+type D1Connection = typeof D1_CONNECTION;
+
+export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter<D1Connection> {
+	// D1 doesn't support interactive transactions - only batch provides atomicity
+	readonly supportsTransactions = false;
+
 	readonly #db: D1DatabaseBinding;
 
 	constructor(config: D1DatabaseAdapterConfig) {
@@ -17,7 +25,16 @@ export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter {
 		this.#db = config.binding;
 	}
 
-	async run(statement: Statement): Promise<StatementResult> {
+	async acquireConnection(): Promise<D1Connection> {
+		// D1 is stateless - no connection to acquire
+		return D1_CONNECTION;
+	}
+
+	releaseConnection(_connection: D1Connection): void {
+		// D1 is stateless - nothing to release
+	}
+
+	async run(statement: Statement, _connection: D1Connection): Promise<StatementResult> {
 		const sqlString = toSql(statement);
 		try {
 			return this.#toStatementResult(await this.#prepare(statement).all());
@@ -26,7 +43,7 @@ export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter {
 		}
 	}
 
-	async batch(statements: Statement[]): Promise<StatementResult[]> {
+	async batch(statements: Statement[], _connection: D1Connection): Promise<StatementResult[]> {
 		if (statements.length === 0) return [];
 		try {
 			const results = await this.#db.batch(statements.map((stmt) => this.#prepare(stmt)));

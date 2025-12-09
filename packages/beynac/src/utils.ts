@@ -187,28 +187,32 @@ export const mapObjectValues = <K extends string | number | symbol, V, R>(
 	) as Record<K, R>;
 };
 
-export type Runner = <T>(f: () => Promise<T>) => Promise<T>;
-
-export function exclusiveRunner(): Runner {
-	let lock: Promise<void> = Promise.resolve();
-
-	return async <T>(f: () => Promise<T>): Promise<T> => {
-		const previousLock = lock;
-		let releaseLock!: () => void;
-		lock = new Promise((resolve) => {
-			releaseLock = resolve;
-		});
-
-		await previousLock;
-
-		try {
-			return await f();
-		} finally {
-			releaseLock();
-		}
-	};
+export interface FifoLock<T> {
+	acquire(): Promise<T>;
+	release(): void;
 }
 
-export function parallelRunner(): Runner {
-	return (f) => f();
+export function fifoLock<T>(resource: T): FifoLock<T> {
+	let inUse = false;
+	const waiting: Array<() => void> = [];
+
+	return {
+		acquire(): Promise<T> {
+			if (!inUse) {
+				inUse = true;
+				return Promise.resolve(resource);
+			}
+			return new Promise((resolve) => {
+				waiting.push(() => resolve(resource));
+			});
+		},
+		release(): void {
+			const next = waiting.shift();
+			if (next) {
+				next();
+			} else {
+				inUse = false;
+			}
+		},
+	};
 }

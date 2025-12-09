@@ -16,6 +16,28 @@ export interface DatabaseConnection {
 	readonly supportsTransactions: boolean;
 
 	/**
+	 * The ID of the current transaction, or null if not in a transaction.
+	 *
+	 * Transactions can be nested and each nested transaction will create a new transaction ID.
+	 */
+	readonly transactionId: number | null;
+
+	/**
+	 * The ID of the top-level transaction, or null if not in a transaction.
+	 *
+	 * When creating nested transactions this does not change - it always refers
+	 * to the outermost transaction ID.
+	 */
+	readonly outerTransactionId: number | null;
+
+	/**
+	 * The current transaction nesting depth.
+	 *
+	 * 0 = not in a transaction, 1 = in root transaction, 2+ = in a nested transaction.
+	 */
+	readonly transactionDepth: number;
+
+	/**
 	 * Execute a statement and return the result.
 	 *
 	 * The returned object has `rows` and `rowsAffected` properties.
@@ -49,7 +71,7 @@ export interface DatabaseConnection {
 	 * connections through the constructor and these will not be affected by
 	 * this method. Safe to call multiple times.
 	 */
-	dispose(): void | Promise<void>;
+	dispose(): void;
 
 	/**
 	 * Execute a statement and return all rows.

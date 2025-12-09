@@ -32,8 +32,7 @@ export class QueryError extends DatabaseError {
 
 	/**
 	 * The error code from the underlying database driver if available. This
-	 * will correspond to the code e.g. 5 (the numeric value of SQLITE_BUSY) or
-	 * 01007 (the numeric value of privilege_not_granted in Postgres).
+	 * will correspond to the code e.g. 5 (the numeric value of SQLITE_BUSY).
 	 */
 	public readonly errorNumber?: number | undefined;
 

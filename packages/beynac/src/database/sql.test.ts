@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { AbortException } from "../http/abort.ts";
 import { createTestApplication, integrationContext } from "../test-utils/http-test-utils.bun.ts";
+import { mockDispatcher } from "../test-utils/internal-mocks.bun.ts";
 import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 import { Database } from "./contracts/Database.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
@@ -113,8 +114,8 @@ describe("Sql.on() connection routing", () => {
 		defaultAdapter = sqliteDatabase({ path: ":memory:" });
 		additionalAdapter = sqliteDatabase({ path: ":memory:" });
 
-		const defaultDb = new DatabaseImpl(defaultAdapter);
-		const additionalDb = new DatabaseImpl(additionalAdapter);
+		const defaultDb = new DatabaseImpl(defaultAdapter, {}, mockDispatcher());
+		const additionalDb = new DatabaseImpl(additionalAdapter, {}, mockDispatcher());
 
 		await defaultDb.run(sql`CREATE TABLE info (db_name TEXT)`);
 		await defaultDb.run(sql`INSERT INTO info (db_name) VALUES ('default')`);
