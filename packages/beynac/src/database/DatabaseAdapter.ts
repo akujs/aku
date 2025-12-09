@@ -1,5 +1,18 @@
 import type { Statement, StatementResult } from "./contracts/Database.ts";
 
+// Configuration for multiple database connections.
+export interface DatabaseConfig {
+	/**
+	 * The default database adapter, used when no connection name is specified.
+	 */
+	default: DatabaseAdapter;
+
+	/**
+	 * Additional named database adapters.
+	 */
+	additional?: Record<string, DatabaseAdapter>;
+}
+
 /**
  * Interface for database adapters.
  */

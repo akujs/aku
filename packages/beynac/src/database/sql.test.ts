@@ -1,58 +1,162 @@
-import { describe, expect, test } from "bun:test";
-import { renderStatementForLogs, renderStatementSql, sql } from "./sql.ts";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { AbortException } from "../http/abort.ts";
+import { createTestApplication, integrationContext } from "../test-utils/http-test-utils.bun.ts";
+import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
+import { Database } from "./contracts/Database.ts";
+import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
+import { DatabaseImpl } from "./DatabaseImpl.ts";
+import { QueryError } from "./database-errors.ts";
+import { sql } from "./sql.ts";
 
-describe(sql, () => {
+describe("sql tagged template literal", () => {
 	test("returns fragments and params from template literal", () => {
 		const stmt = sql`SELECT * FROM users WHERE id = ${123} AND name = ${"Alice"}`;
+
 		expect(stmt.fragments).toEqual(["SELECT * FROM users WHERE id = ", " AND name = ", ""]);
 		expect(stmt.params).toEqual([123, "Alice"]);
 	});
 });
 
-describe(renderStatementSql, () => {
-	test("renders with $N placeholders (Postgres style)", () => {
-		const stmt = sql`SELECT * FROM users WHERE id = ${123} AND name = ${"Alice"}`;
-		expect(renderStatementSql(stmt, (i) => `$${i + 1}`)).toBe(
-			"SELECT * FROM users WHERE id = $1 AND name = $2",
+describe("Sql execution methods", () => {
+	let adapter: DatabaseAdapter;
+
+	beforeEach(async () => {
+		adapter = sqliteDatabase({ path: ":memory:" });
+		createTestApplication({ database: adapter });
+		await sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`.run();
+		await sql`INSERT INTO test (name) VALUES ('Alice'), ('Bob')`.run();
+	});
+
+	afterEach(() => {
+		adapter.dispose();
+	});
+
+	test("run() returns rowsAffected", async () => {
+		const result = await sql`INSERT INTO test (name) VALUES ('Charlie')`.run();
+
+		expect(result.rowsAffected).toBe(1);
+	});
+
+	test("all() returns rows", async () => {
+		const rows = await sql`SELECT * FROM test ORDER BY id`.all();
+
+		expect(rows).toHaveLength(2);
+	});
+
+	test("first() returns first row", async () => {
+		const row = await sql`SELECT * FROM test ORDER BY id`.first();
+
+		expect(row.name).toBe("Alice");
+	});
+
+	test("firstOrNull() returns null when no rows", async () => {
+		const row = await sql`SELECT * FROM test WHERE name = 'Unknown'`.firstOrNull();
+
+		expect(row).toBeNull();
+	});
+
+	test("firstOrFail() throws QueryError when no rows", async () => {
+		expect(sql`SELECT * FROM test WHERE name = 'Unknown'`.firstOrFail()).rejects.toBeInstanceOf(
+			QueryError,
 		);
 	});
 
-	test("renders statement without params", () => {
-		const stmt = sql`SELECT * FROM users`;
-		expect(renderStatementSql(stmt, () => "?")).toBe("SELECT * FROM users");
+	test("scalar() returns first column value", async () => {
+		const name = await sql`SELECT name FROM test ORDER BY id`.scalar();
+
+		expect(name).toBe("Alice");
+	});
+
+	test("column() returns first column array", async () => {
+		const names = await sql`SELECT name FROM test ORDER BY id`.column();
+
+		expect(names).toEqual(["Alice", "Bob"]);
+	});
+
+	test("is thenable and returns all rows", async () => {
+		const rows = await sql`SELECT * FROM test ORDER BY id`;
+
+		expect(rows).toHaveLength(2);
+		expect(rows[0].name).toBe("Alice");
+		expect(rows[1].name).toBe("Bob");
 	});
 });
 
-describe(renderStatementForLogs, () => {
-	test("renders statement with params", () => {
-		const stmt = sql`SELECT * FROM users WHERE id = ${123} AND name = ${"Alice"}`;
-		expect(renderStatementForLogs(stmt)).toBe(
-			'SELECT * FROM users WHERE id = [Param#1: 123] AND name = [Param#2: "Alice"]',
-		);
+describe("Sql.firstOrNotFound", () => {
+	let adapter: DatabaseAdapter;
+
+	beforeEach(async () => {
+		adapter = sqliteDatabase({ path: ":memory:" });
 	});
 
-	test("renders statement without params", () => {
-		const stmt = sql`SELECT * FROM users`;
-		expect(renderStatementForLogs(stmt)).toBe("SELECT * FROM users");
+	afterEach(() => {
+		adapter.dispose();
 	});
 
-	test("truncates long params", () => {
-		const longString = "x".repeat(150);
-		const stmt = sql`SELECT ${longString}`;
-		const rendered = renderStatementForLogs(stmt);
-		expect(rendered).toContain("...hiding 52 more chars");
-		expect(rendered.length).toBeLessThan(300);
+	test("throws AbortException when no rows", async () => {
+		const { app, container } = createTestApplication({ database: adapter });
+		const db = container.get(Database);
+
+		await db.run(sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`);
+
+		expect(
+			app.withIntegration(integrationContext(), () => sql`SELECT * FROM test`.firstOrNotFound()),
+		).rejects.toBeInstanceOf(AbortException);
+	});
+});
+
+describe("Sql.on() connection routing", () => {
+	let defaultAdapter: DatabaseAdapter;
+	let additionalAdapter: DatabaseAdapter;
+
+	beforeEach(async () => {
+		defaultAdapter = sqliteDatabase({ path: ":memory:" });
+		additionalAdapter = sqliteDatabase({ path: ":memory:" });
+
+		const defaultDb = new DatabaseImpl(defaultAdapter);
+		const additionalDb = new DatabaseImpl(additionalAdapter);
+
+		await defaultDb.run(sql`CREATE TABLE info (db_name TEXT)`);
+		await defaultDb.run(sql`INSERT INTO info (db_name) VALUES ('default')`);
+
+		await additionalDb.run(sql`CREATE TABLE info (db_name TEXT)`);
+		await additionalDb.run(sql`INSERT INTO info (db_name) VALUES ('additional')`);
 	});
 
-	test("handles non-JSON-serialisable values", () => {
-		const circular: Record<string, unknown> = {};
-		circular.self = circular;
-		const stmt = sql`SELECT ${circular}`;
-		expect(renderStatementForLogs(stmt)).toBe("SELECT [Param#1: [object Object]]");
+	afterEach(() => {
+		defaultAdapter.dispose();
+		additionalAdapter.dispose();
 	});
 
-	test("renders null and undefined", () => {
-		const stmt = sql`SELECT ${null}, ${undefined}`;
-		expect(renderStatementForLogs(stmt)).toBe("SELECT [Param#1: null], [Param#2: undefined]");
+	test("on() executes on named connection", async () => {
+		createTestApplication({
+			database: { default: defaultAdapter, additional: { additional: additionalAdapter } },
+		});
+
+		const result = await sql`SELECT db_name FROM info`
+			.on("additional")
+			.first<{ db_name: string }>();
+
+		expect(result.db_name).toBe("additional");
+	});
+
+	test("without on() uses default connection", async () => {
+		createTestApplication({
+			database: { default: defaultAdapter, additional: { additional: additionalAdapter } },
+		});
+
+		const result = await sql`SELECT db_name FROM info`.first<{ db_name: string }>();
+
+		expect(result.db_name).toBe("default");
+	});
+
+	test("await sql`...`.on() runs all() on named connection", async () => {
+		createTestApplication({
+			database: { default: defaultAdapter, additional: { additional: additionalAdapter } },
+		});
+
+		const rows = await sql`SELECT db_name FROM info`.on("additional");
+
+		expect(rows).toEqual([{ db_name: "additional" }]);
 	});
 });

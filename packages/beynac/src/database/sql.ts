@@ -1,82 +1,121 @@
 import { Database } from "../facades.ts";
-import { BaseClass } from "../utils.ts";
-import type { Row, Statement, StatementResult } from "./contracts/Database.ts";
+import type { DatabaseConnection, Row, Statement, StatementResult } from "./contracts/Database.ts";
+import { StatementImpl } from "./StatementImpl.ts";
 
 /**
- * A SQL statement created via the `sql` tagged template literal. Can be
- * executed directly by awaiting it, or via methods for different result types.
+ * A SQL statement created via the `sql` tagged template literal
  *
  * @example
- * // Get all rows (default when awaited)
+ * // Get all rows using the default database connection
  * const users = await sql`SELECT * FROM users`;
  *
- * // Get first row or null
- * const user = await sql`SELECT * FROM users WHERE id = ${id}`.firstOrNull();
- *
- * // Get a single scalar value
- * const count = await sql`SELECT COUNT(*) FROM users`.scalar<number>();
+ * // Get first row using the a name connection
+ * const user = await sql`SELECT * FROM events`.on("analytics").all();
  */
 export interface Sql extends Statement {
-	/** Execute the statement and return the raw result with rows and rowsAffected. */
+	/**
+	 * Execute this statement on a named database connection.
+	 * Returns a new Sql instance bound to that connection.
+	 */
+	on(connectionName: string): Sql;
+
+	/**
+	 * Execute the statement and return the raw result with rows and rowsAffected.
+	 * A SQL statement that can be executed on a database connection.
+	 */
 	run(): Promise<StatementResult>;
-	/** Execute and return all rows. */
+
+	/**
+	 * Execute and return all rows.
+	 */
 	all<T = Row>(): Promise<T[]>;
-	/** Execute and return the first row. Throws if no rows returned. */
+
+	/**
+	 * Execute and return the first row. Throws if no rows returned.
+	 */
 	first<T = Row>(): Promise<T>;
-	/** Execute and return the first row, or null if no rows returned. */
+
+	/**
+	 * Execute and return the first row, or null if no rows returned.
+	 */
 	firstOrNull<T = Row>(): Promise<T | null>;
-	/** Execute and return the first row. Throws AssertionError if no rows returned. */
+
+	/**
+	 * Execute and return the first row. Throws AssertionError if no rows returned.
+	 */
 	firstOrFail<T = Row>(): Promise<T>;
-	/** Execute and return the first row. Throws NotFoundError if no rows returned. */
+
+	/**
+	 * Execute and return the first row. Throws NotFoundError if no rows returned.
+	 */
 	firstOrNotFound<T = Row>(): Promise<T>;
-	/** Execute and return the first column of the first row. */
+
+	/**
+	 * Execute and return the first column of the first row.
+	 */
 	scalar<T = unknown>(): Promise<T>;
-	/** Execute and return the first column of all rows. */
+
+	/**
+	 * Execute and return the first column of all rows.
+	 */
 	column<T = unknown>(): Promise<T[]>;
-	/** Allows awaiting the Sql object directly, equivalent to calling all(). */
+
+	/**
+	 * Allows awaiting the Sql object directly, equivalent to calling all().
+	 */
 	then: Promise<Row[]>["then"];
 }
 
-class SqlImpl extends BaseClass implements Sql {
-	readonly fragments: readonly string[];
-	readonly params: unknown[];
+class SqlImpl extends StatementImpl implements Sql {
+	readonly #connectionName: string | undefined;
 
-	constructor(strings: TemplateStringsArray, values: unknown[]) {
-		super();
-		this.fragments = strings;
-		this.params = values;
+	constructor(
+		strings: TemplateStringsArray | readonly string[],
+		values: unknown[],
+		connectionName?: string,
+	) {
+		super(strings, values);
+		this.#connectionName = connectionName;
+	}
+
+	#getConnection(): DatabaseConnection {
+		return Database.connection(this.#connectionName);
+	}
+
+	on(connectionName: string): Sql {
+		return new SqlImpl(this.fragments, this.params, connectionName);
 	}
 
 	run(): Promise<StatementResult> {
-		return Database.run(this);
+		return this.#getConnection().run(this);
 	}
 
 	all<T = Row>(): Promise<T[]> {
-		return Database.all<T>(this);
+		return this.#getConnection().all<T>(this);
 	}
 
 	first<T = Row>(): Promise<T> {
-		return Database.first<T>(this);
+		return this.#getConnection().first<T>(this);
 	}
 
 	firstOrNull<T = Row>(): Promise<T | null> {
-		return Database.firstOrNull<T>(this);
+		return this.#getConnection().firstOrNull<T>(this);
 	}
 
 	firstOrFail<T = Row>(): Promise<T> {
-		return Database.firstOrFail<T>(this);
+		return this.#getConnection().firstOrFail<T>(this);
 	}
 
 	firstOrNotFound<T = Row>(): Promise<T> {
-		return Database.firstOrNotFound<T>(this);
+		return this.#getConnection().firstOrNotFound<T>(this);
 	}
 
 	scalar<T = unknown>(): Promise<T> {
-		return Database.scalar<T>(this);
+		return this.#getConnection().scalar<T>(this);
 	}
 
 	column<T = unknown>(): Promise<T[]> {
-		return Database.column<T>(this);
+		return this.#getConnection().column<T>(this);
 	}
 
 	// eslint-disable-next-line unicorn/no-thenable -- intentionally thenable so `await sql`...`` works
@@ -89,46 +128,9 @@ class SqlImpl extends BaseClass implements Sql {
  * Tagged template literal for creating SQL statements with parameterized values.
  *
  * @example
- * const stmt = sql`SELECT * FROM users WHERE id = ${userId}`;
+ * const userId = 123;
+ * const rows = await sql`SELECT * FROM users WHERE id = ${userId}`;
  */
 export function sql(strings: TemplateStringsArray, ...values: unknown[]): Sql {
 	return new SqlImpl(strings, values);
-}
-
-export function renderStatementSql(
-	statement: Statement,
-	renderPlaceholder: (index: number) => string,
-): string {
-	const { fragments, params } = statement;
-	let result = "";
-	for (let i = 0; i < fragments.length; i++) {
-		result += fragments[i];
-		if (i < params.length) {
-			result += renderPlaceholder(i);
-		}
-	}
-	return result;
-}
-
-export function renderStatementForLogs(statement: Statement): string {
-	return renderStatementSql(
-		statement,
-		(i) => `[Param#${i + 1}: ${renderParam(statement.params[i])}]`,
-	);
-}
-
-function renderParam(value: unknown): string {
-	let str = "";
-	try {
-		str = JSON.stringify(value);
-	} catch {}
-	str ||= String(value);
-
-	const maxLength = 100;
-
-	if (str.length > maxLength + 30) {
-		const hidden = str.length - maxLength;
-		return `${str.slice(0, maxLength)}...hiding ${hidden} more chars`;
-	}
-	return str;
 }

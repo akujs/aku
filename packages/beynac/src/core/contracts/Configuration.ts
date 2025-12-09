@@ -193,14 +193,29 @@ export interface Configuration<RouteParams extends Record<string, string> = {}> 
 	defaultDisk?: string | undefined;
 
 	/**
-	 * Database adapter for the application.
+	 * Database adapter(s) for the application.
+	 *
+	 * Can be a single adapter (used as the default connection) or an object
+	 * with `default` and optional `additional` connections.
 	 *
 	 * @example
+	 * // Single database
 	 * {
 	 *   database: sqliteDatabase({ path: './data/app.db' }),
 	 * }
+	 *
+	 * @example
+	 * // Multiple databases
+	 * {
+	 *   database: {
+	 *     default: sqliteDatabase({ path: './data/app.db' }),
+	 *     additional: {
+	 *       analytics: postgresDatabase({ sql: postgres(...) }),
+	 *     }
+	 *   }
+	 * }
 	 */
-	database?: DatabaseAdapter | undefined;
+	database?: DatabaseAdapter | DatabaseConfig | undefined;
 }
 
 export const Configuration: TypeToken<Configuration> =
@@ -227,6 +242,6 @@ export function resolveEnvironmentChoice(
 }
 
 // Re-imported types to avoid circular dependencies
-import type { DatabaseAdapter } from "../../database/DatabaseAdapter.ts";
+import type { DatabaseAdapter, DatabaseConfig } from "../../database/DatabaseAdapter.ts";
 import type { Routes } from "../../http/router-types.ts";
 import type { StorageAdapter, StorageEndpoint } from "../../storage/contracts/Storage.ts";

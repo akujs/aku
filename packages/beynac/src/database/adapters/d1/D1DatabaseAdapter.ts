@@ -7,7 +7,6 @@ import { BaseClass } from "../../../utils.ts";
 import type { Statement, StatementResult } from "../../contracts/Database.ts";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
-import { renderStatementSql } from "../../sql.ts";
 import type { D1DatabaseAdapterConfig } from "./D1DatabaseAdapterConfig.ts";
 
 export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter {
@@ -58,7 +57,7 @@ export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter {
 }
 
 function toSql(statement: Statement): string {
-	return renderStatementSql(statement, () => "?");
+	return statement.renderSql(() => "?");
 }
 
 function makeQueryError(sql: string, cause: unknown): QueryError {

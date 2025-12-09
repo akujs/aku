@@ -13,6 +13,15 @@ export class DatabaseError extends BeynacError {
 }
 
 /**
+ * Thrown when attempting to access a database connection that doesn't exist.
+ */
+export class ConnectionNotFoundError extends DatabaseError {
+	constructor(public readonly connectionName: string) {
+		super(`Database connection "${connectionName}" not found`);
+	}
+}
+
+/**
  * Thrown when a SQL query fails to execute.
  */
 export class QueryError extends DatabaseError {

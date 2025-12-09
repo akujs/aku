@@ -5,7 +5,6 @@ import { BaseClass, exclusiveRunner, parallelRunner, type Runner } from "../../.
 import type { Statement, StatementResult } from "../../contracts/Database.ts";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
-import { renderStatementSql } from "../../sql.ts";
 import type { SqliteDatabaseAdapterConfig } from "./SqliteDatabaseAdapterConfig.ts";
 import type { SqliteConnection, SqliteOps } from "./SqliteOps.ts";
 
@@ -181,7 +180,7 @@ interface PlatformError {
 }
 
 function toSql(statement: Statement): string {
-	return renderStatementSql(statement, () => "?");
+	return statement.renderSql(() => "?");
 }
 
 function makeQueryError(sql: string, cause: unknown): QueryError {

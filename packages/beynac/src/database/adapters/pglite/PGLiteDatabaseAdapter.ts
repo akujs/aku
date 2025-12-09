@@ -4,7 +4,6 @@ import { BaseClass, exclusiveRunner, type Runner } from "../../../utils.ts";
 import type { Statement, StatementResult } from "../../contracts/Database.ts";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
-import { renderStatementSql } from "../../sql.ts";
 import type { PGLiteDatabaseAdapterConfig } from "./PGLiteDatabaseAdapterConfig.ts";
 
 export class PGLiteDatabaseAdapter extends BaseClass implements DatabaseAdapter {
@@ -19,7 +18,7 @@ export class PGLiteDatabaseAdapter extends BaseClass implements DatabaseAdapter 
 
 	async run(statement: Statement): Promise<StatementResult> {
 		return this.#withConnection(async (): Promise<StatementResult> => {
-			const sql = renderStatementSql(statement, (i) => `$${i + 1}`);
+			const sql = statement.renderSql((i) => `$${i + 1}`);
 			try {
 				await this.#db.waitReady;
 				const result = await this.#db.query(sql, statement.params);

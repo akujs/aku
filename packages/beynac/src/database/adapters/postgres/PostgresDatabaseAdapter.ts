@@ -4,7 +4,6 @@ import { BaseClass } from "../../../utils.ts";
 import type { Statement, StatementResult } from "../../contracts/Database.ts";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
-import { renderStatementSql } from "../../sql.ts";
 import type { PostgresDatabaseAdapterConfig } from "./PostgresDatabaseAdapterConfig.ts";
 
 export class PostgresDatabaseAdapter extends BaseClass implements DatabaseAdapter {
@@ -96,7 +95,7 @@ interface PostgresError {
 }
 
 function toSql(statement: Statement): string {
-	return renderStatementSql(statement, (i) => `$${i + 1}`);
+	return statement.renderSql((i) => `$${i + 1}`);
 }
 
 function makeQueryError(sql: string, cause: unknown): QueryError {
