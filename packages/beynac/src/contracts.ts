@@ -1,5 +1,5 @@
 // GENERATED CODE DO NOT EDIT!
-// Run `bun regenerate-exports` to regenerate this file
+// Run `bun codegen` to regenerate this file
 export { Container } from "./container/contracts/Container.ts";
 export { Application } from "./core/contracts/Application.ts";
 export { Configuration } from "./core/contracts/Configuration.ts";

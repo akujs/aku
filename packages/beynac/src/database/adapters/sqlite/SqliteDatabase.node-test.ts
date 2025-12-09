@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { createTestDirectory } from "../../../testing/test-directories.ts";
 import { QueryError } from "../../database-errors.ts";
 import { sql } from "../../sql.ts";
-import { SqliteDatabase } from "./SqliteDatabase.ts";
+import { SqliteDatabaseAdapter } from "./SqliteDatabaseAdapter.ts";
 
 // IMPORTANT: This file contains basic smoke tests for Node ensuring that the
 // database setup and configuration works. The majority of local SQLite database
@@ -12,7 +12,7 @@ import { SqliteDatabase } from "./SqliteDatabase.ts";
 // that the underlying SQLite implementation works identically on both platforms.
 
 void test("SqliteDatabase works Node.js", async () => {
-	const db = new SqliteDatabase({ path: ":memory:" });
+	const db = new SqliteDatabaseAdapter({ path: ":memory:" });
 
 	// Test run for DDL
 	await db.run(sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)`);
@@ -49,12 +49,12 @@ void test("readOnly prevents writes in Node.js", async () => {
 	const dbPath = join(testDir, "test.db");
 
 	// Create database and add a table
-	const db1 = new SqliteDatabase({ path: dbPath });
+	const db1 = new SqliteDatabaseAdapter({ path: dbPath });
 	await db1.run(sql`CREATE TABLE test (id INTEGER)`);
 	db1.dispose();
 
 	// Reopen as read-only
-	const db2 = new SqliteDatabase({ path: dbPath, readOnly: true });
+	const db2 = new SqliteDatabaseAdapter({ path: dbPath, readOnly: true });
 	await assert.rejects(
 		db2.run(sql`INSERT INTO test (id) VALUES (1)`),
 		"QueryError: SQLITE_READONLY (Attempt to write a readonly database)",
@@ -66,7 +66,7 @@ void test("useWalMode enables WAL by default in Node.js", async () => {
 	const testDir = createTestDirectory({ prefix: "sqlite-node-wal-" });
 	const dbPath = join(testDir, "test.db");
 
-	const db = new SqliteDatabase({ path: dbPath });
+	const db = new SqliteDatabaseAdapter({ path: dbPath });
 	const result = await db.run(sql`PRAGMA journal_mode`);
 	assert.strictEqual(result.rows[0].journal_mode, "wal");
 	db.dispose();
@@ -76,7 +76,7 @@ void test("useWalMode=false disables WAL in Node.js", async () => {
 	const testDir = createTestDirectory({ prefix: "sqlite-node-nowal-" });
 	const dbPath = join(testDir, "test.db");
 
-	const db = new SqliteDatabase({ path: dbPath, useWalMode: false });
+	const db = new SqliteDatabaseAdapter({ path: dbPath, useWalMode: false });
 	const result = await db.run(sql`PRAGMA journal_mode`);
 	assert.strictEqual(result.rows[0].journal_mode, "delete");
 	db.dispose();
@@ -87,12 +87,12 @@ void test("QueryError captures error code in Node.js", async () => {
 	const dbPath = join(testDir, "test.db");
 
 	// Create database and table
-	const db1 = new SqliteDatabase({ path: dbPath });
+	const db1 = new SqliteDatabaseAdapter({ path: dbPath });
 	await db1.run(sql`CREATE TABLE test (id INTEGER)`);
 	db1.dispose();
 
 	// Reopen as read-only and try to write
-	const db2 = new SqliteDatabase({ path: dbPath, readOnly: true });
+	const db2 = new SqliteDatabaseAdapter({ path: dbPath, readOnly: true });
 	try {
 		await db2.run(sql`INSERT INTO test (id) VALUES (1)`);
 		assert.fail("Should have thrown");

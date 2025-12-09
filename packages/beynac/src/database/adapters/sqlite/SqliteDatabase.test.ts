@@ -6,7 +6,8 @@ import { createTestDirectory } from "../../../testing/test-directories.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { SharedTestConfig } from "../../database-test-utils.ts";
 import { sql } from "../../sql.ts";
-import { SqliteDatabase, sqliteDatabase } from "./SqliteDatabase.ts";
+import { SqliteDatabaseAdapter } from "./SqliteDatabaseAdapter.ts";
+import { sqliteDatabase } from "./sqliteDatabase.ts";
 
 export const sqliteMemorySharedTestConfig: SharedTestConfig = {
 	name: "SqliteDatabase (memory)",
@@ -24,32 +25,15 @@ export const sqliteFileSharedTestConfig: SharedTestConfig = {
 };
 
 describe("SqliteDatabase", () => {
-	test("works in Node.js with node:sqlite", () => {
-		const testFile = import.meta.dir + "/SqliteDatabase.node-test.ts";
-		const result = Bun.spawnSync([
-			"node",
-			"--disable-warning=ExperimentalWarning",
-			"--experimental-transform-types",
-			"--experimental-sqlite",
-			"--test-reporter=dot",
-			testFile,
-		]);
-		if (result.exitCode !== 0) {
-			const stderr = result.stderr.toString();
-			const stdout = result.stdout.toString();
-			throw new Error(`Node.js test failed with exit code ${result.exitCode}\n${stderr}${stdout}`);
-		}
-	});
-
 	test("readOnly prevents writes", async () => {
 		const testDir = createTestDirectory();
 		const dbPath = join(testDir, "test.db");
 
-		const db1 = new SqliteDatabase({ path: dbPath });
+		const db1 = new SqliteDatabaseAdapter({ path: dbPath });
 		await db1.run(sql`CREATE TABLE test (id INTEGER)`);
 		db1.dispose();
 
-		const db2 = new SqliteDatabase({ path: dbPath, readOnly: true });
+		const db2 = new SqliteDatabaseAdapter({ path: dbPath, readOnly: true });
 		expect(db2.run(sql`INSERT INTO test (id) VALUES (1)`)).rejects.toThrow();
 		db2.dispose();
 	});
@@ -58,7 +42,7 @@ describe("SqliteDatabase", () => {
 		const testDir = createTestDirectory();
 		const dbPath = join(testDir, "subdir", "nested", "test.db");
 
-		const db = new SqliteDatabase({ path: dbPath });
+		const db = new SqliteDatabaseAdapter({ path: dbPath });
 		await db.run(sql`CREATE TABLE test (id INTEGER)`);
 		db.dispose();
 
@@ -70,7 +54,7 @@ describe("SqliteDatabase", () => {
 		const dbPath = join(testDir, "nonexistent.db");
 
 		expect(() => {
-			new SqliteDatabase({ path: dbPath, create: false });
+			new SqliteDatabaseAdapter({ path: dbPath, create: false });
 		}).toThrow("Database file does not exist");
 	});
 
@@ -78,7 +62,7 @@ describe("SqliteDatabase", () => {
 		const testDir = createTestDirectory();
 		const dbPath = join(testDir, "test.db");
 
-		const db = new SqliteDatabase({ path: dbPath });
+		const db = new SqliteDatabaseAdapter({ path: dbPath });
 		const result = await db.run(sql`PRAGMA journal_mode`);
 		expect(result.rows[0].journal_mode).toBe("wal");
 		db.dispose();
@@ -88,7 +72,7 @@ describe("SqliteDatabase", () => {
 		const testDir = createTestDirectory();
 		const dbPath = join(testDir, "test.db");
 
-		const db = new SqliteDatabase({ path: dbPath, useWalMode: false });
+		const db = new SqliteDatabaseAdapter({ path: dbPath, useWalMode: false });
 		const result = await db.run(sql`PRAGMA journal_mode`);
 		expect(result.rows[0].journal_mode).toBe("delete");
 		db.dispose();
@@ -98,7 +82,7 @@ describe("SqliteDatabase", () => {
 		const testDir = createTestDirectory();
 		const dbPath = join(testDir, "test.db");
 
-		const db = new SqliteDatabase({ path: dbPath });
+		const db = new SqliteDatabaseAdapter({ path: dbPath });
 		await db.run(sql`CREATE TABLE test (value TEXT)`);
 
 		const gate = asyncGate();
@@ -130,7 +114,7 @@ describe("SqliteDatabase", () => {
 		const testDir = createTestDirectory({ prefix: "sqlite-conn-" });
 		const dbPath = join(testDir, "test.db");
 
-		const db = new SqliteDatabase({ path: dbPath });
+		const db = new SqliteDatabaseAdapter({ path: dbPath });
 		await db.run(sql`CREATE TABLE test (value TEXT)`);
 		await db.run(sql`INSERT INTO test (value) VALUES ('initial')`);
 
@@ -170,7 +154,7 @@ describe("SqliteDatabase", () => {
 		const testDir = createTestDirectory({ prefix: "sqlite-busy-" });
 		const dbPath = join(testDir, "test.db");
 
-		const db = new SqliteDatabase({ path: dbPath });
+		const db = new SqliteDatabaseAdapter({ path: dbPath });
 		await db.run(sql`CREATE TABLE test (value INTEGER)`);
 		await db.run(sql`INSERT INTO test (value) VALUES (0)`);
 

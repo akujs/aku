@@ -1,7 +1,7 @@
-import type { Database } from "./contracts/Database.ts";
+import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 
 export type SharedTestConfig = {
 	name: string;
-	createDatabase: () => Database | Promise<Database>;
+	createDatabase: () => DatabaseAdapter | Promise<DatabaseAdapter>;
 	supportsTransactions?: boolean | undefined;
 };

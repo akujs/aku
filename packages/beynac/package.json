@@ -84,18 +84,18 @@
   },
   "sideEffects": false,
   "scripts": {
-    "check": "bun run check:tsc && bun run check:test && bun run check:lint && bun run check:format",
-    "check:test": "bun scripts/test-parallel.ts",
-    "check:tsc": "tsgo --build",
+    "check": "bun run check:ts && bun run check:test && bun run check:lint && bun run check:format",
+    "check:test": "bun scripts/test.ts",
+    "check:ts": "tsgo --build",
     "check:lint": "oxlint --type-aware src/",
     "check:format": "biome check",
     "format": "biome check --write .",
     "lint": "oxlint --type-aware src/",
     "test:coverage": "bun test --coverage --coverage-reporter=lcov",
-    "build": "tsdown && bun regenerate-exports && bun check-dist",
+    "build": "tsdown && bun codegen && bun check-dist",
     "build:watch": "tsdown --watch",
     "clean": "rm -rf dist",
-    "regenerate-exports": "bun run scripts/regenerate-exports.ts",
+    "codegen": "bun run scripts/codegen.ts",
     "check-dist": "bun run scripts/check-dist.ts"
   },
   "files": [
@@ -133,11 +133,21 @@
   },
   "peerDependencies": {
     "@cloudflare/workers-types": ">=4.20251202.0",
+    "@electric-sql/pglite": "^0.3.14",
     "next": ">=15.0.0",
     "postgres": ">=3.4.7"
   },
   "peerDependenciesMeta": {
+    "@cloudflare/workers-types": {
+      "optional": true
+    },
+    "@electric-sql/pglite": {
+      "optional": true
+    },
     "next": {
+      "optional": true
+    },
+    "postgres": {
       "optional": true
     }
   },

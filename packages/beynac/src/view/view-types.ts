@@ -1,5 +1,5 @@
+import type * as CSS from "csstype";
 import type { Key } from "../core/Key.ts";
-import type * as CSS from "../vendor/csstype.ts";
 import type { IntrinsicElements as IntrinsicElementsDefined } from "./intrinsic-element-types.ts";
 
 export type RenderOptions = {

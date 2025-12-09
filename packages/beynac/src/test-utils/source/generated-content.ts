@@ -13,7 +13,7 @@ export function getGeneratedFileContent(project: SourceProject): Record<string, 
 		rawFiles,
 		(content) =>
 			"// GENERATED CODE DO NOT EDIT!\n" +
-			"// Run `bun regenerate-exports` to regenerate this file\n" +
+			"// Run `bun codegen` to regenerate this file\n" +
 			content,
 	);
 }

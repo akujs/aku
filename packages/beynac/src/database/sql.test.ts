@@ -4,10 +4,8 @@ import { renderStatementForLogs, renderStatementSql, sql } from "./sql.ts";
 describe(sql, () => {
 	test("returns fragments and params from template literal", () => {
 		const stmt = sql`SELECT * FROM users WHERE id = ${123} AND name = ${"Alice"}`;
-		expect(stmt).toEqual({
-			fragments: ["SELECT * FROM users WHERE id = ", " AND name = ", ""],
-			params: [123, "Alice"],
-		});
+		expect(stmt.fragments).toEqual(["SELECT * FROM users WHERE id = ", " AND name = ", ""]);
+		expect(stmt.params).toEqual([123, "Alice"]);
 	});
 });
 

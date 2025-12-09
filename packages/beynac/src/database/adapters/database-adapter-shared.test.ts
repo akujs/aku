@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { asyncGate } from "../../test-utils/async-gate.bun.ts";
-import type { Database } from "../contracts/Database.ts";
+import type { Database } from "../contracts/Database.js";
+import { DatabaseImpl } from "../DatabaseImpl.ts";
 import { QueryError } from "../database-errors.ts";
 import type { SharedTestConfig } from "../database-test-utils.ts";
 import { sql } from "../sql.ts";
@@ -24,7 +25,7 @@ describe.each(adapterConfigs)("$name", ({ createDatabase, supportsTransactions }
 	let db: Database;
 
 	beforeAll(async () => {
-		db = await createDatabase();
+		db = new DatabaseImpl(await createDatabase());
 		await db.run(sql`CREATE TABLE users (name TEXT, age INTEGER)`);
 	});
 

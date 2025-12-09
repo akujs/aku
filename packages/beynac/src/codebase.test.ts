@@ -8,6 +8,7 @@ import {
 } from "./test-utils/source/generated-content.ts";
 import { getFileErrors } from "./test-utils/source/getFileErrors.ts";
 import { SourceProject } from "./test-utils/source/SourceProject.ts";
+import { mapObjectValues } from "./utils.ts";
 
 const srcDir = join(import.meta.dir);
 const project = await SourceProject.load(srcDir, Object.values(ENTRY_POINTS));
@@ -27,7 +28,7 @@ describe("codebase invariants", () => {
 		const actualContent = await readFile(filePath, "utf-8");
 
 		if (expectedContent !== actualContent) {
-			console.error(`💥 ${filename} content needs updating, run 'bun regenerate-exports'`);
+			console.error(`💥 ${filename} content needs updating, run 'bun codegen'`);
 		}
 		expect(actualContent).toEqual(expectedContent);
 	});
@@ -36,5 +37,13 @@ describe("codebase invariants", () => {
 		const packageJsonPath = join(srcDir, "..", "package.json");
 		const packageJson = JSON.parse(await readFile(packageJsonPath, "utf-8"));
 		expect(packageJson.exports).toEqual(getPackageExports());
+	});
+
+	test("package.json peerDependencies are all optional", async () => {
+		const packageJsonPath = join(srcDir, "..", "package.json");
+		const packageJson = JSON.parse(await readFile(packageJsonPath, "utf-8"));
+		expect(packageJson.peerDependenciesMeta).toEqual(
+			mapObjectValues(packageJson.peerDependencies, () => ({ optional: true })),
+		);
 	});
 });

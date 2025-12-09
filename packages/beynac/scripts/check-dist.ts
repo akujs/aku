@@ -29,7 +29,7 @@ for await (let line of $`grep -REh "from ['\"]" "${distFolder}"`.lines()) {
 	// Local imports
 	if (importPath.startsWith(".")) continue;
 
-	if (importPath.startsWith("node:")) continue;
+	if (importPath.startsWith("node:") || importPath.startsWith("bun:")) continue;
 
 	const packageName = importPath.startsWith("@")
 		? importPath

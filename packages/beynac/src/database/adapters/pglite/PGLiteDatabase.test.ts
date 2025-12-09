@@ -1,8 +1,9 @@
 import type { SharedTestConfig } from "../../database-test-utils.ts";
-import { PGLiteDatabase, pgliteDatabase } from "./PGLiteDatabase.ts";
+import { PGLiteDatabaseAdapter } from "./PGLiteDatabaseAdapter.ts";
+import { pgliteDatabase } from "./pgliteDatabase.ts";
 
 export const pgLiteSharedTestConfig: SharedTestConfig = {
-	name: PGLiteDatabase.name,
+	name: PGLiteDatabaseAdapter.name,
 	createDatabase: () => pgliteDatabase(),
 	supportsTransactions: true,
 };

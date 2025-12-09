@@ -1,5 +1,6 @@
 import { ContainerImpl } from "../container/ContainerImpl.ts";
 import type { Container } from "../container/contracts/Container.ts";
+import { DatabaseServiceProvider } from "../database/DatabaseServiceProvider.ts";
 import { DevelopmentServiceProvider } from "../development/DevelopmentServiceProvider.ts";
 import { HttpServiceProvider } from "../http/HttpServiceProvider.ts";
 import { RequestHandler } from "../http/RequestHandler.ts";
@@ -28,6 +29,7 @@ const DEFAULT_PROVIDERS = [
 	HttpServiceProvider,
 	ViewServiceProvider,
 	StorageServiceProvider,
+	DatabaseServiceProvider,
 	DevelopmentServiceProvider,
 ];
 

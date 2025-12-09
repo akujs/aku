@@ -1,5 +1,5 @@
 // GENERATED CODE DO NOT EDIT!
-// Run `bun regenerate-exports` to regenerate this file
+// Run `bun codegen` to regenerate this file
 import { createFacade } from "./core/facade.ts";
 import { Container as ContainerContract } from "./container/contracts/Container.ts";
 import { Application as ApplicationContract } from "./core/contracts/Application.ts";

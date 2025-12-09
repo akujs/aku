@@ -23,12 +23,39 @@ interface TestResult {
 	stderr: string;
 }
 
-async function runTestGroup(args: string[]): Promise<TestResult> {
+async function runBunTests(args: string[]): Promise<TestResult> {
 	const fullArgs = ["bun", "--conditions=source", "test", "--only-failures", ...args];
+	return runCommand(fullArgs);
+}
+
+const nodeTestArgs = [
+	"node",
+	"--disable-warning=ExperimentalWarning",
+	"--experimental-transform-types",
+	"--experimental-sqlite",
+	"--test",
+	"src/**/*.node-test.ts",
+];
+
+async function runNodeTests(): Promise<TestResult> {
+	return runCommand(nodeTestArgs);
+}
+
+function runNodeTestsSync(): number {
+	const name = nodeTestArgs.join(" ");
+	console.log("$", name);
+	const proc = Bun.spawnSync(nodeTestArgs, {
+		cwd,
+		stdout: "inherit",
+		stderr: "inherit",
+	});
+	return proc.exitCode;
+}
+
+async function runCommand(fullArgs: string[]): Promise<TestResult> {
 	const name = fullArgs.join(" ");
 	const proc = Bun.spawn(fullArgs, {
 		cwd,
-		env: { ...process.env, FORCE_COLOR: "1" },
 		stdout: "pipe",
 		stderr: "pipe",
 	});
@@ -52,19 +79,28 @@ function buildExcludePattern(patterns: string[]): string {
 
 async function main() {
 	const args = process.argv.slice(2);
-	const passthrough = args.filter((a) => a !== "--serial");
+	const nodeOnly = args.includes("--node");
+
+	if (nodeOnly) {
+		process.exit(runNodeTestsSync());
+	}
 
 	if (args.length > 0) {
 		// Any arguments trigger serial mode, passing args directly to bun test
-		const fullArgs = ["bun", "--conditions=source", "test", ...passthrough];
-		console.log("$", fullArgs.join(" "));
-		const proc = Bun.spawnSync(fullArgs, {
+		// allow --serial as an arg to trigger serial mode
+		const passArgs = args.filter((a) => a !== "--serial");
+		const bunArgs = ["bun", "--conditions=source", "test", ...passArgs];
+		console.log("$", bunArgs.join(" "));
+		const bunProc = Bun.spawnSync(bunArgs, {
 			cwd,
-			env: { ...process.env, FORCE_COLOR: "1" },
 			stdout: "inherit",
 			stderr: "inherit",
 		});
-		process.exit(proc.exitCode);
+
+		// Run node tests after bun tests
+		const nodeExitCode = runNodeTestsSync();
+
+		process.exit(bunProc.exitCode || nodeExitCode);
 	}
 
 	const startTime = performance.now();
@@ -96,17 +132,20 @@ async function main() {
 	for (const [folder, config] of Object.entries(parallelConfig)) {
 		if (config === true) {
 			// Run entire folder as one process
-			testPromises.push(runTestGroup([`src/${folder}`]));
+			testPromises.push(runBunTests([`src/${folder}`]));
 		} else {
 			// Run each pattern as separate process
 			for (const pattern of config) {
-				testPromises.push(runTestGroup([`src/${folder}`, "-t", pattern]));
+				testPromises.push(runBunTests([`src/${folder}`, "-t", pattern]));
 			}
 			// Add fallback for unmatched tests in this folder
 			const excludePattern = buildExcludePattern(config);
-			testPromises.push(runTestGroup([`src/${folder}`, "-t", excludePattern]));
+			testPromises.push(runBunTests([`src/${folder}`, "-t", excludePattern]));
 		}
 	}
+
+	// Run all node tests as a single parallel worker
+	testPromises.push(runNodeTests());
 
 	// Collect remaining folders and root test files not in configured folders
 	const remainingFolders = new Set<string>();
@@ -131,7 +170,7 @@ async function main() {
 	}
 
 	if (remainingPaths.length > 0) {
-		testPromises.push(runTestGroup(remainingPaths));
+		testPromises.push(runBunTests(remainingPaths));
 	}
 
 	// Wait for all tests to complete

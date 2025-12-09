@@ -1,6 +1,3 @@
-// Platform-neutral interface for SQLite operations.
-// Implementations are in SqliteOps.bun.ts and SqliteOps.node.ts.
-
 export interface SqlitePreparedStatement {
 	readonly isQuery: boolean;
 	all(...params: unknown[]): Record<string, unknown>[];

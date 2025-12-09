@@ -191,6 +191,16 @@ export interface Configuration<RouteParams extends Record<string, string> = {}> 
 	 * @default 'local'
 	 */
 	defaultDisk?: string | undefined;
+
+	/**
+	 * Database adapter for the application.
+	 *
+	 * @example
+	 * {
+	 *   database: sqliteDatabase({ path: './data/app.db' }),
+	 * }
+	 */
+	database?: DatabaseAdapter | undefined;
 }
 
 export const Configuration: TypeToken<Configuration> =
@@ -217,5 +227,6 @@ export function resolveEnvironmentChoice(
 }
 
 // Re-imported types to avoid circular dependencies
+import type { DatabaseAdapter } from "../../database/DatabaseAdapter.ts";
 import type { Routes } from "../../http/router-types.ts";
 import type { StorageAdapter, StorageEndpoint } from "../../storage/contracts/Storage.ts";

@@ -1,8 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import type { D1Database as D1DatabaseBinding } from "@cloudflare/workers-types";
 import { Miniflare } from "miniflare";
+import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
+import { DatabaseImpl } from "../../DatabaseImpl.ts";
 import type { SharedTestConfig } from "../../database-test-utils.ts";
-import { D1Database, d1Database } from "./D1Database.ts";
+import { D1DatabaseAdapter } from "./D1DatabaseAdapter.ts";
+import { d1Database } from "./d1Database.ts";
 
 let sharedMf: Miniflare | null = null;
 
@@ -20,7 +23,7 @@ async function getD1Binding(): Promise<D1DatabaseBinding> {
 }
 
 export const d1SharedTestConfig: SharedTestConfig = {
-	name: D1Database.name,
+	name: D1DatabaseAdapter.name,
 	createDatabase: async () => {
 		const binding = await getD1Binding();
 		return d1Database({ binding });
@@ -28,15 +31,23 @@ export const d1SharedTestConfig: SharedTestConfig = {
 	supportsTransactions: false,
 };
 
-describe(D1Database, () => {
-	test("advertises lack of transaction support", async () => {
-		const database = new D1Database({
+describe(D1DatabaseAdapter, () => {
+	test("adapter does not have transaction method", () => {
+		const adapter: DatabaseAdapter = new D1DatabaseAdapter({
 			// This test doesn't need miniflare so don't waste time initialising it
 			binding: null!,
 		});
-		expect(database.supportsTransactions).toBe(false);
-		expect(database.transaction(async () => null)).rejects.toThrowErrorMatchingInlineSnapshot(
-			`"D1 does not support interactive transactions. Use batch() for atomic operations."`,
+		expect(adapter.transaction).toBeUndefined();
+	});
+
+	test("DatabaseImpl reports lack of transaction support for D1", () => {
+		const adapter = new D1DatabaseAdapter({
+			binding: null!,
+		});
+		const db = new DatabaseImpl(adapter);
+		expect(db.supportsTransactions).toBe(false);
+		expect(() => db.transaction(async () => null)).toThrowErrorMatchingInlineSnapshot(
+			`"This database adapter does not support interactive transactions. Use batch() instead."`,
 		);
 	});
 });

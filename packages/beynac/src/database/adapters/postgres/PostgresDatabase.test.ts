@@ -2,14 +2,17 @@ import { beforeAll, describe, expect, test } from "bun:test";
 import postgres, { type Notice } from "postgres";
 import { asyncGate } from "../../../test-utils/async-gate.bun.ts";
 import type { Database } from "../../contracts/Database.ts";
+import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
+import { DatabaseImpl } from "../../DatabaseImpl.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { SharedTestConfig } from "../../database-test-utils.ts";
 import { sql } from "../../sql.ts";
-import { PostgresDatabase, postgresDatabase } from "./PostgresDatabase.ts";
+import { PostgresDatabaseAdapter } from "./PostgresDatabaseAdapter.ts";
+import { postgresDatabase } from "./postgresDatabase.ts";
 
 const POSTGRES_URL = "postgres://beynac:beynac@localhost:22857/beynac_test";
 
-async function createDatabase() {
+async function createAdapter(): Promise<DatabaseAdapter> {
 	const sql = postgres(POSTGRES_URL, {
 		onnotice: (notice: Notice) => {
 			if (notice.severity !== "NOTICE") {
@@ -18,24 +21,24 @@ async function createDatabase() {
 		},
 	});
 
-	const db = postgresDatabase({ sql });
-	await db.run(resetSchema);
-	return db;
+	const adapter = postgresDatabase({ sql });
+	await adapter.run(resetSchema);
+	return adapter;
 }
 
 const resetSchema = sql`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public`;
 
 export const postgresSharedTestConfig: SharedTestConfig = {
 	name: "PostgresDatabase",
-	createDatabase,
+	createDatabase: createAdapter,
 	supportsTransactions: true,
 };
 
-describe(PostgresDatabase, () => {
+describe(PostgresDatabaseAdapter, () => {
 	let db: Database;
 
 	beforeAll(async () => {
-		db = await createDatabase();
+		db = new DatabaseImpl(await createAdapter());
 	});
 
 	test("uncommitted transaction writes are isolated", async () => {
