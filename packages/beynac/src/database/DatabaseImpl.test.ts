@@ -1,21 +1,22 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { sleep } from "../helpers/async/sleep.ts";
 import { AbortException } from "../http/abort.ts";
-import { createTestApplication, integrationContext } from "../test-utils/http-test-utils.bun.ts";
+import {
+	createTestApplication,
+	mockIntegrationContext,
+} from "../test-utils/http-test-utils.bun.ts";
 import { mockDispatcher } from "../test-utils/internal-mocks.bun.ts";
-import { mock, resetAllMocks } from "../testing/mocks.ts";
 import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
-import { DatabaseConnectionImpl } from "./DatabaseConnectionImpl.ts";
+import { DatabaseClientImpl } from "./DatabaseClientImpl.ts";
 import { DatabaseImpl } from "./DatabaseImpl.ts";
-import { ConnectionNotFoundError, QueryError } from "./database-errors.ts";
+import { ClientNotFoundError, QueryError } from "./database-errors.ts";
 import { sql } from "./sql.ts";
 
 describe("DatabaseImpl", () => {
 	describe("supportsTransactions", () => {
 		test("reflects adapter capability", async () => {
 			const adapter = sqliteDatabase({ path: ":memory:" });
-			const db = new DatabaseImpl(adapter, {}, mockDispatcher());
+			const db = new DatabaseImpl(adapter, mockDispatcher());
 
 			expect(db.supportsTransactions).toBe(true);
 
@@ -29,7 +30,7 @@ describe("DatabaseImpl", () => {
 
 		beforeEach(async () => {
 			adapter = sqliteDatabase({ path: ":memory:" });
-			db = new DatabaseImpl(adapter, {}, mockDispatcher());
+			db = new DatabaseImpl(adapter, mockDispatcher());
 			await db.run(sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`);
 			await db.run(sql`INSERT INTO test (name) VALUES ('Alice'), ('Bob')`);
 		});
@@ -98,7 +99,7 @@ describe("DatabaseImpl", () => {
 		test("firstOrNotFound() returns first row when exists", async () => {
 			const { app } = createTestApplication({ database: adapter });
 
-			const row = await app.withIntegration(integrationContext(), () =>
+			const row = await app.withIntegration(mockIntegrationContext(), () =>
 				db.firstOrNotFound(sql`SELECT * FROM test`),
 			);
 
@@ -109,14 +110,14 @@ describe("DatabaseImpl", () => {
 			const { app } = createTestApplication({ database: adapter });
 
 			expect(
-				app.withIntegration(integrationContext(), () =>
+				app.withIntegration(mockIntegrationContext(), () =>
 					db.firstOrNotFound(sql`SELECT * FROM test WHERE 0`),
 				),
 			).rejects.toBeInstanceOf(AbortException);
 		});
 	});
 
-	describe("multiple connections", () => {
+	describe("multiple clients", () => {
 		let defaultAdapter: DatabaseAdapter;
 		let additionalAdapter: DatabaseAdapter;
 
@@ -124,11 +125,11 @@ describe("DatabaseImpl", () => {
 			defaultAdapter = sqliteDatabase({ path: ":memory:" });
 			additionalAdapter = sqliteDatabase({ path: ":memory:" });
 
-			await new DatabaseConnectionImpl(defaultAdapter, mockDispatcher()).batch([
+			await new DatabaseClientImpl(defaultAdapter, mockDispatcher()).batch([
 				sql`CREATE TABLE info (db_name TEXT)`,
 				sql`INSERT INTO info (db_name) VALUES ('default')`,
 			]);
-			await new DatabaseConnectionImpl(additionalAdapter, mockDispatcher()).batch([
+			await new DatabaseClientImpl(additionalAdapter, mockDispatcher()).batch([
 				sql`CREATE TABLE info (db_name TEXT)`,
 				sql`INSERT INTO info (db_name) VALUES ('additional')`,
 			]);
@@ -142,197 +143,45 @@ describe("DatabaseImpl", () => {
 			additionalAdapter.dispose();
 		});
 
-		test("connection() queries default database", async () => {
+		test("client() queries default database", async () => {
 			const db = new DatabaseImpl(
-				defaultAdapter,
-				{ additional: additionalAdapter },
+				{ default: defaultAdapter, additional: { additional: additionalAdapter } },
 				mockDispatcher(),
 			);
 
-			const dbName = await db.connection().scalar(sql`SELECT db_name FROM info`);
+			const dbName = await db.client().scalar(sql`SELECT db_name FROM info`);
 			expect(dbName).toBe("default");
 		});
 
-		test("await sql`...` selects from default connection", async () => {
+		test("await sql`...` selects from default client", async () => {
 			const result = await sql`SELECT db_name FROM info`;
 			expect(result[0].db_name).toBe("default");
 		});
 
-		test("await sql`...`.on() selects can select default connection", async () => {
+		test("await sql`...`.on() selects default client", async () => {
 			const result = await sql`SELECT db_name FROM info`.on("default");
 			expect(result[0].db_name).toBe("default");
 		});
 
-		test("await sql`...`.on() selects connection", async () => {
+		test("await sql`...`.on('name') selects named client", async () => {
 			const result = await sql`SELECT db_name FROM info`.on("additional");
 			expect(result[0].db_name).toBe("additional");
 		});
 
-		test("connection() queries named database", async () => {
+		test("client() queries named database", async () => {
 			const db = new DatabaseImpl(
-				defaultAdapter,
-				{ additional: additionalAdapter },
+				{ default: defaultAdapter, additional: { additional: additionalAdapter } },
 				mockDispatcher(),
 			);
 
-			const dbName = await db.connection("additional").scalar(sql`SELECT db_name FROM info`);
+			const dbName = await db.client("additional").scalar(sql`SELECT db_name FROM info`);
 			expect(dbName).toBe("additional");
 		});
 
-		test("connection() throws ConnectionNotFoundError for unknown name", () => {
-			const db = new DatabaseImpl(defaultAdapter, {}, mockDispatcher());
+		test("client() throws ClientNotFoundError for unknown name", () => {
+			const db = new DatabaseImpl(defaultAdapter, mockDispatcher());
 
-			expect(() => db.connection("nonexistent")).toThrow(ConnectionNotFoundError);
-		});
-	});
-});
-
-describe(DatabaseConnectionImpl, () => {
-	describe("transaction retry", () => {
-		let adapter: DatabaseAdapter;
-		let db: DatabaseConnectionImpl;
-
-		afterEach(() => {
-			resetAllMocks();
-			adapter?.dispose();
-		});
-
-		async function createDb(): Promise<void> {
-			adapter = sqliteDatabase({ path: ":memory:" });
-			db = new DatabaseConnectionImpl(adapter, mockDispatcher());
-			await db.run(sql`CREATE TABLE test (id INTEGER PRIMARY KEY, value TEXT)`);
-		}
-
-		test("retry: false doesn't retry on concurrency error", async () => {
-			await createDb();
-			let attempts = 0;
-
-			try {
-				await db.transaction(
-					async () => {
-						attempts++;
-						throw new QueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
-					},
-					{ retry: false },
-				);
-				expect.unreachable("should have thrown");
-			} catch (error) {
-				expect(error).toBeInstanceOf(QueryError);
-			}
-
-			expect(attempts).toBe(1);
-		});
-
-		test("retry: true retries on concurrency error", async () => {
-			await createDb();
-			mock(sleep, async () => {});
-
-			let attempts = 0;
-
-			await db.transaction(
-				async () => {
-					attempts++;
-					if (attempts < 3) {
-						throw new QueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
-					}
-					await db.run(sql`INSERT INTO test (value) VALUES ('success')`);
-				},
-				{ retry: true },
-			);
-
-			expect(attempts).toBe(3);
-			const result = await db.scalar(sql`SELECT value FROM test`);
-			expect(result).toBe("success");
-		});
-
-		test("retry: number limits retry attempts", async () => {
-			await createDb();
-			mock(sleep, async () => {});
-
-			let attempts = 0;
-
-			try {
-				await db.transaction(
-					async () => {
-						attempts++;
-						throw new QueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
-					},
-					{ retry: 3 },
-				);
-				expect.unreachable("should have thrown");
-			} catch (error) {
-				expect(error).toBeInstanceOf(QueryError);
-			}
-
-			expect(attempts).toBe(3);
-		});
-
-		test("retry doesn't retry on non-concurrency errors", async () => {
-			await createDb();
-			mock(sleep, async () => {});
-
-			let attempts = 0;
-
-			try {
-				await db.transaction(
-					async () => {
-						attempts++;
-						throw new Error("Some other error");
-					},
-					{ retry: true },
-				);
-				expect.unreachable("should have thrown");
-			} catch (error) {
-				expect(error).toBeInstanceOf(Error);
-				expect((error as Error).message).toBe("Some other error");
-			}
-
-			expect(attempts).toBe(1);
-		});
-
-		test("retry with custom RetryOptions", async () => {
-			await createDb();
-			const delays: number[] = [];
-			mock(sleep, async (ms: number) => {
-				delays.push(ms);
-			});
-
-			let attempts = 0;
-
-			await db.transaction(
-				async () => {
-					attempts++;
-					if (attempts < 3) {
-						throw new QueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
-					}
-				},
-				{ retry: { maxAttempts: 5, startingDelay: 50, jitterFactor: 0 } },
-			);
-
-			expect(attempts).toBe(3);
-			expect(delays).toEqual([50, 100]);
-		});
-
-		test("retry rolls back transaction before retrying", async () => {
-			await createDb();
-			mock(sleep, async () => {});
-
-			let attempts = 0;
-
-			await db.transaction(
-				async () => {
-					attempts++;
-					await db.run(sql`INSERT INTO test (value) VALUES (${`attempt-${attempts}`})`);
-					if (attempts < 2) {
-						throw new QueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
-					}
-				},
-				{ retry: true },
-			);
-
-			// Only the final successful attempt should be committed
-			const rows = await db.all(sql`SELECT value FROM test ORDER BY id`);
-			expect(rows).toEqual([{ value: "attempt-2" }]);
+			expect(() => db.client("nonexistent")).toThrow(ClientNotFoundError);
 		});
 	});
 });

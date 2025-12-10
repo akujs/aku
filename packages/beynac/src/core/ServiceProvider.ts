@@ -6,8 +6,11 @@ import type { Application } from "./contracts/Application.ts";
  * Base class for service providers.
  */
 export abstract class ServiceProvider extends BaseClass {
-	constructor(protected app: Application) {
+	protected app: Application;
+
+	constructor(app: Application) {
 		super();
+		this.app = app;
 	}
 
 	/**

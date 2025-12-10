@@ -29,6 +29,7 @@
     "reexport",
     "replacer",
     "savepoint",
+    "savepoints",
     "shouty",
     "sortable",
     "ulid",

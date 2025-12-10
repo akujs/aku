@@ -4,12 +4,13 @@ let originalDate: DateConstructor | null = null;
 let originalDateNow: (() => number) | null = null;
 let originalHrtime: typeof process.hrtime | null = null;
 let originalHrtimeBigint: (() => bigint) | null = null;
+let originalPerformanceNow: (() => number) | null = null;
 let mockedTime: number | null = null;
 
 /**
  * Mock the current time for testing purposes.
  *
- * Patches Date.now(), new Date(), process.hrtime(), and process.hrtime.bigint() to return the mocked time.
+ * Patches Date.now(), new Date(), process.hrtime(), process.hrtime.bigint(), and performance.now() to return the mocked time.
  *
  * NOTE: If your test framework provides methods for mocking time, you are
  * advised to use those methods instead. Using both this time mocking function
@@ -22,6 +23,7 @@ let mockedTime: number | null = null;
  * Date.now(); // Returns 2025-01-01T12:00:00Z timestamp
  * new Date(); // Returns 2025-01-01T12:00:00Z
  * process.hrtime.bigint(); // Returns mocked time in nanoseconds
+ * performance.now(); // Returns mocked time in milliseconds
  * durationStringToDate("1h"); // Returns 2025-01-01T13:00:00Z
  */
 export function mockCurrentTime(date: Date | number = new Date("2020-01-01T00:00:00Z")): void {
@@ -109,12 +111,16 @@ export function mockCurrentTime(date: Date | number = new Date("2020-01-01T00:00
 		mockHrtime.bigint = () => BigInt(mockedTime!) * 1_000_000n;
 
 		process.hrtime = mockHrtime;
+
+		// Patch performance.now()
+		originalPerformanceNow = performance.now.bind(performance);
+		performance.now = () => mockedTime!;
 	}
 }
 
 /**
  * Reset time mocking, returning to using the actual current time.
- * Restores original Date constructor, Date.now(), process.hrtime(), and process.hrtime.bigint().
+ * Restores original Date constructor, Date.now(), process.hrtime(), process.hrtime.bigint(), and performance.now().
  *
  * @example
  * mockCurrentTime(new Date("2025-01-01"));
@@ -122,6 +128,7 @@ export function mockCurrentTime(date: Date | number = new Date("2020-01-01T00:00
  * resetMockTime();
  * Date.now(); // Returns actual current time
  * process.hrtime.bigint(); // Returns actual current time
+ * performance.now(); // Returns actual current time
  * durationStringToDate("1h"); // Returns actual time + 1 hour
  */
 export function resetMockTime(): void {
@@ -140,6 +147,10 @@ export function resetMockTime(): void {
 	if (originalHrtimeBigint !== null) {
 		process.hrtime.bigint = originalHrtimeBigint;
 		originalHrtimeBigint = null;
+	}
+	if (originalPerformanceNow !== null) {
+		performance.now = originalPerformanceNow;
+		originalPerformanceNow = null;
 	}
 	mockedTime = null;
 }

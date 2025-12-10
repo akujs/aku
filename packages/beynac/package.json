@@ -6,11 +6,11 @@
   "main": "./dist/index.mjs",
   "exports": {
     "./container": {
-      "source": "./src/entry/container.ts",
+      "source": "./src/container/container-entry-point.ts",
       "default": "./dist/container.mjs"
     },
     "./contracts": {
-      "source": "./src/contracts.ts",
+      "source": "./src/contracts-entry-point.ts",
       "default": "./dist/contracts.mjs"
     },
     "./database": {
@@ -18,72 +18,72 @@
       "default": "./dist/database.mjs"
     },
     "./errors": {
-      "source": "./src/errors.ts",
+      "source": "./src/errors-entry-point.ts",
       "default": "./dist/errors.mjs"
     },
     "./events": {
-      "source": "./src/events.ts",
+      "source": "./src/events-entry-point.ts",
       "default": "./dist/events.mjs"
     },
     "./facades": {
-      "source": "./src/facades.ts",
+      "source": "./src/facades-entry-point.ts",
       "default": "./dist/facades.mjs"
     },
     "./helpers/async": {
-      "source": "./src/entry/helpers/async.ts",
+      "source": "./src/helpers/async/async-entry-point.ts",
       "default": "./dist/helpers/async.mjs"
     },
     "./helpers/hash": {
-      "source": "./src/entry/helpers/hash.ts",
+      "source": "./src/helpers/hash/hash-entry-point.ts",
       "default": "./dist/helpers/hash.mjs"
     },
     "./helpers/headers": {
-      "source": "./src/helpers/headers.ts",
+      "source": "./src/helpers/headers/headers-entry-point.ts",
       "default": "./dist/helpers/headers.mjs"
     },
     "./helpers/str": {
-      "source": "./src/entry/helpers/str.ts",
+      "source": "./src/helpers/str/str-entry-point.ts",
       "default": "./dist/helpers/str.mjs"
     },
     "./helpers/time": {
-      "source": "./src/helpers/time.ts",
+      "source": "./src/helpers/time/time-entry-point.ts",
       "default": "./dist/helpers/time.mjs"
     },
     "./http": {
-      "source": "./src/entry/http.ts",
+      "source": "./src/http/http-entry-point.ts",
       "default": "./dist/http.mjs"
     },
     ".": {
-      "source": "./src/entry/index.ts",
+      "source": "./src/index-entry-point.ts",
       "default": "./dist/index.mjs"
     },
     "./integrations": {
-      "source": "./src/entry/integrations.ts",
+      "source": "./src/integrations/integrations-entry-point.ts",
       "default": "./dist/integrations.mjs"
     },
     "./integrations/next": {
-      "source": "./src/entry/integrations/next.ts",
+      "source": "./src/integrations/next/next-entry-point.ts",
       "default": "./dist/integrations/next.mjs"
     },
     "./storage": {
-      "source": "./src/entry/storage.ts",
+      "source": "./src/storage/storage-entry-point.ts",
       "default": "./dist/storage.mjs"
     },
     "./testing": {
-      "source": "./src/entry/testing.ts",
+      "source": "./src/testing/testing-entry-point.ts",
       "default": "./dist/testing.mjs"
     },
-    "./view": {
-      "source": "./src/entry/view.ts",
-      "default": "./dist/view.mjs"
-    },
     "./view/jsx-dev-runtime": {
-      "source": "./src/entry/view/jsx-dev-runtime.ts",
+      "source": "./src/view/jsx-dev-runtime/jsx-dev-runtime-entry-point.ts",
       "default": "./dist/view/jsx-dev-runtime.mjs"
     },
     "./view/jsx-runtime": {
-      "source": "./src/entry/view/jsx-runtime.ts",
+      "source": "./src/view/jsx-runtime/jsx-runtime-entry-point.ts",
       "default": "./dist/view/jsx-runtime.mjs"
+    },
+    "./view": {
+      "source": "./src/view/view-entry-point.ts",
+      "default": "./dist/view.mjs"
     }
   },
   "sideEffects": false,
@@ -91,6 +91,7 @@
     "check": "bun run check:ts && bun run check:test && bun run check:lint && bun run check:format",
     "check:test": "FORCE_COLOR=1 bun scripts/run-tests.ts",
     "check:ts": "tsgo --build",
+    "check:slow-tsc": "tsc --build",
     "check:lint": "oxlint --type-aware src/",
     "check:format": "biome check",
     "format": "biome check --write .",

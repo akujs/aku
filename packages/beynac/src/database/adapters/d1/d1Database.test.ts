@@ -45,7 +45,7 @@ describe(D1DatabaseAdapter, () => {
 		const adapter = new D1DatabaseAdapter({
 			binding: null!,
 		});
-		const db = new DatabaseImpl(adapter, {}, mockDispatcher());
+		const db = new DatabaseImpl(adapter, mockDispatcher());
 		expect(db.supportsTransactions).toBe(false);
 		expect(() => db.transaction(async () => null)).toThrowErrorMatchingInlineSnapshot(
 			`"This database adapter does not support interactive transactions. Use batch() instead."`,

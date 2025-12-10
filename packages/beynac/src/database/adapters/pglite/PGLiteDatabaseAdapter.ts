@@ -3,11 +3,14 @@ import { BaseClass, type FifoLock, fifoLock } from "../../../utils.ts";
 import type { Statement, StatementResult } from "../../contracts/Database.ts";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
+import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
+import { PostgresGrammar } from "../../grammar/PostgresGrammar.ts";
 import type { PGLiteDatabaseAdapterConfig } from "./PGLiteDatabaseAdapterConfig.ts";
 
 // PGLite only supports single-connection access, so we use the PGlite instance
 // itself as the "connection" type and serialize access via fifoLock
 export class PGLiteDatabaseAdapter extends BaseClass implements DatabaseAdapter<PGlite> {
+	readonly grammar: DatabaseGrammar = new PostgresGrammar();
 	readonly supportsTransactions = true;
 
 	readonly #db: PGlite;

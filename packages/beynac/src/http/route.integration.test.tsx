@@ -6,7 +6,6 @@ import { Container } from "../container/contracts/Container.ts";
 import { BaseListener } from "../core/BaseListener.ts";
 import { Configuration } from "../core/contracts/Configuration.ts";
 import { Dispatcher } from "../core/contracts/Dispatcher.ts";
-import { RequestHandledEvent } from "../events.ts";
 import {
 	createTestApplication,
 	MockController,
@@ -16,6 +15,7 @@ import { abort } from "./abort.ts";
 import type { ClassController, Controller } from "./Controller.ts";
 import { BaseController, type ControllerContext, type ControllerReturn } from "./Controller.ts";
 import { any, get, group, post, redirect } from "./helpers.ts";
+import { RequestHandledEvent } from "./http-events.ts";
 import type { FunctionMiddleware } from "./Middleware.ts";
 import { BaseMiddleware } from "./Middleware.ts";
 import { MiddlewareSet } from "./MiddlewareSet.ts";

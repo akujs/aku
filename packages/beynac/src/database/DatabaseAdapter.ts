@@ -1,9 +1,9 @@
 import type { Statement, StatementResult } from "./contracts/Database.ts";
+import type { DatabaseGrammar } from "./grammar/DatabaseGrammar.ts";
 
-// Configuration for multiple database connections.
 export interface DatabaseConfig {
 	/**
-	 * The default database adapter, used when no connection name is specified.
+	 * The default database adapter, used when no name is specified.
 	 */
 	default: DatabaseAdapter;
 
@@ -14,13 +14,16 @@ export interface DatabaseConfig {
 }
 
 /**
- * Interface for database adapters.
- *
- * The TConnection type parameter represents the adapter's connection type.
- * DatabaseConnectionImpl treats this as `unknown` and passes it opaquely
- * between acquireConnection/releaseConnection and run/batch.
+ * Interface for database adapters. Implement this to add support for new
+ * databases.
  */
 export interface DatabaseAdapter<TConnection = unknown> {
+	/**
+	 * The SQL grammar for this database, used to generate transaction and
+	 * savepoint statements.
+	 */
+	readonly grammar: DatabaseGrammar;
+
 	/**
 	 * Whether this adapter supports interactive transactions.
 	 * If false, transaction() will throw and only batch() provides atomicity.
@@ -56,7 +59,17 @@ export interface DatabaseAdapter<TConnection = unknown> {
 
 	/**
 	 * Execute a batch of statements using the provided connection.
-	 * This does NOT handle transaction wrapping - that's done by DatabaseConnectionImpl.
+	 *
+	 * It is valid to iterate over the statements and execute each one
+	 * serially but adapters should use a technique that provides higher
+	 * performance if it is available.
+	 *
+	 * If the adapter supports transactions then this method will be called from
+	 * within a transaction. If the adapter does not support transactions and
+	 * the underlying database has an appropriate API, it should be implemented
+	 * using a transactional batch. Many HTTP databases like Neon and D1 offer
+	 * Do not support interactive transactions but do support a transactional
+	 * batch API call.
 	 */
 	batch(statements: Statement[], connection: TConnection): Promise<StatementResult[]>;
 

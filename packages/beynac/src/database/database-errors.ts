@@ -1,7 +1,7 @@
 import { BeynacError } from "../core/core-errors.ts";
 
 // Error codes that indicate a concurrency error that may be resolved by retrying.
-const CONCURRENCY_ERROR_CODES = ["40001", "40P01", "SQLITE_BUSY"];
+const CONCURRENCY_ERROR_CODES = ["40001", "40P01", "55P03", "SQLITE_BUSY"];
 
 // Message fragments that indicate a concurrency error. These are checked when
 // the error code is not available or not recognised.
@@ -23,6 +23,12 @@ const CONCURRENCY_ERROR_MESSAGES = [
 export class DatabaseError extends BeynacError {
 	public override readonly cause?: Error | undefined;
 
+	/**
+	 * The ID of the transaction in which this error occurred, or null if the
+	 * error occurred outside a transaction.
+	 */
+	public transactionId: number | null = null;
+
 	constructor(message: string, cause?: Error) {
 		super(message);
 		this.cause = cause;
@@ -41,11 +47,14 @@ export class DatabaseError extends BeynacError {
 }
 
 /**
- * Thrown when attempting to access a database connection that doesn't exist.
+ * Thrown when attempting to access a named database client that doesn't exist.
  */
-export class ConnectionNotFoundError extends DatabaseError {
-	constructor(public readonly connectionName: string) {
-		super(`Database connection "${connectionName}" not found`);
+export class ClientNotFoundError extends DatabaseError {
+	readonly clientName: string;
+
+	constructor(clientName: string) {
+		super(`Database client "${clientName}" not found`);
+		this.clientName = clientName;
 	}
 }
 
@@ -54,25 +63,25 @@ export class ConnectionNotFoundError extends DatabaseError {
  */
 export class QueryError extends DatabaseError {
 	/**
+	 * The SQL that was executed.
+	 */
+	readonly sql: string;
+
+	/**
 	 * The error code from the underlying database driver if available, e.g. "SQLITE_BUSY" or "privilege_not_granted".
 	 */
-	public readonly code: string | undefined;
+	readonly code: string | undefined;
 
 	/**
 	 * The error code from the underlying database driver if available. This
 	 * will correspond to the code e.g. 5 (the numeric value of SQLITE_BUSY).
 	 */
-	public readonly errorNumber?: number | undefined;
+	readonly errorNumber?: number | undefined;
 
-	constructor(
-		public readonly sql: string,
-		message: string,
-		cause: unknown,
-		code?: string,
-		errorNumber?: number,
-	) {
+	constructor(sql: string, message: string, cause: unknown, code?: string, errorNumber?: number) {
 		const error = cause instanceof Error ? cause : new Error(String(cause));
 		super(message, error);
+		this.sql = sql;
 		this.code = code;
 		this.errorNumber = errorNumber;
 	}

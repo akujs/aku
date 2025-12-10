@@ -195,9 +195,6 @@ export interface Configuration<RouteParams extends Record<string, string> = {}> 
 	/**
 	 * Database adapter(s) for the application.
 	 *
-	 * Can be a single adapter (used as the default connection) or an object
-	 * with `default` and optional `additional` connections.
-	 *
 	 * @example
 	 * // Single database
 	 * {

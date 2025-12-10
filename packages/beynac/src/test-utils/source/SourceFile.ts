@@ -83,10 +83,28 @@ export class SourceFile extends BaseClass {
 	}
 
 	/**
-	 * Returns true if this file is a public API entry point.
+	 * Returns true if this file is an entry point.
+	 * Entry points are files matching *-entry-point.ts when mode is "discover".
 	 */
 	isEntryPoint(): boolean {
-		return this.project.entryPoints.has(this.path);
+		if (this.project.entryPointMode === "disable") return false;
+		return this.basename.endsWith("-entry-point.ts");
+	}
+
+	/**
+	 * Returns the entry point name derived from the file path.
+	 * - Root level: foo-entry-point.ts → "foo"
+	 * - Nested: a/b/b-entry-point.ts → "a/b"
+	 */
+	get entryPointName(): string | null {
+		if (!this.isEntryPoint()) return null;
+		const nameFromFile = this.basename.replace("-entry-point.ts", "");
+		const parts = this.path.split("/");
+		if (parts.length === 1) {
+			return nameFromFile;
+		} else {
+			return parts.slice(0, -1).join("/");
+		}
 	}
 
 	/**

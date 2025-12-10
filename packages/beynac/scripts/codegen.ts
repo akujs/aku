@@ -1,15 +1,17 @@
 #!/usr/bin/env bun
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { discoverEntryPoints } from "../src/test-utils/source/discoverEntryPoints.ts";
 import {
 	getGeneratedFileContent,
 	getPackageExports,
-} from "../src/test-utils/source/generated-content";
-import { SourceProject } from "../src/test-utils/source/SourceProject";
+} from "../src/test-utils/source/generated-content.ts";
+import { SourceProject } from "../src/test-utils/source/SourceProject.ts";
 
 async function main() {
 	const srcDir = join(import.meta.dir, "..", "src");
-	const project = await SourceProject.load(srcDir);
+	const project = await SourceProject.getBeynac();
+	const entryPoints = discoverEntryPoints(project);
 	const generatedFiles = getGeneratedFileContent(project);
 
 	for (const [filename, content] of Object.entries(generatedFiles)) {
@@ -22,7 +24,7 @@ async function main() {
 	// Update package.json exports
 	const packageJsonPath = join(import.meta.dir, "..", "package.json");
 	const packageJson = JSON.parse(await readFile(packageJsonPath, "utf-8"));
-	packageJson.exports = getPackageExports();
+	packageJson.exports = getPackageExports(entryPoints);
 	await writeFile(packageJsonPath, JSON.stringify(packageJson, null, "  ") + "\n", "utf-8");
 	console.log(`✓ Generated package.json exports`);
 }

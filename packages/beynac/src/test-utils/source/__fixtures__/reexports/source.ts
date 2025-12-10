@@ -5,7 +5,7 @@ export class OriginalClass extends BaseClass {}
 
 export const originalValue = "original";
 
-export function originalFunc() {}
+export function originalFunc(): void {}
 
 // Type exports for re-export testing
 export interface OriginalInterface {

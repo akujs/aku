@@ -1,5 +1,5 @@
 import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
-import { durationStringToDate } from "../helpers/time.ts";
+import { durationStringToDate } from "../helpers/time/time-entry-point.ts";
 import { BaseClass } from "../utils.ts";
 import type {
 	StorageData,

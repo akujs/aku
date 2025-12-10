@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { durationStringToDate } from "../helpers/time.ts";
+import { durationStringToDate } from "../helpers/time/time-entry-point.ts";
 import { getPrototypeChain } from "../utils.ts";
 import { mockCurrentTime, resetMockTime } from "./mock-time.ts";
 import { resetAllMocks } from "./mocks.ts";

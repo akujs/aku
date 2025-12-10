@@ -8,17 +8,17 @@ export const publicString = "hello";
 export const noDocNumber = 42;
 
 /** @internal Internal constant */
-export const internalArray = [1, 2, 3];
+export const internalArray: number[] = [1, 2, 3];
 
 // Function exports
 
 /** Public function */
-export function publicFunc() {}
+export function publicFunc(): void {}
 
-export function noDocFunc() {}
+export function noDocFunc(): void {}
 
 /** @internal Internal function */
-export function internalFunc() {}
+export function internalFunc(): void {}
 
 // Class exports
 

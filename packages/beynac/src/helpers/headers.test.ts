@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { contentDisposition, formatAttributeHeader, parseAttributeHeader } from "./headers.ts";
+import {
+	contentDisposition,
+	formatAttributeHeader,
+	parseAttributeHeader,
+} from "./headers/headers-entry-point.ts";
 
 describe(contentDisposition, () => {
 	describe("with filename - success cases", () => {

@@ -2,112 +2,109 @@ import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
 import { BaseClass } from "../utils.ts";
 import type {
 	Database,
-	DatabaseConnection,
+	DatabaseClient,
 	Row,
 	Statement,
 	StatementResult,
 } from "./contracts/Database.ts";
-import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
-import { DatabaseConnectionImpl } from "./DatabaseConnectionImpl.ts";
-import { ConnectionNotFoundError } from "./database-errors.ts";
+import type { DatabaseAdapter, DatabaseConfig } from "./DatabaseAdapter.ts";
+import type { TransactionOptions } from "./DatabaseClient.ts";
+import { DatabaseClientImpl } from "./DatabaseClientImpl.ts";
+import { ClientNotFoundError } from "./database-errors.ts";
 
-const DEFAULT_CONNECTION_NAME = "default";
+const DEFAULT_CLIENT_NAME = "default";
 
 export class DatabaseImpl extends BaseClass implements Database {
-	readonly #connections: Map<string, DatabaseConnectionImpl> = new Map();
-	readonly #defaultConnectionName: string;
+	readonly #defaultClient: DatabaseClientImpl;
+	readonly #additionalClients: Map<string, DatabaseClientImpl> = new Map();
 
-	constructor(
-		defaultAdapter: DatabaseAdapter,
-		additionalAdapters: Record<string, DatabaseAdapter> = {},
-		dispatcher: Dispatcher,
-	) {
+	constructor(config: DatabaseAdapter | DatabaseConfig, dispatcher: Dispatcher) {
 		super();
-		this.#defaultConnectionName = DEFAULT_CONNECTION_NAME;
-		this.#connections.set(
-			DEFAULT_CONNECTION_NAME,
-			new DatabaseConnectionImpl(defaultAdapter, dispatcher),
-		);
-
-		for (const [name, adapter] of Object.entries(additionalAdapters)) {
-			this.#connections.set(name, new DatabaseConnectionImpl(adapter, dispatcher));
+		if (isAdapter(config)) {
+			this.#defaultClient = new DatabaseClientImpl(config, dispatcher);
+		} else {
+			this.#defaultClient = new DatabaseClientImpl(config.default, dispatcher);
+			for (const [name, adapter] of Object.entries(config.additional ?? {})) {
+				this.#additionalClients.set(name, new DatabaseClientImpl(adapter, dispatcher));
+			}
 		}
 	}
 
-	connection(name?: string): DatabaseConnection {
-		const connectionName = name ?? this.#defaultConnectionName;
-		const conn = this.#connections.get(connectionName);
+	client(name?: string): DatabaseClient {
+		if (name === undefined || name === DEFAULT_CLIENT_NAME) {
+			return this.#defaultClient;
+		}
+		const conn = this.#additionalClients.get(name);
 		if (!conn) {
-			throw new ConnectionNotFoundError(connectionName);
+			throw new ClientNotFoundError(name);
 		}
 		return conn;
 	}
 
-	// Delegate all DatabaseConnection methods to the default connection
-
 	get supportsTransactions(): boolean {
-		return this.#defaultConnection.supportsTransactions;
+		return this.#defaultClient.supportsTransactions;
 	}
 
 	get transactionId(): number | null {
-		return this.#defaultConnection.transactionId;
+		return this.#defaultClient.transactionId;
 	}
 
 	get outerTransactionId(): number | null {
-		return this.#defaultConnection.outerTransactionId;
+		return this.#defaultClient.outerTransactionId;
 	}
 
 	get transactionDepth(): number {
-		return this.#defaultConnection.transactionDepth;
-	}
-
-	get #defaultConnection(): DatabaseConnectionImpl {
-		return this.#connections.get(this.#defaultConnectionName)!;
+		return this.#defaultClient.transactionDepth;
 	}
 
 	run(statement: Statement): Promise<StatementResult> {
-		return this.#defaultConnection.run(statement);
+		return this.#defaultClient.run(statement);
 	}
 
 	batch(statements: Statement[]): Promise<StatementResult[]> {
-		return this.#defaultConnection.batch(statements);
+		return this.#defaultClient.batch(statements);
 	}
 
-	transaction<T>(fn: () => Promise<T>): Promise<T> {
-		return this.#defaultConnection.transaction(fn);
+	transaction<T>(fn: () => Promise<T>, options?: TransactionOptions): Promise<T> {
+		return this.#defaultClient.transaction(fn, options);
 	}
 
 	dispose(): void {
-		for (const conn of this.#connections.values()) {
+		this.#defaultClient.dispose();
+		for (const conn of this.#additionalClients.values()) {
 			conn.dispose();
 		}
 	}
 
 	all<T = Row>(statement: Statement): Promise<T[]> {
-		return this.#defaultConnection.all<T>(statement);
+		return this.#defaultClient.all<T>(statement);
 	}
 
 	first<T = Row>(statement: Statement): Promise<T> {
-		return this.#defaultConnection.first<T>(statement);
+		return this.#defaultClient.first<T>(statement);
 	}
 
 	firstOrNull<T = Row>(statement: Statement): Promise<T | null> {
-		return this.#defaultConnection.firstOrNull<T>(statement);
+		return this.#defaultClient.firstOrNull<T>(statement);
 	}
 
 	firstOrFail<T = Row>(statement: Statement): Promise<T> {
-		return this.#defaultConnection.firstOrFail<T>(statement);
+		return this.#defaultClient.firstOrFail<T>(statement);
 	}
 
 	firstOrNotFound<T = Row>(statement: Statement): Promise<T> {
-		return this.#defaultConnection.firstOrNotFound<T>(statement);
+		return this.#defaultClient.firstOrNotFound<T>(statement);
 	}
 
 	scalar<T = unknown>(statement: Statement): Promise<T> {
-		return this.#defaultConnection.scalar<T>(statement);
+		return this.#defaultClient.scalar<T>(statement);
 	}
 
 	column<T = unknown>(statement: Statement): Promise<T[]> {
-		return this.#defaultConnection.column<T>(statement);
+		return this.#defaultClient.column<T>(statement);
 	}
+}
+
+function isAdapter(value: DatabaseAdapter | DatabaseConfig): value is DatabaseAdapter {
+	return typeof (value as DatabaseAdapter).acquireConnection === "function";
 }

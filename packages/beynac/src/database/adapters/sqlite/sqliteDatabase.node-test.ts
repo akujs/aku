@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import type { Dispatcher } from "../../../core/contracts/Dispatcher.ts";
 import { createTestDirectory } from "../../../testing/test-directories.ts";
-import { DatabaseConnectionImpl } from "../../DatabaseConnectionImpl.ts";
+import { DatabaseClientImpl } from "../../DatabaseClientImpl.ts";
 import { QueryError } from "../../database-errors.ts";
 import { sql } from "../../sql.ts";
 import { SqliteDatabaseAdapter } from "./SqliteDatabaseAdapter.ts";
@@ -22,7 +22,7 @@ const noopDispatcher: Dispatcher = {
 
 void test("SqliteDatabase works Node.js", async () => {
 	const adapter = new SqliteDatabaseAdapter({ path: ":memory:" });
-	const db = new DatabaseConnectionImpl(adapter, noopDispatcher);
+	const db = new DatabaseClientImpl(adapter, noopDispatcher);
 
 	// Test run for DDL
 	await db.run(sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)`);

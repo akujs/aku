@@ -1,17 +1,43 @@
 import type { RetryOptions } from "../helpers/async/retry.ts";
 import type { Row, Statement, StatementResult } from "./Statement.ts";
 
-export type TransactionRetryOption = boolean | number | RetryOptions;
+export type IsolationLevel = "read-committed" | "repeatable-read" | "serializable";
+
+export type SqliteTransactionMode = "deferred" | "immediate" | "exclusive";
 
 export interface TransactionOptions {
-	retry?: TransactionRetryOption | undefined;
+	/**
+	 * The transaction isolation level. If not specified, the database default is used.
+	 * Note that isolation level support varies by database - SQLite ignores this option.
+	 */
+	isolation?: IsolationLevel | undefined;
+
+	/**
+	 * SQLite-specific transaction mode controlling when locks are acquired.
+	 * https://sqlite.org/lang_transaction.html
+	 */
+	sqliteMode?: SqliteTransactionMode | undefined;
+
+	/**
+	 * Retry on concurrency errors like deadlocks or write conflict.
+	 *
+	 * Valid values are:
+	 *
+	 * - `true` - retry with default options (5 attempts, 100ms starting delay)
+	 * - `false` - no retry (default)
+	 * - `number` - retry with that many max attempts
+	 * - `RetryOptions` - full control over retry behaviour, see the withRetry async helper
+	 */
+	retry?: boolean | number | RetryOptions | undefined;
 }
 
 /**
- * Represents a connection to a specific database, e.g. a named database on a
- * Postgres server, or a SQLite file on disk.
+ * Represents a a specific database, e.g. a named database on a Postgres server,
+ * or a SQLite file on disk.
+ *
+ * Note that this is different from the TCP connections used by some databases.
  */
-export interface DatabaseConnection {
+export interface DatabaseClient {
 	/**
 	 * Whether this database supports interactive transactions via
 	 * `transaction()`. Databases accessed via HTTP APIs like Cloudflare D1 tend
@@ -67,20 +93,30 @@ export interface DatabaseConnection {
 	 * Execute an interactive transaction. Within this transaction, any database
 	 * operations will become part of the transaction, and will be rolled back
 	 * if the transaction fails. If the function throws any error, the
-	 * transaction will be rolled back. Calls to transaction or batch will
-	 * create nested transactions that can roll back independently.
+	 * transaction will be rolled back.
+	 *
+	 * Calls to transaction can be nested, and nested transactions will use
+	 * savepoints in the database. However with nested transactions the options
+	 * are ignored, retry and isolation only apply to the outermost transaction.
 	 *
 	 * Throws if the underlying adapter does not support transactions. Check
 	 * `supportsTransactions` to see if this database does.
 	 *
-	 * @param options.retry retry on concurrency errors like deadlocks or write
-	 * conflict. When a concurrency error is detected, the transaction is rolled
-	 * back and retried with exponential backoff.
-	 * - `true` - retry with default options (5 attempts, 100ms starting delay)
-	 * - `false` - no retry (default)
-	 * - `number` - retry with that many max attempts
-	 * - `RetryOptions` - full control over retry behaviour, see the withRetry
-	 *   async helper
+	 * @param options.isolation - the transaction isolation level. If not
+	 *     specified, the database default is used. Note that isolation level
+	 *     support varies by database - SQLite ignores this option.
+	 *
+	 * @param options.sqliteMode - SQLite-specific transaction mode controlling
+	 *     when locks are acquired. https://sqlite.org/lang_transaction.html
+	 *
+	 * @param options.retry - retry on concurrency errors like deadlocks or
+	 *     write conflict. When a concurrency error is detected, the transaction
+	 *     is rolled back and retried with exponential backoff:
+	 *
+	 *         - `true` - retry with default options (5 attempts, 100ms starting delay)
+	 *         - `false` - no retry (default)
+	 *         - `number` - retry with that many max attempts
+	 *         - `RetryOptions` - full control over retry behaviour, see the withRetry async helper
 	 */
 	transaction<T>(fn: () => Promise<T>, options?: TransactionOptions): Promise<T>;
 

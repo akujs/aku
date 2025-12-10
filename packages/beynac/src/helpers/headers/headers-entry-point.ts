@@ -1,4 +1,4 @@
-import { transliterate, withoutComplexChars } from "./str/unicode.ts";
+import { transliterate, withoutComplexChars } from "../str/unicode.ts";
 
 const NON_LATIN1_REGEXP = /[^\x20-\x7e\xa0-\xff]/g;
 

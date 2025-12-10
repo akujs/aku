@@ -6,32 +6,37 @@ import type { Container } from "./contracts/Container.ts";
 type AddCallback = (need: KeyOrClass, factory: FactoryFunction<unknown>) => void;
 
 export class ContextualBindingBuilder extends BaseClass {
-	constructor(
-		private container: Container,
-		private add: AddCallback,
-	) {
+	#container: Container;
+	#add: AddCallback;
+
+	constructor(container: Container, add: AddCallback) {
 		super();
+		this.#container = container;
+		this.#add = add;
 	}
 
 	needs<T>(need: KeyOrClass<T>): ContextualBindingBuilderFinal<T> {
-		return new ContextualBindingBuilderFinal(this.container, this.add, need);
+		return new ContextualBindingBuilderFinal(this.#container, this.#add, need);
 	}
 }
 
 class ContextualBindingBuilderFinal<T> extends BaseClass {
-	constructor(
-		private container: Container,
-		private add: AddCallback,
-		private need: KeyOrClass,
-	) {
+	#container: Container;
+	#add: AddCallback;
+	#need: KeyOrClass;
+
+	constructor(container: Container, add: AddCallback, need: KeyOrClass) {
 		super();
+		this.#container = container;
+		this.#add = add;
+		this.#need = need;
 	}
 
 	give(key: KeyOrClass<T>): void {
-		this.add(this.need, (() => this.container.get(key)) as FactoryFunction<unknown>);
+		this.#add(this.#need, (() => this.#container.get(key)) as FactoryFunction<unknown>);
 	}
 
 	create(factory: FactoryFunction<T>): void {
-		this.add(this.need, factory as FactoryFunction<unknown>);
+		this.#add(this.#need, factory as FactoryFunction<unknown>);
 	}
 }

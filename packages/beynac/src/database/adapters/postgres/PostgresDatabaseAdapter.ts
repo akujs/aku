@@ -3,6 +3,8 @@ import { BaseClass } from "../../../utils.ts";
 import type { Statement, StatementResult } from "../../contracts/Database.ts";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
+import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
+import { PostgresGrammar } from "../../grammar/PostgresGrammar.ts";
 import type { PostgresDatabaseAdapterConfig } from "./PostgresDatabaseAdapterConfig.ts";
 
 type PostgresJS = Sql<Record<string, unknown>>;
@@ -12,6 +14,7 @@ export class PostgresDatabaseAdapter
 	extends BaseClass
 	implements DatabaseAdapter<PostgresConnection>
 {
+	readonly grammar: DatabaseGrammar = new PostgresGrammar();
 	readonly supportsTransactions = true;
 
 	readonly #sql: PostgresJS;
@@ -50,9 +53,7 @@ export class PostgresDatabaseAdapter
 		return Promise.all(statements.map((stmt) => this.run(stmt, connection)));
 	}
 
-	dispose(): void {
-		// Sql instance is passed in via constructor, so we don't own it
-	}
+	dispose(): void {}
 }
 
 interface PostgresError {

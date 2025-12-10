@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { ENTRY_POINTS } from "./test-utils/entryPoints.ts";
+import { discoverEntryPoints } from "./test-utils/source/discoverEntryPoints.ts";
 import {
 	getGeneratedFileContent,
 	getPackageExports,
@@ -11,7 +11,8 @@ import { SourceProject } from "./test-utils/source/SourceProject.ts";
 import { mapObjectValues } from "./utils.ts";
 
 const srcDir = join(import.meta.dir);
-const project = await SourceProject.load(srcDir, Object.values(ENTRY_POINTS));
+const project = await SourceProject.getBeynac();
+const entryPoints = discoverEntryPoints(project);
 const filePaths = project.root.allFiles().map((f) => f.path);
 const generatedFiles = Object.keys(getGeneratedFileContent(project));
 
@@ -36,7 +37,7 @@ describe("codebase invariants", () => {
 	test("package.json exports match generated content", async () => {
 		const packageJsonPath = join(srcDir, "..", "package.json");
 		const packageJson = JSON.parse(await readFile(packageJsonPath, "utf-8"));
-		expect(packageJson.exports).toEqual(getPackageExports());
+		expect(packageJson.exports).toEqual(getPackageExports(entryPoints));
 	});
 
 	test("package.json peerDependencies are all optional", async () => {

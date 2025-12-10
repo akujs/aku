@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { DatabaseError, QueryError } from "./database-errors.ts";
 
-describe("DatabaseError.isConcurrencyError", () => {
+describe(DatabaseError, () => {
 	describe("code-based detection", () => {
 		test("detects PostgreSQL serialization failure (40001)", () => {
 			const error = new QueryError("SELECT 1", "serialization_failure", null, "40001");
@@ -10,6 +10,11 @@ describe("DatabaseError.isConcurrencyError", () => {
 
 		test("detects PostgreSQL deadlock (40P01)", () => {
 			const error = new QueryError("SELECT 1", "deadlock_detected", null, "40P01");
+			expect(error.isConcurrencyError()).toBe(true);
+		});
+
+		test("detects PostgreSQL lock not available (55P03)", () => {
+			const error = new QueryError("SELECT 1", "lock_not_available", null, "55P03");
 			expect(error.isConcurrencyError()).toBe(true);
 		});
 

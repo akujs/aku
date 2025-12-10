@@ -1,17 +1,18 @@
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { mockDispatcher } from "../../test-utils/internal-mocks.bun.ts";
 import type { Database } from "../contracts/Database.js";
+import type { IsolationLevel } from "../DatabaseClient.ts";
 import { DatabaseImpl } from "../DatabaseImpl.ts";
 import { QueryError } from "../database-errors.ts";
 import type { SharedTestConfig } from "../database-test-utils.ts";
 import { sql } from "../sql.ts";
-import { d1SharedTestConfig } from "./d1/D1Database.test.ts";
-import { pgLiteSharedTestConfig } from "./pglite/PGLiteDatabase.test.ts";
-import { postgresSharedTestConfig } from "./postgres/PostgresDatabase.test.ts";
+import { d1SharedTestConfig } from "./d1/d1Database.test.ts";
+import { pgLiteSharedTestConfig } from "./pglite/pgliteDatabase.test.ts";
+import { postgresSharedTestConfig } from "./postgres/postgresDatabase.test.ts";
 import {
 	sqliteFileSharedTestConfig,
 	sqliteMemorySharedTestConfig,
-} from "./sqlite/SqliteDatabase.test.ts";
+} from "./sqlite/sqliteDatabase.test.ts";
 
 const adapterConfigs: SharedTestConfig[] = [
 	sqliteMemorySharedTestConfig,
@@ -25,7 +26,7 @@ describe.each(adapterConfigs)("$name", ({ createDatabase, supportsTransactions }
 	let db: Database;
 
 	beforeAll(async () => {
-		db = new DatabaseImpl(await createDatabase(), {}, mockDispatcher());
+		db = new DatabaseImpl(await createDatabase(), mockDispatcher());
 		await db.run(sql`CREATE TABLE users (name TEXT, age INTEGER)`);
 	});
 
@@ -200,25 +201,59 @@ describe.each(adapterConfigs)("$name", ({ createDatabase, supportsTransactions }
 					});
 				});
 
-				const result = await db.run(sql`SELECT name FROM users ORDER BY age`);
-				expect(result.rows).toEqual([{ name: "Level0" }, { name: "Level1" }, { name: "Level2" }]);
+				const result = await db.column(sql`SELECT name FROM users ORDER BY age`);
+				expect(result).toEqual(["Level0", "Level1", "Level2"]);
 			});
 
-			test("batch inside transaction creates nested transaction", async () => {
+			test("batch inside transaction can roll back atomically", async () => {
 				await db.transaction(async () => {
 					await db.run(sql`INSERT INTO users (name, age) VALUES ('Alice', 30)`);
 
 					try {
 						await db.batch([
 							sql`INSERT INTO users (name, age) VALUES ('Bob', 30)`,
-							sql`INSERT INTO whoopsie! (name, age) VALUES ('Bob', 25)`,
+							// This insert will fail so when it's rolled back the above insert should not apply
+							sql`INSERT INTO whoopsie! (name, age) VALUES ('Charlie', 25)`,
 						]);
 					} catch {}
 				});
 
-				const result = await db.run(sql`SELECT * FROM users ORDER BY name`);
+				const result = await db.column(sql`SELECT name FROM users ORDER BY name`);
+				expect(result).toEqual(["Alice"]);
+			});
+
+			test("batch inside transaction can commit", async () => {
+				await db.transaction(async () => {
+					await db.run(sql`INSERT INTO users (name, age) VALUES ('Alice', 30)`);
+
+					try {
+						await db.batch([
+							sql`INSERT INTO users (name, age) VALUES ('Bob', 30)`,
+							sql`INSERT INTO users (name, age) VALUES ('Charlie', 25)`,
+						]);
+					} catch {}
+				});
+
+				const result = await db.column(sql`SELECT name FROM users ORDER BY name`);
+				expect(result).toEqual(["Alice", "Bob", "Charlie"]);
+			});
+
+			const isolationLevels: IsolationLevel[] = [
+				"read-committed",
+				"repeatable-read",
+				"serializable",
+			];
+
+			test.each(isolationLevels)("transaction with isolation level '%s' commits", async (level) => {
+				await db.transaction(
+					async () => {
+						await db.run(sql`INSERT INTO users (name, age) VALUES ('IsolationTest', 99)`);
+					},
+					{ isolation: level },
+				);
+
+				const result = await db.run(sql`SELECT * FROM users WHERE name = 'IsolationTest'`);
 				expect(result.rows).toHaveLength(1);
-				expect(result.rows[0].name).toBe("Alice");
 			});
 		});
 	}

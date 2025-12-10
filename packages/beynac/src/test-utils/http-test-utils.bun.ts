@@ -80,7 +80,7 @@ export const controllerContext = (
  * @param options.cookies Custom cookie map for testing
  * @param options.requestUrl Override the requestUrl
  */
-export const integrationContext = (options?: {
+export const mockIntegrationContext = (options?: {
 	request?: Request | undefined;
 	headers?: Record<string, string> | undefined;
 	cookies?: Record<string, string> | undefined;
@@ -228,7 +228,7 @@ export const createTestApplication = <RouteParams extends Record<string, string>
 		} else if (url.startsWith("/")) {
 			url = "https://example.com" + url;
 		}
-		return await app.handleRequest(new Request(url, { method }), integrationContext());
+		return await app.handleRequest(new Request(url, { method }), mockIntegrationContext());
 	};
 
 	return { app, container, router, handle };

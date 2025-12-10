@@ -9,7 +9,7 @@ describe(SourceProject, () => {
 	let project: SourceProject;
 
 	beforeAll(async () => {
-		project = await SourceProject.load(fixturesPath);
+		project = await SourceProject.load(fixturesPath, "disable");
 	});
 
 	test("creates correct folder hierarchy", () => {
@@ -78,11 +78,6 @@ describe(SourceProject, () => {
 		expect(project.getFile("module/submodule/index.ts").importPath).toBe(
 			"module/submodule/index.ts",
 		);
-	});
-
-	test("throws for invalid entry point", () => {
-		expect(() => SourceProject.load(fixturesPath, ["public-api/documented.ts"])).not.toThrowError();
-		expect(() => SourceProject.load(fixturesPath, ["public-api/invalid.ts"])).toThrowError();
 	});
 
 	test("getAliases returns bidirectional aliases", () => {

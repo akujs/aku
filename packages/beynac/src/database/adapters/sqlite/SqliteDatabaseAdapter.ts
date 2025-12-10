@@ -4,10 +4,13 @@ import { BaseClass, type FifoLock, fifoLock } from "../../../utils.ts";
 import type { Statement, StatementResult } from "../../contracts/Database.ts";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
+import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
+import { SqliteGrammar } from "../../grammar/SqliteGrammar.ts";
 import type { SqliteDatabaseAdapterConfig } from "./SqliteDatabaseAdapterConfig.ts";
 import type { SqliteConnection, SqliteOps } from "./SqliteOps.ts";
 
 export class SqliteDatabaseAdapter extends BaseClass implements DatabaseAdapter<SqliteConnection> {
+	readonly grammar: DatabaseGrammar = new SqliteGrammar();
 	readonly supportsTransactions = true;
 
 	readonly #useWalMode: boolean;

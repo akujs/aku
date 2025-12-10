@@ -3,12 +3,39 @@ import { BeynacEvent } from "../../core/core-events.ts";
 import { isMockable } from "../../testing/mocks.ts";
 import { BaseClass, getPrototypeChain } from "../../utils.ts";
 import type { SourceFile } from "./SourceFile.ts";
+import { SourceFolder } from "./SourceFolder.ts";
 
 /**
  * Returns an array of error messages for invariant violations in a source file.
  */
 export function getFileErrors(file: SourceFile): string[] {
 	const errors: string[] = [];
+
+	// Entry point naming validation
+	if (file.isEntryPoint() && file.path.includes("/")) {
+		// Nested entry point: filename prefix must match parent folder name
+		const parts = file.path.split("/");
+		const nameFromFile = file.basename.replace("-entry-point.ts", "");
+		const parentDir = parts[parts.length - 2];
+		if (nameFromFile !== parentDir) {
+			errors.push(
+				`${file.path}: entry point filename "${nameFromFile}" must match parent directory "${parentDir}"`,
+			);
+		}
+	}
+
+	if (file.isEntryPoint() && !file.path.includes("/")) {
+		// Root entry point: error if matching folder exists
+		const nameFromFile = file.basename.replace("-entry-point.ts", "");
+		const matchingFolder = file.project.root.children.find(
+			(child) => child instanceof SourceFolder && child.basename === nameFromFile,
+		);
+		if (matchingFolder) {
+			errors.push(
+				`${file.path}: entry point should be moved to ${nameFromFile}/${nameFromFile}-entry-point.ts`,
+			);
+		}
+	}
 
 	for (const exp of file.exports) {
 		if (exp.kind === "class") {
@@ -36,7 +63,7 @@ export function getFileErrors(file: SourceFile): string[] {
 
 				const exportFiles = exp.getAliases().map((e) => e.file.path);
 				const entryFilePath = moduleNameToEntryFile(moduleName);
-				const expectedExportFiles = ["errors.ts", `${entryFilePath}.ts`];
+				const expectedExportFiles = ["errors-entry-point.ts", entryFilePath];
 				if (!setsEqual(exportFiles, expectedExportFiles)) {
 					errors.push(
 						`${exp.name} in ${file.path} should be exported twice in ${expectedExportFiles.join(" and ")}, but the files exporting it are: ${exportFiles.join(", ")}`,
@@ -67,7 +94,7 @@ export function getFileErrors(file: SourceFile): string[] {
 
 				const exportFiles = exp.getAliases().map((e) => e.file.path);
 				const entryFilePath = moduleNameToEntryFile(moduleName);
-				const expectedExportFiles = ["events.ts", `${entryFilePath}.ts`];
+				const expectedExportFiles = ["events-entry-point.ts", entryFilePath];
 				if (!setsEqual(exportFiles, expectedExportFiles)) {
 					errors.push(
 						`${exp.name} in ${file.path} should be exported twice in ${expectedExportFiles.join(" and ")}, but the files exporting it are: ${exportFiles.join(", ") || "(no files)"}`,
@@ -106,8 +133,8 @@ export function getFileErrors(file: SourceFile): string[] {
 			);
 		}
 
-		// Check barrel file parent directory re-exports (only for index.ts barrel files, not entry files)
-		const isBarrelFile = file.basename === "index.ts" && !file.path.startsWith("entry/");
+		// Check barrel file parent directory re-exports (only for index.ts barrel files, not entry point files)
+		const isBarrelFile = file.basename === "index.ts" && !file.isEntryPoint();
 		if (isBarrelFile && exp.reexport && exp.reexport.originalFile.startsWith("../")) {
 			errors.push(
 				`File ${file.path} re-exports from parent directory "${exp.reexport.originalFile}". Files should only re-export from the current directory or subdirectories.`,
@@ -115,7 +142,7 @@ export function getFileErrors(file: SourceFile): string[] {
 		}
 
 		const checkPublicApiDoc = !exp.isPrimitive && !exp.reexport;
-		if (checkPublicApiDoc && exp.project.entryPoints.size > 0) {
+		if (checkPublicApiDoc && exp.project.entryPointMode !== "disable") {
 			// Check public API doc comments (skip re-exports - doc should be on original)
 			if (exp.isPublicApi() && !exp.isDocumented()) {
 				errors.push(
@@ -253,10 +280,8 @@ const setsEqual = <T>(a: T[], b: T[]): boolean => {
 
 /** Maps module name to the path of the entry file (relative to src/). */
 const moduleNameToEntryFile = (moduleName: string): string => {
-	if (moduleName === "core") return "entry/index";
-	// Database module has entry point directly in module folder
-	if (moduleName === "database") return "database/database-entry-point";
-	return `entry/${moduleName}`;
+	if (moduleName === "core") return "index-entry-point.ts";
+	return `${moduleName}/${moduleName}-entry-point.ts`;
 };
 
 const isRelativePath = (path: string): boolean => {

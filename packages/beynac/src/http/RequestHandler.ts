@@ -26,14 +26,20 @@ import {
 export class RequestHandler extends BaseClass {
 	#throwOnInvalidParam: boolean;
 	#streamResponses: boolean;
+	#container: Container;
+	#viewRenderer: ViewRenderer;
+	#dispatcher: Dispatcher;
 
 	constructor(
-		private container: Container = inject(Container),
-		private viewRenderer: ViewRenderer = inject(ViewRenderer),
-		private dispatcher: Dispatcher = inject(Dispatcher),
+		container: Container = inject(Container),
+		viewRenderer: ViewRenderer = inject(ViewRenderer),
+		dispatcher: Dispatcher = inject(Dispatcher),
 		config: Configuration = inject(Configuration),
 	) {
 		super();
+		this.#container = container;
+		this.#viewRenderer = viewRenderer;
+		this.#dispatcher = dispatcher;
 		const isDevelopment = !!config.development;
 		this.#throwOnInvalidParam = resolveEnvironmentChoice(
 			config.throwOnInvalidParamAccess,
@@ -48,10 +54,10 @@ export class RequestHandler extends BaseClass {
 	}
 
 	async handle(match: RouteWithParams): Promise<Response> {
-		const locals = this.container.get(RequestLocals);
+		const locals = this.#container.get(RequestLocals);
 
 		// Store the route definition as a scoped instance for middleware access
-		this.container.scopedInstance(CurrentRouteDefinition, match.route);
+		this.#container.scopedInstance(CurrentRouteDefinition, match.route);
 
 		try {
 			const decodedParams: Record<string, string> = {};
@@ -75,12 +81,12 @@ export class RequestHandler extends BaseClass {
 				url: match.url,
 				meta: match.route.meta || {},
 			};
-			this.container.scopedInstance(CurrentControllerContext, ctx);
+			this.#container.scopedInstance(CurrentControllerContext, ctx);
 
 			const finalHandler = async (ctx: ControllerContext): Promise<Response> => {
 				let result: ControllerReturn;
 				if (isClassController(match.route.controller)) {
-					const controller = this.container.get(match.route.controller);
+					const controller = this.#container.get(match.route.controller);
 					result = controller.handle(ctx);
 				} else {
 					if (isNativeClassConstructor(match.route.controller)) {
@@ -96,12 +102,12 @@ export class RequestHandler extends BaseClass {
 			};
 
 			const pipeline = match.route.middleware
-				? match.route.middleware.buildPipeline(this.container, finalHandler)
+				? match.route.middleware.buildPipeline(this.#container, finalHandler)
 				: finalHandler;
 
 			const response = await pipeline(ctx);
 
-			this.dispatcher.dispatchIfHasListeners(
+			this.#dispatcher.dispatchIfHasListeners(
 				RequestHandledEvent,
 				() => new RequestHandledEvent(ctx, response),
 			);
@@ -140,7 +146,7 @@ export class RequestHandler extends BaseClass {
 		}
 
 		if (isJsxElement(result)) {
-			return this.viewRenderer.renderResponse(result, { streaming: this.#streamResponses });
+			return this.#viewRenderer.renderResponse(result, { streaming: this.#streamResponses });
 		}
 
 		const hasHandleMethod = typeof (result as BaseController)?.handle !== "function";

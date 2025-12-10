@@ -108,8 +108,11 @@ function isReactElement(value: unknown): boolean {
 }
 
 export class ViewRendererImpl extends BaseClass implements ViewRenderer {
-	constructor(private container: Container = inject(Container)) {
+	#container: Container;
+
+	constructor(container: Container = inject(Container)) {
 		super();
+		this.#container = container;
 	}
 
 	async render(content: JSXNode, options?: RenderOptions): Promise<string> {
@@ -175,7 +178,7 @@ export class ViewRendererImpl extends BaseClass implements ViewRenderer {
 			rootContext.set(ComponentInstantiator, (tag: Component, props: Props) => {
 				if (isClassComponent(tag)) {
 					// Instantiate using container.withInject() so inject() works in constructor
-					const instance = this.container.withInject(() => new tag(props));
+					const instance = this.#container.withInject(() => new tag(props));
 					return (ctx: Context) => instance.render(ctx);
 				}
 				return (ctx: Context) => tag(props, ctx);

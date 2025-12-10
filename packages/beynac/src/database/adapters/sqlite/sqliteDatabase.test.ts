@@ -1,10 +1,11 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { asyncGate } from "../../../test-utils/async-gate.bun.ts";
-import { mockDispatcher } from "../../../test-utils/internal-mocks.bun.ts";
+import { type MockDispatcher, mockDispatcher } from "../../../test-utils/internal-mocks.bun.ts";
 import { createTestDirectory } from "../../../testing/test-directories.ts";
-import { DatabaseConnectionImpl } from "../../DatabaseConnectionImpl.ts";
+import type { DatabaseClient } from "../../contracts/Database.ts";
+import { DatabaseClientImpl } from "../../DatabaseClientImpl.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { SharedTestConfig } from "../../database-test-utils.ts";
 import { sql } from "../../sql.ts";
@@ -27,75 +28,81 @@ export const sqliteFileSharedTestConfig: SharedTestConfig = {
 };
 
 describe("SqliteDatabase", () => {
+	let testDir: string;
+	let dbPath: string;
+	let adapter: SqliteDatabaseAdapter;
+	let dispatcher: MockDispatcher;
+	let db: DatabaseClient;
+
+	beforeEach(() => {
+		testDir = createTestDirectory();
+		dbPath = join(testDir, "test.db");
+		adapter = new SqliteDatabaseAdapter({ path: dbPath });
+		dispatcher = mockDispatcher();
+		db = new DatabaseClientImpl(adapter, dispatcher);
+	});
+
+	afterEach(() => {
+		db.dispose();
+	});
+
 	test("readOnly prevents writes", async () => {
-		const testDir = createTestDirectory();
-		const dbPath = join(testDir, "test.db");
+		const conn1 = await adapter.acquireConnection();
+		await adapter.run(sql`CREATE TABLE test (id INTEGER)`, conn1);
+		adapter.releaseConnection(conn1);
+		adapter.dispose();
 
-		const adapter1 = new SqliteDatabaseAdapter({ path: dbPath });
-		const conn1 = await adapter1.acquireConnection();
-		await adapter1.run(sql`CREATE TABLE test (id INTEGER)`, conn1);
-		adapter1.releaseConnection(conn1);
-		adapter1.dispose();
-
-		const adapter2 = new SqliteDatabaseAdapter({ path: dbPath, readOnly: true });
-		const conn2 = await adapter2.acquireConnection();
-		expect(adapter2.run(sql`INSERT INTO test (id) VALUES (1)`, conn2)).rejects.toThrow();
-		adapter2.releaseConnection(conn2);
-		adapter2.dispose();
+		const readOnlyAdapter = new SqliteDatabaseAdapter({ path: dbPath, readOnly: true });
+		const conn2 = await readOnlyAdapter.acquireConnection();
+		expect(readOnlyAdapter.run(sql`INSERT INTO test (id) VALUES (1)`, conn2)).rejects.toThrow();
+		readOnlyAdapter.releaseConnection(conn2);
+		readOnlyAdapter.dispose();
 	});
 
 	test("create option creates parent directories by default", async () => {
-		const testDir = createTestDirectory();
-		const dbPath = join(testDir, "subdir", "nested", "test.db");
+		const nestedPath = join(testDir, "subdir", "nested", "test.db");
+		const nestedAdapter = new SqliteDatabaseAdapter({ path: nestedPath });
+		const conn = await nestedAdapter.acquireConnection();
+		await nestedAdapter.run(sql`CREATE TABLE test (id INTEGER)`, conn);
+		nestedAdapter.releaseConnection(conn);
+		nestedAdapter.dispose();
 
-		const adapter = new SqliteDatabaseAdapter({ path: dbPath });
-		const conn = await adapter.acquireConnection();
-		await adapter.run(sql`CREATE TABLE test (id INTEGER)`, conn);
-		adapter.releaseConnection(conn);
-		adapter.dispose();
-
-		expect(existsSync(dbPath)).toBe(true);
+		expect(existsSync(nestedPath)).toBe(true);
 	});
 
 	test("create=false throws if file does not exist", () => {
-		const testDir = createTestDirectory();
-		const dbPath = join(testDir, "nonexistent.db");
-
+		const nonexistentPath = join(testDir, "nonexistent.db");
 		expect(() => {
-			new SqliteDatabaseAdapter({ path: dbPath, create: false });
+			new SqliteDatabaseAdapter({ path: nonexistentPath, create: false });
 		}).toThrow("Database file does not exist");
 	});
 
-	test("useWalMode enables WAL by default", async () => {
-		const testDir = createTestDirectory();
-		const dbPath = join(testDir, "test.db");
-
-		const adapter = new SqliteDatabaseAdapter({ path: dbPath });
+	test("enables WAL by default", async () => {
 		const conn = await adapter.acquireConnection();
 		const result = await adapter.run(sql`PRAGMA journal_mode`, conn);
 		expect(result.rows[0].journal_mode).toBe("wal");
 		adapter.releaseConnection(conn);
-		adapter.dispose();
+	});
+
+	test("useWalMode=true enables WAL", async () => {
+		const noWalAdapter = new SqliteDatabaseAdapter({ path: dbPath, useWalMode: true });
+		const conn = await noWalAdapter.acquireConnection();
+		const result = await noWalAdapter.run(sql`PRAGMA journal_mode`, conn);
+		expect(result.rows[0].journal_mode).toBe("wal");
+		noWalAdapter.releaseConnection(conn);
+		noWalAdapter.dispose();
 	});
 
 	test("useWalMode=false disables WAL", async () => {
-		const testDir = createTestDirectory();
-		const dbPath = join(testDir, "test.db");
-
-		const adapter = new SqliteDatabaseAdapter({ path: dbPath, useWalMode: false });
-		const conn = await adapter.acquireConnection();
-		const result = await adapter.run(sql`PRAGMA journal_mode`, conn);
+		const noWalAdapter = new SqliteDatabaseAdapter({ path: dbPath, useWalMode: false });
+		const conn = await noWalAdapter.acquireConnection();
+		const result = await noWalAdapter.run(sql`PRAGMA journal_mode`, conn);
 		expect(result.rows[0].journal_mode).toBe("delete");
-		adapter.releaseConnection(conn);
-		adapter.dispose();
+		noWalAdapter.releaseConnection(conn);
+		noWalAdapter.dispose();
 	});
 
 	test("uncommitted transaction writes are not visible outside transaction", async () => {
-		const testDir = createTestDirectory();
-		const dbPath = join(testDir, "test.db");
-
-		const adapter = new SqliteDatabaseAdapter({ path: dbPath });
-		const db = new DatabaseConnectionImpl(adapter, mockDispatcher());
 		await db.run(sql`CREATE TABLE test (value TEXT)`);
 
 		const gate = asyncGate();
@@ -119,16 +126,9 @@ describe("SqliteDatabase", () => {
 		// After commit, the write is visible
 		const afterCommit = await db.run(sql`SELECT value FROM test`);
 		expect(afterCommit.rows).toEqual([{ value: "from-tx" }]);
-
-		db.dispose();
 	});
 
-	test("concurrent transaction uses different connection", async () => {
-		const testDir = createTestDirectory({ prefix: "sqlite-conn-" });
-		const dbPath = join(testDir, "test.db");
-
-		const adapter = new SqliteDatabaseAdapter({ path: dbPath });
-		const db = new DatabaseConnectionImpl(adapter, mockDispatcher());
+	test("concurrent transactions are permitted", async () => {
 		await db.run(sql`CREATE TABLE test (value TEXT)`);
 		await db.run(sql`INSERT INTO test (value) VALUES ('initial')`);
 
@@ -160,16 +160,9 @@ describe("SqliteDatabase", () => {
 		// (with a single connection, the second BEGIN would fail)
 		expect(results).toContain("tx1: initial");
 		expect(results).toContain("tx2: initial");
-
-		db.dispose();
 	});
 
-	test("concurrent write transactions can throw SQLITE_BUSY", async () => {
-		const testDir = createTestDirectory({ prefix: "sqlite-busy-" });
-		const dbPath = join(testDir, "test.db");
-
-		const adapter = new SqliteDatabaseAdapter({ path: dbPath });
-		const db = new DatabaseConnectionImpl(adapter, mockDispatcher());
+	test("concurrent write transactions throws SQLITE_BUSY", async () => {
 		await db.run(sql`CREATE TABLE test (value INTEGER)`);
 		await db.run(sql`INSERT INTO test (value) VALUES (0)`);
 
@@ -203,7 +196,147 @@ describe("SqliteDatabase", () => {
 		expect(t2Error).not.toBeNull();
 		expect((t2Error as unknown as QueryError).code).toBe("SQLITE_BUSY");
 		expect((t2Error as unknown as QueryError).errorNumber).toBe(5);
+	});
 
-		db.dispose();
+	test("transaction retries on write lock contention with IMMEDIATE mode", async () => {
+		await db.run(sql`CREATE TABLE test (value TEXT)`);
+		await db.run(sql`INSERT INTO test (value) VALUES ('0')`);
+
+		const originalRun = adapter.run.bind(adapter);
+		const runSpy = spyOn(adapter, "run").mockImplementation(originalRun);
+
+		const tx1Gate = asyncGate();
+
+		// TX1: Acquires write lock immediately (at BEGIN IMMEDIATE), waits at gate
+		const tx1Promise = db.transaction(
+			async () => {
+				await tx1Gate.block();
+				await db.run(sql`UPDATE test SET value = 'tx1'`);
+			},
+			{ sqliteMode: "immediate" },
+		);
+
+		await tx1Gate.hasBlocked();
+
+		// TX2: BEGIN IMMEDIATE fails with SQLITE_BUSY because TX1 holds the lock.
+		// The retry happens at the transaction level (BEGIN fails, not the function).
+		const tx2Fn = mock(async () => {
+			await db.run(sql`UPDATE test SET value = value || '+tx2'`);
+		});
+
+		// Start TX2 - it will retry BEGIN IMMEDIATE until TX1 releases
+		const tx2Promise = db.transaction(tx2Fn, {
+			sqliteMode: "immediate",
+			retry: { maxAttempts: 10, startingDelay: 5 },
+		});
+
+		// Give TX2 time to fail at least once before releasing TX1
+		await new Promise((r) => setTimeout(r, 20));
+		tx1Gate.release();
+
+		await Promise.all([tx1Promise, tx2Promise]);
+
+		// TX1 does one BEGIN IMMEDIATE, TX2 does at least 2 (first fails, retry succeeds)
+		const beginImmediateAttempts = runSpy.mock.calls.filter(
+			([stmt]) => stmt.renderForLogs() === "BEGIN IMMEDIATE",
+		).length;
+		expect(beginImmediateAttempts).toBeGreaterThan(2);
+		// TX2's function body only runs once (after successful BEGIN)
+		expect(tx2Fn.mock.calls.length).toBe(1);
+		const result = await db.scalar<string>(sql`SELECT value FROM test`);
+		expect(result).toBe("tx1+tx2");
+	});
+
+	test("transaction retries on write upgrade conflict", async () => {
+		// Disable WAL mode - in WAL mode readers don't block writers
+		adapter = new SqliteDatabaseAdapter({ path: dbPath, useWalMode: false });
+		db = new DatabaseClientImpl(adapter, mockDispatcher());
+		await db.run(sql`CREATE TABLE test (value TEXT)`);
+		await db.run(sql`INSERT INTO test (value) VALUES ('0')`);
+
+		const originalRun = adapter.run.bind(adapter);
+		const runSpy = spyOn(adapter, "run").mockImplementation(originalRun);
+
+		const tx1Gate = asyncGate();
+
+		// TX1: Reads (SHARED lock), waits at gate, then writes
+		const tx1Promise = db.transaction(async () => {
+			await db.run(sql`SELECT * FROM test`);
+			await tx1Gate.block();
+			await db.run(sql`UPDATE test SET value = 'tx1'`);
+		});
+
+		await tx1Gate.hasBlocked();
+
+		// TX2: Reads (SHARED lock), then tries to write and commit
+		// In non-WAL mode, COMMIT fails with SQLITE_BUSY when another transaction
+		// holds a RESERVED lock
+		const tx2Fn = mock(async () => {
+			await db.run(sql`SELECT * FROM test`);
+			await db.run(sql`UPDATE test SET value = value || '+tx2'`);
+		});
+
+		// Start TX2 - it will complete its function but COMMIT will fail
+		const tx2Promise = db.transaction(tx2Fn, { retry: { maxAttempts: 10, startingDelay: 5 } });
+
+		// Give TX2 time to attempt and fail COMMIT before releasing TX1
+		await new Promise((r) => setTimeout(r, 20));
+		tx1Gate.release();
+
+		await Promise.all([tx1Promise, tx2Promise]);
+
+		// TX2 should have retried (BEGIN called multiple times)
+		// We expect 3+: TX1's BEGIN, TX2's first BEGIN, TX2's retry BEGIN(s)
+		const beginAttempts = runSpy.mock.calls.filter(
+			([stmt]) => stmt.renderForLogs() === "BEGIN",
+		).length;
+		expect(beginAttempts).toBeGreaterThan(2);
+		const result = await db.scalar<string>(sql`SELECT value FROM test`);
+		expect(result).toBe("tx1+tx2");
+	});
+
+	test("transaction retries on read blocked by EXCLUSIVE lock", async () => {
+		await db.run(sql`CREATE TABLE test (value TEXT)`);
+		await db.run(sql`INSERT INTO test (value) VALUES ('0')`);
+
+		const originalRun = adapter.run.bind(adapter);
+		const runSpy = spyOn(adapter, "run").mockImplementation(originalRun);
+
+		const tx1Gate = asyncGate();
+
+		// TX1: Acquires exclusive lock (blocks all other access), waits at gate
+		const tx1Promise = db.transaction(
+			async () => {
+				await tx1Gate.block();
+				await db.run(sql`UPDATE test SET value = 'tx1'`);
+			},
+			{ sqliteMode: "exclusive" },
+		);
+
+		await tx1Gate.hasBlocked();
+
+		// TX2: Even a read-only transaction fails with SQLITE_BUSY because TX1 holds exclusive lock
+		const tx2Fn = mock(async () => {
+			await db.run(sql`SELECT * FROM test`);
+		});
+
+		const tx2Promise = db.transaction(tx2Fn, {
+			sqliteMode: "exclusive",
+			retry: { maxAttempts: 10, startingDelay: 5 },
+		});
+
+		// Give TX2 time to fail at least once before releasing TX1
+		await new Promise((r) => setTimeout(r, 20));
+		tx1Gate.release();
+
+		await Promise.all([tx1Promise, tx2Promise]);
+
+		// TX1 does one BEGIN EXCLUSIVE, TX2 does at least 2 (first fails, retry succeeds)
+		const beginExclusiveAttempts = runSpy.mock.calls.filter(
+			([stmt]) => stmt.renderForLogs() === "BEGIN EXCLUSIVE",
+		).length;
+		expect(beginExclusiveAttempts).toBeGreaterThan(2);
+		// TX2's function body only runs once (after successful BEGIN)
+		expect(tx2Fn.mock.calls.length).toBe(1);
 	});
 });

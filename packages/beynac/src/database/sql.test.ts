@@ -1,13 +1,16 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { AbortException } from "../http/abort.ts";
-import { createTestApplication, integrationContext } from "../test-utils/http-test-utils.bun.ts";
+import {
+	createTestApplication,
+	mockIntegrationContext,
+} from "../test-utils/http-test-utils.bun.ts";
 import { mockDispatcher } from "../test-utils/internal-mocks.bun.ts";
 import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 import { Database } from "./contracts/Database.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 import { DatabaseImpl } from "./DatabaseImpl.ts";
 import { QueryError } from "./database-errors.ts";
-import { sql } from "./sql.ts";
+import { SqlImpl, sql } from "./sql.ts";
 
 describe("sql tagged template literal", () => {
 	test("returns fragments and params from template literal", () => {
@@ -34,25 +37,21 @@ describe("Sql execution methods", () => {
 
 	test("run() returns rowsAffected", async () => {
 		const result = await sql`INSERT INTO test (name) VALUES ('Charlie')`.run();
-
 		expect(result.rowsAffected).toBe(1);
 	});
 
 	test("all() returns rows", async () => {
-		const rows = await sql`SELECT * FROM test ORDER BY id`.all();
-
-		expect(rows).toHaveLength(2);
+		const rows = await sql`SELECT name FROM test ORDER BY id`.all();
+		expect(rows).toEqual([{ name: "Alice" }, { name: "Bob" }]);
 	});
 
 	test("first() returns first row", async () => {
 		const row = await sql`SELECT * FROM test ORDER BY id`.first();
-
 		expect(row.name).toBe("Alice");
 	});
 
 	test("firstOrNull() returns null when no rows", async () => {
 		const row = await sql`SELECT * FROM test WHERE name = 'Unknown'`.firstOrNull();
-
 		expect(row).toBeNull();
 	});
 
@@ -64,26 +63,21 @@ describe("Sql execution methods", () => {
 
 	test("scalar() returns first column value", async () => {
 		const name = await sql`SELECT name FROM test ORDER BY id`.scalar();
-
 		expect(name).toBe("Alice");
 	});
 
 	test("column() returns first column array", async () => {
 		const names = await sql`SELECT name FROM test ORDER BY id`.column();
-
 		expect(names).toEqual(["Alice", "Bob"]);
 	});
 
 	test("is thenable and returns all rows", async () => {
-		const rows = await sql`SELECT * FROM test ORDER BY id`;
-
-		expect(rows).toHaveLength(2);
-		expect(rows[0].name).toBe("Alice");
-		expect(rows[1].name).toBe("Bob");
+		const rows = await sql`SELECT name FROM test ORDER BY id`;
+		expect(rows).toEqual([{ name: "Alice" }, { name: "Bob" }]);
 	});
 });
 
-describe("Sql.firstOrNotFound", () => {
+describe(SqlImpl.prototype.firstOrNotFound, () => {
 	let adapter: DatabaseAdapter;
 
 	beforeEach(async () => {
@@ -101,12 +95,14 @@ describe("Sql.firstOrNotFound", () => {
 		await db.run(sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`);
 
 		expect(
-			app.withIntegration(integrationContext(), () => sql`SELECT * FROM test`.firstOrNotFound()),
+			app.withIntegration(mockIntegrationContext(), () =>
+				sql`SELECT * FROM test`.firstOrNotFound(),
+			),
 		).rejects.toBeInstanceOf(AbortException);
 	});
 });
 
-describe("Sql.on() connection routing", () => {
+describe("client routing", () => {
 	let defaultAdapter: DatabaseAdapter;
 	let additionalAdapter: DatabaseAdapter;
 
@@ -114,8 +110,8 @@ describe("Sql.on() connection routing", () => {
 		defaultAdapter = sqliteDatabase({ path: ":memory:" });
 		additionalAdapter = sqliteDatabase({ path: ":memory:" });
 
-		const defaultDb = new DatabaseImpl(defaultAdapter, {}, mockDispatcher());
-		const additionalDb = new DatabaseImpl(additionalAdapter, {}, mockDispatcher());
+		const defaultDb = new DatabaseImpl(defaultAdapter, mockDispatcher());
+		const additionalDb = new DatabaseImpl(additionalAdapter, mockDispatcher());
 
 		await defaultDb.run(sql`CREATE TABLE info (db_name TEXT)`);
 		await defaultDb.run(sql`INSERT INTO info (db_name) VALUES ('default')`);
@@ -129,7 +125,7 @@ describe("Sql.on() connection routing", () => {
 		additionalAdapter.dispose();
 	});
 
-	test("on() executes on named connection", async () => {
+	test("on() executes on named client", async () => {
 		createTestApplication({
 			database: { default: defaultAdapter, additional: { additional: additionalAdapter } },
 		});
@@ -141,7 +137,7 @@ describe("Sql.on() connection routing", () => {
 		expect(result.db_name).toBe("additional");
 	});
 
-	test("without on() uses default connection", async () => {
+	test("without on() uses default client", async () => {
 		createTestApplication({
 			database: { default: defaultAdapter, additional: { additional: additionalAdapter } },
 		});
@@ -151,7 +147,7 @@ describe("Sql.on() connection routing", () => {
 		expect(result.db_name).toBe("default");
 	});
 
-	test("await sql`...`.on() runs all() on named connection", async () => {
+	test("await sql`...`.on() runs all() on named client", async () => {
 		createTestApplication({
 			database: { default: defaultAdapter, additional: { additional: additionalAdapter } },
 		});

@@ -7,12 +7,11 @@ import type { ControllerContext } from "./Controller.ts";
 export class RequestHandledEvent extends BeynacEvent {
 	readonly #response: Response;
 	#headers?: Headers;
+	readonly context: ControllerContext;
 
-	constructor(
-		public readonly context: ControllerContext,
-		response: Response,
-	) {
+	constructor(context: ControllerContext, response: Response) {
 		super();
+		this.context = context;
 		this.#response = response;
 	}
 

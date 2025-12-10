@@ -2,7 +2,8 @@
   "extends": "./tsconfig.common.json",
   "compilerOptions": {
     "lib": ["ES2024"],
-    "types": ["node"]
+    "types": ["node"],
+    "erasableSyntaxOnly": true
   },
   "include": ["src/**/*.ts", "src/**/*.node-test.ts"],
   "exclude": ["src/**/*.bun.ts", "src/**/*.test.ts"]

@@ -23,12 +23,13 @@ export type StorageOperationType =
  */
 export abstract class StorageEvent extends BeynacEvent {
 	abstract readonly type: StorageOperationType;
+	readonly disk: StorageDisk;
+	readonly path: string;
 
-	constructor(
-		public readonly disk: StorageDisk,
-		public readonly path: string,
-	) {
+	constructor(disk: StorageDisk, path: string) {
 		super();
+		this.disk = disk;
+		this.path = path;
 	}
 
 	protected override getToStringExtra(): string {
@@ -41,7 +42,11 @@ export abstract class StorageEvent extends BeynacEvent {
  */
 export abstract class StorageOperationStartingEvent extends StorageEvent {
 	readonly phase = "start" as const;
-	public readonly startTimestamp: number = Date.now();
+
+	/**
+	 * High-resolution timestamp from `performance.now()` when the operation started.
+	 */
+	public readonly startTimestamp: number = performance.now();
 }
 
 /**
@@ -53,7 +58,7 @@ export abstract class StorageOperationCompletedEvent extends StorageEvent {
 
 	constructor(startEvent: StorageOperationStartingEvent) {
 		super(startEvent.disk, startEvent.path);
-		this.timeTakenMs = Date.now() - startEvent.startTimestamp;
+		this.timeTakenMs = performance.now() - startEvent.startTimestamp;
 	}
 }
 
@@ -64,13 +69,14 @@ export class StorageOperationFailedEvent extends StorageEvent {
 	readonly phase = "fail" as const;
 	public readonly timeTakenMs: number;
 	public readonly type: StorageOperationType;
+	readonly startEvent: StorageOperationStartingEvent;
+	readonly error: StorageError;
 
-	constructor(
-		public readonly startEvent: StorageOperationStartingEvent,
-		public readonly error: StorageError,
-	) {
+	constructor(startEvent: StorageOperationStartingEvent, error: StorageError) {
 		super(startEvent.disk, startEvent.path);
-		this.timeTakenMs = Date.now() - startEvent.startTimestamp;
+		this.startEvent = startEvent;
+		this.error = error;
+		this.timeTakenMs = performance.now() - startEvent.startTimestamp;
 		this.type = startEvent.type;
 	}
 }
@@ -118,12 +124,11 @@ export class FileExistenceCheckingEvent extends StorageOperationStartingEvent {
 /** Dispatched when file existence check completes. */
 export class FileExistenceCheckedEvent extends StorageOperationCompletedEvent {
 	public readonly type = "file:existence-check" as const;
+	readonly exists: boolean;
 
-	constructor(
-		startEvent: FileExistenceCheckingEvent,
-		public readonly exists: boolean,
-	) {
+	constructor(startEvent: FileExistenceCheckingEvent, exists: boolean) {
 		super(startEvent);
+		this.exists = exists;
 	}
 }
 
@@ -135,28 +140,37 @@ export class FileInfoRetrievingEvent extends StorageOperationStartingEvent {
 /** Dispatched when file metadata has been retrieved. */
 export class FileInfoRetrievedEvent extends StorageOperationCompletedEvent {
 	public readonly type = "file:info-retrieve" as const;
+	readonly info: StorageFileInfo | null;
 
-	constructor(
-		startEvent: FileInfoRetrievingEvent,
-		public readonly info: StorageFileInfo | null,
-	) {
+	constructor(startEvent: FileInfoRetrievingEvent, info: StorageFileInfo | null) {
 		super(startEvent);
+		this.info = info;
 	}
 }
 
 /** Dispatched when generating a URL for a file. */
 export class FileUrlGeneratingEvent extends StorageOperationStartingEvent {
 	public readonly type = "file:url-generate" as const;
+	readonly urlType: "url" | "signed" | "upload";
+	readonly options:
+		| {
+				expires?: string | Date;
+				downloadAs?: string;
+		  }
+		| undefined;
+
 	constructor(
 		disk: StorageDisk,
 		path: string,
-		public readonly urlType: "url" | "signed" | "upload",
-		public readonly options?: {
+		urlType: "url" | "signed" | "upload",
+		options?: {
 			expires?: string | Date;
 			downloadAs?: string;
 		},
 	) {
 		super(disk, path);
+		this.urlType = urlType;
+		this.options = options;
 	}
 }
 
@@ -165,13 +179,12 @@ export class FileUrlGeneratedEvent extends StorageOperationCompletedEvent {
 	public readonly type = "file:url-generate" as const;
 
 	readonly #startEvent: FileUrlGeneratingEvent;
+	readonly url: string;
 
-	constructor(
-		startEvent: FileUrlGeneratingEvent,
-		public readonly url: string,
-	) {
+	constructor(startEvent: FileUrlGeneratingEvent, url: string) {
 		super(startEvent);
 		this.#startEvent = startEvent;
+		this.url = url;
 	}
 
 	get urlType(): "url" | "signed" | "upload" {
@@ -191,13 +204,13 @@ export class FileUrlGeneratedEvent extends StorageOperationCompletedEvent {
 /** Dispatched when a file write operation starts. */
 export class FileWritingEvent extends StorageOperationStartingEvent {
 	public readonly type = "file:write" as const;
-	constructor(
-		disk: StorageDisk,
-		path: string,
-		public readonly data: StorageData,
-		public readonly mimeType: string | null,
-	) {
+	readonly data: StorageData;
+	readonly mimeType: string | null;
+
+	constructor(disk: StorageDisk, path: string, data: StorageData, mimeType: string | null) {
 		super(disk, path);
+		this.data = data;
+		this.mimeType = mimeType;
 	}
 }
 
@@ -234,13 +247,18 @@ export class FileDeletedEvent extends StorageOperationCompletedEvent {
 /** Dispatched when a file copy operation starts. */
 export class FileCopyingEvent extends StorageOperationStartingEvent {
 	public readonly type = "file:copy" as const;
+	readonly destinationDiskName: string;
+	readonly destinationPath: string;
+
 	constructor(
 		disk: StorageDisk,
 		path: string,
-		public readonly destinationDiskName: string,
-		public readonly destinationPath: string,
+		destinationDiskName: string,
+		destinationPath: string,
 	) {
 		super(disk, path);
+		this.destinationDiskName = destinationDiskName;
+		this.destinationPath = destinationPath;
 	}
 }
 
@@ -267,13 +285,18 @@ export class FileCopiedEvent extends StorageOperationCompletedEvent {
 /** Dispatched when a file move operation starts. */
 export class FileMovingEvent extends StorageOperationStartingEvent {
 	public readonly type = "file:move" as const;
+	readonly destinationDiskName: string;
+	readonly destinationPath: string;
+
 	constructor(
 		disk: StorageDisk,
 		path: string,
-		public readonly destinationDiskName: string,
-		public readonly destinationPath: string,
+		destinationDiskName: string,
+		destinationPath: string,
 	) {
 		super(disk, path);
+		this.destinationDiskName = destinationDiskName;
+		this.destinationPath = destinationPath;
 	}
 }
 
@@ -305,25 +328,29 @@ export class DirectoryExistenceCheckingEvent extends StorageOperationStartingEve
 /** Dispatched when directory existence check completes. */
 export class DirectoryExistenceCheckedEvent extends StorageOperationCompletedEvent {
 	public readonly type = "directory:existence-check" as const;
+	readonly exists: boolean;
 
-	constructor(
-		startEvent: DirectoryExistenceCheckingEvent,
-		public readonly exists: boolean,
-	) {
+	constructor(startEvent: DirectoryExistenceCheckingEvent, exists: boolean) {
 		super(startEvent);
+		this.exists = exists;
 	}
 }
 
 /** Dispatched when a directory listing operation starts. */
 export class DirectoryListingEvent extends StorageOperationStartingEvent {
 	public readonly type = "directory:list" as const;
+	readonly list: "files" | "directories" | "all";
+	readonly recursive: boolean;
+
 	constructor(
 		disk: StorageDisk,
 		path: string,
-		public readonly list: "files" | "directories" | "all",
-		public readonly recursive: boolean,
+		list: "files" | "directories" | "all",
+		recursive: boolean,
 	) {
 		super(disk, path);
+		this.list = list;
+		this.recursive = recursive;
 	}
 }
 
@@ -331,13 +358,12 @@ export class DirectoryListingEvent extends StorageOperationStartingEvent {
 export class DirectoryListedEvent extends StorageOperationCompletedEvent {
 	public readonly type = "directory:list" as const;
 	readonly #startEvent: DirectoryListingEvent;
+	readonly entryCount: number;
 
-	constructor(
-		startEvent: DirectoryListingEvent,
-		public readonly entryCount: number,
-	) {
+	constructor(startEvent: DirectoryListingEvent, entryCount: number) {
 		super(startEvent);
 		this.#startEvent = startEvent;
+		this.entryCount = entryCount;
 	}
 
 	get list(): "files" | "directories" | "all" {

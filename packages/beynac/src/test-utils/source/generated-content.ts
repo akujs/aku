@@ -1,13 +1,12 @@
 import { mapObjectValues } from "../../utils.ts";
-import { ENTRY_POINTS } from "../entryPoints.ts";
 import type { SourceProject } from "./SourceProject.ts";
 
 export function getGeneratedFileContent(project: SourceProject): Record<string, string> {
 	const rawFiles = {
-		"contracts.ts": generateContractsFileContent(project),
-		"errors.ts": generateErrorsFileContent(project),
-		"events.ts": generateEventsFileContent(project),
-		"facades.ts": generateFacadesFileContent(project),
+		"contracts-entry-point.ts": generateContractsFileContent(project),
+		"errors-entry-point.ts": generateErrorsFileContent(project),
+		"events-entry-point.ts": generateEventsFileContent(project),
+		"facades-entry-point.ts": generateFacadesFileContent(project),
 	};
 	return mapObjectValues(
 		rawFiles,
@@ -113,16 +112,18 @@ function generateFacadesFileContent(project: SourceProject): string {
 
 type ExportEntry = { source: string; default: string };
 
-export function getPackageExports(): Record<string, string | ExportEntry> {
+export function getPackageExports(
+	entryPoints: Record<string, string>,
+): Record<string, string | ExportEntry> {
 	const exports: Record<string, string | ExportEntry> = {};
 
-	for (const [entryKey, sourcePath] of Object.entries(ENTRY_POINTS)) {
+	for (const [entryKey, sourcePath] of Object.entries(entryPoints)) {
 		const exportKey = entryKey === "index" ? "." : `./${entryKey}`;
 
 		const jsPath = `./dist/${entryKey}.mjs`;
 
 		exports[exportKey] = {
-			source: `./${sourcePath}`,
+			source: `./src/${sourcePath}`,
 			default: jsPath,
 		};
 	}

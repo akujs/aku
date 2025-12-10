@@ -24,7 +24,7 @@ async function runBunTests(args: string[]): Promise<boolean> {
 const nodeTestArgs = [
 	"node",
 	"--disable-warning=ExperimentalWarning",
-	"--experimental-transform-types",
+	"--experimental-strip-types",
 	"--experimental-sqlite",
 	"--test",
 	"src/**/*.node-test.ts",

@@ -7,7 +7,20 @@ export { postgresDatabase } from "./adapters/postgres/postgresDatabase.ts";
 export { type SqliteDatabaseAdapterConfig } from "./adapters/sqlite/SqliteDatabaseAdapterConfig.ts";
 export { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 export type { DatabaseAdapter } from "./DatabaseAdapter.ts";
-export type { DatabaseConnection } from "./DatabaseConnection.ts";
+export type { DatabaseClient } from "./DatabaseClient.ts";
 export * from "./database-errors.ts";
-export * from "./database-events.ts";
+export {
+	DatabaseEvent,
+	DatabaseOperationCompletedEvent,
+	DatabaseOperationStartingEvent,
+	QueryExecutedEvent,
+	QueryExecutingEvent,
+	QueryFailedEvent,
+	TransactionExecutedEvent,
+	TransactionExecutingEvent,
+	TransactionFailedEvent,
+	TransactionPreCommitEvent,
+	TransactionRetryingEvent,
+} from "./database-events.ts";
+export { DatabaseGrammar } from "./grammar/DatabaseGrammar.ts";
 export { type Sql, sql } from "./sql.ts";

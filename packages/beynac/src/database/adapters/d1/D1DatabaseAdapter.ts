@@ -7,15 +7,12 @@ import { BaseClass } from "../../../utils.ts";
 import type { Statement, StatementResult } from "../../contracts/Database.ts";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
+import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
+import { SqliteGrammar } from "../../grammar/SqliteGrammar.ts";
 import type { D1DatabaseAdapterConfig } from "./D1DatabaseAdapterConfig.ts";
 
-// D1 doesn't have a connection concept - we use the binding directly
-// and use a symbol as the "connection" token
-const D1_CONNECTION = Symbol("D1Connection");
-type D1Connection = typeof D1_CONNECTION;
-
-export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter<D1Connection> {
-	// D1 doesn't support interactive transactions - only batch provides atomicity
+export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter<null> {
+	readonly grammar: DatabaseGrammar = new SqliteGrammar();
 	readonly supportsTransactions = false;
 
 	readonly #db: D1DatabaseBinding;
@@ -25,16 +22,13 @@ export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter<D1Co
 		this.#db = config.binding;
 	}
 
-	async acquireConnection(): Promise<D1Connection> {
-		// D1 is stateless - no connection to acquire
-		return D1_CONNECTION;
+	async acquireConnection(): Promise<null> {
+		return null;
 	}
 
-	releaseConnection(_connection: D1Connection): void {
-		// D1 is stateless - nothing to release
-	}
+	releaseConnection(): void {}
 
-	async run(statement: Statement, _connection: D1Connection): Promise<StatementResult> {
+	async run(statement: Statement): Promise<StatementResult> {
 		const sqlString = toSql(statement);
 		try {
 			return this.#toStatementResult(await this.#prepare(statement).all());
@@ -43,7 +37,7 @@ export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter<D1Co
 		}
 	}
 
-	async batch(statements: Statement[], _connection: D1Connection): Promise<StatementResult[]> {
+	async batch(statements: Statement[]): Promise<StatementResult[]> {
 		if (statements.length === 0) return [];
 		try {
 			const results = await this.#db.batch(statements.map((stmt) => this.#prepare(stmt)));
@@ -55,9 +49,7 @@ export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter<D1Co
 		}
 	}
 
-	dispose(): void {
-		// D1 binding is passed in via constructor, so we don't own it
-	}
+	dispose(): void {}
 
 	#prepare(statement: Statement): D1PreparedStatement {
 		const sqlString = toSql(statement);
