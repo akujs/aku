@@ -1,4 +1,11 @@
+import type { RetryOptions } from "../helpers/async/retry.ts";
 import type { Row, Statement, StatementResult } from "./Statement.ts";
+
+export type TransactionRetryOption = boolean | number | RetryOptions;
+
+export interface TransactionOptions {
+	retry?: TransactionRetryOption | undefined;
+}
 
 /**
  * Represents a connection to a specific database, e.g. a named database on a
@@ -57,14 +64,25 @@ export interface DatabaseConnection {
 	batch(statements: Statement[]): Promise<StatementResult[]>;
 
 	/**
-	 * Execute an interactive transaction. Within this transaction, any calls to
-	 * run will become part of the transaction, and will be rolled back if the
-	 * transaction fails. Calls to transaction or batch will create nested
-	 * transactions that can roll back independently.
+	 * Execute an interactive transaction. Within this transaction, any database
+	 * operations will become part of the transaction, and will be rolled back
+	 * if the transaction fails. If the function throws any error, the
+	 * transaction will be rolled back. Calls to transaction or batch will
+	 * create nested transactions that can roll back independently.
 	 *
-	 * Throws if the underlying adapter does not support transactions.
+	 * Throws if the underlying adapter does not support transactions. Check
+	 * `supportsTransactions` to see if this database does.
+	 *
+	 * @param options.retry retry on concurrency errors like deadlocks or write
+	 * conflict. When a concurrency error is detected, the transaction is rolled
+	 * back and retried with exponential backoff.
+	 * - `true` - retry with default options (5 attempts, 100ms starting delay)
+	 * - `false` - no retry (default)
+	 * - `number` - retry with that many max attempts
+	 * - `RetryOptions` - full control over retry behaviour, see the withRetry
+	 *   async helper
 	 */
-	transaction<T>(fn: () => Promise<T>): Promise<T>;
+	transaction<T>(fn: () => Promise<T>, options?: TransactionOptions): Promise<T>;
 
 	/**
 	 * Clean up any resources created by this adapter. Some adapters accept

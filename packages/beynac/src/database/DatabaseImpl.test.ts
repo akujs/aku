@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { sleep } from "../helpers/async/sleep.ts";
 import { AbortException } from "../http/abort.ts";
 import { createTestApplication, integrationContext } from "../test-utils/http-test-utils.bun.ts";
 import { mockDispatcher } from "../test-utils/internal-mocks.bun.ts";
+import { mock, resetAllMocks } from "../testing/mocks.ts";
 import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 import { DatabaseConnectionImpl } from "./DatabaseConnectionImpl.ts";
@@ -181,6 +183,156 @@ describe("DatabaseImpl", () => {
 			const db = new DatabaseImpl(defaultAdapter, {}, mockDispatcher());
 
 			expect(() => db.connection("nonexistent")).toThrow(ConnectionNotFoundError);
+		});
+	});
+});
+
+describe(DatabaseConnectionImpl, () => {
+	describe("transaction retry", () => {
+		let adapter: DatabaseAdapter;
+		let db: DatabaseConnectionImpl;
+
+		afterEach(() => {
+			resetAllMocks();
+			adapter?.dispose();
+		});
+
+		async function createDb(): Promise<void> {
+			adapter = sqliteDatabase({ path: ":memory:" });
+			db = new DatabaseConnectionImpl(adapter, mockDispatcher());
+			await db.run(sql`CREATE TABLE test (id INTEGER PRIMARY KEY, value TEXT)`);
+		}
+
+		test("retry: false doesn't retry on concurrency error", async () => {
+			await createDb();
+			let attempts = 0;
+
+			try {
+				await db.transaction(
+					async () => {
+						attempts++;
+						throw new QueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
+					},
+					{ retry: false },
+				);
+				expect.unreachable("should have thrown");
+			} catch (error) {
+				expect(error).toBeInstanceOf(QueryError);
+			}
+
+			expect(attempts).toBe(1);
+		});
+
+		test("retry: true retries on concurrency error", async () => {
+			await createDb();
+			mock(sleep, async () => {});
+
+			let attempts = 0;
+
+			await db.transaction(
+				async () => {
+					attempts++;
+					if (attempts < 3) {
+						throw new QueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
+					}
+					await db.run(sql`INSERT INTO test (value) VALUES ('success')`);
+				},
+				{ retry: true },
+			);
+
+			expect(attempts).toBe(3);
+			const result = await db.scalar(sql`SELECT value FROM test`);
+			expect(result).toBe("success");
+		});
+
+		test("retry: number limits retry attempts", async () => {
+			await createDb();
+			mock(sleep, async () => {});
+
+			let attempts = 0;
+
+			try {
+				await db.transaction(
+					async () => {
+						attempts++;
+						throw new QueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
+					},
+					{ retry: 3 },
+				);
+				expect.unreachable("should have thrown");
+			} catch (error) {
+				expect(error).toBeInstanceOf(QueryError);
+			}
+
+			expect(attempts).toBe(3);
+		});
+
+		test("retry doesn't retry on non-concurrency errors", async () => {
+			await createDb();
+			mock(sleep, async () => {});
+
+			let attempts = 0;
+
+			try {
+				await db.transaction(
+					async () => {
+						attempts++;
+						throw new Error("Some other error");
+					},
+					{ retry: true },
+				);
+				expect.unreachable("should have thrown");
+			} catch (error) {
+				expect(error).toBeInstanceOf(Error);
+				expect((error as Error).message).toBe("Some other error");
+			}
+
+			expect(attempts).toBe(1);
+		});
+
+		test("retry with custom RetryOptions", async () => {
+			await createDb();
+			const delays: number[] = [];
+			mock(sleep, async (ms: number) => {
+				delays.push(ms);
+			});
+
+			let attempts = 0;
+
+			await db.transaction(
+				async () => {
+					attempts++;
+					if (attempts < 3) {
+						throw new QueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
+					}
+				},
+				{ retry: { maxAttempts: 5, startingDelay: 50, jitterFactor: 0 } },
+			);
+
+			expect(attempts).toBe(3);
+			expect(delays).toEqual([50, 100]);
+		});
+
+		test("retry rolls back transaction before retrying", async () => {
+			await createDb();
+			mock(sleep, async () => {});
+
+			let attempts = 0;
+
+			await db.transaction(
+				async () => {
+					attempts++;
+					await db.run(sql`INSERT INTO test (value) VALUES (${`attempt-${attempts}`})`);
+					if (attempts < 2) {
+						throw new QueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
+					}
+				},
+				{ retry: true },
+			);
+
+			// Only the final successful attempt should be committed
+			const rows = await db.all(sql`SELECT value FROM test ORDER BY id`);
+			expect(rows).toEqual([{ value: "attempt-2" }]);
 		});
 	});
 });

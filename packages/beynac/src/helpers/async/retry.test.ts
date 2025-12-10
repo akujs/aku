@@ -93,6 +93,26 @@ describe(withRetry, () => {
 		expect(result).toEqual({ delays: [1, 1], threw: "fail" });
 		randomSpy.mockRestore();
 	});
+
+	test("maxAttempts of 0 executes once with no retry", async () => {
+		const result = await testRetry({ maxAttempts: 0 });
+		expect(result).toEqual({ threw: "fail" });
+	});
+
+	test("maxAttempts of 0 returns result on success", async () => {
+		const result = await testRetry({ maxAttempts: 0 }, 0);
+		expect(result).toEqual({ returned: "success" });
+	});
+
+	test("maxAttempts of 1 executes once with no retry", async () => {
+		const result = await testRetry({ maxAttempts: 0 });
+		expect(result).toEqual({ threw: "fail" });
+	});
+
+	test("maxAttempts of 1 returns result on success", async () => {
+		const result = await testRetry({ maxAttempts: 0 }, 0);
+		expect(result).toEqual({ returned: "success" });
+	});
 });
 
 interface TestRetryResult {

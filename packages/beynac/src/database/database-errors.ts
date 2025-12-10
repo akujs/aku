@@ -1,5 +1,22 @@
 import { BeynacError } from "../core/core-errors.ts";
 
+// Error codes that indicate a concurrency error that may be resolved by retrying.
+const CONCURRENCY_ERROR_CODES = ["40001", "40P01", "SQLITE_BUSY"];
+
+// Message fragments that indicate a concurrency error. These are checked when
+// the error code is not available or not recognised.
+const CONCURRENCY_ERROR_MESSAGES = [
+	"Deadlock found when trying to get lock",
+	"deadlock detected",
+	"The database file is locked",
+	"database is locked",
+	"database table is locked",
+	"A table in the database is locked",
+	"has been chosen as the deadlock victim",
+	"Lock wait timeout exceeded; try restarting transaction",
+	"WSREP detected deadlock/conflict and aborted the transaction. Try restarting the transaction",
+];
+
 /**
  * Base class for all database-related errors
  */
@@ -9,6 +26,17 @@ export class DatabaseError extends BeynacError {
 	constructor(message: string, cause?: Error) {
 		super(message);
 		this.cause = cause;
+	}
+
+	/**
+	 * Whether this error indicates a concurrency issue like a deadlock or
+	 * database lock that may be resolved by retrying the transaction.
+	 */
+	isConcurrencyError(): boolean {
+		if (this instanceof QueryError && this.code && CONCURRENCY_ERROR_CODES.includes(this.code)) {
+			return true;
+		}
+		return CONCURRENCY_ERROR_MESSAGES.some((msg) => this.message.includes(msg));
 	}
 }
 

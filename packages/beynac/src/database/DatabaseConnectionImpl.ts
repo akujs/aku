@@ -1,10 +1,15 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
+import { type RetryOptions, withRetry } from "../helpers/async/retry.ts";
 import { abort } from "../http/abort.ts";
 import { BaseClass } from "../utils.ts";
 import type { Row, Statement, StatementResult } from "./contracts/Database.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
-import type { DatabaseConnection } from "./DatabaseConnection.ts";
+import type {
+	DatabaseConnection,
+	TransactionOptions,
+	TransactionRetryOption,
+} from "./DatabaseConnection.ts";
 import { DatabaseError, QueryError } from "./database-errors.ts";
 import type { TransactionContext, TransactionEventContext } from "./database-events.ts";
 import {
@@ -118,13 +123,22 @@ export class DatabaseConnectionImpl extends BaseClass implements DatabaseConnect
 		return this.#adapter.batch(statements, ctx.connection);
 	}
 
-	async transaction<T>(fn: () => Promise<T>): Promise<T> {
+	async transaction<T>(fn: () => Promise<T>, options?: TransactionOptions): Promise<T> {
 		if (!this.#adapter.supportsTransactions) {
 			throw new DatabaseError(
 				"This database adapter does not support interactive transactions. Use batch() instead.",
 			);
 		}
 
+		const retryOptions = normalizeRetryOptions(options?.retry);
+
+		return withRetry(() => this.#executeTransaction(fn), {
+			...retryOptions,
+			shouldRetry: (error) => error instanceof DatabaseError && error.isConcurrencyError(),
+		});
+	}
+
+	async #executeTransaction<T>(fn: () => Promise<T>): Promise<T> {
 		return this.#withConnection(async (connection) => {
 			const currentCtx = this.#connectionStorage.getStore()!;
 			const depth = currentCtx.transactionDepth + 1;
@@ -234,4 +248,17 @@ interface ConnectionContext {
 	transactionDepth: number;
 	transactionId: number | null;
 	outerTransactionId: number | null;
+}
+
+function normalizeRetryOptions(retry: TransactionRetryOption | undefined): RetryOptions {
+	if (retry === true) {
+		return {};
+	}
+	if (retry === false || retry === undefined) {
+		return { maxAttempts: 0 };
+	}
+	if (typeof retry === "number") {
+		return { maxAttempts: retry };
+	}
+	return retry;
 }
