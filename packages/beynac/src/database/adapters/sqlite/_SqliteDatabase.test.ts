@@ -8,8 +8,8 @@ import { DatabaseConnectionImpl } from "../../DatabaseConnectionImpl.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { SharedTestConfig } from "../../database-test-utils.ts";
 import { sql } from "../../sql.ts";
+import { sqliteDatabase } from "./_SqliteDatabase.ts";
 import { SqliteDatabaseAdapter } from "./SqliteDatabaseAdapter.ts";
-import { sqliteDatabase } from "./sqliteDatabase.ts";
 
 export const sqliteMemorySharedTestConfig: SharedTestConfig = {
 	name: "SqliteDatabase (memory)",

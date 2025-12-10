@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { AbortException } from "../http/abort.ts";
 import { createTestApplication, integrationContext } from "../test-utils/http-test-utils.bun.ts";
 import { mockDispatcher } from "../test-utils/internal-mocks.bun.ts";
-import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
+import { sqliteDatabase } from "./adapters/sqlite/_SqliteDatabase.ts";
 import { Database } from "./contracts/Database.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 import { DatabaseImpl } from "./DatabaseImpl.ts";

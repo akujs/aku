@@ -8,8 +8,8 @@ import { DatabaseConnectionImpl } from "../../DatabaseConnectionImpl.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { SharedTestConfig } from "../../database-test-utils.ts";
 import { sql } from "../../sql.ts";
+import { postgresDatabase } from "./_postgresDatabase.ts";
 import { PostgresDatabaseAdapter } from "./PostgresDatabaseAdapter.ts";
-import { postgresDatabase } from "./postgresDatabase.ts";
 
 const POSTGRES_URL = "postgres://beynac:beynac@localhost:22857/beynac_test";
 

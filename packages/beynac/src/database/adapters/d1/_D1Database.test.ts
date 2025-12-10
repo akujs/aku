@@ -5,8 +5,8 @@ import { mockDispatcher } from "../../../test-utils/internal-mocks.bun.ts";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { DatabaseImpl } from "../../DatabaseImpl.ts";
 import type { SharedTestConfig } from "../../database-test-utils.ts";
+import { d1Database } from "./_D1Database.ts";
 import { D1DatabaseAdapter } from "./D1DatabaseAdapter.ts";
-import { d1Database } from "./d1Database.ts";
 
 let sharedMf: Miniflare | null = null;
 
