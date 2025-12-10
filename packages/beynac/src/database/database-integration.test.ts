@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createTestApplication } from "../test-utils/http-test-utils.bun.ts";
-import { sqliteDatabase } from "./adapters/sqlite/_SqliteDatabase.ts";
+import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 import { Database } from "./contracts/Database.ts";
 import { DatabaseImpl } from "./DatabaseImpl.ts";
 

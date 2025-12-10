@@ -4,7 +4,7 @@ import { AbortException } from "../http/abort.ts";
 import { createTestApplication, integrationContext } from "../test-utils/http-test-utils.bun.ts";
 import { mockDispatcher } from "../test-utils/internal-mocks.bun.ts";
 import { mock, resetAllMocks } from "../testing/mocks.ts";
-import { sqliteDatabase } from "./adapters/sqlite/_SqliteDatabase.ts";
+import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 import { DatabaseConnectionImpl } from "./DatabaseConnectionImpl.ts";
 import { DatabaseImpl } from "./DatabaseImpl.ts";
