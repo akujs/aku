@@ -3,7 +3,7 @@ import {
 	contentDisposition,
 	formatAttributeHeader,
 	parseAttributeHeader,
-} from "./headers/headers-entry-point.ts";
+} from "./headers-entry-point.ts";
 
 describe(contentDisposition, () => {
 	describe("with filename - success cases", () => {

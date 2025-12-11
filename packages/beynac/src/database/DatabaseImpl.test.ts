@@ -183,5 +183,47 @@ describe("DatabaseImpl", () => {
 
 			expect(() => db.client("nonexistent")).toThrow(ClientNotFoundError);
 		});
+
+		test("rolling back parent transaction does not affect nested transaction on different client", async () => {
+			const db = new DatabaseImpl(
+				{ default: defaultAdapter, additional: { additional: additionalAdapter } },
+				mockDispatcher(),
+			);
+
+			const clientA = db.client();
+			const clientB = db.client("additional");
+
+			// Set up tables for tracking
+			await clientA.run(sql`CREATE TABLE tracking (value TEXT)`);
+			await clientB.run(sql`CREATE TABLE tracking (value TEXT)`);
+
+			// Start a transaction on client A
+			const txError = new Error("intentional rollback");
+			try {
+				await clientA.transaction(async () => {
+					await clientA.run(sql`INSERT INTO tracking (value) VALUES ('from-client-a')`);
+
+					// Inside client A's transaction, do work on client B
+					// This should be a completely separate transaction context
+					await clientB.transaction(async () => {
+						await clientB.run(sql`INSERT INTO tracking (value) VALUES ('from-client-b')`);
+						// Client B's transaction commits successfully here
+					});
+
+					// Now roll back client A's transaction
+					throw txError;
+				});
+			} catch (e) {
+				expect(e).toBe(txError);
+			}
+
+			// Client A's insert should be rolled back
+			const rowsA = await clientA.all(sql`SELECT value FROM tracking`);
+			expect(rowsA).toEqual([]);
+
+			// Client B's insert should be committed (independent transaction)
+			const rowsB = await clientB.all(sql`SELECT value FROM tracking`);
+			expect(rowsB).toEqual([{ value: "from-client-b" }]);
+		});
 	});
 });

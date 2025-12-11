@@ -1,6 +1,3 @@
-/**
- * Node.js-specific SQLite operations using node:sqlite.
- */
 import { DatabaseSync, type SQLInputValue, type StatementSync } from "node:sqlite";
 import type {
 	SqliteConnection,

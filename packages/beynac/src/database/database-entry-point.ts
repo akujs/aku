@@ -22,5 +22,6 @@ export {
 	TransactionPreCommitEvent,
 	TransactionRetryingEvent,
 } from "./database-events.ts";
+export { type ExecutableStatement } from "./ExecutableStatement.ts";
 export { DatabaseGrammar } from "./grammar/DatabaseGrammar.ts";
-export { type Sql, sql } from "./sql.ts";
+export { sql } from "./sql.ts";

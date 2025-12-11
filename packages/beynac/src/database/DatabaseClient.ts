@@ -121,6 +121,23 @@ export interface DatabaseClient {
 	transaction<T>(fn: () => Promise<T>, options?: TransactionOptions): Promise<T>;
 
 	/**
+	 * Run a callback outside the current transaction context.
+	 *
+	 * When you use `transaction(() => { ... })`, any code that runs inside the
+	 * function, Even asynchronous code inside promises and set timeouts, will
+	 * automatically run in that transaction context.
+	 *
+	 * Very occasionally you may actually want to interact with the database
+	 * directly, without going through the parent transaction.
+	 *
+	 * Any database operations within the callback will use a fresh connection,
+	 * as if they were executed outside of any transaction. This allows starting
+	 * independent transactions that commit or roll back separately from the
+	 * outer transaction.
+	 */
+	escapeTransaction<T>(fn: () => Promise<T>): Promise<T>;
+
+	/**
 	 * Clean up any resources created by this adapter. Some adapters accept
 	 * connections through the constructor and these will not be affected by
 	 * this method. Safe to call multiple times.

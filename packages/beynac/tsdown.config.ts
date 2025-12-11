@@ -1,14 +1,15 @@
 import { defineConfig } from "tsdown";
 import * as fs from "node:fs";
-import { discoverEntryPoints } from "./src/test-utils/source/discoverEntryPoints.ts";
-import { SourceProject } from "./src/test-utils/source/SourceProject.ts";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { discoverEntryPointsFromFilesystem } from "./src/test-utils/source/discoverEntryPoints.ts";
 
 const bundledDeps = ["devalue", "@bradenmacdonald/s3-lite-client", "csstype"];
 
 const packageJson = JSON.parse(fs.readFileSync("./package.json", "utf-8"));
 
-const project = await SourceProject.getBeynac();
-const entryPoints = discoverEntryPoints(project);
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const entryPoints = discoverEntryPointsFromFilesystem(join(__dirname, "src"));
 
 export default defineConfig({
   entry: entryPoints,

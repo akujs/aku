@@ -1,9 +1,6 @@
 import { createTypeToken, type TypeToken } from "../../container/container-key.ts";
 import type { DatabaseClient } from "../DatabaseClient.ts";
 
-export type { DatabaseClient } from "../DatabaseClient.ts";
-export type { Row, Statement, StatementResult } from "../Statement.ts";
-
 /**
  * A manager for database clients.
  *

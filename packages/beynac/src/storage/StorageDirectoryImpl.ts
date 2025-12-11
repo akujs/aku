@@ -1,5 +1,5 @@
 import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
-import { parseAttributeHeader } from "../helpers/headers/headers-entry-point.ts";
+import { parseAttributeHeader } from "../helpers/headers/attributes.ts";
 import { arrayFromAsync, BaseClass } from "../utils.ts";
 import type {
 	StorageData,

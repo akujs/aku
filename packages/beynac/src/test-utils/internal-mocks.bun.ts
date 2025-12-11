@@ -1,42 +1,47 @@
-import { expect, mock } from "bun:test";
-import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
+import { expect, spyOn } from "bun:test";
+import type { Container } from "../container/contracts/Container.ts";
+import { DispatcherImpl } from "../core/DispatcherImpl.ts";
+import type { AnyConstructor } from "../utils.ts";
 
-export interface MockDispatcher extends Dispatcher {
-	expectEvents: (expected: object[]) => void;
-	getEvents: () => object[];
-	clear: () => void;
+// Minimal container that throws if used (tests use function listeners, not class listeners)
+const noopContainer = {
+	get() {
+		throw new Error("MockDispatcher does not support class-based listeners");
+	},
+} as unknown as Container;
+
+export class MockDispatcher extends DispatcherImpl {
+	#events: unknown[] = [];
+
+	constructor() {
+		super(noopContainer);
+
+		// Spy on all methods to enable assertions on call counts
+		spyOn(this, "addListener");
+		spyOn(this, "removeListener");
+		spyOn(this, "dispatch");
+		spyOn(this, "dispatchIfHasListeners");
+
+		// Capture all events by listening on Object (matches all event types via prototype chain)
+		this.addListener(Object, (event) => this.#events.push(event));
+	}
+
+	expectEvents(expected: object[]): void {
+		expect(this.#events).toEqual(expected);
+		for (let i = 0; i < expected.length; i++) {
+			expect(this.#events[i]).toBeInstanceOf(expected[i].constructor);
+		}
+	}
+
+	getEvents<T = object>(cls?: AnyConstructor<T>): T[] {
+		return this.#events.filter((e) => (cls ? e instanceof cls : true)) as T[];
+	}
+
+	clear(): void {
+		this.#events.length = 0;
+	}
 }
 
 export function mockDispatcher(): MockDispatcher {
-	const events: unknown[] = [];
-	const dispatch = mock((event: object) => {
-		events.push(event);
-	});
-
-	return {
-		addListener: mock(() => {}),
-		removeListener: mock(() => {}),
-		dispatch: dispatch as Dispatcher["dispatch"],
-		dispatchIfHasListeners: mock(async function dispatchIfHasListeners<T extends object>(
-			_: unknown,
-			factory: () => T | Promise<T>,
-		): Promise<void> {
-			events.push(await factory());
-		}) as Dispatcher["dispatchIfHasListeners"],
-		expectEvents(expected: object[]) {
-			const events = dispatch.mock.calls.map((call) => call[0]);
-			expect(events).toEqual(expected);
-
-			for (let i = 0; i < expected.length; i++) {
-				expect(events[i]).toBeInstanceOf(expected[i].constructor);
-			}
-		},
-		getEvents() {
-			return events as object[];
-		},
-		clear() {
-			events.length = 0;
-			dispatch.mockClear();
-		},
-	};
+	return new MockDispatcher();
 }

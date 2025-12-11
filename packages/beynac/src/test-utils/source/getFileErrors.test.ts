@@ -64,12 +64,37 @@ describe(getFileErrors, () => {
 		`);
 	});
 
+	test("detects index.ts files", () => {
+		const file = project.getFile("errors/bad-index-file/index.ts");
+		const errors = getFileErrors(file);
+
+		expect(errors).toMatchInlineSnapshot(`
+		  [
+		    "errors/bad-index-file/index.ts is an index file. Avoid index files, only entry point files may re-export symbols.",
+		    "errors/bad-index-file/index.ts re-exports "Something" but is not an entry point. Only *-entry-point.ts files may re-export.",
+		  ]
+		`);
+	});
+
+	test("detects non-entry-point re-exports", () => {
+		const file = project.getFile("errors/bad-reexport.ts");
+		const errors = getFileErrors(file);
+
+		expect(errors).toMatchInlineSnapshot(`
+		  [
+		    "errors/bad-reexport.ts re-exports "ParentExport" but is not an entry point. Only *-entry-point.ts files may re-export.",
+		  ]
+		`);
+	});
+
 	test("detects barrel file rename violations", () => {
 		const file = project.getFile("errors/bad-barrel-file-reexport/index.ts");
 		const errors = getFileErrors(file);
 
 		expect(errors).toMatchInlineSnapshot(`
 		  [
+		    "errors/bad-barrel-file-reexport/index.ts is an index file. Avoid index files, only entry point files may re-export symbols.",
+		    "errors/bad-barrel-file-reexport/index.ts re-exports "GoodExport" but is not an entry point. Only *-entry-point.ts files may re-export.",
 		    "File errors/bad-barrel-file-reexport/index.ts renames export "RenamedThing". Use 'export { foo }' not 'export { foo as bar }'",
 		  ]
 		`);
@@ -81,6 +106,8 @@ describe(getFileErrors, () => {
 
 		expect(errors).toMatchInlineSnapshot(`
 		  [
+		    "errors/bad-barrel-file-import/index.ts is an index file. Avoid index files, only entry point files may re-export symbols.",
+		    "errors/bad-barrel-file-import/index.ts re-exports "ParentExport" but is not an entry point. Only *-entry-point.ts files may re-export.",
 		    "File errors/bad-barrel-file-import/index.ts re-exports from parent directory "../parent-export.ts". Files should only re-export from the current directory or subdirectories.",
 		  ]
 		`);
@@ -109,12 +136,24 @@ describe(getFileErrors, () => {
 		`);
 	});
 
+	test("detects imports from entry point files", () => {
+		const file = project.getFile("errors/bad-entry-point-import.ts");
+		const errors = getFileErrors(file);
+
+		expect(errors).toMatchInlineSnapshot(`
+		  [
+		    "errors/bad-entry-point-import.ts imports from entry point "./bad-entry-point/bad-entry-point-entry-point.ts". Import from the original source file instead.",
+		  ]
+		`);
+	});
+
 	test("detects imports missing file extensions", () => {
 		const file = project.getFile("errors/bad-import-extension.ts");
 		const errors = getFileErrors(file);
 
 		expect(errors).toMatchInlineSnapshot(`
 		  [
+		    "errors/bad-import-extension.ts re-exports "helper" but is not an entry point. Only *-entry-point.ts files may re-export.",
 		    "errors/bad-import-extension.ts imports "./extension-helper.js" without .ts or .tsx extension. Relative imports must include the file extension.",
 		    "errors/bad-import-extension.ts re-exports from "./extension-helper.js" without .ts or .tsx extension. Relative imports must include the file extension.",
 		  ]
@@ -181,6 +220,18 @@ describe("public API doc comments", () => {
 		    "nonPublicDocumentedFunction in public-api/non-public-with-doc.ts is not part of the public API but has a doc comment. NOTE TO AI AGENTS: the default solution is to remove the comment, unless we're explaining something really important that's not clear from the name, in which case use // line comments.",
 		    "NonPublicDocumentedType in public-api/non-public-with-doc.ts is not part of the public API but has a doc comment. NOTE TO AI AGENTS: the default solution is to remove the comment, unless we're explaining something really important that's not clear from the name, in which case use // line comments.",
 		    "NonPublicDocumentedInterface in public-api/non-public-with-doc.ts is not part of the public API but has a doc comment. NOTE TO AI AGENTS: the default solution is to remove the comment, unless we're explaining something really important that's not clear from the name, in which case use // line comments.",
+		  ]
+		`);
+	});
+
+	test("detects entry point that defines values", () => {
+		const file = project.getFile("errors/bad-entry-point/bad-entry-point-entry-point.ts");
+		const errors = getFileErrors(file);
+
+		expect(errors).toMatchInlineSnapshot(`
+		  [
+		    "errors/bad-entry-point/bad-entry-point-entry-point.ts is an entry point but defines "DefinedHere". Entry points may only re-export symbols.",
+		    "DefinedHere in errors/bad-entry-point/bad-entry-point-entry-point.ts is part of the public API but has no doc comment. NOTE TO AI AGENTS: Did you just add this to the public API without being told to? If so the solution is probably to remove it from a public API. Don't modify the public API unless requested.",
 		  ]
 		`);
 	});

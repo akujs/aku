@@ -1,5 +1,5 @@
-import type { Statement, StatementResult } from "./contracts/Database.ts";
 import type { DatabaseGrammar } from "./grammar/DatabaseGrammar.ts";
+import type { Statement, StatementResult } from "./Statement.ts";
 
 export interface DatabaseConfig {
 	/**

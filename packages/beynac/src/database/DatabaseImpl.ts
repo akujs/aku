@@ -1,16 +1,11 @@
 import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
 import { BaseClass } from "../utils.ts";
-import type {
-	Database,
-	DatabaseClient,
-	Row,
-	Statement,
-	StatementResult,
-} from "./contracts/Database.ts";
+import type { Database } from "./contracts/Database.ts";
 import type { DatabaseAdapter, DatabaseConfig } from "./DatabaseAdapter.ts";
-import type { TransactionOptions } from "./DatabaseClient.ts";
+import type { DatabaseClient, TransactionOptions } from "./DatabaseClient.ts";
 import { DatabaseClientImpl } from "./DatabaseClientImpl.ts";
 import { ClientNotFoundError } from "./database-errors.ts";
+import type { Row, Statement, StatementResult } from "./Statement.ts";
 
 const DEFAULT_CLIENT_NAME = "default";
 
@@ -67,6 +62,10 @@ export class DatabaseImpl extends BaseClass implements Database {
 
 	transaction<T>(fn: () => Promise<T>, options?: TransactionOptions): Promise<T> {
 		return this.#defaultClient.transaction(fn, options);
+	}
+
+	escapeTransaction<T>(fn: () => Promise<T>): Promise<T> {
+		return this.#defaultClient.escapeTransaction(fn);
 	}
 
 	dispose(): void {

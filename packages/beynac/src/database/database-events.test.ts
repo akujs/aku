@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { type MockDispatcher, mockDispatcher } from "../test-utils/internal-mocks.bun.ts";
 import { mockCurrentTime, resetMockTime } from "../testing/mock-time.ts";
 import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
-import type { DatabaseClient } from "./contracts/Database.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
+import type { DatabaseClient } from "./DatabaseClient.ts";
 import { DatabaseClientImpl } from "./DatabaseClientImpl.ts";
 import { QueryError } from "./database-errors.ts";
 import {
-	type QueryExecutedEvent,
+	QueryExecutedEvent,
 	QueryExecutingEvent,
 	TransactionExecutedEvent,
 	type TransactionExecutingEvent,
@@ -93,7 +93,7 @@ describe("database events", () => {
 
 			await db.run(sql`SELECT 1`);
 
-			const endEvent = dispatcher.getEvents()[1] as QueryExecutedEvent;
+			const endEvent = dispatcher.getEvents(QueryExecutedEvent)[0];
 			expect(endEvent.timeTakenMs).toBe(75);
 		});
 	});
@@ -217,10 +217,7 @@ describe("database events", () => {
 				mockCurrentTime(1250);
 			});
 
-			const events = dispatcher.getEvents();
-			const executedEvent = events.find(
-				(e) => e instanceof TransactionExecutedEvent,
-			) as TransactionExecutedEvent;
+			const executedEvent = dispatcher.getEvents(TransactionExecutedEvent)[0];
 			expect(executedEvent.timeTakenMs).toBe(250);
 		});
 
@@ -234,10 +231,7 @@ describe("database events", () => {
 				}),
 			).rejects.toThrow();
 
-			const events = dispatcher.getEvents();
-			const failedEvent = events.find(
-				(e) => e instanceof TransactionFailedEvent,
-			) as TransactionFailedEvent;
+			const failedEvent = dispatcher.getEvents(TransactionFailedEvent)[0];
 			expect(failedEvent.timeTakenMs).toBe(100);
 		});
 
@@ -438,23 +432,12 @@ describe("database events", () => {
 			]);
 		});
 
-		test("throwing from TransactionPreCommit listener rolls back the transaction", async () => {
+		test("throwing from pre-commit listener rolls back the transaction", async () => {
 			const listenerError = new Error("listener abort");
 
-			// Replace dispatchIfHasListeners to throw on TransactionPreCommitEvent
-			const originalDispatch = dispatcher.dispatchIfHasListeners.bind(dispatcher);
-			(dispatcher as unknown as Record<string, unknown>).dispatchIfHasListeners = (
-				eventType: unknown,
-				factory: () => unknown,
-			) => {
-				originalDispatch(
-					eventType as typeof TransactionPreCommitEvent,
-					factory as () => TransactionPreCommitEvent,
-				);
-				if (eventType === TransactionPreCommitEvent) {
-					throw listenerError;
-				}
-			};
+			dispatcher.addListener(TransactionPreCommitEvent, () => {
+				throw listenerError;
+			});
 
 			expect(
 				db.transaction(async () => {
@@ -467,9 +450,7 @@ describe("database events", () => {
 			expect(rows).toEqual([]);
 
 			// Verify failed event was dispatched
-			const events = dispatcher.getEvents();
-			const failedEvent = events.find((e) => e instanceof TransactionFailedEvent);
-			expect(failedEvent).toBeDefined();
+			expect(dispatcher.getEvents(TransactionFailedEvent)).toHaveLength(1);
 		});
 	});
 });

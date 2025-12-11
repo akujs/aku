@@ -1,10 +1,10 @@
 import type { ReservedSql, Sql } from "postgres";
 import { BaseClass } from "../../../utils.ts";
-import type { Statement, StatementResult } from "../../contracts/Database.ts";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { PostgresGrammar } from "../../grammar/PostgresGrammar.ts";
+import type { Statement, StatementResult } from "../../Statement.ts";
 import type { PostgresDatabaseAdapterConfig } from "./PostgresDatabaseAdapterConfig.ts";
 
 type PostgresJS = Sql<Record<string, unknown>>;

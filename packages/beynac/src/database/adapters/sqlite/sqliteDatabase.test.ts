@@ -1,31 +1,14 @@
-import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { asyncGate } from "../../../test-utils/async-gate.bun.ts";
 import { type MockDispatcher, mockDispatcher } from "../../../test-utils/internal-mocks.bun.ts";
 import { createTestDirectory } from "../../../testing/test-directories.ts";
-import type { DatabaseClient } from "../../contracts/Database.ts";
+import type { DatabaseClient } from "../../DatabaseClient.ts";
 import { DatabaseClientImpl } from "../../DatabaseClientImpl.ts";
-import { QueryError } from "../../database-errors.ts";
-import type { SharedTestConfig } from "../../database-test-utils.ts";
+import { TransactionRetryingEvent } from "../../database-events.ts";
 import { sql } from "../../sql.ts";
 import { SqliteDatabaseAdapter } from "./SqliteDatabaseAdapter.ts";
-import { sqliteDatabase } from "./sqliteDatabase.ts";
-
-export const sqliteMemorySharedTestConfig: SharedTestConfig = {
-	name: "SqliteDatabase (memory)",
-	createDatabase: () => sqliteDatabase({ path: ":memory:" }),
-	supportsTransactions: true,
-};
-
-export const sqliteFileSharedTestConfig: SharedTestConfig = {
-	name: "SqliteDatabase (file)",
-	createDatabase: () => {
-		const testDir = createTestDirectory();
-		return sqliteDatabase({ path: join(testDir, "test.db") });
-	},
-	supportsTransactions: true,
-};
 
 describe("SqliteDatabase", () => {
 	let testDir: string;
@@ -40,6 +23,7 @@ describe("SqliteDatabase", () => {
 		adapter = new SqliteDatabaseAdapter({ path: dbPath });
 		dispatcher = mockDispatcher();
 		db = new DatabaseClientImpl(adapter, dispatcher);
+		dispatcher.clear();
 	});
 
 	afterEach(() => {
@@ -162,48 +146,9 @@ describe("SqliteDatabase", () => {
 		expect(results).toContain("tx2: initial");
 	});
 
-	test("concurrent write transactions throws SQLITE_BUSY", async () => {
-		await db.run(sql`CREATE TABLE test (value INTEGER)`);
-		await db.run(sql`INSERT INTO test (value) VALUES (0)`);
-
-		const gate = asyncGate();
-
-		let t2Error: Error | null = null;
-
-		// Transaction 1: write and hold lock
-		const p1 = db.transaction(async () => {
-			await db.run(sql`UPDATE test SET value = 1`);
-			await gate.block();
-		});
-
-		await gate.hasBlocked();
-
-		// Transaction 2: try to write while t1 holds lock
-		const p2 = db.transaction(async () => {
-			try {
-				await db.run(sql`UPDATE test SET value = 2`);
-			} catch (e) {
-				t2Error = e as Error;
-			}
-		});
-
-		await p2;
-		gate.release();
-		await p1;
-
-		// Verify SQLITE_BUSY was thrown and is detectable via code and errorNumber
-		expect(t2Error).toBeInstanceOf(QueryError);
-		expect(t2Error).not.toBeNull();
-		expect((t2Error as unknown as QueryError).code).toBe("SQLITE_BUSY");
-		expect((t2Error as unknown as QueryError).errorNumber).toBe(5);
-	});
-
 	test("transaction retries on write lock contention with IMMEDIATE mode", async () => {
 		await db.run(sql`CREATE TABLE test (value TEXT)`);
 		await db.run(sql`INSERT INTO test (value) VALUES ('0')`);
-
-		const originalRun = adapter.run.bind(adapter);
-		const runSpy = spyOn(adapter, "run").mockImplementation(originalRun);
 
 		const tx1Gate = asyncGate();
 
@@ -220,77 +165,82 @@ describe("SqliteDatabase", () => {
 
 		// TX2: BEGIN IMMEDIATE fails with SQLITE_BUSY because TX1 holds the lock.
 		// The retry happens at the transaction level (BEGIN fails, not the function).
-		const tx2Fn = mock(async () => {
-			await db.run(sql`UPDATE test SET value = value || '+tx2'`);
-		});
+		const tx2Promise = db.transaction(
+			async () => {
+				await db.run(sql`UPDATE test SET value = value || '+tx2'`);
+			},
+			{
+				sqliteMode: "immediate",
+				retry: { maxAttempts: 3, startingDelay: 0 },
+			},
+		);
 
-		// Start TX2 - it will retry BEGIN IMMEDIATE until TX1 releases
-		const tx2Promise = db.transaction(tx2Fn, {
-			sqliteMode: "immediate",
-			retry: { maxAttempts: 10, startingDelay: 5 },
-		});
-
-		// Give TX2 time to fail at least once before releasing TX1
-		await new Promise((r) => setTimeout(r, 20));
+		// Release TX1 immediately - TX2's first attempt has already failed synchronously
 		tx1Gate.release();
 
 		await Promise.all([tx1Promise, tx2Promise]);
 
-		// TX1 does one BEGIN IMMEDIATE, TX2 does at least 2 (first fails, retry succeeds)
-		const beginImmediateAttempts = runSpy.mock.calls.filter(
-			([stmt]) => stmt.renderForLogs() === "BEGIN IMMEDIATE",
-		).length;
-		expect(beginImmediateAttempts).toBeGreaterThan(2);
-		// TX2's function body only runs once (after successful BEGIN)
-		expect(tx2Fn.mock.calls.length).toBe(1);
+		const retryEvents = dispatcher.getEvents(TransactionRetryingEvent);
+		expect(retryEvents).toHaveLength(1);
+		expect(retryEvents[0].error?.toString()).toInclude("SQLITE_BUSY: The database file is locked");
+
 		const result = await db.scalar<string>(sql`SELECT value FROM test`);
 		expect(result).toBe("tx1+tx2");
 	});
 
-	test("transaction retries on write upgrade conflict", async () => {
+	test("transaction retries on COMMIT blocked by SHARED lock", async () => {
 		// Disable WAL mode - in WAL mode readers don't block writers
 		adapter = new SqliteDatabaseAdapter({ path: dbPath, useWalMode: false });
-		db = new DatabaseClientImpl(adapter, mockDispatcher());
+		dispatcher = mockDispatcher();
+		db = new DatabaseClientImpl(adapter, dispatcher);
 		await db.run(sql`CREATE TABLE test (value TEXT)`);
 		await db.run(sql`INSERT INTO test (value) VALUES ('0')`);
-
-		const originalRun = adapter.run.bind(adapter);
-		const runSpy = spyOn(adapter, "run").mockImplementation(originalRun);
+		dispatcher.clear();
 
 		const tx1Gate = asyncGate();
+		let tx1Done: () => void;
+		const tx1DonePromise = new Promise<void>((r) => (tx1Done = r));
+		let shouldWaitForTx1 = false;
 
-		// TX1: Reads (SHARED lock), waits at gate, then writes
-		const tx1Promise = db.transaction(async () => {
-			await db.run(sql`SELECT * FROM test`);
-			await tx1Gate.block();
-			await db.run(sql`UPDATE test SET value = 'tx1'`);
-		});
+		// TX1: Acquires SHARED lock via SELECT, blocks, then upgrades to RESERVED via UPDATE
+		const tx1Promise = db
+			.transaction(async () => {
+				await db.run(sql`SELECT * FROM test`); // SHARED lock
+				await tx1Gate.block();
+				await db.run(sql`UPDATE test SET value = 'tx1'`); // RESERVED lock, then EXCLUSIVE on commit
+			})
+			.then(() => tx1Done());
 
 		await tx1Gate.hasBlocked();
 
-		// TX2: Reads (SHARED lock), then tries to write and commit
-		// In non-WAL mode, COMMIT fails with SQLITE_BUSY when another transaction
-		// holds a RESERVED lock
-		const tx2Fn = mock(async () => {
-			await db.run(sql`SELECT * FROM test`);
-			await db.run(sql`UPDATE test SET value = value || '+tx2'`);
+		// When TX2's COMMIT fails and retry is triggered, release TX1 and signal TX2 to wait
+		dispatcher.addListener(TransactionRetryingEvent, () => {
+			tx1Gate.release();
+			shouldWaitForTx1 = true;
 		});
 
-		// Start TX2 - it will complete its function but COMMIT will fail
-		const tx2Promise = db.transaction(tx2Fn, { retry: { maxAttempts: 10, startingDelay: 5 } });
-
-		// Give TX2 time to attempt and fail COMMIT before releasing TX1
-		await new Promise((r) => setTimeout(r, 20));
-		tx1Gate.release();
+		// TX2: Acquires SHARED (SELECT), then RESERVED (UPDATE), then fails at COMMIT
+		// because it needs EXCLUSIVE but TX1 still holds SHARED.
+		const tx2Promise = db.transaction(
+			async () => {
+				// On retry, wait for TX1 to complete before acquiring SHARED
+				if (shouldWaitForTx1) {
+					await tx1DonePromise;
+				}
+				await db.run(sql`SELECT * FROM test`); // SHARED lock
+				await db.run(sql`UPDATE test SET value = value || '+tx2'`); // RESERVED lock
+				// COMMIT will need EXCLUSIVE - fails on first attempt because TX1 has SHARED
+			},
+			{ retry: { maxAttempts: 3, startingDelay: 0 } },
+		);
 
 		await Promise.all([tx1Promise, tx2Promise]);
 
-		// TX2 should have retried (BEGIN called multiple times)
-		// We expect 3+: TX1's BEGIN, TX2's first BEGIN, TX2's retry BEGIN(s)
-		const beginAttempts = runSpy.mock.calls.filter(
-			([stmt]) => stmt.renderForLogs() === "BEGIN",
-		).length;
-		expect(beginAttempts).toBeGreaterThan(2);
+		const retryEvents = dispatcher.getEvents(TransactionRetryingEvent);
+		expect(retryEvents).toHaveLength(1);
+		expect(retryEvents[0].error?.toString()).toInclude("SQLITE_BUSY: The database file is locked");
+
+		// TX1 committed first (set value to 'tx1'), then TX2 retry appended '+tx2'
 		const result = await db.scalar<string>(sql`SELECT value FROM test`);
 		expect(result).toBe("tx1+tx2");
 	});
@@ -298,9 +248,6 @@ describe("SqliteDatabase", () => {
 	test("transaction retries on read blocked by EXCLUSIVE lock", async () => {
 		await db.run(sql`CREATE TABLE test (value TEXT)`);
 		await db.run(sql`INSERT INTO test (value) VALUES ('0')`);
-
-		const originalRun = adapter.run.bind(adapter);
-		const runSpy = spyOn(adapter, "run").mockImplementation(originalRun);
 
 		const tx1Gate = asyncGate();
 
@@ -315,28 +262,24 @@ describe("SqliteDatabase", () => {
 
 		await tx1Gate.hasBlocked();
 
-		// TX2: Even a read-only transaction fails with SQLITE_BUSY because TX1 holds exclusive lock
-		const tx2Fn = mock(async () => {
-			await db.run(sql`SELECT * FROM test`);
-		});
+		// TX2: BEGIN EXCLUSIVE fails with SQLITE_BUSY because TX1 holds exclusive lock
+		const tx2Promise = db.transaction(
+			async () => {
+				await db.run(sql`SELECT * FROM test`);
+			},
+			{
+				sqliteMode: "exclusive",
+				retry: { maxAttempts: 3, startingDelay: 0 },
+			},
+		);
 
-		const tx2Promise = db.transaction(tx2Fn, {
-			sqliteMode: "exclusive",
-			retry: { maxAttempts: 10, startingDelay: 5 },
-		});
-
-		// Give TX2 time to fail at least once before releasing TX1
-		await new Promise((r) => setTimeout(r, 20));
+		// Release TX1 immediately - TX2's first attempt has already failed synchronously
 		tx1Gate.release();
 
 		await Promise.all([tx1Promise, tx2Promise]);
 
-		// TX1 does one BEGIN EXCLUSIVE, TX2 does at least 2 (first fails, retry succeeds)
-		const beginExclusiveAttempts = runSpy.mock.calls.filter(
-			([stmt]) => stmt.renderForLogs() === "BEGIN EXCLUSIVE",
-		).length;
-		expect(beginExclusiveAttempts).toBeGreaterThan(2);
-		// TX2's function body only runs once (after successful BEGIN)
-		expect(tx2Fn.mock.calls.length).toBe(1);
+		const retryEvents = dispatcher.getEvents(TransactionRetryingEvent);
+		expect(retryEvents).toHaveLength(1);
+		expect(retryEvents[0].error?.toString()).toInclude("SQLITE_BUSY: The database file is locked");
 	});
 });

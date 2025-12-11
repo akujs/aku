@@ -1,11 +1,11 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { BaseClass, type FifoLock, fifoLock } from "../../../utils.ts";
-import type { Statement, StatementResult } from "../../contracts/Database.ts";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { SqliteGrammar } from "../../grammar/SqliteGrammar.ts";
+import type { Statement, StatementResult } from "../../Statement.ts";
 import type { SqliteDatabaseAdapterConfig } from "./SqliteDatabaseAdapterConfig.ts";
 import type { SqliteConnection, SqliteOps } from "./SqliteOps.ts";
 
@@ -177,10 +177,6 @@ function makeQueryError(sql: string, cause: unknown): QueryError {
 	}
 
 	message ??= error.message ?? String(error);
-
-	if (code) {
-		message = `${code} (${message})`;
-	}
 
 	return new QueryError(sql, message ?? error.message ?? String(error), error, code, errorNumber);
 }

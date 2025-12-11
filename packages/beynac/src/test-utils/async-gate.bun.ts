@@ -26,7 +26,7 @@ class AsyncGateImpl {
 
 	async block(): Promise<void> {
 		if (this.blockResolver) {
-			throw new Error("block() may only be called once");
+			throw new Error("block() may only be called once.");
 		}
 		this.isBlocked = true;
 
@@ -39,6 +39,16 @@ class AsyncGateImpl {
 		});
 
 		this.isBlocked = false;
+	}
+
+	/**
+	 * Block the first time this is called, then ignore all subsequent calls.
+	 */
+	async blockFirstTime(): Promise<void> {
+		if (this.blockResolver) {
+			return;
+		}
+		return this.block();
 	}
 
 	async hasBlocked(): Promise<void> {

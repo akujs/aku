@@ -85,4 +85,8 @@ export class QueryError extends DatabaseError {
 		this.code = code;
 		this.errorNumber = errorNumber;
 	}
+
+	protected override getToStringExtra(): string | undefined {
+		return this.code || undefined;
+	}
 }

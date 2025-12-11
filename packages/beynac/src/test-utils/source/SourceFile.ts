@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { basename, relative } from "node:path";
 import { BaseClass } from "../../utils.ts";
+import { getEntryPointName, isEntryPointFile } from "./discoverEntryPoints.ts";
 import { type Import, parseImports } from "./parseSource.ts";
 import { SourceExport } from "./SourceExport.ts";
 import type { SourceFolder } from "./SourceFolder.ts";
@@ -16,6 +17,7 @@ export class SourceFile extends BaseClass {
 	imports: Import[];
 	isBarrel: boolean;
 	isTestFile: boolean;
+	isGenerated: boolean;
 	project!: SourceProject;
 	folder: SourceFolder;
 
@@ -26,6 +28,7 @@ export class SourceFile extends BaseClass {
 		imports: Import[],
 		isBarrel: boolean,
 		isTestFile: boolean,
+		isGenerated: boolean,
 		folder: SourceFolder,
 	) {
 		super();
@@ -35,6 +38,7 @@ export class SourceFile extends BaseClass {
 		this.imports = imports;
 		this.isBarrel = isBarrel;
 		this.isTestFile = isTestFile;
+		this.isGenerated = isGenerated;
 		this.folder = folder;
 		// Set file reference on all exports
 		for (const exp of exports) {
@@ -88,7 +92,7 @@ export class SourceFile extends BaseClass {
 	 */
 	isEntryPoint(): boolean {
 		if (this.project.entryPointMode === "disable") return false;
-		return this.basename.endsWith("-entry-point.ts");
+		return isEntryPointFile(this.basename);
 	}
 
 	/**
@@ -98,13 +102,7 @@ export class SourceFile extends BaseClass {
 	 */
 	get entryPointName(): string | null {
 		if (!this.isEntryPoint()) return null;
-		const nameFromFile = this.basename.replace("-entry-point.ts", "");
-		const parts = this.path.split("/");
-		if (parts.length === 1) {
-			return nameFromFile;
-		} else {
-			return parts.slice(0, -1).join("/");
-		}
+		return getEntryPointName(this.path);
 	}
 
 	/**
@@ -119,9 +117,10 @@ export class SourceFile extends BaseClass {
 		const content = await readFile(filePath, "utf-8");
 		const isBarrel = path.endsWith("/index.ts") || path.endsWith("/index.tsx");
 		const isTestFile = content.includes("bun:test") || content.includes("node:test");
+		const isGenerated = content.startsWith("// GENERATED CODE");
 
 		if (isTestFile) {
-			return new SourceFile(path, content, [], [], isBarrel, true, folder);
+			return new SourceFile(path, content, [], [], isBarrel, true, isGenerated, folder);
 		}
 
 		// Load runtime module and extract exports
@@ -130,6 +129,6 @@ export class SourceFile extends BaseClass {
 		const exports = SourceExport.extractFromSource(content, runtimeModule, path);
 		const imports = parseImports(content);
 
-		return new SourceFile(path, content, exports, imports, isBarrel, false, folder);
+		return new SourceFile(path, content, exports, imports, isBarrel, false, isGenerated, folder);
 	}
 }

@@ -1,10 +1,10 @@
 import { PGlite } from "@electric-sql/pglite";
 import { BaseClass, type FifoLock, fifoLock } from "../../../utils.ts";
-import type { Statement, StatementResult } from "../../contracts/Database.ts";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { PostgresGrammar } from "../../grammar/PostgresGrammar.ts";
+import type { Statement, StatementResult } from "../../Statement.ts";
 import type { PGLiteDatabaseAdapterConfig } from "./PGLiteDatabaseAdapterConfig.ts";
 
 // PGLite only supports single-connection access, so we use the PGlite instance

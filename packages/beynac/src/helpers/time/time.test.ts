@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { durationStringToDate, durationStringToMs } from "./time/time-entry-point.ts";
+import { durationStringToDate, durationStringToMs } from "./duration.ts";
 
 describe(durationStringToMs, () => {
 	test("parses 1h as milliseconds", () => {

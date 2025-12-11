@@ -1,50 +1,29 @@
-import { beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
-import postgres, { type Notice } from "postgres";
+import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { asyncGate } from "../../../test-utils/async-gate.bun.ts";
-import { mockDispatcher } from "../../../test-utils/internal-mocks.bun.ts";
-import type { DatabaseClient } from "../../contracts/Database.ts";
-import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
+import { type MockDispatcher, mockDispatcher } from "../../../test-utils/internal-mocks.bun.ts";
+import type { DatabaseClient } from "../../DatabaseClient.ts";
 import { DatabaseClientImpl } from "../../DatabaseClientImpl.ts";
 import { QueryError } from "../../database-errors.ts";
-import type { SharedTestConfig } from "../../database-test-utils.ts";
+import { TransactionRetryingEvent } from "../../database-events.ts";
 import { sql } from "../../sql.ts";
 import { PostgresDatabaseAdapter } from "./PostgresDatabaseAdapter.ts";
-import { postgresDatabase } from "./postgresDatabase.ts";
-
-const POSTGRES_URL = "postgres://beynac:beynac@localhost:22857/beynac_test";
-
-const resetSchema = sql`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public`;
-
-function createAdapter(): DatabaseAdapter {
-	const pgSql = postgres(POSTGRES_URL, {
-		onnotice: (notice: Notice) => {
-			if (notice.severity !== "NOTICE") {
-				throw new Error(`Unexpected PostgreSQL ${notice.severity}: ${notice.message}`);
-			}
-		},
-	});
-
-	return postgresDatabase({ sql: pgSql });
-}
-
-export const postgresSharedTestConfig: SharedTestConfig = {
-	name: "PostgresDatabase",
-	createDatabase: createAdapter,
-	supportsTransactions: true,
-};
+import { createPostgresAdapter, resetSchema } from "./postgres-test-utils.ts";
 
 describe(PostgresDatabaseAdapter, () => {
 	let db: DatabaseClient;
+	let dispatcher: MockDispatcher;
 
 	beforeAll(async () => {
-		const adapter = createAdapter();
-		db = new DatabaseClientImpl(adapter, mockDispatcher());
+		const adapter = createPostgresAdapter();
+		dispatcher = mockDispatcher();
+		db = new DatabaseClientImpl(adapter, dispatcher);
 		await db.run(resetSchema);
 		await db.run(sql`CREATE TABLE test (value TEXT)`);
 	});
 
 	beforeEach(async () => {
 		await db.run(sql`DELETE FROM test`);
+		dispatcher.clear();
 	});
 
 	test("uncommitted transaction writes are isolated", async () => {
@@ -76,31 +55,33 @@ describe(PostgresDatabaseAdapter, () => {
 		// TX1: Acquires lock, blocks at gate until released, then commits
 		const tx1Promise = db.transaction(async () => {
 			await db.run(sql`SELECT * FROM test FOR UPDATE`);
-			if (tx1Gate) {
-				await tx1Gate.block();
-				tx1Gate = null;
-			}
+			await tx1Gate?.block();
 			await db.run(sql`UPDATE test SET value = 'tx1'`);
 		});
 
 		await tx1Gate!.hasBlocked();
 
 		// TX2: Tries to lock same row with NOWAIT, will fail immediately on first attempt
-		const tx2Fn = mock(async () => {
-			try {
-				await db.run(sql`SELECT * FROM test FOR UPDATE NOWAIT`);
-			} catch (e) {
-				// After first failure, release TX1 to commit so TX2 can retry successfully
-				tx1Gate?.release();
-				throw e;
-			}
-			await db.run(sql`UPDATE test SET value = value || '+tx2'`);
-		});
-		const tx2Promise = db.transaction(tx2Fn, { retry: { maxAttempts: 3, startingDelay: 0 } });
+		const tx2Promise = db.transaction(
+			async () => {
+				try {
+					await db.run(sql`SELECT * FROM test FOR UPDATE NOWAIT`);
+				} catch (e) {
+					// After first failure, release TX1 to commit so TX2 can retry successfully
+					await tx1Gate?.releaseAndWaitTick();
+					throw e;
+				}
+				await db.run(sql`UPDATE test SET value = value || '+tx2'`);
+			},
+			{ retry: { maxAttempts: 3, startingDelay: 0 } },
+		);
 
 		await Promise.all([tx1Promise, tx2Promise]);
 
-		expect(tx2Fn.mock.calls.length).toBeGreaterThan(1);
+		const retryEvents = dispatcher.getEvents(TransactionRetryingEvent);
+		expect(retryEvents).toHaveLength(1);
+		expect(retryEvents[0].error?.toString()).toInclude("55P03: could not obtain lock");
+
 		const result = await db.scalar<string>(sql`SELECT value FROM test`);
 		expect(result).toBe("tx1+tx2");
 	});
@@ -114,10 +95,8 @@ describe(PostgresDatabaseAdapter, () => {
 		const tx1Promise = db.transaction(
 			async () => {
 				const row = await db.first<{ value: string }>(sql`SELECT value FROM test`);
-				if (gate) {
-					await gate.block();
-					gate = null;
-				}
+				await gate?.block();
+				gate = null;
 				await db.run(sql`UPDATE test SET value = ${row.value + "+tx1"}`);
 			},
 			{ isolation: "serializable" },
@@ -126,20 +105,25 @@ describe(PostgresDatabaseAdapter, () => {
 		await gate!.hasBlocked();
 
 		// TX2: Also reads and writes, will conflict
-		const tx2Fn = mock(async () => {
-			const row = await db.first<{ value: string }>(sql`SELECT value FROM test`);
-			await db.run(sql`UPDATE test SET value = ${row.value + "+tx2"}`);
-		});
-		const tx2Promise = db.transaction(tx2Fn, {
-			isolation: "serializable",
-			retry: { maxAttempts: 3, startingDelay: 0 },
-		});
+		const tx2Promise = db.transaction(
+			async () => {
+				const row = await db.first<{ value: string }>(sql`SELECT value FROM test`);
+				await db.run(sql`UPDATE test SET value = ${row.value + "+tx2"}`);
+			},
+			{
+				isolation: "serializable",
+				retry: { maxAttempts: 3, startingDelay: 0 },
+			},
+		);
 
 		gate!.release();
 
 		await Promise.all([tx1Promise, tx2Promise]);
 
-		expect(tx2Fn.mock.calls.length).toBeGreaterThan(1);
+		const retryEvents = dispatcher.getEvents(TransactionRetryingEvent);
+		expect(retryEvents).toHaveLength(1);
+		expect(retryEvents[0].error?.toString()).toInclude("40001: could not serialize access");
+
 		const result = await db.scalar<string>(sql`SELECT value FROM test`);
 		expect(result).toBe("0+tx1+tx2");
 	});
@@ -147,40 +131,46 @@ describe(PostgresDatabaseAdapter, () => {
 	test("transaction retries on Postgres automatic deadlock detection", async () => {
 		await db.run(sql`INSERT INTO test (value) VALUES ('row1'), ('row2')`);
 
-		// Simple signal mechanism for coordinating the deadlock
-		let tx1LockedRow1Resolve: (() => void) | null = null;
-		let tx2LockedRow2Resolve: (() => void) | null = null;
-		let tx1LockedRow1 = new Promise<void>((r) => (tx1LockedRow1Resolve = r));
-		let tx2LockedRow2 = new Promise<void>((r) => (tx2LockedRow2Resolve = r));
+		let gate1: ReturnType<typeof asyncGate> | null = asyncGate();
+		let gate2: ReturnType<typeof asyncGate> | null = asyncGate();
 
-		// TX1: Lock row1, wait for TX2 to lock row2, then try to lock row2 (deadlock!)
-		const tx1Fn = mock(async () => {
-			await db.run(sql`SELECT * FROM test WHERE value = 'row1' FOR UPDATE`);
-			// Only synchronise on first attempt to create the deadlock
-			if (tx1LockedRow1Resolve) {
-				tx1LockedRow1Resolve();
-				await tx2LockedRow2;
-				tx1LockedRow1Resolve = null;
-				tx2LockedRow2Resolve = null;
-			}
-			await db.run(sql`SELECT * FROM test WHERE value = 'row2' FOR UPDATE`);
-		});
-
-		// TX2: Wait for TX1 to lock row1, then lock row2, then try to lock row1 (deadlock!)
-		const tx2Fn = mock(async () => {
-			await tx1LockedRow1;
-			await db.run(sql`SELECT * FROM test WHERE value = 'row2' FOR UPDATE`);
-			tx2LockedRow2Resolve?.();
-			await db.run(sql`SELECT * FROM test WHERE value = 'row1' FOR UPDATE`);
-		});
-
-		await Promise.all([
-			db.transaction(tx1Fn, { retry: { maxAttempts: 3, startingDelay: 0 } }),
-			db.transaction(tx2Fn, { retry: { maxAttempts: 3, startingDelay: 0 } }),
+		const promise = Promise.all([
+			// TX1: Lock row1, block, then try to lock row2 (deadlock!)
+			db.transaction(
+				async () => {
+					await db.run(sql`SELECT * FROM test WHERE value = 'row1' FOR UPDATE`);
+					await gate1?.block();
+					await db.run(sql`SELECT * FROM test WHERE value = 'row2' FOR UPDATE`);
+				},
+				{ retry: { maxAttempts: 3, startingDelay: 0 } },
+			),
+			// TX2: Lock row2, block, then try to lock row1 (deadlock!)
+			db.transaction(
+				async () => {
+					await db.run(sql`SELECT * FROM test WHERE value = 'row2' FOR UPDATE`);
+					await gate2?.block();
+					await db.run(sql`SELECT * FROM test WHERE value = 'row1' FOR UPDATE`);
+				},
+				{ retry: { maxAttempts: 3, startingDelay: 0 } },
+			),
 		]);
 
+		// Wait for both to acquire their first locks
+		await gate1!.hasBlocked();
+		await gate2!.hasBlocked();
+
+		// Release both to proceed to deadlock
+		gate1!.release();
+		gate2!.release();
+		gate1 = null;
+		gate2 = null;
+
+		await promise;
+
 		// One transaction must have been retried due to deadlock
-		expect(tx1Fn.mock.calls.length + tx2Fn.mock.calls.length).toBeGreaterThan(2);
+		const retryEvents = dispatcher.getEvents(TransactionRetryingEvent);
+		expect(retryEvents).toHaveLength(1);
+		expect(retryEvents[0].error?.toString()).toInclude("40P01: deadlock detected");
 	});
 
 	test("QueryError captures SQLSTATE code", async () => {

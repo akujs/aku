@@ -2,6 +2,7 @@ import { BeynacError } from "../../core/core-errors.ts";
 import { BeynacEvent } from "../../core/core-events.ts";
 import { isMockable } from "../../testing/mocks.ts";
 import { BaseClass, getPrototypeChain } from "../../utils.ts";
+import { isEntryPointFile } from "./discoverEntryPoints.ts";
 import type { SourceFile } from "./SourceFile.ts";
 import { SourceFolder } from "./SourceFolder.ts";
 
@@ -10,6 +11,36 @@ import { SourceFolder } from "./SourceFolder.ts";
  */
 export function getFileErrors(file: SourceFile): string[] {
 	const errors: string[] = [];
+
+	// No index.ts files - use *-entry-point.ts instead
+	if (file.basename === "index.ts" || file.basename === "index.tsx") {
+		errors.push(
+			`${file.path} is an index file. Avoid index files, only entry point files may re-export symbols.`,
+		);
+	}
+
+	// Only entry points can re-export
+	if (!file.isEntryPoint()) {
+		for (const exp of file.exports) {
+			if (exp.reexport) {
+				errors.push(
+					`${file.path} re-exports "${exp.name}" but is not an entry point. Only *-entry-point.ts files may re-export.`,
+				);
+				break;
+			}
+		}
+	}
+
+	// Entry points may only re-export, not define values (unless generated)
+	if (file.isEntryPoint() && !file.isGenerated) {
+		for (const exp of file.exports) {
+			if (!exp.reexport) {
+				errors.push(
+					`${file.path} is an entry point but defines "${exp.name}". Entry points may only re-export symbols.`,
+				);
+			}
+		}
+	}
 
 	// Entry point naming validation
 	if (file.isEntryPoint() && file.path.includes("/")) {
@@ -214,6 +245,16 @@ export function getFileErrors(file: SourceFile): string[] {
 				`${file.path} imports from the central contracts.ts file. Import from module-specific contract files instead.`,
 			);
 			break;
+		}
+	}
+
+	// Check for imports from entry point files
+	for (const imp of file.imports) {
+		const importBasename = imp.path.split("/").pop() ?? "";
+		if (isEntryPointFile(importBasename)) {
+			errors.push(
+				`${file.path} imports from entry point "${imp.path}". Import from the original source file instead.`,
+			);
 		}
 	}
 

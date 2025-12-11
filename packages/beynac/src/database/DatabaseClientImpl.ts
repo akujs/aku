@@ -3,7 +3,6 @@ import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
 import { type RetryOptions, withRetry } from "../helpers/async/retry.ts";
 import { abort } from "../http/abort.ts";
 import { BaseClass, type FifoLock, fifoLock } from "../utils.ts";
-import type { Row, Statement, StatementResult } from "./contracts/Database.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 import type { DatabaseClient, TransactionOptions } from "./DatabaseClient.ts";
 import { DatabaseError, QueryError } from "./database-errors.ts";
@@ -18,6 +17,7 @@ import {
 	TransactionPreCommitEvent,
 	TransactionRetryingEvent,
 } from "./database-events.ts";
+import type { Row, Statement, StatementResult } from "./Statement.ts";
 import { sql } from "./sql.ts";
 
 let nextTransactionId = 1;
@@ -25,7 +25,7 @@ let nextTransactionId = 1;
 export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 	readonly #adapter: DatabaseAdapter;
 	readonly #dispatcher: Dispatcher;
-	readonly #connectionStorage = new AsyncLocalStorage<ConnectionContext>();
+	readonly #connectionStorage = new AsyncLocalStorage<ConnectionContext | null>();
 
 	constructor(adapter: DatabaseAdapter, dispatcher: Dispatcher) {
 		super();
@@ -51,6 +51,22 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 
 	run(statement: Statement): Promise<StatementResult> {
 		return this.#withConnection((connection) => {
+			const ctx = this.#connectionStorage.getStore();
+			if (ctx?.committed) {
+				throw new QueryError(
+					statement.renderForLogs(),
+					"the transaction has already been committed - probably an asynchronous operation was started and not awaited, and ran after the transaction finished",
+					undefined,
+				);
+			}
+			if (ctx?.isRunningNestedTransaction) {
+				throw new QueryError(
+					statement.renderForLogs(),
+					"a nested transaction is active - probably an asynchronous operation was started and not awaited, and ran after the nested transaction started",
+					undefined,
+				);
+			}
+
 			const startEvent = new QueryExecutingEvent(this.#getEventInit({ statement }));
 			this.#dispatcher.dispatchIfHasListeners(QueryExecutingEvent, () => startEvent);
 
@@ -178,79 +194,103 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 		);
 	}
 
+	escapeTransaction<T>(fn: () => Promise<T>): Promise<T> {
+		return this.#connectionStorage.run(null, fn);
+	}
+
 	async #executeTransaction<T>(fn: () => Promise<T>, options?: TransactionOptions): Promise<T> {
 		return this.#withConnection(async (connection) => {
-			const ctx = this.#connectionStorage.getStore()!;
+			const parentCtx = this.#connectionStorage.getStore()!;
 
 			// Serialise sibling nested transactions. Each transaction lazily
 			// creates and acquires its parent's childLock
 			const siblingLock =
-				ctx.transactionDepth > 0 ? (ctx.childLock ??= fifoLock(undefined)) : undefined;
+				parentCtx.transactionDepth > 0 ? (parentCtx.childLock ??= fifoLock(undefined)) : undefined;
 			await siblingLock?.acquire();
+
+			const depth = parentCtx.transactionDepth + 1;
+			const txId = nextTransactionId++;
+			const outerTxId = parentCtx.outerTransactionId ?? txId;
+
+			const ctx: ConnectionContext = {
+				connection,
+				transactionDepth: depth,
+				transactionId: txId,
+				outerTransactionId: outerTxId,
+				childLock: undefined,
+				committed: false,
+				isRunningNestedTransaction: false,
+			};
+
+			const txEventInit: TransactionEventInit = {
+				transactionId: txId,
+				outerTransactionId: outerTxId,
+				transactionDepth: depth,
+			};
+			const grammar = this.#adapter.grammar;
+			const savepointName = `sp_${depth}`;
+
+			const execCtrl = async (sqlString: string): Promise<void> => {
+				await this.#enrichError(() => this.#adapter.run(sql.raw(sqlString), connection));
+			};
+
 			try {
-				const prevDepth = ctx.transactionDepth;
-				const prevTxId = ctx.transactionId;
-				const prevOuterTxId = ctx.outerTransactionId;
-				const prevChildLock = ctx.childLock;
-
-				const depth = (ctx.transactionDepth = prevDepth + 1);
-				const txId = (ctx.transactionId = nextTransactionId++);
-				const outerTxId = (ctx.outerTransactionId = prevOuterTxId ?? txId);
-				ctx.childLock = undefined; // Children will lazily create their own lock
-
-				const txEventInit: TransactionEventInit = {
-					transactionId: txId,
-					outerTransactionId: outerTxId,
-					transactionDepth: depth,
-				};
-				const grammar = this.#adapter.grammar;
-				const savepointName = `sp_${depth}`;
-
-				const executingEvent = new TransactionExecutingEvent(txEventInit);
-				this.#dispatcher.dispatch(executingEvent);
-
-				const execCtrl = async (sqlString: string): Promise<void> => {
-					await this.#enrichError(() => this.#adapter.run(sql.raw(sqlString), connection));
-				};
-
-				await execCtrl(
-					depth === 1 ? grammar.transactionBegin(options) : grammar.savepointCreate(savepointName),
-				);
-
-				try {
-					const result = await fn();
-
-					this.#dispatcher.dispatchIfHasListeners(
-						TransactionPreCommitEvent,
-						() => new TransactionPreCommitEvent(txEventInit),
-					);
-
-					await execCtrl(
-						depth === 1 ? grammar.transactionCommit() : grammar.savepointRelease(savepointName),
-					);
-
-					this.#dispatcher.dispatchIfHasListeners(
-						TransactionExecutedEvent,
-						() => new TransactionExecutedEvent(executingEvent),
-					);
-
-					return result;
-				} catch (error) {
-					await execCtrl(
-						depth === 1 ? grammar.transactionRollback() : grammar.savepointRollback(savepointName),
-					);
-					this.#dispatcher.dispatchIfHasListeners(
-						TransactionFailedEvent,
-						() => new TransactionFailedEvent(executingEvent, error),
-					);
-					throw error;
-				} finally {
-					ctx.transactionDepth = prevDepth;
-					ctx.transactionId = prevTxId;
-					ctx.outerTransactionId = prevOuterTxId;
-					ctx.childLock = prevChildLock;
+				if (depth > 1) {
+					parentCtx.isRunningNestedTransaction = true;
 				}
+
+				// Enter the new transaction context before BEGIN so that errors
+				// during BEGIN are correctly associated with this transaction
+				return await this.#connectionStorage.run(ctx, async () => {
+					const executingEvent = new TransactionExecutingEvent(txEventInit);
+					this.#dispatcher.dispatch(executingEvent);
+
+					await execCtrl(
+						depth === 1
+							? grammar.transactionBegin(options)
+							: grammar.savepointCreate(savepointName),
+					);
+
+					try {
+						const result = await fn();
+
+						this.#dispatcher.dispatchIfHasListeners(
+							TransactionPreCommitEvent,
+							() => new TransactionPreCommitEvent(txEventInit),
+						);
+
+						await execCtrl(
+							depth === 1 ? grammar.transactionCommit() : grammar.savepointRelease(savepointName),
+						);
+
+						ctx.committed = true;
+
+						this.#dispatcher.dispatchIfHasListeners(
+							TransactionExecutedEvent,
+							() => new TransactionExecutedEvent(executingEvent),
+						);
+
+						return result;
+					} catch (error) {
+						await execCtrl(
+							depth === 1
+								? grammar.transactionRollback()
+								: grammar.savepointRollback(savepointName),
+						);
+
+						ctx.committed = true;
+
+						this.#dispatcher.dispatchIfHasListeners(
+							TransactionFailedEvent,
+							() => new TransactionFailedEvent(executingEvent, error),
+						);
+						throw error;
+					}
+				});
 			} finally {
+				if (depth > 1) {
+					parentCtx.isRunningNestedTransaction = false;
+				}
 				siblingLock?.release();
 			}
 		});
@@ -311,4 +351,6 @@ interface ConnectionContext {
 	transactionId: number | null;
 	outerTransactionId: number | null;
 	childLock?: FifoLock<void> | undefined;
+	committed?: boolean | undefined;
+	isRunningNestedTransaction?: boolean | undefined;
 }

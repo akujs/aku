@@ -1,29 +1,25 @@
-import type {
-	D1Database as D1DatabaseBinding,
-	D1PreparedStatement,
-	D1Result,
-} from "@cloudflare/workers-types";
+import type { D1Database, D1PreparedStatement, D1Result } from "@cloudflare/workers-types";
 import { BaseClass } from "../../../utils.ts";
-import type { Statement, StatementResult } from "../../contracts/Database.ts";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { SqliteGrammar } from "../../grammar/SqliteGrammar.ts";
+import type { Statement, StatementResult } from "../../Statement.ts";
 import type { D1DatabaseAdapterConfig } from "./D1DatabaseAdapterConfig.ts";
 
-export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter<null> {
+export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter<D1Database> {
 	readonly grammar: DatabaseGrammar = new SqliteGrammar();
 	readonly supportsTransactions = false;
 
-	readonly #db: D1DatabaseBinding;
+	readonly #d1: D1Database;
 
 	constructor(config: D1DatabaseAdapterConfig) {
 		super();
-		this.#db = config.binding;
+		this.#d1 = config.binding;
 	}
 
-	async acquireConnection(): Promise<null> {
-		return null;
+	async acquireConnection(): Promise<D1Database> {
+		return this.#d1;
 	}
 
 	releaseConnection(): void {}
@@ -40,7 +36,7 @@ export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter<null
 	async batch(statements: Statement[]): Promise<StatementResult[]> {
 		if (statements.length === 0) return [];
 		try {
-			const results = await this.#db.batch(statements.map((stmt) => this.#prepare(stmt)));
+			const results = await this.#d1.batch(statements.map((stmt) => this.#prepare(stmt)));
 			return results.map(this.#toStatementResult.bind(this));
 		} catch (error) {
 			// D1 doesn't indicate which statement in a batch failed, so we concatenate all SQL
@@ -53,7 +49,7 @@ export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter<null
 
 	#prepare(statement: Statement): D1PreparedStatement {
 		const sqlString = toSql(statement);
-		return this.#db.prepare(sqlString).bind(...statement.params);
+		return this.#d1.prepare(sqlString).bind(...statement.params);
 	}
 
 	#toStatementResult(result: D1Result): StatementResult {
