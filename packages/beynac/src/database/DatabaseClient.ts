@@ -95,6 +95,10 @@ export interface DatabaseClient {
 	 * if the transaction fails. If the function throws any error, the
 	 * transaction will be rolled back.
 	 *
+	 * Internally this uses AsyncLocalStorage to ensure that any code in the
+	 * function, even asynchronous code inside promises and setTimeouts, will
+	 * use the transaction.
+	 *
 	 * Calls to transaction can be nested, and nested transactions will use
 	 * savepoints in the database. However with nested transactions the options
 	 * are ignored, retry and isolation only apply to the outermost transaction.
@@ -123,17 +127,18 @@ export interface DatabaseClient {
 	/**
 	 * Run a callback outside the current transaction context.
 	 *
-	 * When you use `transaction(() => { ... })`, any code that runs inside the
-	 * function, Even asynchronous code inside promises and set timeouts, will
-	 * automatically run in that transaction context.
+	 * When you use `transaction(() => { ... })`, it uses AsyncLocalStorage to
+	 * ensure that any code that runs inside the function, Even asynchronous
+	 * code inside promises and setTimeouts, will use that transaction.
 	 *
 	 * Very occasionally you may actually want to interact with the database
-	 * directly, without going through the parent transaction.
+	 * directly, without going through the current transaction.
 	 *
-	 * Any database operations within the callback will use a fresh connection,
-	 * as if they were executed outside of any transaction. This allows starting
-	 * independent transactions that commit or roll back separately from the
-	 * outer transaction.
+	 * When you pass a callback to escapeTransaction() it immediately executes
+	 * the callback and returns the result. Any database operations within the
+	 * callback will use a fresh connection, as if they were executed outside of
+	 * any transaction. This allows starting independent transactions that
+	 * commit or roll back separately from the outer transaction.
 	 */
 	escapeTransaction<T>(fn: () => Promise<T>): Promise<T>;
 
