@@ -97,9 +97,12 @@ async function main() {
 		});
 
 		// Run node tests after bun tests
-		const nodeExitCode = runNodeTestsSync();
+		let exitCode = bunProc.exitCode;
+		if (passArgs.length === 0) {
+			exitCode ||= runNodeTestsSync();
+		}
 
-		process.exit(bunProc.exitCode || nodeExitCode);
+		process.exit(exitCode);
 	}
 
 	const startTime = performance.now();
