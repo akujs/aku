@@ -1,16 +1,8 @@
 import { BaseClass } from "../../utils.ts";
+import type { SqlFragments } from "../Statement.ts";
+import type { LockOptions } from "./QueryBuilder.ts";
 import { quotePostgresIdentifiers } from "./quotePostgresIdentifiers.ts";
 
-function andClause(keyword: string, conditions: string[]): string | false {
-	return conditions.length > 0 && `${keyword} (${conditions.join(") AND (")})`;
-}
-
-function listClause(keyword: string, items: string[]): string | false {
-	return items.length > 0 && `${keyword} ${items.join(", ")}`;
-}
-
-// Internal mutable builder used during SQL compilation.
-// Methods are named by their effect: setXxx replaces, pushXxx appends.
 export class MutableQueryBuilder extends BaseClass {
 	readonly #from: string;
 	#join: string[] = [];
@@ -23,7 +15,7 @@ export class MutableQueryBuilder extends BaseClass {
 	#offset: number | null = null;
 	#distinct = false;
 	#lockType?: "UPDATE" | "SHARE";
-	#lockOption?: string | undefined;
+	#lockOptions?: LockOptions | undefined;
 
 	constructor(from: string) {
 		super();
@@ -74,12 +66,12 @@ export class MutableQueryBuilder extends BaseClass {
 		this.#distinct = true;
 	}
 
-	setLock(type: "UPDATE" | "SHARE", option: string | undefined): void {
+	setLock(type: "UPDATE" | "SHARE", options: LockOptions | undefined): void {
 		this.#lockType = type;
-		this.#lockOption = option;
+		this.#lockOptions = options;
 	}
 
-	compile(): { fragments: readonly string[]; params: unknown[] } {
+	compile(): SqlFragments {
 		const parts = [
 			"SELECT",
 			this.#distinct && "DISTINCT",
@@ -95,10 +87,19 @@ export class MutableQueryBuilder extends BaseClass {
 			this.#offset !== null && `OFFSET ${this.#offset}`,
 			this.#lockType && "FOR",
 			this.#lockType,
-			this.#lockOption,
+			this.#lockOptions?.noWait && "NOWAIT",
+			this.#lockOptions?.skipLocked && "SKIP LOCKED",
 		];
 
 		const sql = quotePostgresIdentifiers(parts.filter(Boolean).join(" "));
 		return { fragments: [sql], params: [] };
 	}
+}
+
+function andClause(keyword: string, conditions: string[]): string | false {
+	return conditions.length > 0 && `${keyword} (${conditions.join(") AND (")})`;
+}
+
+function listClause(keyword: string, items: string[]): string | false {
+	return items.length > 0 && `${keyword} ${items.join(", ")}`;
 }

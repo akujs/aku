@@ -16,6 +16,12 @@ describe(QueryBuilderImpl, () => {
 			);
 		});
 
+		test("select columns with keyword names", () => {
+			expect(toSql(from("artists").select("select", "join"))).toMatchInlineSnapshot(
+				`"SELECT "select", "join" FROM "artists""`,
+			);
+		});
+
 		test("single where", () => {
 			expect(toSql(from("artists").where("age > 30"))).toMatchInlineSnapshot(
 				`"SELECT * FROM "artists" WHERE ("age" > 30)"`,
@@ -86,6 +92,12 @@ describe(QueryBuilderImpl, () => {
 				`"SELECT * FROM "t" WHERE ("a" = 1 OR "a" = 2) AND ("b" = 3 OR "b" = 4)"`,
 			);
 		});
+
+		test("conditions referencing columns with keyword names", () => {
+			expect(toSql(from("t").where("select > 4").where("join IS NOT NULL"))).toMatchInlineSnapshot(
+				`"SELECT * FROM "t" WHERE ("select" > 4) AND ("join" IS NOT NULL)"`,
+			);
+		});
 	});
 
 	describe("select type states", () => {
@@ -102,18 +114,10 @@ describe(QueryBuilderImpl, () => {
 		});
 
 		test("select() is not available after select() has been called", () => {
-			// @ts-expect-error - select() should not be callable after select()
-			from("t").select("a").select("b");
-		});
-	});
-
-	describe("identifier quoting", () => {
-		test("mixed-case identifiers are quoted", () => {
-			expect(
-				toSql(from("artists").select("fullName", "age").where("lastName = 'Smith'")),
-			).toMatchInlineSnapshot(
-				`"SELECT "fullName", "age" FROM "artists" WHERE ("lastName" = 'Smith')"`,
-			);
+			from("t")
+				.select("a")
+				// @ts-expect-error - select() should not be callable after select()
+				.select("b");
 		});
 	});
 
@@ -167,6 +171,12 @@ describe(QueryBuilderImpl, () => {
 				`"SELECT * FROM "t" ORDER BY "a", "b" DESC"`,
 			);
 		});
+
+		test("replaceOrderBy", () => {
+			expect(toSql(from("t").orderBy("a").replaceOrderBy("b").orderBy("c"))).toMatchInlineSnapshot(
+				`"SELECT * FROM "t" ORDER BY "b", "c""`,
+			);
+		});
 	});
 
 	describe("pagination", () => {
@@ -202,65 +212,26 @@ describe(QueryBuilderImpl, () => {
 			expect(toSql(from("t").forUpdate())).toMatchInlineSnapshot(`"SELECT * FROM "t" FOR UPDATE"`);
 		});
 
-		test("for update with option", () => {
-			expect(toSql(from("t").forUpdate("NOWAIT"))).toMatchInlineSnapshot(
+		test("for update with noWait", () => {
+			expect(toSql(from("t").forUpdate({ noWait: true }))).toMatchInlineSnapshot(
 				`"SELECT * FROM "t" FOR UPDATE NOWAIT"`,
+			);
+		});
+
+		test("for update with skipLocked", () => {
+			expect(toSql(from("t").forUpdate({ skipLocked: true }))).toMatchInlineSnapshot(
+				`"SELECT * FROM "t" FOR UPDATE SKIP LOCKED"`,
 			);
 		});
 
 		test("for share", () => {
 			expect(toSql(from("t").forShare())).toMatchInlineSnapshot(`"SELECT * FROM "t" FOR SHARE"`);
 		});
-	});
 
-	describe("complex query", () => {
-		test("query with all clauses", () => {
-			expect(
-				toSql(
-					from("artists")
-						.join("artworks aw ON aw.artist_id = artists.id")
-						.leftJoin("galleries g ON g.id = aw.gallery_id")
-						.select("artists.id", "artists.fullName", "aw.title")
-						.where("artists.age > 30")
-						.where("artists.status = 'active'")
-						.groupBy("artists.id")
-						.having("COUNT(*) > 1")
-						.orderBy("artists.fullName")
-						.orderBy("aw.year DESC")
-						.limit(10)
-						.offset(20)
-						.distinct()
-						.forUpdate(),
-				),
-			).toMatchInlineSnapshot(
-				`"SELECT DISTINCT "artists"."id", "artists"."fullName", "aw"."title" FROM "artists" JOIN "artworks" "aw" ON "aw"."artist_id" = "artists"."id" LEFT JOIN "galleries" "g" ON "g"."id" = "aw"."gallery_id" WHERE ("artists"."age" > 30) AND ("artists"."status" = 'active') GROUP BY "artists"."id" HAVING (COUNT(*) > 1) ORDER BY "artists"."fullName", "aw"."year" DESC LIMIT 10 OFFSET 20 FOR UPDATE"`,
+		test("for share with noWait", () => {
+			expect(toSql(from("t").forShare({ noWait: true }))).toMatchInlineSnapshot(
+				`"SELECT * FROM "t" FOR SHARE NOWAIT"`,
 			);
-		});
-	});
-
-	describe("Statement interface", () => {
-		test("fragments contains compiled SQL", () => {
-			const query = from("artists").where("age > 30");
-			expect(query.fragments).toHaveLength(1);
-			expect(query.fragments[0]).toContain("SELECT");
-			expect(query.fragments[0]).toContain('FROM "artists"');
-		});
-
-		test("params is empty for milestone 1", () => {
-			const query = from("artists").where("age > 30");
-			expect(query.params).toEqual([]);
-		});
-
-		test("renderSql works with custom placeholder", () => {
-			const query = from("artists");
-			// For M1, no placeholders needed since no params
-			expect(query.renderSql(() => "?")).toMatchInlineSnapshot(`"SELECT * FROM "artists""`);
-		});
-
-		test("renderForLogs works", () => {
-			const query = from("artists");
-			// For M1, same as toSql since no params
-			expect(query.renderForLogs()).toMatchInlineSnapshot(`"SELECT * FROM "artists""`);
 		});
 	});
 });

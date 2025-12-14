@@ -1,7 +1,9 @@
-export interface Statement {
+export interface SqlFragments {
 	readonly fragments: readonly string[];
 	readonly params: unknown[];
+}
 
+export interface Statement extends SqlFragments {
 	/**
 	 * Render this statement as SQL with placeholders.
 	 *

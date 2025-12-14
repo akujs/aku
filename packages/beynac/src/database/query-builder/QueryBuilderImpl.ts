@@ -1,64 +1,22 @@
 import { BaseClass } from "../../utils.ts";
-import type { Statement } from "../Statement.ts";
+import type { SqlFragments, Statement } from "../Statement.ts";
 import { MutableQueryBuilder } from "./MutableQueryBuilder.ts";
-import type { QueryBuilder, SelectNotSetQueryBuilder } from "./QueryBuilder.ts";
+import type { LockOptions, QueryBuilder, SelectNotSetQueryBuilder } from "./QueryBuilder.ts";
 import { renderForLogs, renderSql } from "./statement-render.ts";
-
-// Derive command types from MutableQueryBuilder's method signatures
-type BuilderMethod = keyof {
-	[K in keyof MutableQueryBuilder as MutableQueryBuilder[K] extends (...args: never[]) => void
-		? K
-		: never]: true;
-};
-type BuilderArgs<K extends BuilderMethod> = Parameters<MutableQueryBuilder[K]>;
-type QueryCommand = { [K in BuilderMethod]: [K, BuilderArgs<K>] }[BuilderMethod];
-
-function cmd<K extends BuilderMethod>(method: K, args: BuilderArgs<K>): QueryCommand {
-	return [method, args] as QueryCommand;
-}
 
 export class QueryBuilderImpl extends BaseClass implements Statement {
 	readonly #from: string;
-	readonly #commands: QueryCommand[];
+	readonly #commands: Command[];
 	readonly #length: number;
 	#cachedBuild: { fragments: readonly string[]; params: unknown[] } | null = null;
 
-	constructor(from: string, commands: QueryCommand[]) {
+	constructor(from: string, commands: Command[]) {
 		super();
 		this.#from = from;
 		this.#commands = commands;
 		this.#length = commands.length;
 	}
 
-	#derive<K extends BuilderMethod>(method: K, args: BuilderArgs<K>): this {
-		let commands = this.#commands;
-
-		if (commands.length > this.#length) {
-			// We've already derived from this builder, we need to clone the array
-			commands = commands.slice(0, this.#length);
-		}
-
-		commands.push(cmd(method, args));
-		return new QueryBuilderImpl(this.#from, commands) as this;
-	}
-
-	#getBuild(): { fragments: readonly string[]; params: unknown[] } {
-		if (!this.#cachedBuild) {
-			this.#cachedBuild = this.#build();
-		}
-		return this.#cachedBuild;
-	}
-
-	#build(): { fragments: readonly string[]; params: unknown[] } {
-		const builder = new MutableQueryBuilder(this.#from);
-		for (let i = 0; i < this.#length; i++) {
-			const [method, args] = this.#commands[i];
-			(builder[method] as (...a: unknown[]) => void)(...args);
-		}
-		return builder.compile();
-	}
-
-	// Statement interface
 	get fragments(): readonly string[] {
 		return this.#getBuild().fragments;
 	}
@@ -68,16 +26,13 @@ export class QueryBuilderImpl extends BaseClass implements Statement {
 	}
 
 	renderSql(renderPlaceholder: (index: number) => string): string {
-		const { fragments, params } = this.#getBuild();
-		return renderSql(fragments, params, renderPlaceholder);
+		return renderSql(this.#getBuild(), renderPlaceholder);
 	}
 
 	renderForLogs(): string {
-		const { fragments, params } = this.#getBuild();
-		return renderForLogs(fragments, params);
+		return renderForLogs(this.#getBuild());
 	}
 
-	// Fluent methods - Joins
 	join(clause: string): this {
 		return this.#derive("pushJoin", ["JOIN", clause]);
 	}
@@ -102,7 +57,6 @@ export class QueryBuilderImpl extends BaseClass implements Statement {
 		return this.#derive("pushJoin", ["CROSS JOIN", table]);
 	}
 
-	// Fluent methods - Select
 	select(...columns: string[]): QueryBuilder {
 		return this.#derive("setSelect", [columns]) as unknown as QueryBuilder;
 	}
@@ -115,12 +69,10 @@ export class QueryBuilderImpl extends BaseClass implements Statement {
 		return this.#derive("setSelect", [columns]);
 	}
 
-	// Fluent methods - WHERE
 	where(condition: string): this {
 		return this.#derive("pushWhere", [condition]);
 	}
 
-	// Fluent methods - Grouping
 	groupBy(...columns: string[]): this {
 		return this.#derive("pushGroupBy", [columns]);
 	}
@@ -152,15 +104,44 @@ export class QueryBuilderImpl extends BaseClass implements Statement {
 		return this.#derive("setDistinct", []);
 	}
 
-	forUpdate(option?: string): this {
-		return this.#derive("setLock", ["UPDATE", option]);
+	forUpdate(options?: LockOptions): this {
+		return this.#derive("setLock", ["UPDATE", options]);
 	}
 
-	forShare(): this {
-		return this.#derive("setLock", ["SHARE", undefined]);
+	forShare(options?: LockOptions): this {
+		return this.#derive("setLock", ["SHARE", options]);
 	}
 
 	static from(table: string): SelectNotSetQueryBuilder {
 		return new QueryBuilderImpl(table, []) as SelectNotSetQueryBuilder;
 	}
+
+	#derive<K extends keyof MutableQueryBuilder>(
+		method: K,
+		args: Parameters<MutableQueryBuilder[K]>,
+	): this {
+		let commands = this.#commands;
+
+		if (commands.length > this.#length) {
+			// We've already derived from this builder, we need to clone the array
+			commands = commands.slice(0, this.#length);
+		}
+
+		commands.push([method, args]);
+		return new QueryBuilderImpl(this.#from, commands) as this;
+	}
+
+	#getBuild(): SqlFragments {
+		if (!this.#cachedBuild) {
+			const builder = new MutableQueryBuilder(this.#from);
+			for (let i = 0; i < this.#length; i++) {
+				const [method, args] = this.#commands[i];
+				(builder[method] as (...a: unknown[]) => void)(...args);
+			}
+			this.#cachedBuild = builder.compile();
+		}
+		return this.#cachedBuild;
+	}
 }
+
+type Command = [keyof MutableQueryBuilder, unknown[]];
