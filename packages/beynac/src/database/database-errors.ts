@@ -59,6 +59,21 @@ export class ClientNotFoundError extends DatabaseError {
 }
 
 /**
+ * Thrown when attempting to use a feature that is not supported by the
+ * current database dialect.
+ */
+export class UnsupportedFeatureError extends DatabaseError {
+	readonly feature: string;
+	readonly dialect: string;
+
+	constructor(feature: string, dialect: string) {
+		super(`${dialect} does not support ${feature}`);
+		this.feature = feature;
+		this.dialect = dialect;
+	}
+}
+
+/**
  * Thrown when a SQL query fails to execute.
  */
 export class QueryError extends DatabaseError {

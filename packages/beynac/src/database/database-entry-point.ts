@@ -8,7 +8,12 @@ export type { SqliteDatabaseAdapterConfig } from "./adapters/sqlite/SqliteDataba
 export { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 export type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 export type { DatabaseClient } from "./DatabaseClient.ts";
-export * from "./database-errors.ts";
+export {
+	ClientNotFoundError,
+	DatabaseError,
+	QueryError,
+	UnsupportedFeatureError,
+} from "./database-errors.ts";
 export {
 	DatabaseEvent,
 	DatabaseOperationCompletedEvent,
@@ -23,6 +28,9 @@ export {
 	TransactionRetryingEvent,
 } from "./database-events.ts";
 export type { ExecutableStatement } from "./ExecutableStatement.ts";
-export { DatabaseGrammar } from "./grammar/DatabaseGrammar.ts";
-export type { QueryBuilder, SelectNotSetQueryBuilder } from "./query-builder/QueryBuilder.ts";
+export { DatabaseGrammar, type JoinType } from "./grammar/DatabaseGrammar.ts";
+export type {
+	DefaultColumnsQueryBuilder,
+	SelectQueryBuilder,
+} from "./query-builder/QueryBuilder.ts";
 export { sql } from "./sql.ts";

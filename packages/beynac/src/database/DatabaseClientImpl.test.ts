@@ -5,7 +5,11 @@ import { asyncGate } from "../test-utils/async-gate.bun.ts";
 import { mockDispatcher } from "../test-utils/internal-mocks.bun.ts";
 import { mock } from "../testing/mocks.ts";
 import { createTestDirectory } from "../testing/test-directories.ts";
-import { createPostgresAdapter, resetSchema } from "./adapters/postgres/postgres-test-utils.ts";
+import {
+	createPostgresAdapter,
+	postgresSharedTestConfig,
+	recreatePostgresPublicSchema,
+} from "./adapters/postgres/postgres-test-utils.ts";
 import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 import { DatabaseClientImpl } from "./DatabaseClientImpl.ts";
@@ -235,83 +239,86 @@ describe(DatabaseClientImpl, () => {
 // These tests use Postgres because it supports concurrent connections to the same database,
 // unlike SQLite which has single-writer limitations
 describe("escapeTransaction with Postgres", () => {
-	let adapter: DatabaseAdapter;
-	let db: DatabaseClientImpl;
+	// using this test name ensures that this block runs in the same worker as the other tests
+	describe(postgresSharedTestConfig.name, () => {
+		let adapter: DatabaseAdapter;
+		let db: DatabaseClientImpl;
 
-	beforeAll(async () => {
-		adapter = createPostgresAdapter();
-		db = new DatabaseClientImpl(adapter, mockDispatcher());
-		await db.run(resetSchema);
-		await db.run(sql`CREATE TABLE test (id SERIAL PRIMARY KEY, value TEXT)`);
-	});
+		beforeAll(async () => {
+			adapter = createPostgresAdapter();
+			db = new DatabaseClientImpl(adapter, mockDispatcher());
+			await db.run(recreatePostgresPublicSchema);
+			await db.run(sql`CREATE TABLE test (id SERIAL PRIMARY KEY, value TEXT)`);
+		});
 
-	beforeEach(async () => {
-		await db.run(sql`DELETE FROM test`);
-	});
+		beforeEach(async () => {
+			await db.run(sql`DELETE FROM test`);
+		});
 
-	test("escapeTransaction commits independently within rolled back outer transaction", async () => {
-		const testError = new Error("intentional rollback");
-		let escapedPromise: Promise<void> | undefined;
-		const gate = asyncGate();
+		test("escapeTransaction commits independently within rolled back outer transaction", async () => {
+			const testError = new Error("intentional rollback");
+			let escapedPromise: Promise<void> | undefined;
+			const gate = asyncGate();
 
-		try {
-			await db.transaction(async () => {
-				await db.run(sql`INSERT INTO test (value) VALUES ('outer')`);
+			try {
+				await db.transaction(async () => {
+					await db.run(sql`INSERT INTO test (value) VALUES ('outer')`);
 
-				// Start an independent transaction that will complete after we throw
-				escapedPromise = db.escapeTransaction(async () => {
-					await gate.block();
-					await db.run(sql`INSERT INTO test (value) VALUES ('escaped')`);
+					// Start an independent transaction that will complete after we throw
+					escapedPromise = db.escapeTransaction(async () => {
+						await gate.block();
+						await db.run(sql`INSERT INTO test (value) VALUES ('escaped')`);
+					});
+
+					// ensure independent transaction has started
+					await gate.hasBlocked();
+
+					// Wait for escaped transaction to complete
+					await gate.releaseAndWaitTick();
+					await escapedPromise;
+
+					throw testError;
 				});
+			} catch (e) {
+				expect(e).toBe(testError);
+			}
 
-				// ensure independent transaction has started
-				await gate.hasBlocked();
+			// Outer transaction rolled back, escaped transaction committed
+			const rows = await db.all(sql`SELECT value FROM test ORDER BY id`);
+			expect(rows).toEqual([{ value: "escaped" }]);
+		});
 
-				// Wait for escaped transaction to complete
-				await gate.releaseAndWaitTick();
-				await escapedPromise;
+		test("escapeTransaction commits independently after rolled back outer transaction", async () => {
+			const testError = new Error("intentional rollback");
+			let escapedPromise: Promise<void> | undefined;
+			const gate = asyncGate();
 
-				throw testError;
-			});
-		} catch (e) {
-			expect(e).toBe(testError);
-		}
+			try {
+				await db.transaction(async () => {
+					await db.run(sql`INSERT INTO test (value) VALUES ('outer')`);
 
-		// Outer transaction rolled back, escaped transaction committed
-		const rows = await db.all(sql`SELECT value FROM test ORDER BY id`);
-		expect(rows).toEqual([{ value: "escaped" }]);
-	});
+					// Start an independent transaction that will complete after we throw
+					escapedPromise = db.escapeTransaction(async () => {
+						await gate.block();
+						await db.run(sql`INSERT INTO test (value) VALUES ('escaped')`);
+					});
 
-	test("escapeTransaction commits independently after rolled back outer transaction", async () => {
-		const testError = new Error("intentional rollback");
-		let escapedPromise: Promise<void> | undefined;
-		const gate = asyncGate();
+					// ensure independent transaction has started
+					await gate.hasBlocked();
 
-		try {
-			await db.transaction(async () => {
-				await db.run(sql`INSERT INTO test (value) VALUES ('outer')`);
-
-				// Start an independent transaction that will complete after we throw
-				escapedPromise = db.escapeTransaction(async () => {
-					await gate.block();
-					await db.run(sql`INSERT INTO test (value) VALUES ('escaped')`);
+					throw testError;
 				});
+			} catch (e) {
+				expect(e).toBe(testError);
+			}
 
-				// ensure independent transaction has started
-				await gate.hasBlocked();
+			// Wait for escaped transaction to complete
+			await gate.releaseAndWaitTick();
+			await escapedPromise;
 
-				throw testError;
-			});
-		} catch (e) {
-			expect(e).toBe(testError);
-		}
-
-		// Wait for escaped transaction to complete
-		await gate.releaseAndWaitTick();
-		await escapedPromise;
-
-		// Outer transaction rolled back, escaped transaction committed
-		const rows = await db.all(sql`SELECT value FROM test ORDER BY id`);
-		expect(rows).toEqual([{ value: "escaped" }]);
+			// Outer transaction rolled back, escaped transaction committed
+			const rows = await db.all(sql`SELECT value FROM test ORDER BY id`);
+			expect(rows).toEqual([{ value: "escaped" }]);
+		});
 	});
 });

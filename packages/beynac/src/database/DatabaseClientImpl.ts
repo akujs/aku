@@ -17,6 +17,8 @@ import {
 	TransactionPreCommitEvent,
 	TransactionRetryingEvent,
 } from "./database-events.ts";
+import type { DefaultColumnsQueryBuilder } from "./query-builder/QueryBuilder.ts";
+import { QueryBuilderImpl } from "./query-builder/QueryBuilderImpl.ts";
 import type { Row, Statement, StatementResult } from "./Statement.ts";
 import { sql } from "./sql.ts";
 
@@ -342,6 +344,10 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 	async column<T = unknown>(statement: Statement): Promise<T[]> {
 		const rows = await this.all(statement);
 		return rows.map((row) => Object.values(row)[0]) as T[];
+	}
+
+	from(table: string): DefaultColumnsQueryBuilder {
+		return QueryBuilderImpl.from(table, this.#adapter.grammar);
 	}
 }
 

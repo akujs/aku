@@ -1,40 +1,37 @@
-import { describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
+import { mockDispatcher } from "../../test-utils/internal-mocks.bun.ts";
+import { pgLiteSharedTestConfig } from "../adapters/pglite/pglite-test-utils.ts";
+import { sqliteMemorySharedTestConfig } from "../adapters/sqlite/sqlite-test-utils.ts";
+import type { Database } from "../contracts/Database.js";
+import { DatabaseImpl } from "../DatabaseImpl.ts";
+import type { SharedTestConfig } from "../database-test-utils.ts";
+import { PostgresGrammar } from "../grammar/PostgresGrammar.ts";
+import { sql } from "../sql.ts";
 import { QueryBuilderImpl } from "./QueryBuilderImpl.ts";
 import { toSql } from "./query-builder-test-utils.ts";
 
-const from = QueryBuilderImpl.from;
+// For structural tests that don't execute against a database, use PostgresGrammar
+// since it supports all features. For database execution tests, use db.from()
+// which automatically uses the correct grammar.
+const grammar = new PostgresGrammar();
+const from = (table: string) => QueryBuilderImpl.from(table, grammar);
+
+// =============================================================================
+// SQL Structure Tests
+// These tests verify SQL generation without executing against a database.
+// Used for: immutability guarantees and type constraints.
+// =============================================================================
 
 describe(QueryBuilderImpl, () => {
-	describe("basic queries", () => {
-		test("simple select all", () => {
-			expect(toSql(from("artists"))).toMatchInlineSnapshot(`"SELECT * FROM "artists""`);
-		});
-
-		test("select specific columns", () => {
-			expect(toSql(from("artists").select("id", "name"))).toMatchInlineSnapshot(
-				`"SELECT "id", "name" FROM "artists""`,
-			);
-		});
-
-		test("select columns with keyword names", () => {
-			expect(toSql(from("artists").select("select", "join"))).toMatchInlineSnapshot(
-				`"SELECT "select", "join" FROM "artists""`,
-			);
-		});
-
-		test("single where", () => {
-			expect(toSql(from("artists").where("age > 30"))).toMatchInlineSnapshot(
-				`"SELECT * FROM "artists" WHERE ("age" > 30)"`,
-			);
-		});
-	});
-
-	describe("branching behaviour", () => {
-		test("branches are independent", () => {
+	describe("immutability", () => {
+		test(".where creates a new copy and does not change the original", () => {
 			const base = from("artists").where("active = true");
 			const young = base.where("age < 30");
 			const old = base.where("age >= 60");
 
+			expect(toSql(base)).toMatchInlineSnapshot(
+				`"SELECT * FROM "artists" WHERE ("active" = "true")"`,
+			);
 			expect(toSql(young)).toMatchInlineSnapshot(
 				`"SELECT * FROM "artists" WHERE ("active" = "true") AND ("age" < 30)"`,
 			);
@@ -44,75 +41,7 @@ describe(QueryBuilderImpl, () => {
 		});
 	});
 
-	describe("join types", () => {
-		test("inner join", () => {
-			expect(toSql(from("a").join("b ON b.a_id = a.id"))).toMatchInlineSnapshot(
-				`"SELECT * FROM "a" JOIN "b" ON "b"."a_id" = "a"."id""`,
-			);
-		});
-
-		test("explicit inner join", () => {
-			expect(toSql(from("a").innerJoin("b ON b.a_id = a.id"))).toMatchInlineSnapshot(
-				`"SELECT * FROM "a" INNER JOIN "b" ON "b"."a_id" = "a"."id""`,
-			);
-		});
-
-		test("multiple join types", () => {
-			expect(
-				toSql(from("a").leftJoin("b ON b.x = a.x").rightJoin("c ON c.y = a.y")),
-			).toMatchInlineSnapshot(
-				`"SELECT * FROM "a" LEFT JOIN "b" ON "b"."x" = "a"."x" RIGHT JOIN "c" ON "c"."y" = "a"."y""`,
-			);
-		});
-
-		test("full outer join", () => {
-			expect(toSql(from("a").fullJoin("b ON b.x = a.x"))).toMatchInlineSnapshot(
-				`"SELECT * FROM "a" FULL OUTER JOIN "b" ON "b"."x" = "a"."x""`,
-			);
-		});
-
-		test("cross join", () => {
-			expect(toSql(from("a").crossJoin("b"))).toMatchInlineSnapshot(
-				`"SELECT * FROM "a" CROSS JOIN "b""`,
-			);
-		});
-	});
-
-	describe("WHERE combinations", () => {
-		test("multiple where clauses ANDed", () => {
-			expect(toSql(from("t").where("a = 1").where("b = 2"))).toMatchInlineSnapshot(
-				`"SELECT * FROM "t" WHERE ("a" = 1) AND ("b" = 2)"`,
-			);
-		});
-
-		test("OR conditions preserved within parentheses", () => {
-			expect(
-				toSql(from("t").where("a = 1 OR a = 2").where("b = 3 OR b = 4")),
-			).toMatchInlineSnapshot(
-				`"SELECT * FROM "t" WHERE ("a" = 1 OR "a" = 2) AND ("b" = 3 OR "b" = 4)"`,
-			);
-		});
-
-		test("conditions referencing columns with keyword names", () => {
-			expect(toSql(from("t").where("select > 4").where("join IS NOT NULL"))).toMatchInlineSnapshot(
-				`"SELECT * FROM "t" WHERE ("select" > 4) AND ("join" IS NOT NULL)"`,
-			);
-		});
-	});
-
-	describe("select type states", () => {
-		test("addSelect adds columns", () => {
-			expect(toSql(from("t").select("a").addSelect("b"))).toMatchInlineSnapshot(
-				`"SELECT "a", "b" FROM "t""`,
-			);
-		});
-
-		test("replaceSelect replaces all columns", () => {
-			expect(toSql(from("t").select("a", "b").replaceSelect("c"))).toMatchInlineSnapshot(
-				`"SELECT "c" FROM "t""`,
-			);
-		});
-
+	describe("type constraints", () => {
 		test("select() is not available after select() has been called", () => {
 			from("t")
 				.select("a")
@@ -120,118 +49,483 @@ describe(QueryBuilderImpl, () => {
 				.select("b");
 		});
 	});
+});
 
-	describe("grouping and having", () => {
-		test("group by", () => {
-			expect(
-				toSql(from("artists").select("country", "COUNT(*)").groupBy("country")),
-			).toMatchInlineSnapshot(`"SELECT "country", COUNT(*) FROM "artists" GROUP BY "country""`);
+const adapterConfigs: SharedTestConfig[] = [sqliteMemorySharedTestConfig, pgLiteSharedTestConfig];
+
+describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) => {
+	let db: Database;
+
+	beforeAll(async () => {
+		db = new DatabaseImpl(await createDatabase(), mockDispatcher());
+		await db.batch([
+			sql`CREATE TABLE teams (id INTEGER PRIMARY KEY, name TEXT, "order" TEXT)`,
+			sql`CREATE TABLE members (id INTEGER PRIMARY KEY, name TEXT, team_id INTEGER, score INTEGER)`,
+			sql`CREATE TABLE tags (id INTEGER PRIMARY KEY, tag TEXT)`,
+
+			sql`INSERT INTO teams (id, name, "order") VALUES (1, 'team_a', 'first')`,
+			sql`INSERT INTO teams (id, name, "order") VALUES (2, 'team_b', 'second')`,
+			sql`INSERT INTO teams (id, name, "order") VALUES (3, 'team_c', 'third')`,
+
+			sql`INSERT INTO members (id, name, team_id, score) VALUES (1, 'member_a1', 1, 10)`,
+			sql`INSERT INTO members (id, name, team_id, score) VALUES (2, 'member_a2', 1, 20)`,
+			sql`INSERT INTO members (id, name, team_id, score) VALUES (3, 'member_b1', 2, 30)`,
+			sql`INSERT INTO members (id, name, team_id, score) VALUES (4, 'member_b2', 2, 40)`,
+			sql`INSERT INTO members (id, name, team_id, score) VALUES (5, 'member_a3', 1, 50)`,
+			sql`INSERT INTO members (id, name, team_id, score) VALUES (6, 'member_x1', NULL, 60)`,
+
+			sql`INSERT INTO tags (id, tag) VALUES (1, 'tag_x')`,
+			sql`INSERT INTO tags (id, tag) VALUES (2, 'tag_y')`,
+		]);
+	});
+
+	// -------------------------------------------------------------------------
+	// SELECT methods
+	// -------------------------------------------------------------------------
+
+	describe(QueryBuilderImpl.prototype.select, () => {
+		test("selects all columns when not called", async () => {
+			const result = await db.all(db.from("teams").orderBy("id"));
+			expect(result).toEqual([
+				{ id: 1, name: "team_a", order: "first" },
+				{ id: 2, name: "team_b", order: "second" },
+				{ id: 3, name: "team_c", order: "third" },
+			]);
 		});
 
-		test("having clause", () => {
-			expect(
-				toSql(
-					from("artists").select("country", "COUNT(*)").groupBy("country").having("COUNT(*) > 5"),
-				),
-			).toMatchInlineSnapshot(
-				`"SELECT "country", COUNT(*) FROM "artists" GROUP BY "country" HAVING (COUNT(*) > 5)"`,
+		test("selects specific columns", async () => {
+			const result = await db.all(db.from("teams").select("name").orderBy("id"));
+			expect(result).toEqual([{ name: "team_a" }, { name: "team_b" }, { name: "team_c" }]);
+		});
+
+		test("selects columns with keyword names", async () => {
+			const query = db.from("teams").select("order").orderBy("id");
+			const result = await db.all(query);
+			expect(result).toEqual([{ order: "first" }, { order: "second" }, { order: "third" }]);
+		});
+	});
+
+	describe(QueryBuilderImpl.prototype.addSelect, () => {
+		test("adds columns to existing selection", async () => {
+			const result = await db.all(db.from("teams").select("id").addSelect("name").orderBy("id"));
+			expect(result).toEqual([
+				{ id: 1, name: "team_a" },
+				{ id: 2, name: "team_b" },
+				{ id: 3, name: "team_c" },
+			]);
+		});
+	});
+
+	describe(QueryBuilderImpl.prototype.replaceSelect, () => {
+		test("replaces all columns with new one", async () => {
+			const result = await db.all(
+				db.from("teams").select("id", "name").replaceSelect("order").orderBy("id"),
+			);
+			expect(result).toEqual([{ order: "first" }, { order: "second" }, { order: "third" }]);
+		});
+
+		test("replaces all columns with multiple new ones", async () => {
+			const result = await db.all(
+				db.from("teams").select("id", "name").replaceSelect("id", "order").orderBy("id"),
+			);
+			expect(result).toEqual([
+				{ id: 1, order: "first" },
+				{ id: 2, order: "second" },
+				{ id: 3, order: "third" },
+			]);
+		});
+
+		test("replaces all columns with none", async () => {
+			const result = await db.all(
+				db.from("teams").select("id", "name").replaceSelect().orderBy("id"),
+			);
+			expect(result).toEqual([
+				{ id: 1, name: "team_a", order: "first" },
+				{ id: 2, name: "team_b", order: "second" },
+				{ id: 3, name: "team_c", order: "third" },
+			]);
+		});
+	});
+
+	describe(QueryBuilderImpl.prototype.where, () => {
+		test("filters rows with single condition", async () => {
+			const result = await db.all(
+				db.from("members").select("name").where("score > 30").orderBy("id"),
+			);
+			expect(result).toEqual([{ name: "member_b2" }, { name: "member_a3" }, { name: "member_x1" }]);
+		});
+
+		test("combines multiple conditions with AND", async () => {
+			const query = db
+				.from("members")
+				.select("name")
+				.where("score > 20")
+				.where("score < 50")
+				.orderBy("id");
+			const result = await db.all(query);
+			expect(result).toEqual([{ name: "member_b1" }, { name: "member_b2" }]);
+
+			// clauses should be wrapped in parentheses
+			expect(toSql(query)).toMatchInlineSnapshot(
+				`"SELECT "name" FROM "members" WHERE ("score" > 20) AND ("score" < 50) ORDER BY "id""`,
 			);
 		});
 
-		test("multiple having clauses ANDed", () => {
-			expect(
-				toSql(
-					from("artists")
-						.select("country", "COUNT(*)")
-						.groupBy("country")
-						.having("COUNT(*) > 5")
-						.having("COUNT(*) < 100"),
-				),
-			).toMatchInlineSnapshot(
-				`"SELECT "country", COUNT(*) FROM "artists" GROUP BY "country" HAVING (COUNT(*) > 5) AND (COUNT(*) < 100)"`,
+		test("quotes identifiers to prevent syntax errors when a column name is a keyword ", async () => {
+			const result = await db.all(
+				db.from("teams").select("name").where("order = 'first' OR order = 'third'").orderBy("id"),
+			);
+			expect(result).toEqual([{ name: "team_a" }, { name: "team_c" }]);
+		});
+	});
+
+	describe(QueryBuilderImpl.prototype.join, () => {
+		test("joins tables", async () => {
+			const result = await db.all(
+				db
+					.from("members")
+					.select("members.name", "teams.name AS team_name")
+					.join("teams ON teams.id = members.team_id")
+					.orderBy("members.id"),
+			);
+			expect(result).toEqual([
+				{ name: "member_a1", team_name: "team_a" },
+				{ name: "member_a2", team_name: "team_a" },
+				{ name: "member_b1", team_name: "team_b" },
+				{ name: "member_b2", team_name: "team_b" },
+				{ name: "member_a3", team_name: "team_a" },
+			]);
+		});
+	});
+
+	describe(QueryBuilderImpl.prototype.innerJoin, () => {
+		test("behaves same as join", async () => {
+			const result = await db.all(
+				db
+					.from("members")
+					.select("members.name", "teams.name AS team_name")
+					.innerJoin("teams ON teams.id = members.team_id")
+					.orderBy("members.id"),
+			);
+			expect(result).toEqual([
+				{ name: "member_a1", team_name: "team_a" },
+				{ name: "member_a2", team_name: "team_a" },
+				{ name: "member_b1", team_name: "team_b" },
+				{ name: "member_b2", team_name: "team_b" },
+				{ name: "member_a3", team_name: "team_a" },
+			]);
+		});
+	});
+
+	describe(QueryBuilderImpl.prototype.leftJoin, () => {
+		test("includes unmatched left rows with NULL", async () => {
+			const result = await db.all(
+				db
+					.from("members")
+					.select("members.name", "teams.name AS team_name")
+					.leftJoin("teams ON teams.id = members.team_id")
+					.orderBy("members.id"),
+			);
+			expect(result).toEqual([
+				{ name: "member_a1", team_name: "team_a" },
+				{ name: "member_a2", team_name: "team_a" },
+				{ name: "member_b1", team_name: "team_b" },
+				{ name: "member_b2", team_name: "team_b" },
+				{ name: "member_a3", team_name: "team_a" },
+				{ name: "member_x1", team_name: null },
+			]);
+		});
+	});
+
+	if (dialect === "postgresql") {
+		describe(QueryBuilderImpl.prototype.rightJoin, () => {
+			test("includes unmatched right rows with NULL", async () => {
+				const result = await db.all(
+					db
+						.from("members")
+						.select("members.name", "teams.name AS team_name")
+						.rightJoin("teams ON teams.id = members.team_id")
+						.orderBy("teams.id", "members.id"),
+				);
+				expect(result).toEqual([
+					{ name: "member_a1", team_name: "team_a" },
+					{ name: "member_a2", team_name: "team_a" },
+					{ name: "member_a3", team_name: "team_a" },
+					{ name: "member_b1", team_name: "team_b" },
+					{ name: "member_b2", team_name: "team_b" },
+					{ name: null, team_name: "team_c" },
+				]);
+			});
+		});
+
+		describe(QueryBuilderImpl.prototype.fullJoin, () => {
+			test("includes unmatched rows from both sides", async () => {
+				const result = await db.all(
+					db
+						.from("members")
+						.select("members.name", "teams.name AS team_name")
+						.fullJoin("teams ON teams.id = members.team_id")
+						.orderBy("members.id NULLS LAST", "teams.id"),
+				);
+				expect(result).toEqual([
+					{ name: "member_a1", team_name: "team_a" },
+					{ name: "member_a2", team_name: "team_a" },
+					{ name: "member_b1", team_name: "team_b" },
+					{ name: "member_b2", team_name: "team_b" },
+					{ name: "member_a3", team_name: "team_a" },
+					{ name: "member_x1", team_name: null },
+					{ name: null, team_name: "team_c" },
+				]);
+			});
+		});
+	}
+
+	describe(QueryBuilderImpl.prototype.crossJoin, () => {
+		test("produces cartesian product", async () => {
+			const result = await db.all(
+				db
+					.from("teams")
+					.select("teams.name AS team_name", "tags.tag")
+					.crossJoin("tags")
+					.orderBy("teams.id", "tags.id"),
+			);
+			expect(result).toEqual([
+				{ team_name: "team_a", tag: "tag_x" },
+				{ team_name: "team_a", tag: "tag_y" },
+				{ team_name: "team_b", tag: "tag_x" },
+				{ team_name: "team_b", tag: "tag_y" },
+				{ team_name: "team_c", tag: "tag_x" },
+				{ team_name: "team_c", tag: "tag_y" },
+			]);
+		});
+	});
+
+	describe(QueryBuilderImpl.prototype.groupBy, () => {
+		test("groups rows", async () => {
+			const result = await db.all(
+				db
+					.from("members")
+					.select("team_id", "COUNT(*) AS count")
+					.where("team_id IS NOT NULL")
+					.groupBy("team_id")
+					.orderBy("team_id"),
+			);
+			expect(result).toEqual([
+				{ team_id: 1, count: 3 },
+				{ team_id: 2, count: 2 },
+			]);
+		});
+	});
+
+	describe(QueryBuilderImpl.prototype.having, () => {
+		test("filters groups", async () => {
+			const result = await db.all(
+				db
+					.from("members")
+					.select("team_id", "COUNT(*) AS count")
+					.groupBy("team_id")
+					.having("COUNT(*) > 2")
+					.orderBy("team_id"),
+			);
+			expect(result).toEqual([{ team_id: 1, count: 3 }]);
+		});
+
+		test("combines multiple HAVING conditions with AND", async () => {
+			const query = db
+				.from("members")
+				.select("team_id", "COUNT(*) AS count")
+				.groupBy("team_id")
+				.having("COUNT(*) > 2")
+				.having("SUM(score) > 0")
+				.orderBy("team_id");
+			const result = await db.all(query);
+			expect(result).toEqual([{ team_id: 1, count: 3 }]);
+			expect(toSql(query)).toMatchInlineSnapshot(
+				`"SELECT "team_id", COUNT(*) AS "count" FROM "members" GROUP BY "team_id" HAVING (COUNT(*) > 2) AND (SUM("score") > 0) ORDER BY "team_id""`,
 			);
 		});
 	});
 
-	describe("ordering", () => {
-		test("single order by", () => {
-			expect(toSql(from("t").orderBy("name"))).toMatchInlineSnapshot(
-				`"SELECT * FROM "t" ORDER BY "name""`,
-			);
+	describe(QueryBuilderImpl.prototype.orderBy, () => {
+		test("orders ascending by default", async () => {
+			const result = await db.all(db.from("members").select("name", "score").orderBy("score"));
+			expect(result).toEqual([
+				{ name: "member_a1", score: 10 },
+				{ name: "member_a2", score: 20 },
+				{ name: "member_b1", score: 30 },
+				{ name: "member_b2", score: 40 },
+				{ name: "member_a3", score: 50 },
+				{ name: "member_x1", score: 60 },
+			]);
 		});
 
-		test("orderBy is additive", () => {
-			expect(toSql(from("t").orderBy("a").orderBy("b DESC"))).toMatchInlineSnapshot(
-				`"SELECT * FROM "t" ORDER BY "a", "b" DESC"`,
-			);
+		test("orders descending with DESC", async () => {
+			const result = await db.all(db.from("members").select("name", "score").orderBy("score DESC"));
+			expect(result).toEqual([
+				{ name: "member_x1", score: 60 },
+				{ name: "member_a3", score: 50 },
+				{ name: "member_b2", score: 40 },
+				{ name: "member_b1", score: 30 },
+				{ name: "member_a2", score: 20 },
+				{ name: "member_a1", score: 10 },
+			]);
 		});
 
-		test("multiple columns in single call", () => {
-			expect(toSql(from("t").orderBy("a", "b DESC"))).toMatchInlineSnapshot(
-				`"SELECT * FROM "t" ORDER BY "a", "b" DESC"`,
+		test("is additive", async () => {
+			const result = await db.all(
+				db
+					.from("members")
+					.select("name", "team_id", "score")
+					.where("team_id IS NOT NULL")
+					.orderBy("team_id")
+					.orderBy("score DESC"),
 			);
+			expect(result).toEqual([
+				{ name: "member_a3", team_id: 1, score: 50 },
+				{ name: "member_a2", team_id: 1, score: 20 },
+				{ name: "member_a1", team_id: 1, score: 10 },
+				{ name: "member_b2", team_id: 2, score: 40 },
+				{ name: "member_b1", team_id: 2, score: 30 },
+			]);
 		});
 
-		test("replaceOrderBy", () => {
-			expect(toSql(from("t").orderBy("a").replaceOrderBy("b").orderBy("c"))).toMatchInlineSnapshot(
-				`"SELECT * FROM "t" ORDER BY "b", "c""`,
+		test("accepts multiple columns in single call", async () => {
+			const result = await db.all(
+				db
+					.from("members")
+					.select("name", "team_id", "score")
+					.where("team_id IS NOT NULL")
+					.orderBy("team_id", "score DESC"),
 			);
+			expect(result).toEqual([
+				{ name: "member_a3", team_id: 1, score: 50 },
+				{ name: "member_a2", team_id: 1, score: 20 },
+				{ name: "member_a1", team_id: 1, score: 10 },
+				{ name: "member_b2", team_id: 2, score: 40 },
+				{ name: "member_b1", team_id: 2, score: 30 },
+			]);
 		});
 	});
 
-	describe("pagination", () => {
-		test("limit", () => {
-			expect(toSql(from("t").limit(10))).toMatchInlineSnapshot(`"SELECT * FROM "t" LIMIT 10"`);
-		});
-
-		test("offset", () => {
-			expect(toSql(from("t").offset(20))).toMatchInlineSnapshot(`"SELECT * FROM "t" OFFSET 20"`);
-		});
-
-		test("limit and offset", () => {
-			expect(toSql(from("t").limit(10).offset(20))).toMatchInlineSnapshot(
-				`"SELECT * FROM "t" LIMIT 10 OFFSET 20"`,
+	describe(QueryBuilderImpl.prototype.replaceOrderBy, () => {
+		test("replaces all ordering", async () => {
+			const result = await db.all(
+				db.from("teams").select("name").orderBy("name").replaceOrderBy("id DESC"),
 			);
-		});
-
-		test("limit replaces previous limit", () => {
-			expect(toSql(from("t").limit(10).limit(20))).toMatchInlineSnapshot(
-				`"SELECT * FROM "t" LIMIT 20"`,
-			);
+			expect(result).toEqual([{ name: "team_c" }, { name: "team_b" }, { name: "team_a" }]);
 		});
 	});
 
-	describe("modifiers", () => {
-		test("distinct", () => {
-			expect(toSql(from("t").select("country").distinct())).toMatchInlineSnapshot(
-				`"SELECT DISTINCT "country" FROM "t""`,
+	describe(QueryBuilderImpl.prototype.limit, () => {
+		test("limits result count", async () => {
+			const result = await db.all(db.from("members").select("id", "name").orderBy("id").limit(3));
+			expect(result).toEqual([
+				{ id: 1, name: "member_a1" },
+				{ id: 2, name: "member_a2" },
+				{ id: 3, name: "member_b1" },
+			]);
+		});
+
+		test("replaces previous limit", async () => {
+			const result = await db.all(
+				db.from("members").select("id", "name").orderBy("id").limit(5).limit(2),
 			);
-		});
-
-		test("for update", () => {
-			expect(toSql(from("t").forUpdate())).toMatchInlineSnapshot(`"SELECT * FROM "t" FOR UPDATE"`);
-		});
-
-		test("for update with noWait", () => {
-			expect(toSql(from("t").forUpdate({ noWait: true }))).toMatchInlineSnapshot(
-				`"SELECT * FROM "t" FOR UPDATE NOWAIT"`,
-			);
-		});
-
-		test("for update with skipLocked", () => {
-			expect(toSql(from("t").forUpdate({ skipLocked: true }))).toMatchInlineSnapshot(
-				`"SELECT * FROM "t" FOR UPDATE SKIP LOCKED"`,
-			);
-		});
-
-		test("for share", () => {
-			expect(toSql(from("t").forShare())).toMatchInlineSnapshot(`"SELECT * FROM "t" FOR SHARE"`);
-		});
-
-		test("for share with noWait", () => {
-			expect(toSql(from("t").forShare({ noWait: true }))).toMatchInlineSnapshot(
-				`"SELECT * FROM "t" FOR SHARE NOWAIT"`,
-			);
+			expect(result).toEqual([
+				{ id: 1, name: "member_a1" },
+				{ id: 2, name: "member_a2" },
+			]);
 		});
 	});
+
+	describe(QueryBuilderImpl.prototype.offset, () => {
+		test("skips rows (with limit)", async () => {
+			const result = await db.all(db.from("members").select("id", "name").orderBy("id").offset(4));
+			expect(result).toEqual([
+				{ id: 5, name: "member_a3" },
+				{ id: 6, name: "member_x1" },
+			]);
+		});
+
+		test("works with limit", async () => {
+			const result = await db.all(
+				db.from("members").select("id", "name").orderBy("id").limit(1).offset(2),
+			);
+			expect(result).toEqual([{ id: 3, name: "member_b1" }]);
+		});
+	});
+
+	describe(QueryBuilderImpl.prototype.distinct, () => {
+		test("removes duplicates", async () => {
+			const result = await db.all(
+				db.from("members").select("team_id").distinct().orderBy("team_id NULLS FIRST"),
+			);
+			expect(result).toEqual([{ team_id: null }, { team_id: 1 }, { team_id: 2 }]);
+		});
+	});
+
+	if (dialect === "postgresql") {
+		describe(QueryBuilderImpl.prototype.forUpdate, () => {
+			test("locks rows for update", async () => {
+				await db.transaction(async () => {
+					const result = await db.all(db.from("teams").select("name").forUpdate());
+					expect(result.length).toBe(3);
+				});
+			});
+
+			test("with noWait option", async () => {
+				await db.transaction(async () => {
+					const result = await db.all(db.from("teams").select("name").forUpdate({ noWait: true }));
+					expect(result.length).toBe(3);
+				});
+			});
+
+			test("with skipLocked option", async () => {
+				await db.transaction(async () => {
+					const result = await db.all(
+						db.from("teams").select("name").forUpdate({ skipLocked: true }),
+					);
+					expect(result.length).toBe(3);
+				});
+			});
+		});
+
+		describe(QueryBuilderImpl.prototype.forShare, () => {
+			test("locks rows for share", async () => {
+				await db.transaction(async () => {
+					const result = await db.all(db.from("teams").select("name").forShare());
+					expect(result.length).toBe(3);
+				});
+			});
+
+			test("with noWait option", async () => {
+				await db.transaction(async () => {
+					const result = await db.all(db.from("teams").select("name").forShare({ noWait: true }));
+					expect(result.length).toBe(3);
+				});
+			});
+
+			test("with skipLocked option", async () => {
+				await db.transaction(async () => {
+					const result = await db.all(
+						db.from("teams").select("name").forShare({ skipLocked: true }),
+					);
+					expect(result.length).toBe(3);
+				});
+			});
+		});
+	}
+
+	if (dialect === "sqlite") {
+		describe("SQLite locking behaviour", () => {
+			test("forUpdate is silently ignored", async () => {
+				const result = await db.all(db.from("teams").select("name").forUpdate());
+				expect(result.length).toBe(3);
+			});
+
+			test("forShare is silently ignored", async () => {
+				const result = await db.all(db.from("teams").select("name").forShare());
+				expect(result.length).toBe(3);
+			});
+		});
+	}
 });

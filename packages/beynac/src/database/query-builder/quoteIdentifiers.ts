@@ -1,4 +1,4 @@
-export type SqlDialect = "postgresql" | "sqlite" | "mysql" | "sqlserver";
+import type { SqlDialect } from "./dialect.ts";
 
 interface DialectConfig {
 	// Skip zones to check
@@ -8,6 +8,7 @@ interface DialectConfig {
 	hashComments: boolean; // MySQL
 	dollarQuotes: boolean; // PostgreSQL
 	eStrings: boolean; // PostgreSQL
+	nestedBlockComments: boolean; // PostgreSQL, SQL Server
 
 	// Output quote style
 	outputQuote: string;
@@ -22,6 +23,7 @@ const DIALECTS: Record<SqlDialect, DialectConfig> = {
 		hashComments: false,
 		dollarQuotes: true,
 		eStrings: true,
+		nestedBlockComments: true,
 		outputQuote: '"',
 		outputQuoteClose: '"',
 	},
@@ -32,6 +34,7 @@ const DIALECTS: Record<SqlDialect, DialectConfig> = {
 		hashComments: false,
 		dollarQuotes: false,
 		eStrings: false,
+		nestedBlockComments: false,
 		outputQuote: '"',
 		outputQuoteClose: '"',
 	},
@@ -42,6 +45,7 @@ const DIALECTS: Record<SqlDialect, DialectConfig> = {
 		hashComments: true,
 		dollarQuotes: false,
 		eStrings: false,
+		nestedBlockComments: false,
 		outputQuote: "`",
 		outputQuoteClose: "`",
 	},
@@ -52,6 +56,7 @@ const DIALECTS: Record<SqlDialect, DialectConfig> = {
 		hashComments: false,
 		dollarQuotes: false,
 		eStrings: false,
+		nestedBlockComments: true,
 		outputQuote: "[",
 		outputQuoteClose: "]",
 	},
@@ -116,7 +121,7 @@ export function quoteIdentifiers(sql: string, dialect: SqlDialect): string {
 
 		// Block comments: /* */
 		if (char === SLASH && sql.charCodeAt(pos + 1) === STAR) {
-			pos = scanBlockComment(sql, pos + 2);
+			pos = scanBlockComment(sql, pos + 2, config.nestedBlockComments);
 			continue;
 		}
 
@@ -148,7 +153,16 @@ export function quoteIdentifiers(sql: string, dialect: SqlDialect): string {
 			continue;
 		}
 
-		// Skip everything else (operators, numbers, punctuation, whitespace)
+		// Numeric literals - skip to avoid quoting parts of hex (0xFF), scientific (1e10), etc.
+		if (char >= ZERO && char <= NINE) {
+			pos++;
+			while (pos < len && isIdentCont(sql.charCodeAt(pos))) {
+				pos++;
+			}
+			continue;
+		}
+
+		// Skip everything else (operators, punctuation, whitespace)
 		pos++;
 	}
 
@@ -225,12 +239,6 @@ function hasLowercase(ident: string): boolean {
 	return false;
 }
 
-// =============================================================================
-// Scan Functions
-// =============================================================================
-
-// Scan to newline character (for line comments).
-// Returns position after the newline, or end of string.
 function scanToNewline(sql: string, pos: number): number {
 	const len = sql.length;
 	while (pos < len) {
@@ -279,16 +287,15 @@ function scanQuoted(sql: string, pos: number, quoteChar: number, backslashEscape
 	return pos; // unterminated
 }
 
-// Scan block comment with nesting support.
-// PostgreSQL and SQL Server support nested comments; SQLite and MySQL don't,
-// but handling nesting is harmless for them.
-function scanBlockComment(sql: string, pos: number): number {
+// Scan block comment, optionally with nesting support.
+// PostgreSQL and SQL Server support nested comments; SQLite and MySQL don't.
+function scanBlockComment(sql: string, pos: number, nested: boolean): number {
 	const len = sql.length;
 	let depth = 1;
 
 	while (pos < len && depth > 0) {
 		const char = sql.charCodeAt(pos);
-		if (char === SLASH && sql.charCodeAt(pos + 1) === STAR) {
+		if (nested && char === SLASH && sql.charCodeAt(pos + 1) === STAR) {
 			depth++;
 			pos += 2;
 		} else if (char === STAR && sql.charCodeAt(pos + 1) === SLASH) {

@@ -3,5 +3,5 @@ import { BaseClass } from "../../../../utils.ts";
 import { SourceValue } from "./bad-entry-point/bad-entry-point-entry-point.ts";
 
 export class Importer extends BaseClass {
-	value = SourceValue;
+	value: unknown = SourceValue;
 }

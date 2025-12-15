@@ -7,7 +7,7 @@ import { QueryError } from "../../database-errors.ts";
 import { TransactionRetryingEvent } from "../../database-events.ts";
 import { sql } from "../../sql.ts";
 import { PostgresDatabaseAdapter } from "./PostgresDatabaseAdapter.ts";
-import { createPostgresAdapter, resetSchema } from "./postgres-test-utils.ts";
+import { createPostgresAdapter, recreatePostgresPublicSchema } from "./postgres-test-utils.ts";
 
 describe(PostgresDatabaseAdapter, () => {
 	let db: DatabaseClient;
@@ -17,7 +17,7 @@ describe(PostgresDatabaseAdapter, () => {
 		const adapter = createPostgresAdapter();
 		dispatcher = mockDispatcher();
 		db = new DatabaseClientImpl(adapter, dispatcher);
-		await db.run(resetSchema);
+		await db.run(recreatePostgresPublicSchema);
 		await db.run(sql`CREATE TABLE test (value TEXT)`);
 	});
 

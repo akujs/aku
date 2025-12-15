@@ -5,12 +5,14 @@ import { sqliteDatabase } from "./sqliteDatabase.ts";
 
 export const sqliteMemorySharedTestConfig: SharedTestConfig = {
 	name: "SqliteDatabase (memory)",
+	dialect: "sqlite",
 	createDatabase: () => sqliteDatabase({ path: ":memory:" }),
 	supportsTransactions: true,
 };
 
 export const sqliteFileSharedTestConfig: SharedTestConfig = {
 	name: "SqliteDatabase (file)",
+	dialect: "sqlite",
 	createDatabase: () => {
 		const testDir = createTestDirectory();
 		return sqliteDatabase({ path: join(testDir, "test.db") });

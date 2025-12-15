@@ -7,7 +7,7 @@ export interface LockOptions {
 
 interface QueryBuilderBase extends Statement {
 	/**
-	 * Add a JOIN clause (equivalent to INNER JOIN).
+	 * Add a default JOIN clause (semantically equivalent to INNER JOIN).
 	 *
 	 * @example
 	 * from("artists").join("artworks ON artworks.artist_id = artists.id")
@@ -118,8 +118,12 @@ interface QueryBuilderBase extends Statement {
 	/**
 	 * Set the OFFSET clause. Replaces any previous offset.
 	 *
+	 * SQL does not permit an offset without a limit. If you do not provide a
+	 * limit, then a default large limit of 2^31-1 will be automatically added.
+	 *
 	 * @example
-	 * from("artists").limit(10).offset(20) // Page 3
+	 * from("artists").limit(10).offset(20) // Records 21-30
+	 * from("artists").offset(20) // Records 21 onwards
 	 */
 	offset(n: number): this;
 
@@ -163,9 +167,9 @@ interface QueryBuilderBase extends Statement {
 }
 
 /**
- * Query builder where SELECT columns have not yet been specified.
+ * Immutable builder where SELECT columns have not yet been specified.
  */
-export interface SelectNotSetQueryBuilder extends QueryBuilderBase {
+export interface DefaultColumnsQueryBuilder extends QueryBuilderBase {
 	/**
 	 * Set the columns to select. After calling this method, use `.addSelect()`
 	 * to add more columns or `.replaceSelect()` to replace all columns.
@@ -175,13 +179,13 @@ export interface SelectNotSetQueryBuilder extends QueryBuilderBase {
 	 * @example
 	 * from("artists").select("id", "name")
 	 */
-	select(...columns: string[]): QueryBuilder;
+	select(...columns: string[]): SelectQueryBuilder;
 }
 
 /**
  * Fluent query builder for constructing SQL SELECT statements.
  */
-export interface QueryBuilder extends QueryBuilderBase {
+export interface SelectQueryBuilder extends QueryBuilderBase {
 	/**
 	 * Add additional columns to the SELECT clause.
 	 *

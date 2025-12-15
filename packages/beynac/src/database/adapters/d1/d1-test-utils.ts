@@ -21,6 +21,7 @@ async function getD1Binding(): Promise<D1DatabaseBinding> {
 
 export const d1SharedTestConfig: SharedTestConfig = {
 	name: D1DatabaseAdapter.name,
+	dialect: "sqlite",
 	createDatabase: async () => {
 		const binding = await getD1Binding();
 		return d1Database({ binding });

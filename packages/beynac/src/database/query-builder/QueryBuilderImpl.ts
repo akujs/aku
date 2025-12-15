@@ -1,18 +1,25 @@
 import { BaseClass } from "../../utils.ts";
+import type { DatabaseGrammar } from "../grammar/DatabaseGrammar.ts";
 import type { SqlFragments, Statement } from "../Statement.ts";
 import { MutableQueryBuilder } from "./MutableQueryBuilder.ts";
-import type { LockOptions, QueryBuilder, SelectNotSetQueryBuilder } from "./QueryBuilder.ts";
+import type {
+	DefaultColumnsQueryBuilder,
+	LockOptions,
+	SelectQueryBuilder,
+} from "./QueryBuilder.ts";
 import { renderForLogs, renderSql } from "./statement-render.ts";
 
 export class QueryBuilderImpl extends BaseClass implements Statement {
 	readonly #from: string;
+	readonly #grammar: DatabaseGrammar;
 	readonly #commands: Command[];
 	readonly #length: number;
 	#cachedBuild: { fragments: readonly string[]; params: unknown[] } | null = null;
 
-	constructor(from: string, commands: Command[]) {
+	constructor(from: string, grammar: DatabaseGrammar, commands: Command[]) {
 		super();
 		this.#from = from;
+		this.#grammar = grammar;
 		this.#commands = commands;
 		this.#length = commands.length;
 	}
@@ -57,8 +64,8 @@ export class QueryBuilderImpl extends BaseClass implements Statement {
 		return this.#derive("pushJoin", ["CROSS JOIN", table]);
 	}
 
-	select(...columns: string[]): QueryBuilder {
-		return this.#derive("setSelect", [columns]) as unknown as QueryBuilder;
+	select(...columns: string[]): SelectQueryBuilder {
+		return this.#derive("setSelect", [columns]) as unknown as SelectQueryBuilder;
 	}
 
 	addSelect(...columns: string[]): this {
@@ -112,8 +119,8 @@ export class QueryBuilderImpl extends BaseClass implements Statement {
 		return this.#derive("setLock", ["SHARE", options]);
 	}
 
-	static from(table: string): SelectNotSetQueryBuilder {
-		return new QueryBuilderImpl(table, []) as SelectNotSetQueryBuilder;
+	static from(table: string, grammar: DatabaseGrammar): DefaultColumnsQueryBuilder {
+		return new QueryBuilderImpl(table, grammar, []) as DefaultColumnsQueryBuilder;
 	}
 
 	#derive<K extends keyof MutableQueryBuilder>(
@@ -128,12 +135,12 @@ export class QueryBuilderImpl extends BaseClass implements Statement {
 		}
 
 		commands.push([method, args]);
-		return new QueryBuilderImpl(this.#from, commands) as this;
+		return new QueryBuilderImpl(this.#from, this.#grammar, commands) as this;
 	}
 
 	#getBuild(): SqlFragments {
 		if (!this.#cachedBuild) {
-			const builder = new MutableQueryBuilder(this.#from);
+			const builder = new MutableQueryBuilder(this.#from, this.#grammar);
 			for (let i = 0; i < this.#length; i++) {
 				const [method, args] = this.#commands[i];
 				(builder[method] as (...a: unknown[]) => void)(...args);

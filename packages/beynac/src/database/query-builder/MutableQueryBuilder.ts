@@ -1,11 +1,16 @@
 import { BaseClass } from "../../utils.ts";
+import type { DatabaseGrammar, JoinType } from "../grammar/DatabaseGrammar.ts";
 import type { SqlFragments } from "../Statement.ts";
 import type { LockOptions } from "./QueryBuilder.ts";
-import { quotePostgresIdentifiers } from "./quotePostgresIdentifiers.ts";
+
+const DEFAULT_LIMIT_FOR_OFFSET = 2 ** 31 - 1;
+
+type JoinEntry = [type: JoinType, clause: string];
 
 export class MutableQueryBuilder extends BaseClass {
 	readonly #from: string;
-	#join: string[] = [];
+	readonly #grammar: DatabaseGrammar;
+	#joins: JoinEntry[] = [];
 	#select: string[] = [];
 	#where: string[] = [];
 	#groupBy: string[] = [];
@@ -17,13 +22,14 @@ export class MutableQueryBuilder extends BaseClass {
 	#lockType?: "UPDATE" | "SHARE";
 	#lockOptions?: LockOptions | undefined;
 
-	constructor(from: string) {
+	constructor(from: string, grammar: DatabaseGrammar) {
 		super();
 		this.#from = from;
+		this.#grammar = grammar;
 	}
 
-	pushJoin(type: string, clause: string): void {
-		this.#join.push(type, clause);
+	pushJoin(type: JoinType, clause: string): void {
+		this.#joins.push([type, clause]);
 	}
 
 	setSelect(columns: string[]): void {
@@ -72,26 +78,34 @@ export class MutableQueryBuilder extends BaseClass {
 	}
 
 	compile(): SqlFragments {
+		const grammar = this.#grammar;
+
+		// If offset is set without limit, use a default high limit value
+		const limit = this.#limit ?? (this.#offset !== null ? DEFAULT_LIMIT_FOR_OFFSET : null);
+
+		// Compile joins using grammar
+		const joinClauses = this.#joins.map(([type, clause]) => grammar.compileJoin(type, clause));
+
+		// Compile lock clause using grammar
+		const lockClause = this.#lockType ? grammar.compileLock(this.#lockType, this.#lockOptions) : "";
+
 		const parts = [
 			"SELECT",
 			this.#distinct && "DISTINCT",
 			this.#select.length > 0 ? this.#select.join(", ") : "*",
 			"FROM",
 			this.#from,
-			...this.#join,
+			...joinClauses,
 			andClause("WHERE", this.#where),
 			listClause("GROUP BY", this.#groupBy),
 			andClause("HAVING", this.#having),
 			listClause("ORDER BY", this.#orderBy),
-			this.#limit !== null && `LIMIT ${this.#limit}`,
+			limit !== null && `LIMIT ${limit}`,
 			this.#offset !== null && `OFFSET ${this.#offset}`,
-			this.#lockType && "FOR",
-			this.#lockType,
-			this.#lockOptions?.noWait && "NOWAIT",
-			this.#lockOptions?.skipLocked && "SKIP LOCKED",
+			lockClause,
 		];
 
-		const sql = quotePostgresIdentifiers(parts.filter(Boolean).join(" "));
+		const sql = grammar.quoteIdentifiers(parts.filter(Boolean).join(" "));
 		return { fragments: [sql], params: [] };
 	}
 }

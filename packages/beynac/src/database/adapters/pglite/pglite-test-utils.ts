@@ -4,6 +4,7 @@ import { pgliteDatabase } from "./pgliteDatabase.ts";
 
 export const pgLiteSharedTestConfig: SharedTestConfig = {
 	name: PGLiteDatabaseAdapter.name,
+	dialect: "postgresql",
 	createDatabase: () => pgliteDatabase(),
 	supportsTransactions: true,
 };
