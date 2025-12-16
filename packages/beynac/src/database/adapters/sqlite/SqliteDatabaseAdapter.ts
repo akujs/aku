@@ -1,17 +1,19 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { BaseClass, type FifoLock, fifoLock } from "../../../utils.ts";
-import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
+import type { CompiledQuery, DatabaseAdapter } from "../../DatabaseAdapter.ts";
+import type { TransactionOptions } from "../../DatabaseClient.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { SqliteGrammar } from "../../grammar/SqliteGrammar.ts";
-import type { Statement, StatementResult } from "../../Statement.ts";
+import type { StatementResult } from "../../Statement.ts";
 import type { SqliteDatabaseAdapterConfig } from "./SqliteDatabaseAdapterConfig.ts";
 import type { SqliteConnection, SqliteOps } from "./SqliteOps.ts";
 
 export class SqliteDatabaseAdapter extends BaseClass implements DatabaseAdapter<SqliteConnection> {
 	readonly grammar: DatabaseGrammar = new SqliteGrammar();
 	readonly supportsTransactions = true;
+	readonly transactionOptions: TransactionOptions;
 
 	readonly #useWalMode: boolean;
 	readonly #path: string;
@@ -34,6 +36,10 @@ export class SqliteDatabaseAdapter extends BaseClass implements DatabaseAdapter<
 		this.#path = config.path;
 		this.#readOnly = config.readOnly ?? false;
 		this.#create = !this.#readOnly && config.create !== false;
+		this.transactionOptions = Object.freeze({
+			retry: config.transactionRetry,
+			sqliteMode: config.transactionMode,
+		});
 
 		if (!this.#isMemory) {
 			if (shouldCreate) {
@@ -86,26 +92,29 @@ export class SqliteDatabaseAdapter extends BaseClass implements DatabaseAdapter<
 		}
 	}
 
-	async run(statement: Statement, connection: SqliteConnection): Promise<StatementResult> {
-		const sqlString = toSql(statement);
+	async run(
+		sql: string,
+		params: unknown[],
+		connection: SqliteConnection,
+	): Promise<StatementResult> {
 		try {
-			const prepared = connection.prepare(sqlString);
+			const prepared = connection.prepare(sql);
 
 			if (prepared.isQuery) {
-				const rows = prepared.all(...statement.params);
+				const rows = prepared.all(...params);
 				return { rows, rowsAffected: rows.length };
 			}
-			const result = prepared.run(...statement.params);
+			const result = prepared.run(...params);
 			return { rows: [], rowsAffected: result.changes };
 		} catch (error) {
-			throw makeQueryError(sqlString, error);
+			throw makeQueryError(sql, error);
 		}
 	}
 
-	async batch(statements: Statement[], connection: SqliteConnection): Promise<StatementResult[]> {
+	async batch(queries: CompiledQuery[], connection: SqliteConnection): Promise<StatementResult[]> {
 		const results: StatementResult[] = [];
-		for (const stmt of statements) {
-			results.push(await this.run(stmt, connection));
+		for (const { sql, params } of queries) {
+			results.push(await this.run(sql, params, connection));
 		}
 		return results;
 	}
@@ -153,10 +162,6 @@ interface PlatformError {
 	// Node.js uses 'errcode'
 	errcode?: number;
 	message?: string;
-}
-
-function toSql(statement: Statement): string {
-	return statement.renderSql(() => "?");
 }
 
 function makeQueryError(sql: string, cause: unknown): QueryError {

@@ -3,6 +3,7 @@ import type { TransactionOptions } from "../DatabaseClient.ts";
 import type { SqlDialect } from "../query-builder/dialect.ts";
 import type { LockOptions } from "../query-builder/QueryBuilder.ts";
 import { quoteIdentifiers } from "../query-builder/quoteIdentifiers.ts";
+import type { SqlFragments } from "../Statement.ts";
 
 export type TransactionBeginOptions = Pick<TransactionOptions, "isolation" | "sqliteMode">;
 
@@ -63,4 +64,9 @@ export abstract class DatabaseGrammar extends BaseClass {
 	quoteIdentifiers(sql: string): string {
 		return quoteIdentifiers(sql, this.dialect);
 	}
+
+	/**
+	 * Compile a statement's fragments and params into a SQL string with appropriate placeholders.
+	 */
+	abstract compileStatement(statement: SqlFragments): string;
 }

@@ -1,4 +1,5 @@
 import type { Statement } from "../Statement.ts";
+import type { PlaceholderArgs } from "./placeholder-types.ts";
 
 export interface LockOptions {
 	skipLocked?: boolean | undefined;
@@ -10,9 +11,19 @@ interface QueryBuilderBase extends Statement {
 	 * Add a default JOIN clause (semantically equivalent to INNER JOIN).
 	 *
 	 * @example
+	 * // Simple join
 	 * from("artists").join("artworks ON artworks.artist_id = artists.id")
+	 *
+	 * @example
+	 * // With parameter
+	 * from("artists").join("artworks ON artworks.artist_id = artists.id AND artworks.year > ?", 2000)
+	 *
+	 * @example
+	 * // With sql tag
+	 * from("artists").join(sql`artworks ON artworks.artist_id = ${artistId}`)
 	 */
-	join(clause: string): this;
+	join<S extends string>(clause: S, ...values: PlaceholderArgs<S>): this;
+	join(statement: Statement): this;
 
 	/**
 	 * Add an INNER JOIN clause.
@@ -20,7 +31,8 @@ interface QueryBuilderBase extends Statement {
 	 * @example
 	 * from("artists").innerJoin("artworks ON artworks.artist_id = artists.id")
 	 */
-	innerJoin(clause: string): this;
+	innerJoin<S extends string>(clause: S, ...values: PlaceholderArgs<S>): this;
+	innerJoin(statement: Statement): this;
 
 	/**
 	 * Add a LEFT JOIN clause.
@@ -28,7 +40,8 @@ interface QueryBuilderBase extends Statement {
 	 * @example
 	 * from("artists").leftJoin("artworks ON artworks.artist_id = artists.id")
 	 */
-	leftJoin(clause: string): this;
+	leftJoin<S extends string>(clause: S, ...values: PlaceholderArgs<S>): this;
+	leftJoin(statement: Statement): this;
 
 	/**
 	 * Add a RIGHT JOIN clause.
@@ -36,7 +49,8 @@ interface QueryBuilderBase extends Statement {
 	 * @example
 	 * from("employees").rightJoin("departments ON employees.department_id = departments.id")
 	 */
-	rightJoin(clause: string): this;
+	rightJoin<S extends string>(clause: S, ...values: PlaceholderArgs<S>): this;
+	rightJoin(statement: Statement): this;
 
 	/**
 	 * Add a FULL OUTER JOIN clause.
@@ -44,7 +58,8 @@ interface QueryBuilderBase extends Statement {
 	 * @example
 	 * from("employees").fullJoin("projects ON employees.project_id = projects.id")
 	 */
-	fullJoin(clause: string): this;
+	fullJoin<S extends string>(clause: S, ...values: PlaceholderArgs<S>): this;
+	fullJoin(statement: Statement): this;
 
 	/**
 	 * Add a CROSS JOIN clause.
@@ -57,18 +72,32 @@ interface QueryBuilderBase extends Statement {
 
 	/**
 	 * Add a WHERE condition. The method can be called multiple times to add
-	 * more conditions which will be combined with AND
-	 *
-	 * Each condition is wrapped in parentheses to preserve precedence when
-	 * using OR within a condition.
+	 * more conditions which will be combined with AND.
 	 *
 	 * @example
-	 * from("artists")
-	 *   .where("age > 30")
-	 *   .where("status = 'active' OR status = 'pending'")
-	 * // → WHERE (age > 30) AND (status = 'active' OR status = 'pending')
+	 * // Simple condition
+	 * from("artists").where("age > 30")
+	 *
+	 * @example
+	 * // Placeholders
+	 * from("artists").where("age > ? AND status = ?", 30, "active")
+	 *
+	 * @example
+	 * // With sql tag
+	 * from("artists").where(sql`age > ${30}`)
+	 *
+	 * @example
+	 * // With subquery
+	 * from("artists").where("id IN ?", db.from("artworks").select("artist_id"))
+	 * // -> WHERE id IN (SELECT "artist_id" FROM "artworks")
+	 *
+	 * @example
+	 * // With array
+	 * from("artists").where("id IN ?", [1, 2, 3])
+	 * // -> WHERE id IN (1, 2, 3)
 	 */
-	where(condition: string): this;
+	where<S extends string>(condition: S, ...values: PlaceholderArgs<S>): this;
+	where(statement: Statement): this;
 
 	/**
 	 * Add columns to the GROUP BY clause. Can be called multiple times.
@@ -83,12 +112,21 @@ interface QueryBuilderBase extends Statement {
 	 * more conditions which will be combined with AND.
 	 *
 	 * @example
+	 * // Simple condition
 	 * from("artworks")
 	 *   .select("artist_id", "COUNT(*) as count")
 	 *   .groupBy("artist_id")
 	 *   .having("COUNT(*) > 5")
+	 *
+	 * @example
+	 * // With parameter
+	 * from("artworks")
+	 *   .select("artist_id", "COUNT(*) as count")
+	 *   .groupBy("artist_id")
+	 *   .having("COUNT(*) > ?", minCount)
 	 */
-	having(condition: string): this;
+	having<S extends string>(condition: S, ...values: PlaceholderArgs<S>): this;
+	having(statement: Statement): this;
 
 	/**
 	 * Add columns to the ORDER BY clause. Can be called multiple times.
@@ -138,6 +176,10 @@ interface QueryBuilderBase extends Statement {
 	/**
 	 * Add FOR UPDATE clause for exclusive row-level locking. Blocks other
 	 * transactions from modifying or locking the selected rows.
+	 *
+	 * SQLite ignores this. However SQLite does not support concurrent write
+	 * transactions, so in effect every write transaction locks the whole
+	 * database, so row-level locks are redundant.
 	 *
 	 * @example
 	 * // Lock row for update within a transaction

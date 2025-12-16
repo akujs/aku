@@ -8,7 +8,6 @@ import type { SharedTestConfig } from "../database-test-utils.ts";
 import { PostgresGrammar } from "../grammar/PostgresGrammar.ts";
 import { sql } from "../sql.ts";
 import { QueryBuilderImpl } from "./QueryBuilderImpl.ts";
-import { toSql } from "./query-builder-test-utils.ts";
 
 // For structural tests that don't execute against a database, use PostgresGrammar
 // since it supports all features. For database execution tests, use db.from()
@@ -29,15 +28,25 @@ describe(QueryBuilderImpl, () => {
 			const young = base.where("age < 30");
 			const old = base.where("age >= 60");
 
-			expect(toSql(base)).toMatchInlineSnapshot(
+			expect(base.toHumanReadableSql()).toMatchInlineSnapshot(
 				`"SELECT * FROM "artists" WHERE ("active" = "true")"`,
 			);
-			expect(toSql(young)).toMatchInlineSnapshot(
+			expect(young.toHumanReadableSql()).toMatchInlineSnapshot(
 				`"SELECT * FROM "artists" WHERE ("active" = "true") AND ("age" < 30)"`,
 			);
-			expect(toSql(old)).toMatchInlineSnapshot(
+			expect(old.toHumanReadableSql()).toMatchInlineSnapshot(
 				`"SELECT * FROM "artists" WHERE ("active" = "true") AND ("age" >= 60)"`,
 			);
+		});
+
+		test("branching with parameters preserves immutability", () => {
+			const base = from("artists").where("status = ?", "active");
+			const young = base.where("age < ?", 30);
+			const old = base.where("age >= ?", 60);
+
+			expect(base.params).toEqual(["active"]);
+			expect(young.params).toEqual(["active", 30]);
+			expect(old.params).toEqual(["active", 60]);
 		});
 	});
 
@@ -47,6 +56,34 @@ describe(QueryBuilderImpl, () => {
 				.select("a")
 				// @ts-expect-error - select() should not be callable after select()
 				.select("b");
+		});
+
+		test("too few values is a type error", () => {
+			expect(() => {
+				// @ts-expect-error - expects 2 values, got 1
+				from("t").where("a = ? AND b = ?", 1);
+			}).toThrow();
+		});
+
+		test("extra values is a type error", () => {
+			expect(() => {
+				// @ts-expect-error - expects 1 value, got 2
+				from("t").where("a = ?", 1, 2);
+			}).toThrow();
+		});
+
+		test("string cast allows any number of values", () => {
+			expect(() => {
+				from("t").where("a = ?" as string);
+				from("t").where("a = ?" as string, 1);
+				from("t").where("a = ?" as string, 1, 2);
+			}).toThrow();
+		});
+	});
+
+	describe("positional parameters", () => {
+		test("runtime error for arity mismatch with non-literal strings", () => {
+			expect(() => from("t").where("a = ? AND b = ?" as string, 1)).toThrow("expected 2");
 		});
 	});
 });
@@ -62,6 +99,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 			sql`CREATE TABLE teams (id INTEGER PRIMARY KEY, name TEXT, "order" TEXT)`,
 			sql`CREATE TABLE members (id INTEGER PRIMARY KEY, name TEXT, team_id INTEGER, score INTEGER)`,
 			sql`CREATE TABLE tags (id INTEGER PRIMARY KEY, tag TEXT)`,
+			sql`CREATE TABLE awards (id INTEGER PRIMARY KEY, member_id INTEGER, title TEXT, year INTEGER)`,
 
 			sql`INSERT INTO teams (id, name, "order") VALUES (1, 'team_a', 'first')`,
 			sql`INSERT INTO teams (id, name, "order") VALUES (2, 'team_b', 'second')`,
@@ -76,6 +114,11 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 			sql`INSERT INTO tags (id, tag) VALUES (1, 'tag_x')`,
 			sql`INSERT INTO tags (id, tag) VALUES (2, 'tag_y')`,
+
+			sql`INSERT INTO awards (id, member_id, title, year) VALUES (1, 1, 'gold', 2020)`,
+			sql`INSERT INTO awards (id, member_id, title, year) VALUES (2, 2, 'silver', 2021)`,
+			sql`INSERT INTO awards (id, member_id, title, year) VALUES (3, 3, 'bronze', 2020)`,
+			sql`INSERT INTO awards (id, member_id, title, year) VALUES (4, 5, 'gold', 2022)`,
 		]);
 	});
 
@@ -166,7 +209,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 			expect(result).toEqual([{ name: "member_b1" }, { name: "member_b2" }]);
 
 			// clauses should be wrapped in parentheses
-			expect(toSql(query)).toMatchInlineSnapshot(
+			expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
 				`"SELECT "name" FROM "members" WHERE ("score" > 20) AND ("score" < 50) ORDER BY "id""`,
 			);
 		});
@@ -340,7 +383,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.orderBy("team_id");
 			const result = await db.all(query);
 			expect(result).toEqual([{ team_id: 1, count: 3 }]);
-			expect(toSql(query)).toMatchInlineSnapshot(
+			expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
 				`"SELECT "team_id", COUNT(*) AS "count" FROM "members" GROUP BY "team_id" HAVING (COUNT(*) > 2) AND (SUM("score") > 0) ORDER BY "team_id""`,
 			);
 		});
@@ -463,57 +506,73 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		});
 	});
 
-	if (dialect === "postgresql") {
-		describe(QueryBuilderImpl.prototype.forUpdate, () => {
-			test("locks rows for update", async () => {
-				await db.transaction(async () => {
-					const result = await db.all(db.from("teams").select("name").forUpdate());
-					expect(result.length).toBe(3);
-				});
-			});
+	describe(QueryBuilderImpl.prototype.forUpdate, () => {
+		test("locks rows for update", async () => {
+			await db.transaction(async () => {
+				const query = db.from("teams").select("name").forUpdate();
+				expect(await db.all(query)).toHaveLength(3);
 
-			test("with noWait option", async () => {
-				await db.transaction(async () => {
-					const result = await db.all(db.from("teams").select("name").forUpdate({ noWait: true }));
-					expect(result.length).toBe(3);
-				});
-			});
-
-			test("with skipLocked option", async () => {
-				await db.transaction(async () => {
-					const result = await db.all(
-						db.from("teams").select("name").forUpdate({ skipLocked: true }),
+				if (dialect === "postgresql") {
+					expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
+						`"SELECT "name" FROM "teams" FOR UPDATE"`,
 					);
-					expect(result.length).toBe(3);
-				});
+				}
+				if (dialect === "sqlite") {
+					// SQLite ignores FOR UPDATE
+					expect(query.toHumanReadableSql()).toMatchInlineSnapshot(`"SELECT "name" FROM "teams""`);
+				}
 			});
 		});
 
-		describe(QueryBuilderImpl.prototype.forShare, () => {
-			test("locks rows for share", async () => {
-				await db.transaction(async () => {
-					const result = await db.all(db.from("teams").select("name").forShare());
-					expect(result.length).toBe(3);
-				});
-			});
+		test("with noWait option", async () => {
+			await db.transaction(async () => {
+				const query = db.from("teams").select("name").forUpdate({ noWait: true });
+				expect(await db.all(query)).toHaveLength(3);
 
-			test("with noWait option", async () => {
-				await db.transaction(async () => {
-					const result = await db.all(db.from("teams").select("name").forShare({ noWait: true }));
-					expect(result.length).toBe(3);
-				});
-			});
-
-			test("with skipLocked option", async () => {
-				await db.transaction(async () => {
-					const result = await db.all(
-						db.from("teams").select("name").forShare({ skipLocked: true }),
+				if (dialect === "postgresql") {
+					expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
+						`"SELECT "name" FROM "teams" FOR UPDATE NOWAIT"`,
 					);
-					expect(result.length).toBe(3);
-				});
+				}
 			});
 		});
-	}
+
+		test("with skipLocked option", async () => {
+			await db.transaction(async () => {
+				const query = db.from("teams").select("name").forUpdate({ skipLocked: true });
+				expect(await db.all(query)).toHaveLength(3);
+
+				if (dialect === "postgresql") {
+					expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
+						`"SELECT "name" FROM "teams" FOR UPDATE SKIP LOCKED"`,
+					);
+				}
+			});
+		});
+	});
+
+	describe(QueryBuilderImpl.prototype.forShare, () => {
+		test("locks rows for share", async () => {
+			await db.transaction(async () => {
+				const result = await db.all(db.from("teams").select("name").forShare());
+				expect(result.length).toBe(3);
+			});
+		});
+
+		test("with noWait option", async () => {
+			await db.transaction(async () => {
+				const result = await db.all(db.from("teams").select("name").forShare({ noWait: true }));
+				expect(result.length).toBe(3);
+			});
+		});
+
+		test("with skipLocked option", async () => {
+			await db.transaction(async () => {
+				const result = await db.all(db.from("teams").select("name").forShare({ skipLocked: true }));
+				expect(result.length).toBe(3);
+			});
+		});
+	});
 
 	if (dialect === "sqlite") {
 		describe("SQLite locking behaviour", () => {
@@ -528,4 +587,142 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 			});
 		});
 	}
+
+	describe("positional parameters", () => {
+		test("multiple parameters in one clause", async () => {
+			const result = await db.all(
+				db.from("members").select("name").where("score > ? AND team_id = ?", 20, 1).orderBy("id"),
+			);
+			expect(result).toEqual([{ name: "member_a3" }]);
+		});
+
+		test("parameters across multiple clauses", async () => {
+			const result = await db.all(
+				db
+					.from("members")
+					.select("team_id", "COUNT(*) AS count")
+					.where("score >= ? AND score <= ?", 10, 50)
+					.where("team_id IS NOT NULL")
+					.groupBy("team_id")
+					.having("COUNT(*) >= ?", 2)
+					.orderBy("team_id"),
+			);
+			// Team 1: scores 10, 20, 50 all in range → 3 members
+			// Team 2: scores 30, 40 both in range → 2 members
+			expect(result).toEqual([
+				{ team_id: 1, count: 3 },
+				{ team_id: 2, count: 2 },
+			]);
+		});
+
+		test("parameters in join clauses", async () => {
+			const result = await db.all(
+				db
+					.from("teams")
+					.select("teams.name", "members.name AS member_name")
+					.join("members ON members.team_id = teams.id AND members.score > ?", 30)
+					.orderBy("teams.id", "members.id"),
+			);
+			expect(result).toEqual([
+				{ name: "team_a", member_name: "member_a3" },
+				{ name: "team_b", member_name: "member_b2" },
+			]);
+		});
+
+		test("join accepts Statement from sql tag", async () => {
+			const result = await db.all(
+				db
+					.from("teams")
+					.select("teams.name", "members.name AS member_name")
+					.join(sql`members ON members.team_id = teams.id AND members.score > ${30}`)
+					.orderBy("teams.id", "members.id"),
+			);
+			expect(result).toEqual([
+				{ name: "team_a", member_name: "member_a3" },
+				{ name: "team_b", member_name: "member_b2" },
+			]);
+		});
+	});
+
+	describe("array expansion", () => {
+		describe.each(["id IN ?", "id IN (?)", "id IN ( ? )"] as const)(
+			"with syntax '%s'",
+			(idInExpr) => {
+				test("non-empty array expands to multiple placeholders", async () => {
+					const result = await db.all(
+						db.from("members").select("name").where(idInExpr, [1, 2, 3]).orderBy("id"),
+					);
+					expect(result).toEqual([
+						{ name: "member_a1" },
+						{ name: "member_a2" },
+						{ name: "member_b1" },
+					]);
+				});
+
+				test("single-element array", async () => {
+					const result = await db.all(db.from("members").select("name").where(idInExpr, [1]));
+					expect(result).toEqual([{ name: "member_a1" }]);
+				});
+
+				test("empty array returns no rows", async () => {
+					// Query on team_id which has NULL values (member_x1) to verify that
+					// IN (NULL) correctly returns no rows - nothing equals NULL, not even NULL
+					const result = await db.all(db.from("members").where(idInExpr, []));
+					expect(result).toEqual([]);
+				});
+			},
+		);
+	});
+
+	describe("subqueries", () => {
+		test("subquery in WHERE clause", async () => {
+			const subquery = db.from("members").select("team_id").where("score > ?", 40);
+			const query = db.from("teams").select("id", "name").where("id IN ?", subquery).orderBy("id");
+			expect(await db.all(query)).toEqual([{ id: 1, name: "team_a" }]);
+			expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
+				`"SELECT "id", "name" FROM "teams" WHERE ("id" IN (SELECT "team_id" FROM "members" WHERE ("score" > [$1: 40]))) ORDER BY "id""`,
+			);
+		});
+
+		test("subquery params merged with outer query params", async () => {
+			const subquery = db.from("members").select("team_id").where("score > ?", 40);
+			const result = await db.all(
+				db
+					.from("teams")
+					.select("name")
+					.where("id > ?", 0)
+					.where("id IN ?", subquery)
+					.where("id < ?", 10)
+					.orderBy("id"),
+			);
+			expect(result).toEqual([{ name: "team_a" }]);
+		});
+
+		test("nested subqueries", async () => {
+			// Find teams that have members who won gold awards
+			const innerSub = db.from("awards").select("member_id").where("title = ?", "gold");
+			const middleSub = db.from("members").select("team_id").where("id IN ?", innerSub);
+			const result = await db.all(db.from("teams").where("id IN ?", middleSub).orderBy("id"));
+			expect(result).toEqual([{ id: 1, name: "team_a", order: "first" }]);
+		});
+
+		test("subquery in join clause", async () => {
+			const subquery = db
+				.from("members")
+				.select("team_id", "COUNT(*) AS member_count")
+				.where("team_id IS NOT NULL")
+				.groupBy("team_id");
+			const result = await db.all(
+				db
+					.from("teams t")
+					.select("t.name", "counts.member_count")
+					.join("? AS counts ON counts.team_id = t.id", subquery)
+					.orderBy("t.id"),
+			);
+			expect(result).toEqual([
+				{ name: "team_a", member_count: 3 },
+				{ name: "team_b", member_count: 2 },
+			]);
+		});
+	});
 });

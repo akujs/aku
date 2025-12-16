@@ -46,6 +46,7 @@ function runNodeTestsSync(): number {
 }
 
 async function runCommand(fullArgs: string[]): Promise<boolean> {
+	const startTime = performance.now();
 	const proc = Bun.spawn(fullArgs, {
 		cwd,
 		stdout: "pipe",
@@ -59,10 +60,11 @@ async function runCommand(fullArgs: string[]): Promise<boolean> {
 	]);
 
 	const ok = exitCode === 0;
+	const elapsed = Math.round(performance.now() - startTime);
 
 	const argsString = fullArgs.join(" ");
 	if (ok) {
-		console.log(`✔ ${argsString}`);
+		console.log(`✔ ${argsString} (${elapsed}ms)`);
 	} else {
 		console.log(`✘ ${argsString}`);
 		if (stdout) console.log(stdout);

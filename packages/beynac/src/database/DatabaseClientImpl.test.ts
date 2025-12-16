@@ -22,7 +22,7 @@ describe(DatabaseClientImpl, () => {
 
 	beforeEach(async () => {
 		const testDir = createTestDirectory();
-		adapter = sqliteDatabase({ path: join(testDir, "test.db") });
+		adapter = sqliteDatabase({ path: join(testDir, "test.db"), transactionRetry: false });
 		db = new DatabaseClientImpl(adapter, mockDispatcher());
 		await db.run(sql`CREATE TABLE test (id INTEGER PRIMARY KEY, value TEXT)`);
 	});
@@ -140,6 +140,29 @@ describe(DatabaseClientImpl, () => {
 		});
 	});
 
+	describe("adapter-level transactionRetry", () => {
+		test("adapter-level transactionRetry: true is used when no call-site option provided", async () => {
+			const adapterWithRetry = sqliteDatabase({
+				path: ":memory:",
+				transactionRetry: { startingDelay: 0, maxAttempts: 2 },
+			});
+			const dbWithRetry = new DatabaseClientImpl(adapterWithRetry, mockDispatcher());
+
+			mock(sleep, async () => {});
+
+			const callback = mockFn(async () => {
+				throw new QueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
+			});
+
+			try {
+				await dbWithRetry.transaction(callback);
+			} catch {}
+
+			expect(callback).toHaveBeenCalledTimes(2);
+			adapterWithRetry.dispose();
+		});
+	});
+
 	test("query that executes after its transaction commits throws an error", async () => {
 		const gate = asyncGate();
 		let delayedQueryError: Error | undefined;
@@ -245,7 +268,7 @@ describe("escapeTransaction with Postgres", () => {
 		let db: DatabaseClientImpl;
 
 		beforeAll(async () => {
-			adapter = createPostgresAdapter();
+			adapter = await createPostgresAdapter();
 			db = new DatabaseClientImpl(adapter, mockDispatcher());
 			await db.run(recreatePostgresPublicSchema);
 			await db.run(sql`CREATE TABLE test (id SERIAL PRIMARY KEY, value TEXT)`);

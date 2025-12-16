@@ -14,9 +14,10 @@ describe(PostgresDatabaseAdapter, () => {
 	let dispatcher: MockDispatcher;
 
 	beforeAll(async () => {
-		const adapter = createPostgresAdapter();
+		const adapter = await createPostgresAdapter();
 		dispatcher = mockDispatcher();
 		db = new DatabaseClientImpl(adapter, dispatcher);
+
 		await db.run(recreatePostgresPublicSchema);
 		await db.run(sql`CREATE TABLE test (value TEXT)`);
 	});

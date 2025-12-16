@@ -96,23 +96,38 @@ export interface DatabaseClient {
 	 * if the transaction fails. If the function throws any error, the
 	 * transaction will be rolled back.
 	 *
+	 * Note on retrying: when running a transaction you must specify whether and
+	 * how to retry. Concurrency Errors can and do happen in production
+	 * applications but they very rarely happen in development. For robustness
+	 * you really enable automatic retrying unless you are handling the retry
+	 * yourself at an application level. However if you enable retry it is
+	 * important to make sure that the handler is idempotent. For example do not
+	 * make any API calls within the transaction handler unless that API call is
+	 * safe to make again when the transaction retries.
+	 *
 	 * Internally this uses AsyncLocalStorage to ensure that any code in the
 	 * function, even asynchronous code inside promises and setTimeouts, will
 	 * use the transaction.
 	 *
 	 * Calls to transaction can be nested, and nested transactions will use
 	 * savepoints in the database. However with nested transactions the options
-	 * are ignored, retry and isolation only apply to the outermost transaction.
+	 * are ignored - retry and isolation only apply to the outermost
+	 * transaction.
 	 *
 	 * Throws if the underlying adapter does not support transactions. Check
 	 * `supportsTransactions` to see if this database does.
 	 *
-	 * @param options.isolation - the transaction isolation level. If not
-	 *     specified, the database default is used. Note that isolation level
-	 *     support varies by database - SQLite ignores this option.
+	 * @param options.isolation - the transaction isolation level. This
+	 *     overrides the default set for the database in the application
+	 *     configuration. If not specified, the database default is used. Note
+	 *     that isolation level support varies by database - SQLite ignores this
+	 *     option.
 	 *
 	 * @param options.sqliteMode - SQLite-specific transaction mode controlling
-	 *     when locks are acquired. https://sqlite.org/lang_transaction.html
+	 *     when locks are acquired. This overrides the default set for the
+	 *     database in the application configuration. Supported values are
+	 *     `"deferred"` (default), `"immediate"`, and `"exclusive"`. See
+	 *     https://sqlite.org/lang_transaction.html
 	 *
 	 * @param options.retry - retry on concurrency errors like deadlocks or
 	 *     write conflict. When a concurrency error is detected, the transaction

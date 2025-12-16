@@ -22,7 +22,7 @@ describe("database events", () => {
 	let db: DatabaseClient;
 
 	beforeEach(async () => {
-		adapter = sqliteDatabase({ path: ":memory:" });
+		adapter = sqliteDatabase({ path: ":memory:", transactionRetry: false });
 		dispatcher = mockDispatcher();
 		db = new DatabaseClientImpl(adapter, dispatcher);
 		await db.run(sql`CREATE TABLE test (id INTEGER PRIMARY KEY, value TEXT)`);
@@ -86,9 +86,9 @@ describe("database events", () => {
 		test("query events timeTakenMs reflects duration", async () => {
 			mockCurrentTime(1000);
 			const originalRun = adapter.run.bind(adapter);
-			spyOn(adapter, "run").mockImplementation(async (statement, connection) => {
+			spyOn(adapter, "run").mockImplementation(async (sqlString, params, connection) => {
 				mockCurrentTime(1075);
-				return originalRun(statement, connection);
+				return originalRun(sqlString, params, connection);
 			});
 
 			await db.run(sql`SELECT 1`);
@@ -239,11 +239,11 @@ describe("database events", () => {
 			// Force a retry by making first BEGIN fail with SQLITE_BUSY
 			let beginAttempts = 0;
 			const originalRun = adapter.run.bind(adapter);
-			spyOn(adapter, "run").mockImplementation(async (stmt, conn) => {
-				if (stmt.renderForLogs() === "BEGIN" && beginAttempts++ === 0) {
+			spyOn(adapter, "run").mockImplementation(async (sqlString, params, conn) => {
+				if (sqlString === "BEGIN" && beginAttempts++ === 0) {
 					throw new QueryError("BEGIN", "database is locked", undefined, "SQLITE_BUSY", 5);
 				}
-				return originalRun(stmt, conn);
+				return originalRun(sqlString, params, conn);
 			});
 
 			await db.transaction(
@@ -361,7 +361,7 @@ describe("database events", () => {
 			const inserts = dispatcher
 				.getEvents()
 				.filter((e): e is QueryExecutingEvent => e instanceof QueryExecutingEvent)
-				.map((e) => e.statement.renderForLogs())
+				.map((e) => e.statement.toHumanReadableSql())
 				.filter((s) => s.startsWith("INSERT"));
 
 			// The SQL should be serialised - tx1 fully completes before tx2 starts
@@ -413,7 +413,7 @@ describe("database events", () => {
 			const inserts = dispatcher
 				.getEvents()
 				.filter((e): e is QueryExecutingEvent => e instanceof QueryExecutingEvent)
-				.map((e) => e.statement.renderForLogs())
+				.map((e) => e.statement.toHumanReadableSql())
 				.filter((s) => s.startsWith("INSERT"));
 
 			// Level 2 transactions serialise: tx1 completes fully before tx2 starts

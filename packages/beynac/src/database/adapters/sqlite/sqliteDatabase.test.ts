@@ -20,7 +20,7 @@ describe("SqliteDatabase", () => {
 	beforeEach(() => {
 		testDir = createTestDirectory();
 		dbPath = join(testDir, "test.db");
-		adapter = new SqliteDatabaseAdapter({ path: dbPath });
+		adapter = new SqliteDatabaseAdapter({ path: dbPath, transactionRetry: false });
 		dispatcher = mockDispatcher();
 		db = new DatabaseClientImpl(adapter, dispatcher);
 		dispatcher.clear();
@@ -32,22 +32,26 @@ describe("SqliteDatabase", () => {
 
 	test("readOnly prevents writes", async () => {
 		const conn1 = await adapter.acquireConnection();
-		await adapter.run(sql`CREATE TABLE test (id INTEGER)`, conn1);
+		await adapter.run("CREATE TABLE test (id INTEGER)", [], conn1);
 		adapter.releaseConnection(conn1);
 		adapter.dispose();
 
-		const readOnlyAdapter = new SqliteDatabaseAdapter({ path: dbPath, readOnly: true });
+		const readOnlyAdapter = new SqliteDatabaseAdapter({
+			path: dbPath,
+			readOnly: true,
+			transactionRetry: false,
+		});
 		const conn2 = await readOnlyAdapter.acquireConnection();
-		expect(readOnlyAdapter.run(sql`INSERT INTO test (id) VALUES (1)`, conn2)).rejects.toThrow();
+		expect(readOnlyAdapter.run("INSERT INTO test (id) VALUES (1)", [], conn2)).rejects.toThrow();
 		readOnlyAdapter.releaseConnection(conn2);
 		readOnlyAdapter.dispose();
 	});
 
 	test("create option creates parent directories by default", async () => {
 		const nestedPath = join(testDir, "subdir", "nested", "test.db");
-		const nestedAdapter = new SqliteDatabaseAdapter({ path: nestedPath });
+		const nestedAdapter = new SqliteDatabaseAdapter({ path: nestedPath, transactionRetry: false });
 		const conn = await nestedAdapter.acquireConnection();
-		await nestedAdapter.run(sql`CREATE TABLE test (id INTEGER)`, conn);
+		await nestedAdapter.run("CREATE TABLE test (id INTEGER)", [], conn);
 		nestedAdapter.releaseConnection(conn);
 		nestedAdapter.dispose();
 
@@ -57,30 +61,38 @@ describe("SqliteDatabase", () => {
 	test("create=false throws if file does not exist", () => {
 		const nonexistentPath = join(testDir, "nonexistent.db");
 		expect(() => {
-			new SqliteDatabaseAdapter({ path: nonexistentPath, create: false });
+			new SqliteDatabaseAdapter({ path: nonexistentPath, create: false, transactionRetry: false });
 		}).toThrow("Database file does not exist");
 	});
 
 	test("enables WAL by default", async () => {
 		const conn = await adapter.acquireConnection();
-		const result = await adapter.run(sql`PRAGMA journal_mode`, conn);
+		const result = await adapter.run("PRAGMA journal_mode", [], conn);
 		expect(result.rows[0].journal_mode).toBe("wal");
 		adapter.releaseConnection(conn);
 	});
 
 	test("useWalMode=true enables WAL", async () => {
-		const noWalAdapter = new SqliteDatabaseAdapter({ path: dbPath, useWalMode: true });
+		const noWalAdapter = new SqliteDatabaseAdapter({
+			path: dbPath,
+			useWalMode: true,
+			transactionRetry: false,
+		});
 		const conn = await noWalAdapter.acquireConnection();
-		const result = await noWalAdapter.run(sql`PRAGMA journal_mode`, conn);
+		const result = await noWalAdapter.run("PRAGMA journal_mode", [], conn);
 		expect(result.rows[0].journal_mode).toBe("wal");
 		noWalAdapter.releaseConnection(conn);
 		noWalAdapter.dispose();
 	});
 
 	test("useWalMode=false disables WAL", async () => {
-		const noWalAdapter = new SqliteDatabaseAdapter({ path: dbPath, useWalMode: false });
+		const noWalAdapter = new SqliteDatabaseAdapter({
+			path: dbPath,
+			useWalMode: false,
+			transactionRetry: false,
+		});
 		const conn = await noWalAdapter.acquireConnection();
-		const result = await noWalAdapter.run(sql`PRAGMA journal_mode`, conn);
+		const result = await noWalAdapter.run("PRAGMA journal_mode", [], conn);
 		expect(result.rows[0].journal_mode).toBe("delete");
 		noWalAdapter.releaseConnection(conn);
 		noWalAdapter.dispose();
@@ -190,7 +202,11 @@ describe("SqliteDatabase", () => {
 
 	test("transaction retries on COMMIT blocked by SHARED lock", async () => {
 		// Disable WAL mode - in WAL mode readers don't block writers
-		adapter = new SqliteDatabaseAdapter({ path: dbPath, useWalMode: false });
+		adapter = new SqliteDatabaseAdapter({
+			path: dbPath,
+			useWalMode: false,
+			transactionRetry: false,
+		});
 		dispatcher = mockDispatcher();
 		db = new DatabaseClientImpl(adapter, dispatcher);
 		await db.run(sql`CREATE TABLE test (value TEXT)`);

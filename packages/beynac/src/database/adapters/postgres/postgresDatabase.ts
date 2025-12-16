@@ -9,7 +9,8 @@ import type { PostgresDatabaseAdapterConfig } from "./PostgresDatabaseAdapterCon
  * import postgres from 'postgres'
  * createApplication({
  *   database: postgresDatabase({
- *     sql: postgres( ... postgres.js options ... )
+ *     sql: postgres( ... postgres.js options ... ),
+ *     transactionRetry: true,
  *   }),
  *   ...
  * });

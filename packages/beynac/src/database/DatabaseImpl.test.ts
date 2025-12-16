@@ -15,7 +15,7 @@ import { sql } from "./sql.ts";
 describe("DatabaseImpl", () => {
 	describe("supportsTransactions", () => {
 		test("reflects adapter capability", async () => {
-			const adapter = sqliteDatabase({ path: ":memory:" });
+			const adapter = sqliteDatabase({ path: ":memory:", transactionRetry: false });
 			const db = new DatabaseImpl(adapter, mockDispatcher());
 
 			expect(db.supportsTransactions).toBe(true);
@@ -29,7 +29,7 @@ describe("DatabaseImpl", () => {
 		let db: DatabaseImpl;
 
 		beforeEach(async () => {
-			adapter = sqliteDatabase({ path: ":memory:" });
+			adapter = sqliteDatabase({ path: ":memory:", transactionRetry: false });
 			db = new DatabaseImpl(adapter, mockDispatcher());
 			await db.run(sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`);
 			await db.run(sql`INSERT INTO test (name) VALUES ('Alice'), ('Bob')`);
@@ -122,8 +122,8 @@ describe("DatabaseImpl", () => {
 		let additionalAdapter: DatabaseAdapter;
 
 		beforeEach(async () => {
-			defaultAdapter = sqliteDatabase({ path: ":memory:" });
-			additionalAdapter = sqliteDatabase({ path: ":memory:" });
+			defaultAdapter = sqliteDatabase({ path: ":memory:", transactionRetry: false });
+			additionalAdapter = sqliteDatabase({ path: ":memory:", transactionRetry: false });
 
 			await new DatabaseClientImpl(defaultAdapter, mockDispatcher()).batch([
 				sql`CREATE TABLE info (db_name TEXT)`,

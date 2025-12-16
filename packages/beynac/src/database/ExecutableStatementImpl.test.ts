@@ -17,7 +17,7 @@ describe("Sql execution methods", () => {
 	let adapter: DatabaseAdapter;
 
 	beforeEach(async () => {
-		adapter = sqliteDatabase({ path: ":memory:" });
+		adapter = sqliteDatabase({ path: ":memory:", transactionRetry: false });
 		createTestApplication({ database: adapter });
 		await sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`.run();
 		await sql`INSERT INTO test (name) VALUES ('Alice'), ('Bob')`.run();
@@ -73,7 +73,7 @@ describe(ExecutableStatementImpl.prototype.firstOrNotFound, () => {
 	let adapter: DatabaseAdapter;
 
 	beforeEach(async () => {
-		adapter = sqliteDatabase({ path: ":memory:" });
+		adapter = sqliteDatabase({ path: ":memory:", transactionRetry: false });
 	});
 
 	afterEach(() => {
@@ -99,8 +99,8 @@ describe("client routing", () => {
 	let additionalAdapter: DatabaseAdapter;
 
 	beforeEach(async () => {
-		defaultAdapter = sqliteDatabase({ path: ":memory:" });
-		additionalAdapter = sqliteDatabase({ path: ":memory:" });
+		defaultAdapter = sqliteDatabase({ path: ":memory:", transactionRetry: false });
+		additionalAdapter = sqliteDatabase({ path: ":memory:", transactionRetry: false });
 
 		const defaultDb = new DatabaseImpl(defaultAdapter, mockDispatcher());
 		const additionalDb = new DatabaseImpl(additionalAdapter, mockDispatcher());

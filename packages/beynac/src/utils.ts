@@ -42,13 +42,11 @@ abstract class MultiMap<K, V> extends BaseClass {
 	}
 }
 
-type WithoutUndefinedValues<T extends Record<string, unknown>> = {
+type WithoutUndefinedValues<T extends object> = {
 	[K in keyof T]: Exclude<T[K], undefined>;
 };
 
-export const withoutUndefinedValues = <T extends Record<string, unknown>>(
-	input: T,
-): WithoutUndefinedValues<T> =>
+export const withoutUndefinedValues = <T extends object>(input: T): WithoutUndefinedValues<T> =>
 	Object.fromEntries(
 		Object.entries(input).filter((e) => e[1] !== undefined),
 	) as WithoutUndefinedValues<T>;

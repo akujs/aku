@@ -1,3 +1,5 @@
+import { renderSql } from "../query-builder/statement-render.ts";
+import type { SqlFragments } from "../Statement.ts";
 import { DatabaseGrammar, type TransactionBeginOptions } from "./DatabaseGrammar.ts";
 
 const ISOLATION_LEVEL_SQL: Record<string, string> = {
@@ -14,5 +16,9 @@ export class PostgresGrammar extends DatabaseGrammar {
 			return ISOLATION_LEVEL_SQL[options?.isolation] ?? "BEGIN";
 		}
 		return "BEGIN";
+	}
+
+	override compileStatement(statement: SqlFragments): string {
+		return renderSql(statement, (i) => `$${i + 1}`);
 	}
 }

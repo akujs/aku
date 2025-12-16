@@ -2,21 +2,23 @@ import { BaseClass } from "../../utils.ts";
 import type { DatabaseGrammar } from "../grammar/DatabaseGrammar.ts";
 import type { SqlFragments, Statement } from "../Statement.ts";
 import { MutableQueryBuilder } from "./MutableQueryBuilder.ts";
+import type { PlaceholderArgs } from "./placeholder-types.ts";
 import type {
 	DefaultColumnsQueryBuilder,
 	LockOptions,
 	SelectQueryBuilder,
 } from "./QueryBuilder.ts";
-import { renderForLogs, renderSql } from "./statement-render.ts";
+import { toHumanReadableSql } from "./statement-render.ts";
+import { toStatement } from "./statement-utils.ts";
 
 export class QueryBuilderImpl extends BaseClass implements Statement {
-	readonly #from: string;
+	readonly #from: SqlFragments;
 	readonly #grammar: DatabaseGrammar;
 	readonly #commands: Command[];
 	readonly #length: number;
 	#cachedBuild: { fragments: readonly string[]; params: unknown[] } | null = null;
 
-	constructor(from: string, grammar: DatabaseGrammar, commands: Command[]) {
+	constructor(from: SqlFragments, grammar: DatabaseGrammar, commands: Command[]) {
 		super();
 		this.#from = from;
 		this.#grammar = grammar;
@@ -32,38 +34,51 @@ export class QueryBuilderImpl extends BaseClass implements Statement {
 		return this.#getBuild().params;
 	}
 
-	renderSql(renderPlaceholder: (index: number) => string): string {
-		return renderSql(this.#getBuild(), renderPlaceholder);
+	toHumanReadableSql(): string {
+		return toHumanReadableSql(this.#getBuild());
 	}
 
-	renderForLogs(): string {
-		return renderForLogs(this.#getBuild());
+	// Join methods - support both string+values and Statement overloads
+	join<S extends string>(clause: S, ...values: PlaceholderArgs<S>): this;
+	join(statement: Statement): this;
+	join(clauseOrStatement: string | Statement, ...values: unknown[]): this {
+		const stmt = resolveToStatement(clauseOrStatement, values);
+		return this.#derive("pushJoin", ["JOIN", stmt]);
 	}
 
-	join(clause: string): this {
-		return this.#derive("pushJoin", ["JOIN", clause]);
+	innerJoin<S extends string>(clause: S, ...values: PlaceholderArgs<S>): this;
+	innerJoin(statement: Statement): this;
+	innerJoin(clauseOrStatement: string | Statement, ...values: unknown[]): this {
+		const stmt = resolveToStatement(clauseOrStatement, values);
+		return this.#derive("pushJoin", ["INNER JOIN", stmt]);
 	}
 
-	innerJoin(clause: string): this {
-		return this.#derive("pushJoin", ["INNER JOIN", clause]);
+	leftJoin<S extends string>(clause: S, ...values: PlaceholderArgs<S>): this;
+	leftJoin(statement: Statement): this;
+	leftJoin(clauseOrStatement: string | Statement, ...values: unknown[]): this {
+		const stmt = resolveToStatement(clauseOrStatement, values);
+		return this.#derive("pushJoin", ["LEFT JOIN", stmt]);
 	}
 
-	leftJoin(clause: string): this {
-		return this.#derive("pushJoin", ["LEFT JOIN", clause]);
+	rightJoin<S extends string>(clause: S, ...values: PlaceholderArgs<S>): this;
+	rightJoin(statement: Statement): this;
+	rightJoin(clauseOrStatement: string | Statement, ...values: unknown[]): this {
+		const stmt = resolveToStatement(clauseOrStatement, values);
+		return this.#derive("pushJoin", ["RIGHT JOIN", stmt]);
 	}
 
-	rightJoin(clause: string): this {
-		return this.#derive("pushJoin", ["RIGHT JOIN", clause]);
-	}
-
-	fullJoin(clause: string): this {
-		return this.#derive("pushJoin", ["FULL OUTER JOIN", clause]);
+	fullJoin<S extends string>(clause: S, ...values: PlaceholderArgs<S>): this;
+	fullJoin(statement: Statement): this;
+	fullJoin(clauseOrStatement: string | Statement, ...values: unknown[]): this {
+		const stmt = resolveToStatement(clauseOrStatement, values);
+		return this.#derive("pushJoin", ["FULL OUTER JOIN", stmt]);
 	}
 
 	crossJoin(table: string): this {
-		return this.#derive("pushJoin", ["CROSS JOIN", table]);
+		return this.#derive("pushJoin", ["CROSS JOIN", { fragments: [table], params: [] }]);
 	}
 
+	// Select methods
 	select(...columns: string[]): SelectQueryBuilder {
 		return this.#derive("setSelect", [columns]) as unknown as SelectQueryBuilder;
 	}
@@ -76,19 +91,28 @@ export class QueryBuilderImpl extends BaseClass implements Statement {
 		return this.#derive("setSelect", [columns]);
 	}
 
-	where(condition: string): this {
-		return this.#derive("pushWhere", [condition]);
+	// WHERE - support both string+values and Statement overloads
+	where<S extends string>(condition: S, ...values: PlaceholderArgs<S>): this;
+	where(statement: Statement): this;
+	where(conditionOrStatement: string | Statement, ...values: unknown[]): this {
+		const stmt = resolveToStatement(conditionOrStatement, values);
+		return this.#derive("pushWhere", [stmt]);
 	}
 
+	// Grouping
 	groupBy(...columns: string[]): this {
 		return this.#derive("pushGroupBy", [columns]);
 	}
 
-	having(condition: string): this {
-		return this.#derive("pushHaving", [condition]);
+	// HAVING - support both string+values and Statement overloads
+	having<S extends string>(condition: S, ...values: PlaceholderArgs<S>): this;
+	having(statement: Statement): this;
+	having(conditionOrStatement: string | Statement, ...values: unknown[]): this {
+		const stmt = resolveToStatement(conditionOrStatement, values);
+		return this.#derive("pushHaving", [stmt]);
 	}
 
-	// Fluent methods - Ordering
+	// Ordering
 	orderBy(...columns: string[]): this {
 		return this.#derive("pushOrderBy", [columns]);
 	}
@@ -97,7 +121,7 @@ export class QueryBuilderImpl extends BaseClass implements Statement {
 		return this.#derive("setOrderBy", [columns]);
 	}
 
-	// Fluent methods - Pagination
+	// Pagination
 	limit(n: number): this {
 		return this.#derive("setLimit", [n]);
 	}
@@ -106,7 +130,7 @@ export class QueryBuilderImpl extends BaseClass implements Statement {
 		return this.#derive("setOffset", [n]);
 	}
 
-	// Fluent methods - Modifiers
+	// Modifiers
 	distinct(): this {
 		return this.#derive("setDistinct", []);
 	}
@@ -120,7 +144,11 @@ export class QueryBuilderImpl extends BaseClass implements Statement {
 	}
 
 	static from(table: string, grammar: DatabaseGrammar): DefaultColumnsQueryBuilder {
-		return new QueryBuilderImpl(table, grammar, []) as DefaultColumnsQueryBuilder;
+		return new QueryBuilderImpl(
+			{ fragments: [table], params: [] },
+			grammar,
+			[],
+		) as DefaultColumnsQueryBuilder;
 	}
 
 	#derive<K extends keyof MutableQueryBuilder>(
@@ -152,3 +180,17 @@ export class QueryBuilderImpl extends BaseClass implements Statement {
 }
 
 type Command = [keyof MutableQueryBuilder, unknown[]];
+
+function resolveToStatement(
+	conditionOrStatement: string | Statement,
+	values: unknown[],
+): SqlFragments {
+	if (typeof conditionOrStatement === "string") {
+		return toStatement(conditionOrStatement, values);
+	}
+	// It's already a Statement - extract fragments and params
+	return {
+		fragments: [...conditionOrStatement.fragments],
+		params: [...conditionOrStatement.params],
+	};
+}

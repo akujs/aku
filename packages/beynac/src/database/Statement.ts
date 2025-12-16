@@ -5,16 +5,9 @@ export interface SqlFragments {
 
 export interface Statement extends SqlFragments {
 	/**
-	 * Render this statement as SQL with placeholders.
-	 *
-	 * @param renderPlaceholder - A function that returns the placeholder string for a given parameter index.
-	 */
-	renderSql(renderPlaceholder: (index: number) => string): string;
-
-	/**
 	 * Render this statement for logging, with parameter values inlined.
 	 */
-	renderForLogs(): string;
+	toHumanReadableSql(): string;
 }
 
 export interface StatementResult {

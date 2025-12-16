@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
 import { type RetryOptions, withRetry } from "../helpers/async/retry.ts";
 import { abort } from "../http/abort.ts";
-import { BaseClass, type FifoLock, fifoLock } from "../utils.ts";
+import { BaseClass, type FifoLock, fifoLock, withoutUndefinedValues } from "../utils.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 import type { DatabaseClient, TransactionOptions } from "./DatabaseClient.ts";
 import { DatabaseError, QueryError } from "./database-errors.ts";
@@ -20,7 +20,6 @@ import {
 import type { DefaultColumnsQueryBuilder } from "./query-builder/QueryBuilder.ts";
 import { QueryBuilderImpl } from "./query-builder/QueryBuilderImpl.ts";
 import type { Row, Statement, StatementResult } from "./Statement.ts";
-import { sql } from "./sql.ts";
 
 let nextTransactionId = 1;
 
@@ -56,14 +55,14 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 			const ctx = this.#connectionStorage.getStore();
 			if (ctx?.committed) {
 				throw new QueryError(
-					statement.renderForLogs(),
+					statement.toHumanReadableSql(),
 					"the transaction has already been committed - probably an asynchronous operation was started and not awaited, and ran after the transaction finished",
 					undefined,
 				);
 			}
 			if (ctx?.isRunningNestedTransaction) {
 				throw new QueryError(
-					statement.renderForLogs(),
+					statement.toHumanReadableSql(),
 					"a nested transaction is active - probably an asynchronous operation was started and not awaited, and ran after the nested transaction started",
 					undefined,
 				);
@@ -72,7 +71,11 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 			const startEvent = new QueryExecutingEvent(this.#getEventInit({ statement }));
 			this.#dispatcher.dispatchIfHasListeners(QueryExecutingEvent, () => startEvent);
 
-			return this.#enrichError(() => this.#adapter.run(statement, connection)).then(
+			const sqlString = this.#adapter.grammar.compileStatement(statement);
+
+			return this.#enrichError(() =>
+				this.#adapter.run(sqlString, [...statement.params], connection),
+			).then(
 				(result) => {
 					this.#dispatcher.dispatchIfHasListeners(
 						QueryExecutedEvent,
@@ -132,14 +135,19 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 		if (statements.length === 0) {
 			return [];
 		}
+		const grammar = this.#adapter.grammar;
+		const queries = statements.map((stmt) => ({
+			sql: grammar.compileStatement(stmt),
+			params: [...stmt.params],
+		}));
 		if (this.#adapter.supportsTransactions) {
 			return this.transaction(() => {
 				const ctx = this.#connectionStorage.getStore()!;
-				return this.#enrichError(() => this.#adapter.batch(statements, ctx.connection));
+				return this.#enrichError(() => this.#adapter.batch(queries, ctx.connection));
 			});
 		} else {
 			return this.#withConnection((connection) =>
-				this.#enrichError(() => this.#adapter.batch(statements, connection)),
+				this.#enrichError(() => this.#adapter.batch(queries, connection)),
 			);
 		}
 	}
@@ -151,9 +159,14 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 			);
 		}
 
+		const effectiveOptions: TransactionOptions = {
+			...withoutUndefinedValues(this.#adapter.transactionOptions ?? {}),
+			...withoutUndefinedValues(options ?? {}),
+		};
+
 		// Retry only applies to root transactions - nested transactions use savepoints
 		// which cannot be meaningfully retried on concurrency errors
-		const retry = this.transactionDepth > 0 ? undefined : options?.retry;
+		const retry = this.transactionDepth > 0 ? undefined : effectiveOptions.retry;
 		const retryOptions: RetryOptions =
 			retry === true
 				? {}
@@ -181,7 +194,7 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 					lastError = null;
 				}
 				try {
-					return await this.#executeTransaction(fn, options);
+					return await this.#executeTransaction(fn, effectiveOptions);
 				} catch (error) {
 					if (error instanceof DatabaseError) {
 						lastError = error;
@@ -233,7 +246,7 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 			const savepointName = `sp_${depth}`;
 
 			const execCtrl = async (sqlString: string): Promise<void> => {
-				await this.#enrichError(() => this.#adapter.run(sql.raw(sqlString), connection));
+				await this.#enrichError(() => this.#adapter.run(sqlString, [], connection));
 			};
 
 			try {
@@ -323,7 +336,7 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 	async firstOrFail<T = Row>(statement: Statement): Promise<T> {
 		const result = await this.run(statement);
 		if (result.rows.length === 0) {
-			throw new QueryError(statement.renderForLogs(), "Query returned no rows", undefined);
+			throw new QueryError(statement.toHumanReadableSql(), "Query returned no rows", undefined);
 		}
 		return result.rows[0] as T;
 	}

@@ -1,5 +1,6 @@
+import type { TransactionOptions } from "./DatabaseClient.ts";
 import type { DatabaseGrammar } from "./grammar/DatabaseGrammar.ts";
-import type { Statement, StatementResult } from "./Statement.ts";
+import type { StatementResult } from "./Statement.ts";
 
 export interface DatabaseConfig {
 	/**
@@ -11,6 +12,11 @@ export interface DatabaseConfig {
 	 * Additional named database adapters.
 	 */
 	additional?: Record<string, DatabaseAdapter>;
+}
+
+export interface CompiledQuery {
+	sql: string;
+	params: unknown[];
 }
 
 /**
@@ -31,6 +37,12 @@ export interface DatabaseAdapter<TConnection = unknown> {
 	readonly supportsTransactions: boolean;
 
 	/**
+	 * Default transaction options for this adapter. These can be overridden by
+	 * passing options to `transaction(f, opts)`.
+	 */
+	readonly transactionOptions: TransactionOptions | undefined;
+
+	/**
 	 * Acquire a connection for use with run() and batch().
 	 * For pooled adapters, this reserves a connection from the pool.
 	 * For single-connection adapters, this waits until the connection is available.
@@ -45,7 +57,7 @@ export interface DatabaseAdapter<TConnection = unknown> {
 	releaseConnection(connection: TConnection): void;
 
 	/**
-	 * Execute a statement using the provided connection.
+	 * Execute a compiled query using the provided connection.
 	 *
 	 * The returned object has the following properties:
 	 * - `rows`: an array of row objects with column names as keys, empty if the
@@ -55,12 +67,12 @@ export interface DatabaseAdapter<TConnection = unknown> {
 	 *   statement did not modify any rows, or if this is not the kind of
 	 *   statement that modifies rows.
 	 */
-	run(statement: Statement, connection: TConnection): Promise<StatementResult>;
+	run(sql: string, params: unknown[], connection: TConnection): Promise<StatementResult>;
 
 	/**
-	 * Execute a batch of statements using the provided connection.
+	 * Execute a batch of compiled queries using the provided connection.
 	 *
-	 * It is valid to iterate over the statements and execute each one
+	 * It is valid to iterate over the queries and execute each one
 	 * serially but adapters should use a technique that provides higher
 	 * performance if it is available.
 	 *
@@ -71,7 +83,7 @@ export interface DatabaseAdapter<TConnection = unknown> {
 	 * Do not support interactive transactions but do support a transactional
 	 * batch API call.
 	 */
-	batch(statements: Statement[], connection: TConnection): Promise<StatementResult[]>;
+	batch(queries: CompiledQuery[], connection: TConnection): Promise<StatementResult[]>;
 
 	/**
 	 * Called when the adapter is no longer required. The convention is that

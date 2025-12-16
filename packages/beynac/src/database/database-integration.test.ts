@@ -6,7 +6,7 @@ import { DatabaseImpl } from "./DatabaseImpl.ts";
 
 describe("Database integration", () => {
 	test("database is accessible via container when configured", () => {
-		const adapter = sqliteDatabase({ path: ":memory:" });
+		const adapter = sqliteDatabase({ path: ":memory:", transactionRetry: false });
 		const { app } = createTestApplication({ database: adapter });
 
 		expect(app.container.get(Database)).toBeInstanceOf(DatabaseImpl);

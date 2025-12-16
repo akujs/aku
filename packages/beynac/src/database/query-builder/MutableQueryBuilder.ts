@@ -2,19 +2,23 @@ import { BaseClass } from "../../utils.ts";
 import type { DatabaseGrammar, JoinType } from "../grammar/DatabaseGrammar.ts";
 import type { SqlFragments } from "../Statement.ts";
 import type { LockOptions } from "./QueryBuilder.ts";
+import { andClause, mergeFragments } from "./statement-utils.ts";
 
 const DEFAULT_LIMIT_FOR_OFFSET = 2 ** 31 - 1;
 
-type JoinEntry = [type: JoinType, clause: string];
+interface JoinEntry {
+	type: JoinType;
+	clause: SqlFragments;
+}
 
 export class MutableQueryBuilder extends BaseClass {
-	readonly #from: string;
+	readonly #from: SqlFragments;
 	readonly #grammar: DatabaseGrammar;
 	#joins: JoinEntry[] = [];
 	#select: string[] = [];
-	#where: string[] = [];
+	#where: SqlFragments[] = [];
 	#groupBy: string[] = [];
-	#having: string[] = [];
+	#having: SqlFragments[] = [];
 	#orderBy: string[] = [];
 	#limit: number | null = null;
 	#offset: number | null = null;
@@ -22,14 +26,14 @@ export class MutableQueryBuilder extends BaseClass {
 	#lockType?: "UPDATE" | "SHARE";
 	#lockOptions?: LockOptions | undefined;
 
-	constructor(from: string, grammar: DatabaseGrammar) {
+	constructor(from: SqlFragments, grammar: DatabaseGrammar) {
 		super();
 		this.#from = from;
 		this.#grammar = grammar;
 	}
 
-	pushJoin(type: JoinType, clause: string): void {
-		this.#joins.push([type, clause]);
+	pushJoin(type: JoinType, clause: SqlFragments): void {
+		this.#joins.push({ type, clause });
 	}
 
 	setSelect(columns: string[]): void {
@@ -40,7 +44,7 @@ export class MutableQueryBuilder extends BaseClass {
 		this.#select.push(...columns);
 	}
 
-	pushWhere(condition: string): void {
+	pushWhere(condition: SqlFragments): void {
 		this.#where.push(condition);
 	}
 
@@ -48,7 +52,7 @@ export class MutableQueryBuilder extends BaseClass {
 		this.#groupBy.push(...columns);
 	}
 
-	pushHaving(condition: string): void {
+	pushHaving(condition: SqlFragments): void {
 		this.#having.push(condition);
 	}
 
@@ -80,40 +84,34 @@ export class MutableQueryBuilder extends BaseClass {
 	compile(): SqlFragments {
 		const grammar = this.#grammar;
 
-		// If offset is set without limit, use a default high limit value
+		const select =
+			"SELECT" +
+			(this.#distinct ? " DISTINCT " : " ") +
+			(this.#select.length > 0 ? this.#select.join(", ") : "*");
+
 		const limit = this.#limit ?? (this.#offset !== null ? DEFAULT_LIMIT_FOR_OFFSET : null);
 
-		// Compile joins using grammar
-		const joinClauses = this.#joins.map(([type, clause]) => grammar.compileJoin(type, clause));
-
-		// Compile lock clause using grammar
-		const lockClause = this.#lockType ? grammar.compileLock(this.#lockType, this.#lockOptions) : "";
-
 		const parts = [
-			"SELECT",
-			this.#distinct && "DISTINCT",
-			this.#select.length > 0 ? this.#select.join(", ") : "*",
+			select,
 			"FROM",
 			this.#from,
-			...joinClauses,
-			andClause("WHERE", this.#where),
-			listClause("GROUP BY", this.#groupBy),
-			andClause("HAVING", this.#having),
-			listClause("ORDER BY", this.#orderBy),
-			limit !== null && `LIMIT ${limit}`,
-			this.#offset !== null && `OFFSET ${this.#offset}`,
-			lockClause,
+			...this.#joins.flatMap(({ type, clause }) => [grammar.compileJoin(type, "").trim(), clause]),
+			this.#where.length > 0 ? "WHERE" : null,
+			this.#where.length > 0 ? andClause(this.#where) : null,
+			this.#groupBy.length > 0 ? "GROUP BY " + this.#groupBy.join(", ") : null,
+			this.#having.length > 0 ? "HAVING" : null,
+			this.#having.length > 0 ? andClause(this.#having) : null,
+			this.#orderBy.length > 0 ? "ORDER BY " + this.#orderBy.join(", ") : null,
+			limit !== null ? `LIMIT ${limit}` : null,
+			this.#offset !== null ? `OFFSET ${this.#offset}` : null,
+			this.#lockType ? grammar.compileLock(this.#lockType, this.#lockOptions) : null,
 		];
 
-		const sql = grammar.quoteIdentifiers(parts.filter(Boolean).join(" "));
-		return { fragments: [sql], params: [] };
+		const merged = mergeFragments(...parts);
+
+		return {
+			fragments: merged.fragments.map((f) => grammar.quoteIdentifiers(f)),
+			params: merged.params,
+		};
 	}
-}
-
-function andClause(keyword: string, conditions: string[]): string | false {
-	return conditions.length > 0 && `${keyword} (${conditions.join(") AND (")})`;
-}
-
-function listClause(keyword: string, items: string[]): string | false {
-	return items.length > 0 && `${keyword} ${items.join(", ")}`;
 }

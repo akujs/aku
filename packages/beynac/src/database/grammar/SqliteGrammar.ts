@@ -1,5 +1,7 @@
 import type { SqliteTransactionMode } from "../DatabaseClient.ts";
 import { UnsupportedFeatureError } from "../database-errors.ts";
+import { renderSql } from "../query-builder/statement-render.ts";
+import type { SqlFragments } from "../Statement.ts";
 import { DatabaseGrammar, type JoinType, type TransactionBeginOptions } from "./DatabaseGrammar.ts";
 
 const SQLITE_MODE_SQL: Record<SqliteTransactionMode, string> = {
@@ -32,5 +34,9 @@ export class SqliteGrammar extends DatabaseGrammar {
 	 */
 	override compileLock(): string {
 		return "";
+	}
+
+	override compileStatement(statement: SqlFragments): string {
+		return renderSql(statement, () => "?");
 	}
 }

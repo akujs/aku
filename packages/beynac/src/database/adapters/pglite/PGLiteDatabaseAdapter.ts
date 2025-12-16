@@ -1,10 +1,10 @@
 import { PGlite } from "@electric-sql/pglite";
 import { BaseClass, type FifoLock, fifoLock } from "../../../utils.ts";
-import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
+import type { CompiledQuery, DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { PostgresGrammar } from "../../grammar/PostgresGrammar.ts";
-import type { Statement, StatementResult } from "../../Statement.ts";
+import type { StatementResult } from "../../Statement.ts";
 import type { PGLiteDatabaseAdapterConfig } from "./PGLiteDatabaseAdapterConfig.ts";
 
 // PGLite only supports single-connection access, so we use the PGlite instance
@@ -12,6 +12,7 @@ import type { PGLiteDatabaseAdapterConfig } from "./PGLiteDatabaseAdapterConfig.
 export class PGLiteDatabaseAdapter extends BaseClass implements DatabaseAdapter<PGlite> {
 	readonly grammar: DatabaseGrammar = new PostgresGrammar();
 	readonly supportsTransactions = true;
+	readonly transactionOptions = undefined;
 
 	readonly #db: PGlite;
 	readonly #lock: FifoLock<PGlite>;
@@ -31,10 +32,9 @@ export class PGLiteDatabaseAdapter extends BaseClass implements DatabaseAdapter<
 		this.#lock.release();
 	}
 
-	async run(statement: Statement, connection: PGlite): Promise<StatementResult> {
-		const sql = statement.renderSql((i) => `$${i + 1}`);
+	async run(sql: string, params: unknown[], connection: PGlite): Promise<StatementResult> {
 		try {
-			const result = await connection.query(sql, statement.params);
+			const result = await connection.query(sql, params);
 			return {
 				rows: result.rows as Record<string, unknown>[],
 				rowsAffected: result.rows.length > 0 ? result.rows.length : (result.affectedRows ?? 0),
@@ -44,10 +44,10 @@ export class PGLiteDatabaseAdapter extends BaseClass implements DatabaseAdapter<
 		}
 	}
 
-	async batch(statements: Statement[], connection: PGlite): Promise<StatementResult[]> {
+	async batch(queries: CompiledQuery[], connection: PGlite): Promise<StatementResult[]> {
 		const results: StatementResult[] = [];
-		for (const stmt of statements) {
-			results.push(await this.run(stmt, connection));
+		for (const { sql, params } of queries) {
+			results.push(await this.run(sql, params, connection));
 		}
 		return results;
 	}

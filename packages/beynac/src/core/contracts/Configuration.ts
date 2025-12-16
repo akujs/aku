@@ -198,16 +198,16 @@ export interface Configuration<RouteParams extends Record<string, string> = {}> 
 	 * @example
 	 * // Single database
 	 * {
-	 *   database: sqliteDatabase({ path: './data/app.db' }),
+	 *   database: sqliteDatabase({ path: './data/app.db', transactionRetry: true }),
 	 * }
 	 *
 	 * @example
 	 * // Multiple databases
 	 * {
 	 *   database: {
-	 *     default: sqliteDatabase({ path: './data/app.db' }),
+	 *     default: sqliteDatabase({ path: './data/app.db', transactionRetry: true }),
 	 *     additional: {
-	 *       analytics: postgresDatabase({ sql: postgres(...) }),
+	 *       analytics: postgresDatabase({ sql: postgres(...), transactionRetry: true }),
 	 *     }
 	 *   }
 	 * }

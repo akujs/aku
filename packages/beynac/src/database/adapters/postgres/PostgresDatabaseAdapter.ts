@@ -1,10 +1,11 @@
 import type { ReservedSql, Sql } from "postgres";
 import { BaseClass } from "../../../utils.ts";
-import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
+import type { CompiledQuery, DatabaseAdapter } from "../../DatabaseAdapter.ts";
+import type { TransactionOptions } from "../../DatabaseClient.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { PostgresGrammar } from "../../grammar/PostgresGrammar.ts";
-import type { Statement, StatementResult } from "../../Statement.ts";
+import type { StatementResult } from "../../Statement.ts";
 import type { PostgresDatabaseAdapterConfig } from "./PostgresDatabaseAdapterConfig.ts";
 
 type PostgresJS = Sql<Record<string, unknown>>;
@@ -16,12 +17,17 @@ export class PostgresDatabaseAdapter
 {
 	readonly grammar: DatabaseGrammar = new PostgresGrammar();
 	readonly supportsTransactions = true;
+	readonly transactionOptions: TransactionOptions;
 
 	readonly #sql: PostgresJS;
 
 	constructor(config: PostgresDatabaseAdapterConfig) {
 		super();
 		this.#sql = config.sql as PostgresJS;
+		this.transactionOptions = Object.freeze({
+			retry: config.transactionRetry,
+			isolation: config.transactionIsolation,
+		});
 	}
 
 	async acquireConnection(): Promise<PostgresConnection> {
@@ -32,25 +38,31 @@ export class PostgresDatabaseAdapter
 		connection.release();
 	}
 
-	async run(statement: Statement, connection: PostgresConnection): Promise<StatementResult> {
-		const sqlString = toSql(statement);
+	async run(
+		sql: string,
+		params: unknown[],
+		connection: PostgresConnection,
+	): Promise<StatementResult> {
 		try {
-			const result = await connection.unsafe(sqlString, statement.params);
+			const result = await connection.unsafe(sql, params);
 			return {
 				rows: result as Record<string, unknown>[],
 				rowsAffected: result.count ?? result.length,
 			};
 		} catch (error) {
-			throw makeQueryError(sqlString, error);
+			throw makeQueryError(sql, error);
 		}
 	}
 
-	async batch(statements: Statement[], connection: PostgresConnection): Promise<StatementResult[]> {
-		if (statements.length === 0) return [];
+	async batch(
+		queries: CompiledQuery[],
+		connection: PostgresConnection,
+	): Promise<StatementResult[]> {
+		if (queries.length === 0) return [];
 
 		// Postgres.js will use pipelining to send queries serially but
 		// without waiting for each
-		return Promise.all(statements.map((stmt) => this.run(stmt, connection)));
+		return Promise.all(queries.map(({ sql, params }) => this.run(sql, params, connection)));
 	}
 
 	dispose(): void {}
@@ -59,10 +71,6 @@ export class PostgresDatabaseAdapter
 interface PostgresError {
 	code?: string;
 	message?: string;
-}
-
-function toSql(statement: Statement): string {
-	return statement.renderSql((i) => `$${i + 1}`);
 }
 
 function makeQueryError(sql: string, cause: unknown): QueryError {

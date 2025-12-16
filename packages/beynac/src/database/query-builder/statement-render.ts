@@ -1,6 +1,9 @@
 import type { SqlFragments } from "../Statement.ts";
 
-// Render SQL with custom placeholders by interleaving fragments and placeholders
+export function toHumanReadableSql(statement: SqlFragments): string {
+	return renderSql(statement, (i) => `[$${i + 1}: ${renderParam(statement.params[i])}]`);
+}
+
 export function renderSql(
 	{ fragments, params }: SqlFragments,
 	renderPlaceholder: (index: number) => string,
@@ -13,10 +16,6 @@ export function renderSql(
 		}
 	}
 	return result;
-}
-
-export function renderForLogs(fragments: SqlFragments): string {
-	return renderSql(fragments, (i) => `[Param#${i + 1}: ${renderParam(fragments.params[i])}]`);
 }
 
 function renderParam(value: unknown): string {

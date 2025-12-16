@@ -10,7 +10,8 @@ import type { SqliteDatabaseAdapterConfig } from "./SqliteDatabaseAdapterConfig.
  * @example
  * createApplication({
  *   database: sqliteDatabase({
- *     rootPath: '/var/storage/sqlite.db'
+ *     path: '/var/storage/sqlite.db',
+ *     transactionRetry: true,
  *   }),
  *   ...
  * });
