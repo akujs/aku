@@ -1,20 +1,40 @@
 import type { SqlFragments } from "../Statement.ts";
+import { expandArraysAndSubqueries, getSqlFragmentsParams } from "./statement-utils.ts";
 
 export function toHumanReadableSql(statement: SqlFragments): string {
-	return renderSql(statement, (i) => `[$${i + 1}: ${renderParam(statement.params[i])}]`);
+	const expanded = expandArraysAndSubqueries(statement);
+	const params = getSqlFragmentsParams(expanded);
+	let paramIndex = 0;
+	return renderSqlFragments(expanded, () => {
+		const param = params[paramIndex];
+		return `[$${++paramIndex}: ${renderParam(param)}]`;
+	});
 }
 
-export function renderSql(
-	{ fragments, params }: SqlFragments,
+export function renderSqlFragments(
+	statement: SqlFragments,
 	renderPlaceholder: (index: number) => string,
 ): string {
 	let result = "";
-	for (let i = 0; i < fragments.length; i++) {
-		result += fragments[i];
-		if (i < params.length) {
-			result += renderPlaceholder(i);
+	let paramIndex = 0;
+
+	for (const item of statement.sqlFragments) {
+		const sql = typeof item === "string" ? item : item.sql;
+
+		const prevEndsWithSpace = /\s$/.test(result);
+		const nextStartsWithSpace = /^\s/.test(sql);
+		const nextStartsWithComma = sql.startsWith(",");
+		if (result && !prevEndsWithSpace && !nextStartsWithSpace && !nextStartsWithComma) {
+			result += " ";
+		}
+
+		if (typeof item === "string") {
+			result += item;
+		} else {
+			result += item.sql + renderPlaceholder(paramIndex++);
 		}
 	}
+
 	return result;
 }
 

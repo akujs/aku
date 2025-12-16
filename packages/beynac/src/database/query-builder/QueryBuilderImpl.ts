@@ -1,6 +1,5 @@
-import { BaseClass } from "../../utils.ts";
 import type { DatabaseGrammar } from "../grammar/DatabaseGrammar.ts";
-import type { SqlFragments, Statement } from "../Statement.ts";
+import { type SqlFragment, SqlFragments, type Statement } from "../Statement.ts";
 import { MutableQueryBuilder } from "./MutableQueryBuilder.ts";
 import type { PlaceholderArgs } from "./placeholder-types.ts";
 import type {
@@ -9,29 +8,25 @@ import type {
 	SelectQueryBuilder,
 } from "./QueryBuilder.ts";
 import { toHumanReadableSql } from "./statement-render.ts";
-import { toStatement } from "./statement-utils.ts";
+import { splitSqlToFragments } from "./statement-utils.ts";
 
-export class QueryBuilderImpl extends BaseClass implements Statement {
+export class QueryBuilderImpl extends SqlFragments implements Statement {
 	readonly #from: SqlFragments;
 	readonly #grammar: DatabaseGrammar;
 	readonly #commands: Command[];
 	readonly #length: number;
-	#cachedBuild: { fragments: readonly string[]; params: unknown[] } | null = null;
+	#cachedBuild: SqlFragments | null = null;
 
 	constructor(from: SqlFragments, grammar: DatabaseGrammar, commands: Command[]) {
-		super();
+		super([]);
 		this.#from = from;
 		this.#grammar = grammar;
 		this.#commands = commands;
 		this.#length = commands.length;
 	}
 
-	get fragments(): readonly string[] {
-		return this.#getBuild().fragments;
-	}
-
-	get params(): unknown[] {
-		return this.#getBuild().params;
+	override get sqlFragments(): readonly (string | SqlFragment)[] {
+		return this.#getBuild().sqlFragments;
 	}
 
 	toHumanReadableSql(): string {
@@ -75,7 +70,7 @@ export class QueryBuilderImpl extends BaseClass implements Statement {
 	}
 
 	crossJoin(table: string): this {
-		return this.#derive("pushJoin", ["CROSS JOIN", { fragments: [table], params: [] }]);
+		return this.#derive("pushJoin", ["CROSS JOIN", new SqlFragments([table])]);
 	}
 
 	// Select methods
@@ -145,7 +140,7 @@ export class QueryBuilderImpl extends BaseClass implements Statement {
 
 	static from(table: string, grammar: DatabaseGrammar): DefaultColumnsQueryBuilder {
 		return new QueryBuilderImpl(
-			{ fragments: [table], params: [] },
+			new SqlFragments([table]),
 			grammar,
 			[],
 		) as DefaultColumnsQueryBuilder;
@@ -186,11 +181,8 @@ function resolveToStatement(
 	values: unknown[],
 ): SqlFragments {
 	if (typeof conditionOrStatement === "string") {
-		return toStatement(conditionOrStatement, values);
+		return splitSqlToFragments(conditionOrStatement, values);
 	}
-	// It's already a Statement - extract fragments and params
-	return {
-		fragments: [...conditionOrStatement.fragments],
-		params: [...conditionOrStatement.params],
-	};
+	// It's already a Statement which extends SqlFragments
+	return conditionOrStatement;
 }

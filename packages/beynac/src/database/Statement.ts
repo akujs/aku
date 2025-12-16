@@ -1,6 +1,25 @@
-export interface SqlFragments {
-	readonly fragments: readonly string[];
-	readonly params: unknown[];
+import { BaseClass } from "../utils.ts";
+
+export interface SqlFragment {
+	sql: string;
+	param: unknown;
+}
+
+export class SqlFragments extends BaseClass {
+	readonly #sqlFragments: readonly (string | SqlFragment)[];
+
+	constructor(sqlFragments: (string | SqlFragment)[]) {
+		super();
+		this.#sqlFragments = sqlFragments;
+	}
+
+	get sqlFragments(): readonly (string | SqlFragment)[] {
+		return this.#sqlFragments;
+	}
+}
+
+export function isSqlFragments(value: unknown): value is SqlFragments {
+	return value instanceof SqlFragments;
 }
 
 export interface Statement extends SqlFragments {

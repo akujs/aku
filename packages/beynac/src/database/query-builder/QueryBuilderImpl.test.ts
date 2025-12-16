@@ -9,33 +9,24 @@ import { PostgresGrammar } from "../grammar/PostgresGrammar.ts";
 import { sql } from "../sql.ts";
 import { QueryBuilderImpl } from "./QueryBuilderImpl.ts";
 
-// For structural tests that don't execute against a database, use PostgresGrammar
-// since it supports all features. For database execution tests, use db.from()
-// which automatically uses the correct grammar.
 const grammar = new PostgresGrammar();
 const from = (table: string) => QueryBuilderImpl.from(table, grammar);
-
-// =============================================================================
-// SQL Structure Tests
-// These tests verify SQL generation without executing against a database.
-// Used for: immutability guarantees and type constraints.
-// =============================================================================
 
 describe(QueryBuilderImpl, () => {
 	describe("immutability", () => {
 		test(".where creates a new copy and does not change the original", () => {
-			const base = from("artists").where("active = true");
+			const base = from("artists").where("active = TRUE");
 			const young = base.where("age < 30");
 			const old = base.where("age >= 60");
 
 			expect(base.toHumanReadableSql()).toMatchInlineSnapshot(
-				`"SELECT * FROM "artists" WHERE ("active" = "true")"`,
+				`"SELECT * FROM "artists" WHERE ( "active" = TRUE )"`,
 			);
 			expect(young.toHumanReadableSql()).toMatchInlineSnapshot(
-				`"SELECT * FROM "artists" WHERE ("active" = "true") AND ("age" < 30)"`,
+				`"SELECT * FROM "artists" WHERE ( "active" = TRUE ) AND ( "age" < 30 )"`,
 			);
 			expect(old.toHumanReadableSql()).toMatchInlineSnapshot(
-				`"SELECT * FROM "artists" WHERE ("active" = "true") AND ("age" >= 60)"`,
+				`"SELECT * FROM "artists" WHERE ( "active" = TRUE ) AND ( "age" >= 60 )"`,
 			);
 		});
 
@@ -44,9 +35,15 @@ describe(QueryBuilderImpl, () => {
 			const young = base.where("age < ?", 30);
 			const old = base.where("age >= ?", 60);
 
-			expect(base.params).toEqual(["active"]);
-			expect(young.params).toEqual(["active", 30]);
-			expect(old.params).toEqual(["active", 60]);
+			expect(base.toHumanReadableSql()).toMatchInlineSnapshot(
+				`"SELECT * FROM "artists" WHERE ( "status" = [$1: "active"] )"`,
+			);
+			expect(young.toHumanReadableSql()).toMatchInlineSnapshot(
+				`"SELECT * FROM "artists" WHERE ( "status" = [$1: "active"] ) AND ( "age" < [$2: 30] )"`,
+			);
+			expect(old.toHumanReadableSql()).toMatchInlineSnapshot(
+				`"SELECT * FROM "artists" WHERE ( "status" = [$1: "active"] ) AND ( "age" >= [$2: 60] )"`,
+			);
 		});
 	});
 
@@ -83,7 +80,11 @@ describe(QueryBuilderImpl, () => {
 
 	describe("positional parameters", () => {
 		test("runtime error for arity mismatch with non-literal strings", () => {
-			expect(() => from("t").where("a = ? AND b = ?" as string, 1)).toThrow("expected 2");
+			expect(() =>
+				from("t").where("a = ? AND b = ?" as string, 1),
+			).toThrowErrorMatchingInlineSnapshot(
+				`"SQL placeholder count mismatch: found 2 '?' placeholder markers but got 1 parameter. SQL: "a = ? AND b = ?". Consider using sql\`...\` if you need to include literal "?" characters in your SQL."`,
+			);
 		});
 	});
 });
@@ -210,7 +211,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 			// clauses should be wrapped in parentheses
 			expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
-				`"SELECT "name" FROM "members" WHERE ("score" > 20) AND ("score" < 50) ORDER BY "id""`,
+				`"SELECT "name" FROM "members" WHERE ( "score" > 20 ) AND ( "score" < 50 ) ORDER BY "id""`,
 			);
 		});
 
@@ -384,7 +385,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 			const result = await db.all(query);
 			expect(result).toEqual([{ team_id: 1, count: 3 }]);
 			expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
-				`"SELECT "team_id", COUNT(*) AS "count" FROM "members" GROUP BY "team_id" HAVING (COUNT(*) > 2) AND (SUM("score") > 0) ORDER BY "team_id""`,
+				`"SELECT "team_id", COUNT(*) AS "count" FROM "members" GROUP BY "team_id" HAVING ( COUNT(*) > 2 ) AND ( SUM("score") > 0 ) ORDER BY "team_id""`,
 			);
 		});
 	});
@@ -680,7 +681,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 			const query = db.from("teams").select("id", "name").where("id IN ?", subquery).orderBy("id");
 			expect(await db.all(query)).toEqual([{ id: 1, name: "team_a" }]);
 			expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
-				`"SELECT "id", "name" FROM "teams" WHERE ("id" IN (SELECT "team_id" FROM "members" WHERE ("score" > [$1: 40]))) ORDER BY "id""`,
+				`"SELECT "id", "name" FROM "teams" WHERE ( "id" IN ( SELECT "team_id" FROM "members" WHERE ( "score" > [$1: 40] ) ) ) ORDER BY "id""`,
 			);
 		});
 

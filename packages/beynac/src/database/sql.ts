@@ -1,5 +1,6 @@
 import type { ExecutableStatement } from "./ExecutableStatement.ts";
 import { ExecutableStatementImpl } from "./ExecutableStatementImpl.ts";
+import type { SqlFragment } from "./Statement.ts";
 
 export interface SqlApi {
 	(strings: TemplateStringsArray, ...values: unknown[]): ExecutableStatement;
@@ -16,11 +17,19 @@ export interface SqlApi {
  */
 export const sql: SqlApi = Object.assign(
 	(strings: TemplateStringsArray, ...values: unknown[]): ExecutableStatement => {
-		return new ExecutableStatementImpl(strings, values);
+		const fragments: (string | SqlFragment)[] = [];
+		for (let i = 0; i < strings.length; i++) {
+			if (i < values.length) {
+				fragments.push({ sql: strings[i], param: values[i] });
+			} else if (strings[i]) {
+				fragments.push(strings[i]);
+			}
+		}
+		return new ExecutableStatementImpl(fragments);
 	},
 	{
 		raw(sqlString: string): ExecutableStatement {
-			return new ExecutableStatementImpl([sqlString], []);
+			return new ExecutableStatementImpl([sqlString]);
 		},
 	},
 );

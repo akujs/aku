@@ -187,7 +187,7 @@ function makeQueryError(sql: string, cause: unknown): QueryError {
 }
 
 const sqliteErrorCodes = new Map<number, [string, string]>([
-	[1, ["SQLITE_ERROR", "Generic error"]],
+	[1, ["SQLITE_ERROR", "SQLite error"]],
 	[2, ["SQLITE_INTERNAL", "Internal logic error in SQLite"]],
 	[3, ["SQLITE_PERM", "Access permission denied"]],
 	[4, ["SQLITE_ABORT", "Callback routine requested an abort"]],

@@ -19,6 +19,10 @@ import {
 } from "./database-events.ts";
 import type { DefaultColumnsQueryBuilder } from "./query-builder/QueryBuilder.ts";
 import { QueryBuilderImpl } from "./query-builder/QueryBuilderImpl.ts";
+import {
+	expandArraysAndSubqueries,
+	getSqlFragmentsParams,
+} from "./query-builder/statement-utils.ts";
 import type { Row, Statement, StatementResult } from "./Statement.ts";
 
 let nextTransactionId = 1;
@@ -71,10 +75,11 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 			const startEvent = new QueryExecutingEvent(this.#getEventInit({ statement }));
 			this.#dispatcher.dispatchIfHasListeners(QueryExecutingEvent, () => startEvent);
 
-			const sqlString = this.#adapter.grammar.compileStatement(statement);
+			const expanded = expandArraysAndSubqueries(statement);
+			const sqlString = this.#adapter.grammar.compileStatement(expanded);
 
 			return this.#enrichError(() =>
-				this.#adapter.run(sqlString, [...statement.params], connection),
+				this.#adapter.run(sqlString, getSqlFragmentsParams(expanded), connection),
 			).then(
 				(result) => {
 					this.#dispatcher.dispatchIfHasListeners(
@@ -136,10 +141,13 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 			return [];
 		}
 		const grammar = this.#adapter.grammar;
-		const queries = statements.map((stmt) => ({
-			sql: grammar.compileStatement(stmt),
-			params: [...stmt.params],
-		}));
+		const queries = statements.map((stmt) => {
+			const expanded = expandArraysAndSubqueries(stmt);
+			return {
+				sql: grammar.compileStatement(expanded),
+				params: getSqlFragmentsParams(expanded),
+			};
+		});
 		if (this.#adapter.supportsTransactions) {
 			return this.transaction(() => {
 				const ctx = this.#connectionStorage.getStore()!;

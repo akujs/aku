@@ -1,8 +1,7 @@
 import { BaseClass } from "../../utils.ts";
 import type { DatabaseGrammar, JoinType } from "../grammar/DatabaseGrammar.ts";
-import type { SqlFragments } from "../Statement.ts";
+import { type SqlFragment, SqlFragments } from "../Statement.ts";
 import type { LockOptions } from "./QueryBuilder.ts";
-import { andClause, mergeFragments } from "./statement-utils.ts";
 
 const DEFAULT_LIMIT_FOR_OFFSET = 2 ** 31 - 1;
 
@@ -96,12 +95,10 @@ export class MutableQueryBuilder extends BaseClass {
 			"FROM",
 			this.#from,
 			...this.#joins.flatMap(({ type, clause }) => [grammar.compileJoin(type, "").trim(), clause]),
-			this.#where.length > 0 ? "WHERE" : null,
-			this.#where.length > 0 ? andClause(this.#where) : null,
-			this.#groupBy.length > 0 ? "GROUP BY " + this.#groupBy.join(", ") : null,
-			this.#having.length > 0 ? "HAVING" : null,
-			this.#having.length > 0 ? andClause(this.#having) : null,
-			this.#orderBy.length > 0 ? "ORDER BY " + this.#orderBy.join(", ") : null,
+			...andClause("WHERE", this.#where),
+			...listClause("GROUP BY", this.#groupBy),
+			...andClause("HAVING", this.#having),
+			...listClause("ORDER BY", this.#orderBy),
 			limit !== null ? `LIMIT ${limit}` : null,
 			this.#offset !== null ? `OFFSET ${this.#offset}` : null,
 			this.#lockType ? grammar.compileLock(this.#lockType, this.#lockOptions) : null,
@@ -109,9 +106,55 @@ export class MutableQueryBuilder extends BaseClass {
 
 		const merged = mergeFragments(...parts);
 
-		return {
-			fragments: merged.fragments.map((f) => grammar.quoteIdentifiers(f)),
-			params: merged.params,
-		};
+		const quotedItems = merged.sqlFragments.map((item): string | SqlFragment => {
+			if (typeof item === "string") {
+				return grammar.quoteIdentifiers(item);
+			}
+			return { sql: grammar.quoteIdentifiers(item.sql), param: item.param };
+		});
+
+		return new SqlFragments(quotedItems);
 	}
+}
+
+function listClause(type: string, items: string[]): Array<SqlFragments | string> {
+	if (items.length === 0) {
+		return [];
+	}
+
+	return [type, items.join(", ")];
+}
+
+function andClause(type: string, conditions: SqlFragments[]): Array<SqlFragments | string> {
+	if (conditions.length === 0) {
+		return [];
+	}
+
+	const result: Array<SqlFragments | string> = [type];
+
+	result.push("(");
+	for (let i = 0; i < conditions.length; i++) {
+		if (i > 0) {
+			result.push(") AND (");
+		}
+		result.push(conditions[i]);
+	}
+	result.push(")");
+
+	return result;
+}
+
+function mergeFragments(...parts: Array<string | SqlFragments | null | undefined>): SqlFragments {
+	const items: (string | SqlFragment)[] = [];
+
+	for (const part of parts) {
+		if (!part) continue;
+		if (typeof part === "string") {
+			items.push(part);
+		} else {
+			items.push(...part.sqlFragments);
+		}
+	}
+
+	return new SqlFragments(items);
 }

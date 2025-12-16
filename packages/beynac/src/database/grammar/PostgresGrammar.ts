@@ -1,4 +1,4 @@
-import { renderSql } from "../query-builder/statement-render.ts";
+import { renderSqlFragments } from "../query-builder/statement-render.ts";
 import type { SqlFragments } from "../Statement.ts";
 import { DatabaseGrammar, type TransactionBeginOptions } from "./DatabaseGrammar.ts";
 
@@ -19,6 +19,6 @@ export class PostgresGrammar extends DatabaseGrammar {
 	}
 
 	override compileStatement(statement: SqlFragments): string {
-		return renderSql(statement, (i) => `$${i + 1}`);
+		return renderSqlFragments(statement, (i) => `$${i + 1}`);
 	}
 }

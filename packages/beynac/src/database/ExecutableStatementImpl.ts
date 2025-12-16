@@ -1,23 +1,19 @@
 import { getFacadeApplication } from "../core/facade.ts";
 import type { DatabaseClient } from "./DatabaseClient.ts";
 import type { ExecutableStatement } from "./ExecutableStatement.ts";
-import type { Row, StatementResult } from "./Statement.ts";
+import type { Row, SqlFragment, StatementResult } from "./Statement.ts";
 import { StatementImpl } from "./StatementImpl.ts";
 
 export class ExecutableStatementImpl extends StatementImpl implements ExecutableStatement {
 	readonly #clientName: string | undefined;
 
-	constructor(
-		strings: TemplateStringsArray | readonly string[],
-		values: unknown[],
-		clientName?: string,
-	) {
-		super(strings, values);
+	constructor(sqlFragments: (string | SqlFragment)[], clientName?: string) {
+		super(sqlFragments);
 		this.#clientName = clientName;
 	}
 
 	on(clientName: string): ExecutableStatement {
-		return new ExecutableStatementImpl(this.fragments, this.params, clientName);
+		return new ExecutableStatementImpl([...this.sqlFragments], clientName);
 	}
 
 	run(): Promise<StatementResult> {
