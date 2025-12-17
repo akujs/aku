@@ -22,7 +22,7 @@ export class PostgresGrammar extends DatabaseGrammar {
 		return renderSqlFragments(statement, (i) => `$${i + 1}`);
 	}
 
-	override compileDefaultValuesRow(): string {
-		return "(DEFAULT)";
+	override compileInsertDefaultValueRows(count: number): string {
+		return "VALUES " + Array(count).fill("(DEFAULT)").join(", ");
 	}
 }

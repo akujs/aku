@@ -40,7 +40,7 @@ export class SqliteGrammar extends DatabaseGrammar {
 		return renderSqlFragments(statement, () => "?");
 	}
 
-	override compileDefaultValuesRow(): string {
-		throw new UnsupportedFeatureError("inserting multiple rows with empty objects", "SQLite");
+	override compileInsertDefaultValueRows(count: number): string {
+		return "(_rowid_) VALUES " + Array(count).fill("(NULL)").join(", ");
 	}
 }

@@ -757,24 +757,14 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 
 		// TODO: Add test for empty object {} with returning() when returning() is implemented
 
-		if (dialect === "postgresql") {
-			test("multiple empty objects [{}, {}, {}] inserts multiple rows with defaults", async () => {
-				const result = await db.table("test_mutations").insert([{}, {}, {}]);
-				expect(result.rowsAffected).toBe(3);
+		test("multiple empty objects [{}, {}, {}] inserts multiple rows with defaults", async () => {
+			const result = await db.table("test_mutations").insert([{}, {}, {}]);
+			expect(result.rowsAffected).toBe(3);
 
-				const rows = await db.table("test_mutations").all();
-				expect(rows.length).toBe(3);
-				expect(rows.every((r) => r.name === "default_name" && r.value === 42)).toBe(true);
-			});
-		}
-
-		if (dialect === "sqlite") {
-			test("multiple empty objects [{}, {}, {}] throws UnsupportedFeatureError", async () => {
-				await expect(
-					Promise.resolve(db.table("test_mutations").insert([{}, {}, {}])),
-				).rejects.toThrow(/SQLite does not support inserting multiple rows with empty objects/i);
-			});
-		}
+			const rows = await db.table("test_mutations").all();
+			expect(rows.length).toBe(3);
+			expect(rows.every((r) => r.name === "default_name" && r.value === 42)).toBe(true);
+		});
 
 		test("empty array [] returns early without hitting database when awaited", async () => {
 			const result = await db.table("test_mutations").insert([]);

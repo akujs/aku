@@ -2,7 +2,7 @@ import { BaseClass } from "../../utils.ts";
 import type { JoinEntry, JoinType, LockOptions, QueryParts, SqlFragments } from "../query-types.ts";
 
 export class MutableQueryBuilder extends BaseClass implements QueryParts {
-	readonly from: SqlFragments;
+	readonly table: string;
 	joins: JoinEntry[] = [];
 	select: string[] = [];
 	where: SqlFragments[] = [];
@@ -18,9 +18,9 @@ export class MutableQueryBuilder extends BaseClass implements QueryParts {
 	updateData: Record<string, unknown> | null = null;
 	isDelete: boolean = false;
 
-	constructor(from: SqlFragments) {
+	constructor(table: string) {
 		super();
-		this.from = from;
+		this.table = table;
 	}
 
 	pushJoin(type: JoinType, clause: SqlFragments): void {

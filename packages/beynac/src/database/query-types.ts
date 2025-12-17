@@ -28,7 +28,7 @@ export interface JoinEntry {
 }
 
 export interface QueryParts {
-	readonly from: SqlFragments;
+	readonly table: string;
 	readonly joins: readonly JoinEntry[];
 	readonly select: readonly string[];
 	readonly where: readonly SqlFragments[];

@@ -73,9 +73,9 @@ export abstract class DatabaseGrammar extends BaseClass {
 	abstract compileFragments(statement: SqlFragments): string;
 
 	/**
-	 * Compile a single row placeholder for INSERT with empty object {}.
+	 * Compile the columns and VALUES clause for inserting multiple rows with all default values.
 	 */
-	abstract compileDefaultValuesRow(): string;
+	abstract compileInsertDefaultValueRows(count: number): string;
 
 	/**
 	 * Compile a query from builder state, dispatching to the appropriate
@@ -108,7 +108,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 		return this.#mergeAndQuote([
 			selectClause,
 			"FROM",
-			state.from,
+			state.table,
 			...state.joins.flatMap(({ type, clause }) => [this.compileJoin(type, "").trim(), clause]),
 			...andClause("WHERE", state.where),
 			...listClause("GROUP BY", state.groupBy),
@@ -134,16 +134,19 @@ export abstract class DatabaseGrammar extends BaseClass {
 		// Empty object {} means use default values for all columns
 		if (columns.length === 0) {
 			if (rows.length === 1) {
-				return this.#mergeAndQuote(["INSERT INTO", state.from, "DEFAULT VALUES"]);
+				return this.#mergeAndQuote(["INSERT INTO", state.table, "DEFAULT VALUES"]);
 			}
 			// Multiple empty objects - use dialect-specific syntax
-			const defaultRows = rows.map(() => this.compileDefaultValuesRow());
-			return this.#mergeAndQuote(["INSERT INTO", state.from, "VALUES", defaultRows.join(", ")]);
+			return this.#mergeAndQuote([
+				"INSERT INTO",
+				state.table,
+				this.compileInsertDefaultValueRows(rows.length),
+			]);
 		}
 
 		return this.#mergeAndQuote([
 			"INSERT INTO",
-			state.from,
+			state.table,
 			...bracketedCommaSeparatedFragments(columns),
 			"VALUES",
 			...commaSeparatedFragments(
@@ -168,7 +171,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 
 		return this.#mergeAndQuote([
 			"UPDATE",
-			state.from,
+			state.table,
 			"SET",
 			...commaSeparatedFragments(setClauses),
 			...andClause("WHERE", state.where),
@@ -179,7 +182,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 	 * Compile a DELETE query from builder state.
 	 */
 	compileDelete(state: QueryParts): SqlFragments {
-		return this.#mergeAndQuote(["DELETE FROM", state.from, ...andClause("WHERE", state.where)]);
+		return this.#mergeAndQuote(["DELETE FROM", state.table, ...andClause("WHERE", state.where)]);
 	}
 
 	#mergeAndQuote(parts: Array<StringOrFragment | SqlFragments | null | undefined>): SqlFragments {

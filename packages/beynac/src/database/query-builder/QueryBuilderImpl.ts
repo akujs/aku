@@ -16,7 +16,7 @@ import { toHumanReadableSql } from "./statement-render.ts";
 import { splitSqlToFragments } from "./statement-utils.ts";
 
 export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQueryBuilder {
-	readonly #from: SqlFragments;
+	readonly #from: string;
 	readonly #grammar: DatabaseGrammar;
 	readonly #client: DatabaseClient;
 	readonly #commands: Command[];
@@ -24,12 +24,7 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 	#cachedParts: QueryParts | null = null;
 	#cachedBuild: SqlFragments | null = null;
 
-	constructor(
-		from: SqlFragments,
-		grammar: DatabaseGrammar,
-		client: DatabaseClient,
-		commands: Command[],
-	) {
+	constructor(from: string, grammar: DatabaseGrammar, client: DatabaseClient, commands: Command[]) {
 		super([]); // We override sqlFragments getter, so this is unused
 		this.#from = from;
 		this.#grammar = grammar;
@@ -180,7 +175,7 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 	};
 
 	static table(table: string, grammar: DatabaseGrammar, client: DatabaseClient): QueryBuilder {
-		return new QueryBuilderImpl({ sqlFragments: [table] }, grammar, client, []);
+		return new QueryBuilderImpl(table, grammar, client, []);
 	}
 
 	#isEmptyArrayInsert(): boolean {
