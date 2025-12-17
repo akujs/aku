@@ -17,13 +17,12 @@ import {
 	TransactionPreCommitEvent,
 	TransactionRetryingEvent,
 } from "./database-events.ts";
-import type { DefaultColumnsQueryBuilder } from "./query-builder/QueryBuilder.ts";
 import { QueryBuilderImpl } from "./query-builder/QueryBuilderImpl.ts";
 import {
 	expandArraysAndSubqueries,
 	getSqlFragmentsParams,
 } from "./query-builder/statement-utils.ts";
-import type { Row, Statement, StatementResult } from "./Statement.ts";
+import type { QueryBuilder, Row, Statement, StatementResult } from "./query-types.ts";
 
 let nextTransactionId = 1;
 
@@ -367,8 +366,8 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 		return rows.map((row) => Object.values(row)[0]) as T[];
 	}
 
-	from(table: string): DefaultColumnsQueryBuilder {
-		return QueryBuilderImpl.from(table, this.#adapter.grammar);
+	table(table: string): QueryBuilder {
+		return QueryBuilderImpl.table(table, this.#adapter.grammar);
 	}
 }
 

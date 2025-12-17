@@ -1,9 +1,8 @@
 import { BaseClass } from "../../utils.ts";
 import type { TransactionOptions } from "../DatabaseClient.ts";
 import type { SqlDialect } from "../query-builder/dialect.ts";
-import type { LockOptions } from "../query-builder/QueryBuilder.ts";
 import { quoteIdentifiers } from "../query-builder/quoteIdentifiers.ts";
-import type { SqlFragments } from "../Statement.ts";
+import type { LockOptions, SqlFragments } from "../query-types.ts";
 
 export type TransactionBeginOptions = Pick<TransactionOptions, "isolation" | "sqliteMode">;
 

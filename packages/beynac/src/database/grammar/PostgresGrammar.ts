@@ -1,5 +1,5 @@
 import { renderSqlFragments } from "../query-builder/statement-render.ts";
-import type { SqlFragments } from "../Statement.ts";
+import type { SqlFragments } from "../query-types.ts";
 import { DatabaseGrammar, type TransactionBeginOptions } from "./DatabaseGrammar.ts";
 
 const ISOLATION_LEVEL_SQL: Record<string, string> = {

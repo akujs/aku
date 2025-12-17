@@ -1,6 +1,5 @@
 import type { RetryOptions } from "../helpers/async/retry.ts";
-import type { DefaultColumnsQueryBuilder } from "./query-builder/QueryBuilder.ts";
-import type { Row, Statement, StatementResult } from "./Statement.ts";
+import type { QueryBuilder, Row, Statement, StatementResult } from "./query-types.ts";
 
 export type IsolationLevel = "read-committed" | "repeatable-read" | "serializable";
 
@@ -208,7 +207,7 @@ export interface DatabaseClient {
 	 * Create a query builder for the specified table.
 	 *
 	 * @example
-	 * const users = await db.from("users").where("active = true").all();
+	 * const users = await db.table("users").where("active = true").all();
 	 */
-	from(table: string): DefaultColumnsQueryBuilder;
+	table(table: string): QueryBuilder;
 }

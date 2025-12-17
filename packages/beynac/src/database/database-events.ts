@@ -1,6 +1,6 @@
 import { BeynacEvent } from "../core/core-events.ts";
 import type { DatabaseError } from "./database-errors.ts";
-import type { Statement, StatementResult } from "./Statement.ts";
+import type { Statement, StatementResult } from "./query-types.ts";
 
 type DatabaseEventType =
 	| "query:execute"

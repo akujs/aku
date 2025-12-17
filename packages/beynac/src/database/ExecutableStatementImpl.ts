@@ -1,13 +1,21 @@
 import { getFacadeApplication } from "../core/facade.ts";
 import type { DatabaseClient } from "./DatabaseClient.ts";
-import type { ExecutableStatement } from "./ExecutableStatement.ts";
-import type { Row, SqlFragment, StatementResult } from "./Statement.ts";
+import type {
+	ExecutableStatement,
+	ExecutableStatementWithoutClient,
+	Row,
+	StatementResult,
+	StringOrFragment,
+} from "./query-types.ts";
 import { StatementImpl } from "./StatementImpl.ts";
 
-export class ExecutableStatementImpl extends StatementImpl implements ExecutableStatement {
+export class ExecutableStatementImpl
+	extends StatementImpl
+	implements ExecutableStatementWithoutClient
+{
 	readonly #clientName: string | undefined;
 
-	constructor(sqlFragments: (string | SqlFragment)[], clientName?: string) {
+	constructor(sqlFragments: StringOrFragment[], clientName?: string) {
 		super(sqlFragments);
 		this.#clientName = clientName;
 	}
@@ -48,8 +56,8 @@ export class ExecutableStatementImpl extends StatementImpl implements Executable
 		return this.#getClient().column<T>(this);
 	}
 
-	// oxlint-disable-next-line unicorn/no-thenable -- intentionally thenable so `await sql`...`` works
-	then: ExecutableStatement["then"] = (onfulfilled, onrejected) => {
+	// oxlint-disable-next-line unicorn/no-thenable -- intentionally awaitable API
+	then: ExecutableStatementWithoutClient["then"] = (onfulfilled, onrejected) => {
 		return this.all().then(onfulfilled, onrejected);
 	};
 

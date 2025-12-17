@@ -1,10 +1,9 @@
-import type { ExecutableStatement } from "./ExecutableStatement.ts";
 import { ExecutableStatementImpl } from "./ExecutableStatementImpl.ts";
-import type { SqlFragment } from "./Statement.ts";
+import type { ExecutableStatementWithoutClient, StringOrFragment } from "./query-types.ts";
 
 export interface SqlApi {
-	(strings: TemplateStringsArray, ...values: unknown[]): ExecutableStatement;
-	raw(sqlString: string): ExecutableStatement;
+	(strings: TemplateStringsArray, ...values: unknown[]): ExecutableStatementWithoutClient;
+	raw(sqlString: string): ExecutableStatementWithoutClient;
 }
 
 /**
@@ -16,8 +15,8 @@ export interface SqlApi {
  * const rows = await db.all(sql`SELECT * FROM students WHERE name = ${bobbyTables}`);
  */
 export const sql: SqlApi = Object.assign(
-	(strings: TemplateStringsArray, ...values: unknown[]): ExecutableStatement => {
-		const fragments: (string | SqlFragment)[] = [];
+	(strings: TemplateStringsArray, ...values: unknown[]): ExecutableStatementWithoutClient => {
+		const fragments: StringOrFragment[] = [];
 		for (let i = 0; i < strings.length; i++) {
 			if (i < values.length) {
 				fragments.push({ sql: strings[i], param: values[i] });
@@ -28,7 +27,7 @@ export const sql: SqlApi = Object.assign(
 		return new ExecutableStatementImpl(fragments);
 	},
 	{
-		raw(sqlString: string): ExecutableStatement {
+		raw(sqlString: string): ExecutableStatementWithoutClient {
 			return new ExecutableStatementImpl([sqlString]);
 		},
 	},

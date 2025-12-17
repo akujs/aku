@@ -1,16 +1,19 @@
+import { BaseClass } from "../../utils.ts";
 import type { DatabaseGrammar } from "../grammar/DatabaseGrammar.ts";
-import { type SqlFragment, SqlFragments, type Statement } from "../Statement.ts";
-import { MutableQueryBuilder } from "./MutableQueryBuilder.ts";
-import type { PlaceholderArgs } from "./placeholder-types.ts";
 import type {
-	DefaultColumnsQueryBuilder,
+	AnyQueryBuilder,
 	LockOptions,
-	SelectQueryBuilder,
-} from "./QueryBuilder.ts";
+	MutationResult,
+	QueryBuilder,
+	SqlFragments,
+	Statement,
+	StringOrFragment,
+} from "../query-types.ts";
+import { MutableQueryBuilder } from "./MutableQueryBuilder.ts";
 import { toHumanReadableSql } from "./statement-render.ts";
 import { splitSqlToFragments } from "./statement-utils.ts";
 
-export class QueryBuilderImpl extends SqlFragments implements Statement {
+export class QueryBuilderImpl extends BaseClass implements AnyQueryBuilder {
 	readonly #from: SqlFragments;
 	readonly #grammar: DatabaseGrammar;
 	readonly #commands: Command[];
@@ -18,14 +21,14 @@ export class QueryBuilderImpl extends SqlFragments implements Statement {
 	#cachedBuild: SqlFragments | null = null;
 
 	constructor(from: SqlFragments, grammar: DatabaseGrammar, commands: Command[]) {
-		super([]);
+		super();
 		this.#from = from;
 		this.#grammar = grammar;
 		this.#commands = commands;
 		this.#length = commands.length;
 	}
 
-	override get sqlFragments(): readonly (string | SqlFragment)[] {
+	get sqlFragments(): readonly StringOrFragment[] {
 		return this.#getBuild().sqlFragments;
 	}
 
@@ -33,49 +36,37 @@ export class QueryBuilderImpl extends SqlFragments implements Statement {
 		return toHumanReadableSql(this.#getBuild());
 	}
 
-	// Join methods - support both string+values and Statement overloads
-	join<S extends string>(clause: S, ...values: PlaceholderArgs<S>): this;
-	join(statement: Statement): this;
 	join(clauseOrStatement: string | Statement, ...values: unknown[]): this {
 		const stmt = resolveToStatement(clauseOrStatement, values);
 		return this.#derive("pushJoin", ["JOIN", stmt]);
 	}
 
-	innerJoin<S extends string>(clause: S, ...values: PlaceholderArgs<S>): this;
-	innerJoin(statement: Statement): this;
 	innerJoin(clauseOrStatement: string | Statement, ...values: unknown[]): this {
 		const stmt = resolveToStatement(clauseOrStatement, values);
 		return this.#derive("pushJoin", ["INNER JOIN", stmt]);
 	}
 
-	leftJoin<S extends string>(clause: S, ...values: PlaceholderArgs<S>): this;
-	leftJoin(statement: Statement): this;
 	leftJoin(clauseOrStatement: string | Statement, ...values: unknown[]): this {
 		const stmt = resolveToStatement(clauseOrStatement, values);
 		return this.#derive("pushJoin", ["LEFT JOIN", stmt]);
 	}
 
-	rightJoin<S extends string>(clause: S, ...values: PlaceholderArgs<S>): this;
-	rightJoin(statement: Statement): this;
 	rightJoin(clauseOrStatement: string | Statement, ...values: unknown[]): this {
 		const stmt = resolveToStatement(clauseOrStatement, values);
 		return this.#derive("pushJoin", ["RIGHT JOIN", stmt]);
 	}
 
-	fullJoin<S extends string>(clause: S, ...values: PlaceholderArgs<S>): this;
-	fullJoin(statement: Statement): this;
 	fullJoin(clauseOrStatement: string | Statement, ...values: unknown[]): this {
 		const stmt = resolveToStatement(clauseOrStatement, values);
 		return this.#derive("pushJoin", ["FULL OUTER JOIN", stmt]);
 	}
 
 	crossJoin(table: string): this {
-		return this.#derive("pushJoin", ["CROSS JOIN", new SqlFragments([table])]);
+		return this.#derive("pushJoin", ["CROSS JOIN", { sqlFragments: [table] }]);
 	}
 
-	// Select methods
-	select(...columns: string[]): SelectQueryBuilder {
-		return this.#derive("setSelect", [columns]) as unknown as SelectQueryBuilder;
+	select(...columns: string[]): this {
+		return this.#derive("setSelect", [columns]);
 	}
 
 	addSelect(...columns: string[]): this {
@@ -86,28 +77,20 @@ export class QueryBuilderImpl extends SqlFragments implements Statement {
 		return this.#derive("setSelect", [columns]);
 	}
 
-	// WHERE - support both string+values and Statement overloads
-	where<S extends string>(condition: S, ...values: PlaceholderArgs<S>): this;
-	where(statement: Statement): this;
 	where(conditionOrStatement: string | Statement, ...values: unknown[]): this {
 		const stmt = resolveToStatement(conditionOrStatement, values);
 		return this.#derive("pushWhere", [stmt]);
 	}
 
-	// Grouping
 	groupBy(...columns: string[]): this {
 		return this.#derive("pushGroupBy", [columns]);
 	}
 
-	// HAVING - support both string+values and Statement overloads
-	having<S extends string>(condition: S, ...values: PlaceholderArgs<S>): this;
-	having(statement: Statement): this;
 	having(conditionOrStatement: string | Statement, ...values: unknown[]): this {
 		const stmt = resolveToStatement(conditionOrStatement, values);
 		return this.#derive("pushHaving", [stmt]);
 	}
 
-	// Ordering
 	orderBy(...columns: string[]): this {
 		return this.#derive("pushOrderBy", [columns]);
 	}
@@ -116,7 +99,6 @@ export class QueryBuilderImpl extends SqlFragments implements Statement {
 		return this.#derive("setOrderBy", [columns]);
 	}
 
-	// Pagination
 	limit(n: number): this {
 		return this.#derive("setLimit", [n]);
 	}
@@ -125,7 +107,6 @@ export class QueryBuilderImpl extends SqlFragments implements Statement {
 		return this.#derive("setOffset", [n]);
 	}
 
-	// Modifiers
 	distinct(): this {
 		return this.#derive("setDistinct", []);
 	}
@@ -138,12 +119,33 @@ export class QueryBuilderImpl extends SqlFragments implements Statement {
 		return this.#derive("setLock", ["SHARE", options]);
 	}
 
-	static from(table: string, grammar: DatabaseGrammar): DefaultColumnsQueryBuilder {
-		return new QueryBuilderImpl(
-			new SqlFragments([table]),
-			grammar,
-			[],
-		) as DefaultColumnsQueryBuilder;
+	insert(_values: Record<string, unknown> | Record<string, unknown>[] | Statement): this {
+		throw new Error("insert() not yet implemented");
+	}
+
+	deleteAll(): Promise<MutationResult> {
+		throw new Error("deleteAll() not yet implemented");
+	}
+
+	updateAll(_values: Record<string, unknown>): Promise<MutationResult> {
+		throw new Error("updateAll() not yet implemented");
+	}
+
+	returning<T extends string>(..._columns: T[]): Promise<Record<T, unknown>[]> {
+		throw new Error("returning() not yet implemented");
+	}
+
+	returningId<T = number>(_column?: string): Promise<T[]> {
+		throw new Error("returningId() not yet implemented");
+	}
+
+	// oxlint-disable-next-line unicorn/no-thenable -- intentionally awaitable API
+	then: Promise<MutationResult>["then"] = () => {
+		throw new Error("then() not yet implemented");
+	};
+
+	static table(table: string, grammar: DatabaseGrammar): QueryBuilder {
+		return new QueryBuilderImpl({ sqlFragments: [table] }, grammar, []);
 	}
 
 	#derive<K extends keyof MutableQueryBuilder>(

@@ -4,7 +4,7 @@ import type { CompiledQuery, DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { SqliteGrammar } from "../../grammar/SqliteGrammar.ts";
-import type { StatementResult } from "../../Statement.ts";
+import type { StatementResult } from "../../query-types.ts";
 import type { D1DatabaseAdapterConfig } from "./D1DatabaseAdapterConfig.ts";
 
 export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter<D1Database> {

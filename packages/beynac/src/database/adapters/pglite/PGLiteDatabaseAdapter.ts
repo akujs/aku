@@ -4,7 +4,7 @@ import type { CompiledQuery, DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { PostgresGrammar } from "../../grammar/PostgresGrammar.ts";
-import type { StatementResult } from "../../Statement.ts";
+import type { StatementResult } from "../../query-types.ts";
 import type { PGLiteDatabaseAdapterConfig } from "./PGLiteDatabaseAdapterConfig.ts";
 
 // PGLite only supports single-connection access, so we use the PGlite instance

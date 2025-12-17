@@ -1,7 +1,6 @@
 import { BaseClass } from "../../utils.ts";
 import type { DatabaseGrammar, JoinType } from "../grammar/DatabaseGrammar.ts";
-import { type SqlFragment, SqlFragments } from "../Statement.ts";
-import type { LockOptions } from "./QueryBuilder.ts";
+import type { LockOptions, SqlFragments, StringOrFragment } from "../query-types.ts";
 
 const DEFAULT_LIMIT_FOR_OFFSET = 2 ** 31 - 1;
 
@@ -106,14 +105,14 @@ export class MutableQueryBuilder extends BaseClass {
 
 		const merged = mergeFragments(...parts);
 
-		const quotedItems = merged.sqlFragments.map((item): string | SqlFragment => {
+		const quotedItems = merged.sqlFragments.map((item): StringOrFragment => {
 			if (typeof item === "string") {
 				return grammar.quoteIdentifiers(item);
 			}
 			return { sql: grammar.quoteIdentifiers(item.sql), param: item.param };
 		});
 
-		return new SqlFragments(quotedItems);
+		return { sqlFragments: quotedItems };
 	}
 }
 
@@ -145,7 +144,7 @@ function andClause(type: string, conditions: SqlFragments[]): Array<SqlFragments
 }
 
 function mergeFragments(...parts: Array<string | SqlFragments | null | undefined>): SqlFragments {
-	const items: (string | SqlFragment)[] = [];
+	const items: StringOrFragment[] = [];
 
 	for (const part of parts) {
 		if (!part) continue;
@@ -156,5 +155,5 @@ function mergeFragments(...parts: Array<string | SqlFragments | null | undefined
 		}
 	}
 
-	return new SqlFragments(items);
+	return { sqlFragments: items };
 }

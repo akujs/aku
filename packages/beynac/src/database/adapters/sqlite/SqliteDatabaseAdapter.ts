@@ -6,7 +6,7 @@ import type { TransactionOptions } from "../../DatabaseClient.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { SqliteGrammar } from "../../grammar/SqliteGrammar.ts";
-import type { StatementResult } from "../../Statement.ts";
+import type { StatementResult } from "../../query-types.ts";
 import type { SqliteDatabaseAdapterConfig } from "./SqliteDatabaseAdapterConfig.ts";
 import type { SqliteConnection, SqliteOps } from "./SqliteOps.ts";
 

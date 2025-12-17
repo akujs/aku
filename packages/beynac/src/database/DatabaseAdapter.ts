@@ -1,6 +1,6 @@
 import type { TransactionOptions } from "./DatabaseClient.ts";
 import type { DatabaseGrammar } from "./grammar/DatabaseGrammar.ts";
-import type { StatementResult } from "./Statement.ts";
+import type { StatementResult } from "./query-types.ts";
 
 export interface DatabaseConfig {
 	/**

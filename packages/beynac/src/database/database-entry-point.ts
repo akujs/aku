@@ -27,10 +27,14 @@ export {
 	TransactionPreCommitEvent,
 	TransactionRetryingEvent,
 } from "./database-events.ts";
-export type { ExecutableStatement } from "./ExecutableStatement.ts";
 export { DatabaseGrammar, type JoinType } from "./grammar/DatabaseGrammar.ts";
 export type {
-	DefaultColumnsQueryBuilder,
-	SelectQueryBuilder,
-} from "./query-builder/QueryBuilder.ts";
+	AnyQueryBuilder,
+	ExecutableStatement,
+	QueryBuilder,
+	QueryBuilderForSelect,
+	QueryBuilderForSelectWithColumns,
+	QueryBuilderWithCondition,
+	QueryBuilderWithInsert,
+} from "./query-types.ts";
 export { sql } from "./sql.ts";

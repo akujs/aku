@@ -1,4 +1,4 @@
-import type { SqlFragments } from "../Statement.ts";
+import type { SqlFragments } from "../query-types.ts";
 import { expandArraysAndSubqueries, getSqlFragmentsParams } from "./statement-utils.ts";
 
 export function toHumanReadableSql(statement: SqlFragments): string {

@@ -1,7 +1,7 @@
 import type { SqliteTransactionMode } from "../DatabaseClient.ts";
 import { UnsupportedFeatureError } from "../database-errors.ts";
 import { renderSqlFragments } from "../query-builder/statement-render.ts";
-import type { SqlFragments } from "../Statement.ts";
+import type { SqlFragments } from "../query-types.ts";
 import { DatabaseGrammar, type JoinType, type TransactionBeginOptions } from "./DatabaseGrammar.ts";
 
 const SQLITE_MODE_SQL: Record<SqliteTransactionMode, string> = {

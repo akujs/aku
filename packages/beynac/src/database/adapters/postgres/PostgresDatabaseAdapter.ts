@@ -5,7 +5,7 @@ import type { TransactionOptions } from "../../DatabaseClient.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { PostgresGrammar } from "../../grammar/PostgresGrammar.ts";
-import type { StatementResult } from "../../Statement.ts";
+import type { StatementResult } from "../../query-types.ts";
 import type { PostgresDatabaseAdapterConfig } from "./PostgresDatabaseAdapterConfig.ts";
 
 type PostgresJS = Sql<Record<string, unknown>>;

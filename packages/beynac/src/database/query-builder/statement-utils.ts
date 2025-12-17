@@ -1,5 +1,5 @@
 import { pluralCount } from "../../utils.ts";
-import { isSqlFragments, type SqlFragment, SqlFragments } from "../Statement.ts";
+import type { SqlFragments, StringOrFragment } from "../query-types.ts";
 
 export function getSqlFragmentsParams(statement: SqlFragments): unknown[] {
 	const result: unknown[] = [];
@@ -22,10 +22,10 @@ export function splitSqlToFragments(sql: string, values: unknown[]): SqlFragment
 	}
 
 	if (values.length === 0) {
-		return new SqlFragments([sql]);
+		return { sqlFragments: [sql] };
 	}
 
-	const items: (string | SqlFragment)[] = [];
+	const items: StringOrFragment[] = [];
 
 	for (let i = 0; i < values.length; i++) {
 		items.push({ sql: parts[i], param: values[i] });
@@ -36,11 +36,11 @@ export function splitSqlToFragments(sql: string, values: unknown[]): SqlFragment
 		items.push(lastPart);
 	}
 
-	return new SqlFragments(items);
+	return { sqlFragments: items };
 }
 
 export function expandArraysAndSubqueries(statement: SqlFragments): SqlFragments {
-	const result: (string | SqlFragment)[] = [];
+	const result: StringOrFragment[] = [];
 
 	for (const item of statement.sqlFragments) {
 		if (typeof item === "string") {
@@ -59,22 +59,22 @@ export function expandArraysAndSubqueries(statement: SqlFragments): SqlFragments
 		}
 	}
 
-	return new SqlFragments(result);
+	return { sqlFragments: result };
 }
 
-function expandSubquery(precedingSql: string, subquery: SqlFragments): (string | SqlFragment)[] {
+function expandSubquery(precedingSql: string, subquery: SqlFragments): StringOrFragment[] {
 	const expanded = expandArraysAndSubqueries(subquery);
 	return [precedingSql, "(", ...expanded.sqlFragments, ")"];
 }
 
-function expandArrayParam(precedingSql: string, arr: unknown[]): (string | SqlFragment)[] {
+function expandArrayParam(precedingSql: string, arr: unknown[]): StringOrFragment[] {
 	const hasUserParen = precedingSql.trim().endsWith("(");
 	if (arr.length === 0) {
 		// Empty array: use IN (NULL) - never matches
 		return [precedingSql, hasUserParen ? "NULL" : "(NULL)"];
 	}
 
-	const items: (string | SqlFragment)[] = [precedingSql];
+	const items: StringOrFragment[] = [precedingSql];
 
 	if (!hasUserParen) items.push("(");
 	for (let i = 0; i < arr.length; i++) {
@@ -86,4 +86,13 @@ function expandArrayParam(precedingSql: string, arr: unknown[]): (string | SqlFr
 	if (!hasUserParen) items.push(")");
 
 	return items;
+}
+
+function isSqlFragments(value: unknown): value is SqlFragments {
+	return (
+		value != null &&
+		typeof value === "object" &&
+		"sqlFragments" in value &&
+		Array.isArray((value as SqlFragments).sqlFragments)
+	);
 }

@@ -1,10 +1,17 @@
+import { BaseClass } from "../utils.ts";
 import { toHumanReadableSql } from "./query-builder/statement-render.ts";
-import { type SqlFragment, SqlFragments, type Statement } from "./Statement.ts";
+import type { Statement, StringOrFragment } from "./query-types.ts";
 
-// Implementation of the Statement interface.
-export class StatementImpl extends SqlFragments implements Statement {
-	constructor(sqlFragments: (string | SqlFragment)[]) {
-		super(sqlFragments);
+export class StatementImpl extends BaseClass implements Statement {
+	readonly #sqlFragments: readonly StringOrFragment[];
+
+	constructor(sqlFragments: StringOrFragment[]) {
+		super();
+		this.#sqlFragments = sqlFragments;
+	}
+
+	get sqlFragments(): readonly StringOrFragment[] {
+		return this.#sqlFragments;
 	}
 
 	toHumanReadableSql(): string {

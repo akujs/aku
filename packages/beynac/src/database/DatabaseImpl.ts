@@ -5,8 +5,7 @@ import type { DatabaseAdapter, DatabaseConfig } from "./DatabaseAdapter.ts";
 import type { DatabaseClient, TransactionOptions } from "./DatabaseClient.ts";
 import { DatabaseClientImpl } from "./DatabaseClientImpl.ts";
 import { ClientNotFoundError } from "./database-errors.ts";
-import type { DefaultColumnsQueryBuilder } from "./query-builder/QueryBuilder.ts";
-import type { Row, Statement, StatementResult } from "./Statement.ts";
+import type { QueryBuilder, Row, Statement, StatementResult } from "./query-types.ts";
 
 const DEFAULT_CLIENT_NAME = "default";
 
@@ -104,8 +103,8 @@ export class DatabaseImpl extends BaseClass implements Database {
 		return this.#defaultClient.column<T>(statement);
 	}
 
-	from(table: string): DefaultColumnsQueryBuilder {
-		return this.#defaultClient.from(table);
+	table(table: string): QueryBuilder {
+		return this.#defaultClient.table(table);
 	}
 }
 

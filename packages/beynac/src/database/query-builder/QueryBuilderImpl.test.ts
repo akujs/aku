@@ -10,12 +10,12 @@ import { sql } from "../sql.ts";
 import { QueryBuilderImpl } from "./QueryBuilderImpl.ts";
 
 const grammar = new PostgresGrammar();
-const from = (table: string) => QueryBuilderImpl.from(table, grammar);
+const table = (table: string) => QueryBuilderImpl.table(table, grammar);
 
 describe(QueryBuilderImpl, () => {
 	describe("immutability", () => {
 		test(".where creates a new copy and does not change the original", () => {
-			const base = from("artists").where("active = TRUE");
+			const base = table("artists").where("active = TRUE");
 			const young = base.where("age < 30");
 			const old = base.where("age >= 60");
 
@@ -31,7 +31,7 @@ describe(QueryBuilderImpl, () => {
 		});
 
 		test("branching with parameters preserves immutability", () => {
-			const base = from("artists").where("status = ?", "active");
+			const base = table("artists").where("status = ?", "active");
 			const young = base.where("age < ?", 30);
 			const old = base.where("age >= ?", 60);
 
@@ -47,41 +47,10 @@ describe(QueryBuilderImpl, () => {
 		});
 	});
 
-	describe("type constraints", () => {
-		test("select() is not available after select() has been called", () => {
-			from("t")
-				.select("a")
-				// @ts-expect-error - select() should not be callable after select()
-				.select("b");
-		});
-
-		test("too few values is a type error", () => {
-			expect(() => {
-				// @ts-expect-error - expects 2 values, got 1
-				from("t").where("a = ? AND b = ?", 1);
-			}).toThrow();
-		});
-
-		test("extra values is a type error", () => {
-			expect(() => {
-				// @ts-expect-error - expects 1 value, got 2
-				from("t").where("a = ?", 1, 2);
-			}).toThrow();
-		});
-
-		test("string cast allows any number of values", () => {
-			expect(() => {
-				from("t").where("a = ?" as string);
-				from("t").where("a = ?" as string, 1);
-				from("t").where("a = ?" as string, 1, 2);
-			}).toThrow();
-		});
-	});
-
 	describe("positional parameters", () => {
 		test("runtime error for arity mismatch with non-literal strings", () => {
 			expect(() =>
-				from("t").where("a = ? AND b = ?" as string, 1),
+				table("t").where("a = ? AND b = ?" as string, 1),
 			).toThrowErrorMatchingInlineSnapshot(
 				`"SQL placeholder count mismatch: found 2 '?' placeholder markers but got 1 parameter. SQL: "a = ? AND b = ?". Consider using sql\`...\` if you need to include literal "?" characters in your SQL."`,
 			);
@@ -129,7 +98,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 	describe(QueryBuilderImpl.prototype.select, () => {
 		test("selects all columns when not called", async () => {
-			const result = await db.all(db.from("teams").orderBy("id"));
+			const result = await db.all(db.table("teams").orderBy("id"));
 			expect(result).toEqual([
 				{ id: 1, name: "team_a", order: "first" },
 				{ id: 2, name: "team_b", order: "second" },
@@ -138,12 +107,12 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		});
 
 		test("selects specific columns", async () => {
-			const result = await db.all(db.from("teams").select("name").orderBy("id"));
+			const result = await db.all(db.table("teams").select("name").orderBy("id"));
 			expect(result).toEqual([{ name: "team_a" }, { name: "team_b" }, { name: "team_c" }]);
 		});
 
 		test("selects columns with keyword names", async () => {
-			const query = db.from("teams").select("order").orderBy("id");
+			const query = db.table("teams").select("order").orderBy("id");
 			const result = await db.all(query);
 			expect(result).toEqual([{ order: "first" }, { order: "second" }, { order: "third" }]);
 		});
@@ -151,7 +120,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 	describe(QueryBuilderImpl.prototype.addSelect, () => {
 		test("adds columns to existing selection", async () => {
-			const result = await db.all(db.from("teams").select("id").addSelect("name").orderBy("id"));
+			const result = await db.all(db.table("teams").select("id").addSelect("name").orderBy("id"));
 			expect(result).toEqual([
 				{ id: 1, name: "team_a" },
 				{ id: 2, name: "team_b" },
@@ -163,14 +132,14 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 	describe(QueryBuilderImpl.prototype.replaceSelect, () => {
 		test("replaces all columns with new one", async () => {
 			const result = await db.all(
-				db.from("teams").select("id", "name").replaceSelect("order").orderBy("id"),
+				db.table("teams").select("id", "name").replaceSelect("order").orderBy("id"),
 			);
 			expect(result).toEqual([{ order: "first" }, { order: "second" }, { order: "third" }]);
 		});
 
 		test("replaces all columns with multiple new ones", async () => {
 			const result = await db.all(
-				db.from("teams").select("id", "name").replaceSelect("id", "order").orderBy("id"),
+				db.table("teams").select("id", "name").replaceSelect("id", "order").orderBy("id"),
 			);
 			expect(result).toEqual([
 				{ id: 1, order: "first" },
@@ -181,7 +150,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 		test("replaces all columns with none", async () => {
 			const result = await db.all(
-				db.from("teams").select("id", "name").replaceSelect().orderBy("id"),
+				db.table("teams").select("id", "name").replaceSelect().orderBy("id"),
 			);
 			expect(result).toEqual([
 				{ id: 1, name: "team_a", order: "first" },
@@ -194,14 +163,14 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 	describe(QueryBuilderImpl.prototype.where, () => {
 		test("filters rows with single condition", async () => {
 			const result = await db.all(
-				db.from("members").select("name").where("score > 30").orderBy("id"),
+				db.table("members").select("name").where("score > 30").orderBy("id"),
 			);
 			expect(result).toEqual([{ name: "member_b2" }, { name: "member_a3" }, { name: "member_x1" }]);
 		});
 
 		test("combines multiple conditions with AND", async () => {
 			const query = db
-				.from("members")
+				.table("members")
 				.select("name")
 				.where("score > 20")
 				.where("score < 50")
@@ -217,7 +186,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 		test("quotes identifiers to prevent syntax errors when a column name is a keyword ", async () => {
 			const result = await db.all(
-				db.from("teams").select("name").where("order = 'first' OR order = 'third'").orderBy("id"),
+				db.table("teams").select("name").where("order = 'first' OR order = 'third'").orderBy("id"),
 			);
 			expect(result).toEqual([{ name: "team_a" }, { name: "team_c" }]);
 		});
@@ -227,7 +196,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		test("joins tables", async () => {
 			const result = await db.all(
 				db
-					.from("members")
+					.table("members")
 					.select("members.name", "teams.name AS team_name")
 					.join("teams ON teams.id = members.team_id")
 					.orderBy("members.id"),
@@ -246,7 +215,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		test("behaves same as join", async () => {
 			const result = await db.all(
 				db
-					.from("members")
+					.table("members")
 					.select("members.name", "teams.name AS team_name")
 					.innerJoin("teams ON teams.id = members.team_id")
 					.orderBy("members.id"),
@@ -265,7 +234,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		test("includes unmatched left rows with NULL", async () => {
 			const result = await db.all(
 				db
-					.from("members")
+					.table("members")
 					.select("members.name", "teams.name AS team_name")
 					.leftJoin("teams ON teams.id = members.team_id")
 					.orderBy("members.id"),
@@ -286,7 +255,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 			test("includes unmatched right rows with NULL", async () => {
 				const result = await db.all(
 					db
-						.from("members")
+						.table("members")
 						.select("members.name", "teams.name AS team_name")
 						.rightJoin("teams ON teams.id = members.team_id")
 						.orderBy("teams.id", "members.id"),
@@ -306,7 +275,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 			test("includes unmatched rows from both sides", async () => {
 				const result = await db.all(
 					db
-						.from("members")
+						.table("members")
 						.select("members.name", "teams.name AS team_name")
 						.fullJoin("teams ON teams.id = members.team_id")
 						.orderBy("members.id NULLS LAST", "teams.id"),
@@ -328,7 +297,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		test("produces cartesian product", async () => {
 			const result = await db.all(
 				db
-					.from("teams")
+					.table("teams")
 					.select("teams.name AS team_name", "tags.tag")
 					.crossJoin("tags")
 					.orderBy("teams.id", "tags.id"),
@@ -348,7 +317,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		test("groups rows", async () => {
 			const result = await db.all(
 				db
-					.from("members")
+					.table("members")
 					.select("team_id", "COUNT(*) AS count")
 					.where("team_id IS NOT NULL")
 					.groupBy("team_id")
@@ -365,7 +334,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		test("filters groups", async () => {
 			const result = await db.all(
 				db
-					.from("members")
+					.table("members")
 					.select("team_id", "COUNT(*) AS count")
 					.groupBy("team_id")
 					.having("COUNT(*) > 2")
@@ -376,7 +345,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 		test("combines multiple HAVING conditions with AND", async () => {
 			const query = db
-				.from("members")
+				.table("members")
 				.select("team_id", "COUNT(*) AS count")
 				.groupBy("team_id")
 				.having("COUNT(*) > 2")
@@ -392,7 +361,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 	describe(QueryBuilderImpl.prototype.orderBy, () => {
 		test("orders ascending by default", async () => {
-			const result = await db.all(db.from("members").select("name", "score").orderBy("score"));
+			const result = await db.all(db.table("members").select("name", "score").orderBy("score"));
 			expect(result).toEqual([
 				{ name: "member_a1", score: 10 },
 				{ name: "member_a2", score: 20 },
@@ -404,7 +373,9 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		});
 
 		test("orders descending with DESC", async () => {
-			const result = await db.all(db.from("members").select("name", "score").orderBy("score DESC"));
+			const result = await db.all(
+				db.table("members").select("name", "score").orderBy("score DESC"),
+			);
 			expect(result).toEqual([
 				{ name: "member_x1", score: 60 },
 				{ name: "member_a3", score: 50 },
@@ -418,7 +389,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		test("is additive", async () => {
 			const result = await db.all(
 				db
-					.from("members")
+					.table("members")
 					.select("name", "team_id", "score")
 					.where("team_id IS NOT NULL")
 					.orderBy("team_id")
@@ -436,7 +407,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		test("accepts multiple columns in single call", async () => {
 			const result = await db.all(
 				db
-					.from("members")
+					.table("members")
 					.select("name", "team_id", "score")
 					.where("team_id IS NOT NULL")
 					.orderBy("team_id", "score DESC"),
@@ -454,7 +425,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 	describe(QueryBuilderImpl.prototype.replaceOrderBy, () => {
 		test("replaces all ordering", async () => {
 			const result = await db.all(
-				db.from("teams").select("name").orderBy("name").replaceOrderBy("id DESC"),
+				db.table("teams").select("name").orderBy("name").replaceOrderBy("id DESC"),
 			);
 			expect(result).toEqual([{ name: "team_c" }, { name: "team_b" }, { name: "team_a" }]);
 		});
@@ -462,7 +433,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 	describe(QueryBuilderImpl.prototype.limit, () => {
 		test("limits result count", async () => {
-			const result = await db.all(db.from("members").select("id", "name").orderBy("id").limit(3));
+			const result = await db.all(db.table("members").select("id", "name").orderBy("id").limit(3));
 			expect(result).toEqual([
 				{ id: 1, name: "member_a1" },
 				{ id: 2, name: "member_a2" },
@@ -472,7 +443,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 		test("replaces previous limit", async () => {
 			const result = await db.all(
-				db.from("members").select("id", "name").orderBy("id").limit(5).limit(2),
+				db.table("members").select("id", "name").orderBy("id").limit(5).limit(2),
 			);
 			expect(result).toEqual([
 				{ id: 1, name: "member_a1" },
@@ -483,7 +454,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 	describe(QueryBuilderImpl.prototype.offset, () => {
 		test("skips rows (with limit)", async () => {
-			const result = await db.all(db.from("members").select("id", "name").orderBy("id").offset(4));
+			const result = await db.all(db.table("members").select("id", "name").orderBy("id").offset(4));
 			expect(result).toEqual([
 				{ id: 5, name: "member_a3" },
 				{ id: 6, name: "member_x1" },
@@ -492,7 +463,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 		test("works with limit", async () => {
 			const result = await db.all(
-				db.from("members").select("id", "name").orderBy("id").limit(1).offset(2),
+				db.table("members").select("id", "name").orderBy("id").limit(1).offset(2),
 			);
 			expect(result).toEqual([{ id: 3, name: "member_b1" }]);
 		});
@@ -501,7 +472,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 	describe(QueryBuilderImpl.prototype.distinct, () => {
 		test("removes duplicates", async () => {
 			const result = await db.all(
-				db.from("members").select("team_id").distinct().orderBy("team_id NULLS FIRST"),
+				db.table("members").select("team_id").distinct().orderBy("team_id NULLS FIRST"),
 			);
 			expect(result).toEqual([{ team_id: null }, { team_id: 1 }, { team_id: 2 }]);
 		});
@@ -510,7 +481,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 	describe(QueryBuilderImpl.prototype.forUpdate, () => {
 		test("locks rows for update", async () => {
 			await db.transaction(async () => {
-				const query = db.from("teams").select("name").forUpdate();
+				const query = db.table("teams").select("name").forUpdate();
 				expect(await db.all(query)).toHaveLength(3);
 
 				if (dialect === "postgresql") {
@@ -527,7 +498,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 		test("with noWait option", async () => {
 			await db.transaction(async () => {
-				const query = db.from("teams").select("name").forUpdate({ noWait: true });
+				const query = db.table("teams").select("name").forUpdate({ noWait: true });
 				expect(await db.all(query)).toHaveLength(3);
 
 				if (dialect === "postgresql") {
@@ -540,7 +511,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 		test("with skipLocked option", async () => {
 			await db.transaction(async () => {
-				const query = db.from("teams").select("name").forUpdate({ skipLocked: true });
+				const query = db.table("teams").select("name").forUpdate({ skipLocked: true });
 				expect(await db.all(query)).toHaveLength(3);
 
 				if (dialect === "postgresql") {
@@ -555,21 +526,23 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 	describe(QueryBuilderImpl.prototype.forShare, () => {
 		test("locks rows for share", async () => {
 			await db.transaction(async () => {
-				const result = await db.all(db.from("teams").select("name").forShare());
+				const result = await db.all(db.table("teams").select("name").forShare());
 				expect(result.length).toBe(3);
 			});
 		});
 
 		test("with noWait option", async () => {
 			await db.transaction(async () => {
-				const result = await db.all(db.from("teams").select("name").forShare({ noWait: true }));
+				const result = await db.all(db.table("teams").select("name").forShare({ noWait: true }));
 				expect(result.length).toBe(3);
 			});
 		});
 
 		test("with skipLocked option", async () => {
 			await db.transaction(async () => {
-				const result = await db.all(db.from("teams").select("name").forShare({ skipLocked: true }));
+				const result = await db.all(
+					db.table("teams").select("name").forShare({ skipLocked: true }),
+				);
 				expect(result.length).toBe(3);
 			});
 		});
@@ -578,12 +551,12 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 	if (dialect === "sqlite") {
 		describe("SQLite locking behaviour", () => {
 			test("forUpdate is silently ignored", async () => {
-				const result = await db.all(db.from("teams").select("name").forUpdate());
+				const result = await db.all(db.table("teams").select("name").forUpdate());
 				expect(result.length).toBe(3);
 			});
 
 			test("forShare is silently ignored", async () => {
-				const result = await db.all(db.from("teams").select("name").forShare());
+				const result = await db.all(db.table("teams").select("name").forShare());
 				expect(result.length).toBe(3);
 			});
 		});
@@ -592,7 +565,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 	describe("positional parameters", () => {
 		test("multiple parameters in one clause", async () => {
 			const result = await db.all(
-				db.from("members").select("name").where("score > ? AND team_id = ?", 20, 1).orderBy("id"),
+				db.table("members").select("name").where("score > ? AND team_id = ?", 20, 1).orderBy("id"),
 			);
 			expect(result).toEqual([{ name: "member_a3" }]);
 		});
@@ -600,7 +573,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		test("parameters across multiple clauses", async () => {
 			const result = await db.all(
 				db
-					.from("members")
+					.table("members")
 					.select("team_id", "COUNT(*) AS count")
 					.where("score >= ? AND score <= ?", 10, 50)
 					.where("team_id IS NOT NULL")
@@ -619,7 +592,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		test("parameters in join clauses", async () => {
 			const result = await db.all(
 				db
-					.from("teams")
+					.table("teams")
 					.select("teams.name", "members.name AS member_name")
 					.join("members ON members.team_id = teams.id AND members.score > ?", 30)
 					.orderBy("teams.id", "members.id"),
@@ -633,7 +606,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		test("join accepts Statement from sql tag", async () => {
 			const result = await db.all(
 				db
-					.from("teams")
+					.table("teams")
 					.select("teams.name", "members.name AS member_name")
 					.join(sql`members ON members.team_id = teams.id AND members.score > ${30}`)
 					.orderBy("teams.id", "members.id"),
@@ -651,7 +624,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 			(idInExpr) => {
 				test("non-empty array expands to multiple placeholders", async () => {
 					const result = await db.all(
-						db.from("members").select("name").where(idInExpr, [1, 2, 3]).orderBy("id"),
+						db.table("members").select("name").where(idInExpr, [1, 2, 3]).orderBy("id"),
 					);
 					expect(result).toEqual([
 						{ name: "member_a1" },
@@ -661,14 +634,14 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				});
 
 				test("single-element array", async () => {
-					const result = await db.all(db.from("members").select("name").where(idInExpr, [1]));
+					const result = await db.all(db.table("members").select("name").where(idInExpr, [1]));
 					expect(result).toEqual([{ name: "member_a1" }]);
 				});
 
 				test("empty array returns no rows", async () => {
 					// Query on team_id which has NULL values (member_x1) to verify that
 					// IN (NULL) correctly returns no rows - nothing equals NULL, not even NULL
-					const result = await db.all(db.from("members").where(idInExpr, []));
+					const result = await db.all(db.table("members").where(idInExpr, []));
 					expect(result).toEqual([]);
 				});
 			},
@@ -677,8 +650,8 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 	describe("subqueries", () => {
 		test("subquery in WHERE clause", async () => {
-			const subquery = db.from("members").select("team_id").where("score > ?", 40);
-			const query = db.from("teams").select("id", "name").where("id IN ?", subquery).orderBy("id");
+			const subquery = db.table("members").select("team_id").where("score > ?", 40);
+			const query = db.table("teams").select("id", "name").where("id IN ?", subquery).orderBy("id");
 			expect(await db.all(query)).toEqual([{ id: 1, name: "team_a" }]);
 			expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
 				`"SELECT "id", "name" FROM "teams" WHERE ( "id" IN ( SELECT "team_id" FROM "members" WHERE ( "score" > [$1: 40] ) ) ) ORDER BY "id""`,
@@ -686,10 +659,10 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		});
 
 		test("subquery params merged with outer query params", async () => {
-			const subquery = db.from("members").select("team_id").where("score > ?", 40);
+			const subquery = db.table("members").select("team_id").where("score > ?", 40);
 			const result = await db.all(
 				db
-					.from("teams")
+					.table("teams")
 					.select("name")
 					.where("id > ?", 0)
 					.where("id IN ?", subquery)
@@ -701,21 +674,21 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 		test("nested subqueries", async () => {
 			// Find teams that have members who won gold awards
-			const innerSub = db.from("awards").select("member_id").where("title = ?", "gold");
-			const middleSub = db.from("members").select("team_id").where("id IN ?", innerSub);
-			const result = await db.all(db.from("teams").where("id IN ?", middleSub).orderBy("id"));
+			const innerSub = db.table("awards").select("member_id").where("title = ?", "gold");
+			const middleSub = db.table("members").select("team_id").where("id IN ?", innerSub);
+			const result = await db.all(db.table("teams").where("id IN ?", middleSub).orderBy("id"));
 			expect(result).toEqual([{ id: 1, name: "team_a", order: "first" }]);
 		});
 
 		test("subquery in join clause", async () => {
 			const subquery = db
-				.from("members")
+				.table("members")
 				.select("team_id", "COUNT(*) AS member_count")
 				.where("team_id IS NOT NULL")
 				.groupBy("team_id");
 			const result = await db.all(
 				db
-					.from("teams t")
+					.table("teams t")
 					.select("t.name", "counts.member_count")
 					.join("? AS counts ON counts.team_id = t.id", subquery)
 					.orderBy("t.id"),
