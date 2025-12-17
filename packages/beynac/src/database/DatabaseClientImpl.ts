@@ -75,7 +75,7 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 			this.#dispatcher.dispatchIfHasListeners(QueryExecutingEvent, () => startEvent);
 
 			const expanded = expandArraysAndSubqueries(statement);
-			const sqlString = this.#adapter.grammar.compileStatement(expanded);
+			const sqlString = this.#adapter.grammar.compileFragments(expanded);
 
 			return this.#enrichError(() =>
 				this.#adapter.run(sqlString, getSqlFragmentsParams(expanded), connection),
@@ -143,7 +143,7 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 		const queries = statements.map((stmt) => {
 			const expanded = expandArraysAndSubqueries(stmt);
 			return {
-				sql: grammar.compileStatement(expanded),
+				sql: grammar.compileFragments(expanded),
 				params: getSqlFragmentsParams(expanded),
 			};
 		});
@@ -367,7 +367,7 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 	}
 
 	table(table: string): QueryBuilder {
-		return QueryBuilderImpl.table(table, this.#adapter.grammar);
+		return QueryBuilderImpl.table(table, this.#adapter.grammar, this);
 	}
 }
 

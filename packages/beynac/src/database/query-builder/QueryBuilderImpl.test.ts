@@ -1,8 +1,9 @@
-import { beforeAll, describe, expect, test } from "bun:test";
+import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { mockDispatcher } from "../../test-utils/internal-mocks.bun.ts";
 import { pgLiteSharedTestConfig } from "../adapters/pglite/pglite-test-utils.ts";
 import { sqliteMemorySharedTestConfig } from "../adapters/sqlite/sqlite-test-utils.ts";
 import type { Database } from "../contracts/Database.js";
+import type { DatabaseClient } from "../DatabaseClient.ts";
 import { DatabaseImpl } from "../DatabaseImpl.ts";
 import type { SharedTestConfig } from "../database-test-utils.ts";
 import { PostgresGrammar } from "../grammar/PostgresGrammar.ts";
@@ -10,7 +11,11 @@ import { sql } from "../sql.ts";
 import { QueryBuilderImpl } from "./QueryBuilderImpl.ts";
 
 const grammar = new PostgresGrammar();
-const table = (table: string) => QueryBuilderImpl.table(table, grammar);
+
+// Stub client for SQL generation tests (no actual execution)
+const stubClient = {} as DatabaseClient;
+
+const table = (table: string) => QueryBuilderImpl.table(table, grammar, stubClient);
 
 describe(QueryBuilderImpl, () => {
 	describe("immutability", () => {
@@ -697,6 +702,190 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				{ name: "team_a", member_count: 3 },
 				{ name: "team_b", member_count: 2 },
 			]);
+		});
+	});
+});
+
+describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) => {
+	let db: Database;
+
+	beforeAll(async () => {
+		db = new DatabaseImpl(await createDatabase(), mockDispatcher());
+		await db.run(
+			dialect === "sqlite"
+				? sql`CREATE TABLE test_mutations (id INTEGER PRIMARY KEY, name TEXT DEFAULT 'default_name', value INTEGER DEFAULT 42)`
+				: sql`CREATE TABLE test_mutations (id SERIAL PRIMARY KEY, name TEXT DEFAULT 'default_name', value INTEGER DEFAULT 42)`,
+		);
+	});
+
+	beforeEach(async () => {
+		await db.table("test_mutations").deleteAll();
+	});
+
+	describe(QueryBuilderImpl.prototype.insert, () => {
+		test("inserts a single row", async () => {
+			const result = await db.table("test_mutations").insert({ id: 1, name: "alice", value: 100 });
+			expect(result.rowsAffected).toBe(1);
+
+			const rows = await db.table("test_mutations").where("id = ?", 1).all();
+			expect(rows).toEqual([{ id: 1, name: "alice", value: 100 }]);
+		});
+
+		test("inserts multiple rows", async () => {
+			const result = await db.table("test_mutations").insert([
+				{ id: 2, name: "bob", value: 200 },
+				{ id: 3, name: "charlie", value: 300 },
+			]);
+			expect(result.rowsAffected).toBe(2);
+
+			const rows = await db.table("test_mutations").where("id IN ?", [2, 3]).orderBy("id").all();
+			expect(rows).toEqual([
+				{ id: 2, name: "bob", value: 200 },
+				{ id: 3, name: "charlie", value: 300 },
+			]);
+		});
+
+		test("empty object {} inserts row with default values", async () => {
+			const result = await db.table("test_mutations").insert({});
+			expect(result.rowsAffected).toBe(1);
+
+			const rows = await db.table("test_mutations").all();
+			expect(rows.length).toBe(1);
+			expect(rows[0].name).toBe("default_name");
+			expect(rows[0].value).toBe(42);
+		});
+
+		// TODO: Add test for empty object {} with returning() when returning() is implemented
+
+		if (dialect === "postgresql") {
+			test("multiple empty objects [{}, {}, {}] inserts multiple rows with defaults", async () => {
+				const result = await db.table("test_mutations").insert([{}, {}, {}]);
+				expect(result.rowsAffected).toBe(3);
+
+				const rows = await db.table("test_mutations").all();
+				expect(rows.length).toBe(3);
+				expect(rows.every((r) => r.name === "default_name" && r.value === 42)).toBe(true);
+			});
+		}
+
+		if (dialect === "sqlite") {
+			test("multiple empty objects [{}, {}, {}] throws UnsupportedFeatureError", async () => {
+				await expect(
+					Promise.resolve(db.table("test_mutations").insert([{}, {}, {}])),
+				).rejects.toThrow(/SQLite does not support inserting multiple rows with empty objects/i);
+			});
+		}
+
+		test("empty array [] returns early without hitting database when awaited", async () => {
+			const result = await db.table("test_mutations").insert([]);
+			expect(result.rowsAffected).toBe(0);
+		});
+
+		test("empty array [] returns early without hitting database when using returning()", async () => {
+			const returned = await db.table("test_mutations").insert([]).returning("id");
+			expect(returned).toEqual([]);
+		});
+
+		test("empty array [] returns early without hitting database when using returningId()", async () => {
+			const ids = await db.table("test_mutations").insert([]).returningId();
+			expect(ids).toEqual([]);
+		});
+	});
+
+	describe(QueryBuilderImpl.prototype.updateAll, () => {
+		test("updates rows matching condition", async () => {
+			// First insert some test data
+			await db.table("test_mutations").insert({ id: 10, name: "update_test", value: 50 });
+
+			const result = await db.table("test_mutations").where("id = ?", 10).updateAll({ value: 999 });
+			expect(result.rowsAffected).toBe(1);
+
+			const rows = await db.table("test_mutations").where("id = ?", 10).all();
+			expect(rows).toEqual([{ id: 10, name: "update_test", value: 999 }]);
+		});
+
+		test("updates all rows without where", async () => {
+			// Insert test data in separate table to avoid affecting other tests
+			await db.run(sql`CREATE TABLE test_update_all (id INTEGER PRIMARY KEY, flag INTEGER)`);
+			await db.table("test_update_all").insert([
+				{ id: 1, flag: 0 },
+				{ id: 2, flag: 0 },
+				{ id: 3, flag: 0 },
+			]);
+
+			const result = await db.table("test_update_all").updateAll({ flag: 1 });
+			expect(result.rowsAffected).toBe(3);
+
+			const rows = await db.table("test_update_all").orderBy("id").all();
+			expect(rows.every((r) => r.flag === 1)).toBe(true);
+		});
+	});
+
+	describe(QueryBuilderImpl.prototype.deleteAll, () => {
+		test("deletes rows matching condition", async () => {
+			// Insert test data
+			await db.table("test_mutations").insert({ id: 20, name: "delete_me", value: 0 });
+
+			const result = await db.table("test_mutations").where("id = ?", 20).deleteAll();
+			expect(result.rowsAffected).toBe(1);
+
+			const rows = await db.table("test_mutations").where("id = ?", 20).all();
+			expect(rows).toEqual([]);
+		});
+
+		test("deletes all rows without where", async () => {
+			// Create separate table to avoid affecting other tests
+			await db.run(sql`CREATE TABLE test_delete_all (id INTEGER PRIMARY KEY)`);
+			await db.table("test_delete_all").insert([{ id: 1 }, { id: 2 }, { id: 3 }]);
+
+			const result = await db.table("test_delete_all").deleteAll();
+			expect(result.rowsAffected).toBe(3);
+
+			const rows = await db.table("test_delete_all").all();
+			expect(rows).toEqual([]);
+		});
+	});
+
+	describe("query builder execution methods", () => {
+		test("all() returns rows directly from builder", async () => {
+			await db.table("test_mutations").insert({ id: 30, name: "direct_test", value: 42 });
+
+			const rows = await db.table("test_mutations").where("id = ?", 30).all();
+			expect(rows).toEqual([{ id: 30, name: "direct_test", value: 42 }]);
+		});
+
+		test("first() returns first row from builder", async () => {
+			await db.table("test_mutations").insert({ id: 31, name: "first_test", value: 43 });
+
+			const row = await db.table("test_mutations").where("id = ?", 31).first();
+			expect(row).toEqual({ id: 31, name: "first_test", value: 43 });
+		});
+
+		test("firstOrNull() returns null when no rows", async () => {
+			const row = await db.table("test_mutations").where("id = ?", -999).firstOrNull();
+			expect(row).toBeNull();
+		});
+
+		test("scalar() returns single value", async () => {
+			await db.table("test_mutations").insert({ id: 32, name: "scalar_test", value: 44 });
+
+			const value = await db.table("test_mutations").select("value").where("id = ?", 32).scalar();
+			expect(value).toBe(44);
+		});
+
+		test("column() returns array of single column values", async () => {
+			await db.table("test_mutations").insert([
+				{ id: 40, name: "col1", value: 1 },
+				{ id: 41, name: "col2", value: 2 },
+			]);
+
+			const values = await db
+				.table("test_mutations")
+				.select("value")
+				.where("id IN ?", [40, 41])
+				.orderBy("id")
+				.column();
+			expect(values).toEqual([1, 2]);
 		});
 	});
 });

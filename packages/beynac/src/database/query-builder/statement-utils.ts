@@ -1,5 +1,5 @@
 import { pluralCount } from "../../utils.ts";
-import type { SqlFragments, StringOrFragment } from "../query-types.ts";
+import type { SqlFragment, SqlFragments, StringOrFragment } from "../query-types.ts";
 
 export function getSqlFragmentsParams(statement: SqlFragments): unknown[] {
 	const result: unknown[] = [];
@@ -74,18 +74,42 @@ function expandArrayParam(precedingSql: string, arr: unknown[]): StringOrFragmen
 		return [precedingSql, hasUserParen ? "NULL" : "(NULL)"];
 	}
 
-	const items: StringOrFragment[] = [precedingSql];
+	if (hasUserParen) {
+		return [precedingSql, ...commaSeparatedFragments(arr.map(paramAsFragment))];
+	}
+	return [precedingSql, ...bracketedCommaSeparatedParams(arr)];
+}
 
-	if (!hasUserParen) items.push("(");
-	for (let i = 0; i < arr.length; i++) {
-		items.push({ sql: "", param: arr[i] });
-		if (i < arr.length - 1) {
-			items.push(",");
+export function paramAsFragment(value: unknown): SqlFragment {
+	return { sql: "", param: value };
+}
+
+export function bracketedCommaSeparatedParams(values: unknown[]): StringOrFragment[] {
+	return ["(", ...commaSeparatedFragments(values.map(paramAsFragment)), ")"];
+}
+
+export function commaSeparatedFragments(
+	items: Array<StringOrFragment | StringOrFragment[]>,
+): StringOrFragment[] {
+	const result: StringOrFragment[] = [];
+	for (let i = 0; i < items.length; i++) {
+		if (i > 0) {
+			result.push(", ");
+		}
+		const item = items[i];
+		if (Array.isArray(item)) {
+			result.push(...item);
+		} else {
+			result.push(item);
 		}
 	}
-	if (!hasUserParen) items.push(")");
+	return result;
+}
 
-	return items;
+export function bracketedCommaSeparatedFragments(
+	items: Array<StringOrFragment | StringOrFragment[]>,
+): StringOrFragment[] {
+	return ["(", ...commaSeparatedFragments(items), ")"];
 }
 
 function isSqlFragments(value: unknown): value is SqlFragments {

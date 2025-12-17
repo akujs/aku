@@ -1,8 +1,8 @@
 import type { SqliteTransactionMode } from "../DatabaseClient.ts";
 import { UnsupportedFeatureError } from "../database-errors.ts";
 import { renderSqlFragments } from "../query-builder/statement-render.ts";
-import type { SqlFragments } from "../query-types.ts";
-import { DatabaseGrammar, type JoinType, type TransactionBeginOptions } from "./DatabaseGrammar.ts";
+import type { JoinType, SqlFragments } from "../query-types.ts";
+import { DatabaseGrammar, type TransactionBeginOptions } from "./DatabaseGrammar.ts";
 
 const SQLITE_MODE_SQL: Record<SqliteTransactionMode, string> = {
 	deferred: "BEGIN DEFERRED",
@@ -36,7 +36,11 @@ export class SqliteGrammar extends DatabaseGrammar {
 		return "";
 	}
 
-	override compileStatement(statement: SqlFragments): string {
+	override compileFragments(statement: SqlFragments): string {
 		return renderSqlFragments(statement, () => "?");
+	}
+
+	override compileDefaultValuesRow(): string {
+		throw new UnsupportedFeatureError("inserting multiple rows with empty objects", "SQLite");
 	}
 }

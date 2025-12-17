@@ -18,7 +18,11 @@ export class PostgresGrammar extends DatabaseGrammar {
 		return "BEGIN";
 	}
 
-	override compileStatement(statement: SqlFragments): string {
+	override compileFragments(statement: SqlFragments): string {
 		return renderSqlFragments(statement, (i) => `$${i + 1}`);
+	}
+
+	override compileDefaultValuesRow(): string {
+		return "(DEFAULT)";
 	}
 }

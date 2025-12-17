@@ -1,10 +1,12 @@
-import { BaseClass } from "../../utils.ts";
+import type { DatabaseClient } from "../DatabaseClient.ts";
+import { ExecutableStatementBase } from "../ExecutableStatementBase.ts";
 import type { DatabaseGrammar } from "../grammar/DatabaseGrammar.ts";
 import type {
 	AnyQueryBuilder,
 	LockOptions,
 	MutationResult,
 	QueryBuilder,
+	QueryParts,
 	SqlFragments,
 	Statement,
 	StringOrFragment,
@@ -13,26 +15,38 @@ import { MutableQueryBuilder } from "./MutableQueryBuilder.ts";
 import { toHumanReadableSql } from "./statement-render.ts";
 import { splitSqlToFragments } from "./statement-utils.ts";
 
-export class QueryBuilderImpl extends BaseClass implements AnyQueryBuilder {
+export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQueryBuilder {
 	readonly #from: SqlFragments;
 	readonly #grammar: DatabaseGrammar;
+	readonly #client: DatabaseClient;
 	readonly #commands: Command[];
 	readonly #length: number;
+	#cachedParts: QueryParts | null = null;
 	#cachedBuild: SqlFragments | null = null;
 
-	constructor(from: SqlFragments, grammar: DatabaseGrammar, commands: Command[]) {
-		super();
+	constructor(
+		from: SqlFragments,
+		grammar: DatabaseGrammar,
+		client: DatabaseClient,
+		commands: Command[],
+	) {
+		super([]); // We override sqlFragments getter, so this is unused
 		this.#from = from;
 		this.#grammar = grammar;
+		this.#client = client;
 		this.#commands = commands;
 		this.#length = commands.length;
 	}
 
-	get sqlFragments(): readonly StringOrFragment[] {
+	protected getClient(): DatabaseClient {
+		return this.#client;
+	}
+
+	override get sqlFragments(): readonly StringOrFragment[] {
 		return this.#getBuild().sqlFragments;
 	}
 
-	toHumanReadableSql(): string {
+	override toHumanReadableSql(): string {
 		return toHumanReadableSql(this.#getBuild());
 	}
 
@@ -119,36 +133,61 @@ export class QueryBuilderImpl extends BaseClass implements AnyQueryBuilder {
 		return this.#derive("setLock", ["SHARE", options]);
 	}
 
-	insert(_values: Record<string, unknown> | Record<string, unknown>[] | Statement): this {
-		throw new Error("insert() not yet implemented");
+	insert(values: Record<string, unknown> | Record<string, unknown>[] | Statement): this {
+		// Check if it's a Statement (INSERT...SELECT)
+		if ("sqlFragments" in values) {
+			// TODO: Implement INSERT...SELECT
+			throw new Error("INSERT...SELECT not yet implemented");
+		}
+		const data = Array.isArray(values) ? values : [values];
+		return this.#derive("setInsertData", [data]);
 	}
 
 	deleteAll(): Promise<MutationResult> {
-		throw new Error("deleteAll() not yet implemented");
+		const derived = this.#derive("setDelete", []);
+		return derived.run().then((r) => ({ rowsAffected: r.rowsAffected }));
 	}
 
-	updateAll(_values: Record<string, unknown>): Promise<MutationResult> {
-		throw new Error("updateAll() not yet implemented");
+	updateAll(values: Record<string, unknown>): Promise<MutationResult> {
+		const derived = this.#derive("setUpdateData", [values]);
+		return derived.run().then((r) => ({ rowsAffected: r.rowsAffected }));
 	}
 
-	returning<T extends string>(..._columns: T[]): Promise<Record<T, unknown>[]> {
+	async returning<T extends string>(..._columns: T[]): Promise<Record<T, unknown>[]> {
+		if (this.#isEmptyArrayInsert()) {
+			return [];
+		}
+		// TODO: Implement RETURNING clause compilation
 		throw new Error("returning() not yet implemented");
 	}
 
-	returningId<T = number>(_column?: string): Promise<T[]> {
+	async returningId<T = number>(_column?: string): Promise<T[]> {
+		if (this.#isEmptyArrayInsert()) {
+			return [];
+		}
+		// TODO: Implement RETURNING id clause compilation
 		throw new Error("returningId() not yet implemented");
 	}
 
 	// oxlint-disable-next-line unicorn/no-thenable -- intentionally awaitable API
-	then: Promise<MutationResult>["then"] = () => {
-		throw new Error("then() not yet implemented");
+	then: Promise<MutationResult>["then"] = (onfulfilled, onrejected) => {
+		if (this.#isEmptyArrayInsert()) {
+			return Promise.resolve({ rowsAffected: 0 }).then(onfulfilled, onrejected);
+		}
+		return this.run()
+			.then((r) => ({ rowsAffected: r.rowsAffected }))
+			.then(onfulfilled, onrejected);
 	};
 
-	static table(table: string, grammar: DatabaseGrammar): QueryBuilder {
-		return new QueryBuilderImpl({ sqlFragments: [table] }, grammar, []);
+	static table(table: string, grammar: DatabaseGrammar, client: DatabaseClient): QueryBuilder {
+		return new QueryBuilderImpl({ sqlFragments: [table] }, grammar, client, []);
 	}
 
-	#derive<K extends keyof MutableQueryBuilder>(
+	#isEmptyArrayInsert(): boolean {
+		return this.#getParts().insertData?.length === 0;
+	}
+
+	#derive<K extends MutableQueryBuilderMethod>(
 		method: K,
 		args: Parameters<MutableQueryBuilder[K]>,
 	): this {
@@ -160,23 +199,48 @@ export class QueryBuilderImpl extends BaseClass implements AnyQueryBuilder {
 		}
 
 		commands.push([method, args]);
-		return new QueryBuilderImpl(this.#from, this.#grammar, commands) as this;
+		return new QueryBuilderImpl(this.#from, this.#grammar, this.#client, commands) as this;
 	}
 
-	#getBuild(): SqlFragments {
-		if (!this.#cachedBuild) {
-			const builder = new MutableQueryBuilder(this.#from, this.#grammar);
+	#getParts(): QueryParts {
+		if (!this.#cachedParts) {
+			const builder = new MutableQueryBuilder(this.#from);
 			for (let i = 0; i < this.#length; i++) {
 				const [method, args] = this.#commands[i];
 				(builder[method] as (...a: unknown[]) => void)(...args);
 			}
-			this.#cachedBuild = builder.compile();
+			this.#cachedParts = builder;
+		}
+		return this.#cachedParts;
+	}
+
+	#getBuild(): SqlFragments {
+		if (!this.#cachedBuild) {
+			this.#cachedBuild = this.#grammar.compileQuery(this.#getParts());
 		}
 		return this.#cachedBuild;
 	}
 }
 
-type Command = [keyof MutableQueryBuilder, unknown[]];
+// Method names on MutableQueryBuilder that can be called via #derive
+type MutableQueryBuilderMethod =
+	| "pushJoin"
+	| "setSelect"
+	| "pushSelect"
+	| "pushWhere"
+	| "pushGroupBy"
+	| "pushHaving"
+	| "pushOrderBy"
+	| "setOrderBy"
+	| "setLimit"
+	| "setOffset"
+	| "setDistinct"
+	| "setLock"
+	| "setInsertData"
+	| "setUpdateData"
+	| "setDelete";
+
+type Command = [MutableQueryBuilderMethod, unknown[]];
 
 function resolveToStatement(
 	conditionOrStatement: string | Statement,

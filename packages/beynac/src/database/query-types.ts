@@ -9,16 +9,47 @@ export interface SqlFragments {
 	get sqlFragments(): readonly StringOrFragment[];
 }
 
+export interface LockOptions {
+	skipLocked?: boolean | undefined;
+	noWait?: boolean | undefined;
+}
+
+export type JoinType =
+	| "JOIN"
+	| "INNER JOIN"
+	| "LEFT JOIN"
+	| "RIGHT JOIN"
+	| "FULL OUTER JOIN"
+	| "CROSS JOIN";
+
+export interface JoinEntry {
+	type: JoinType;
+	clause: SqlFragments;
+}
+
+export interface QueryParts {
+	readonly from: SqlFragments;
+	readonly joins: readonly JoinEntry[];
+	readonly select: readonly string[];
+	readonly where: readonly SqlFragments[];
+	readonly groupBy: readonly string[];
+	readonly having: readonly SqlFragments[];
+	readonly orderBy: readonly string[];
+	readonly limit: number | null;
+	readonly offset: number | null;
+	readonly distinct: boolean;
+	readonly lockType: "UPDATE" | "SHARE" | undefined;
+	readonly lockOptions: LockOptions | undefined;
+	readonly insertData: Record<string, unknown>[] | null;
+	readonly updateData: Record<string, unknown> | null;
+	readonly isDelete: boolean;
+}
+
 export interface Statement extends SqlFragments {
 	/**
 	 * Render this statement for logging, with parameter values inlined.
 	 */
 	toHumanReadableSql(): string;
-}
-
-export interface LockOptions {
-	skipLocked?: boolean | undefined;
-	noWait?: boolean | undefined;
 }
 
 export interface MutationResult {
@@ -45,7 +76,7 @@ export interface ExecutableStatementWithoutClient extends Statement, StatementEx
 	on(clientName: string): ExecutableStatement;
 }
 
-interface StatementExecutionMethods {
+export interface QueryExecutionMethods {
 	/**
 	 * Execute the statement on the default client and return the raw result
 	 * with rows and rowsAffected.
@@ -91,7 +122,9 @@ interface StatementExecutionMethods {
 	 * Execute the statement on the default client and return the first column of all rows.
 	 */
 	column<T = unknown>(): Promise<T[]>;
+}
 
+interface StatementExecutionMethods extends QueryExecutionMethods {
 	/**
 	 * This `then` method allows awaiting the Sql object directly
 	 *
@@ -122,6 +155,7 @@ export interface AnyQueryBuilder
  */
 export interface QueryBuilder
 	extends Statement,
+		QueryExecutionMethods,
 		InsertMethod<QueryBuilderWithInsert>,
 		BulkMutationMethods,
 		WhereMethod<QueryBuilderWithCondition>,
@@ -134,6 +168,7 @@ export interface QueryBuilder
  */
 export interface QueryBuilderWithCondition
 	extends Statement,
+		QueryExecutionMethods,
 		BulkMutationMethods,
 		WhereMethod<QueryBuilderWithCondition>,
 		SelectSetInitialColumns<QueryBuilderForSelectWithColumns>,
@@ -145,6 +180,7 @@ export interface QueryBuilderWithCondition
  */
 export interface QueryBuilderForSelect
 	extends Statement,
+		QueryExecutionMethods,
 		WhereMethod<QueryBuilderForSelect>,
 		SelectSetInitialColumns<QueryBuilderForSelectWithColumns>,
 		SelectClauseMethods<QueryBuilderForSelect> {}
@@ -156,6 +192,7 @@ export interface QueryBuilderForSelect
  */
 export interface QueryBuilderForSelectWithColumns
 	extends Statement,
+		QueryExecutionMethods,
 		WhereMethod<QueryBuilderForSelectWithColumns>,
 		SelectModifyColumns<QueryBuilderForSelectWithColumns>,
 		SelectClauseMethods<QueryBuilderForSelectWithColumns> {}

@@ -1,212 +1,214 @@
-import { describe, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { SqliteGrammar } from "../grammar/SqliteGrammar.ts";
 import type { QueryBuilder } from "../query-types.ts";
 import { QueryBuilderImpl } from "./QueryBuilderImpl.ts";
 
+const stubClient = { run: () => Promise.resolve({ rows: [], rowsAffected: 0 }) };
+
 function table(name: string): QueryBuilder {
-	return QueryBuilderImpl.table(name, new SqliteGrammar());
+	return QueryBuilderImpl.table(name, new SqliteGrammar(), stubClient as never);
 }
 
 describe("where()", () => {
 	test("can chain to where()", () => {
-		table("users").where("id = ?", 1).where("active = ?", true);
+		table("").where("").where("");
 	});
 
 	test("can chain to select()", () => {
-		table("users").where("active = ?", true).select("id", "name");
+		table("").where("").select("");
 	});
 
 	test("can chain to orderBy()", () => {
-		table("users").where("active = ?", true).orderBy("name");
+		table("").where("").orderBy("");
 	});
 
 	test("can chain to deleteAll()", () => {
-		table("users").where("active = ?", false).deleteAll();
+		void table("").where("").deleteAll();
 	});
 
 	test("can chain to updateAll()", () => {
-		table("users").where("id = ?", 1).updateAll({ status: "archived" });
+		void table("").where("").updateAll({});
 	});
 
 	test("cannot chain to insert()", () => {
-		table("users")
-			.where("id = ?", 1)
+		table("")
+			.where("")
 			// @ts-expect-error
-			.insert({ name: "Alice" });
+			.insert({});
 	});
 });
 
 describe("select()", () => {
 	test("can chain to where()", () => {
-		table("users").select("id").where("active = ?", true);
+		table("").select("").where("");
 	});
 
 	test("can chain to select methods", () => {
-		table("users").select("id").orderBy("name");
-		table("users").select("id").limit(1);
-		table("users").select("id").crossJoin("name");
-		table("users").select("id").join("name");
+		table("").select("").orderBy("");
+		table("").select("").limit(1);
+		table("").select("").crossJoin("");
+		table("").select("").join("");
 	});
 
 	test("can chain to modify the select columns", () => {
-		table("users").select("id").addSelect("name");
-		table("users").select("id", "name").replaceSelect("id");
+		table("").select("").addSelect("");
+		table("").select("", "").replaceSelect("");
 	});
 
 	test("cannot chain to call select twice", () => {
-		table("users")
-			.select("id")
+		table("")
+			.select("")
 			// @ts-expect-error
-			.select("name");
-		table("users")
-			.select("id")
-			.where("id")
+			.select("");
+		table("")
+			.select("")
+			.where("")
 			// @ts-expect-error
-			.select("name");
-		table("users")
-			.select("id")
-			.join("foo")
+			.select("");
+		table("")
+			.select("")
+			.join("")
 			// @ts-expect-error
-			.select("name");
+			.select("");
 	});
 
 	test("cannot chain to call select after addSelect / replaceSelect", () => {
-		table("users")
-			.addSelect("id")
+		table("")
+			.addSelect("")
 			// @ts-expect-error
-			.select("name");
-		table("users")
-			.replaceSelect("id")
+			.select("");
+		table("")
+			.replaceSelect("")
 			// @ts-expect-error
-			.select("name");
+			.select("");
 	});
 
 	test("cannot chain to insert()", () => {
-		table("users")
-			.select("id")
+		table("")
+			.select("")
 			// @ts-expect-error
-			.insert({ name: "Alice" });
+			.insert({});
 	});
 
 	test("cannot chain to deleteAll()", () => {
-		table("users")
-			.select("id")
+		table("")
+			.select("")
 			// @ts-expect-error
 			.deleteAll();
 	});
 
 	test("cannot chain to updateAll()", () => {
-		table("users")
-			.select("id")
+		table("")
+			.select("")
 			// @ts-expect-error
-			.updateAll({ active: false });
+			.updateAll({});
 	});
 });
 
 describe("select query methods", () => {
 	test("orderBy() can chain to where()", () => {
-		table("users").orderBy("name").where("id = ?", 1);
+		table("").orderBy("").where("");
 	});
 
 	test("orderBy() can chain to select methods", () => {
-		table("users").orderBy("name").select("id");
-		table("users").orderBy("name").limit(10);
-		table("users").limit(10).offset(5);
+		table("").orderBy("").select("");
+		table("").orderBy("").limit(10);
+		table("").limit(10).offset(5);
 	});
 
 	test("can chain to where()", () => {
-		table("users").distinct().where("active = ?", true);
-		table("users").having("").where("active = ?", true);
+		table("").distinct().where("");
+		table("").having("").where("");
 	});
 
 	test("can chain to select()", () => {
-		table("users").join("profiles ON profiles.user_id = users.id").select("users.id");
-		table("users").groupBy("").select("users.id");
+		table("").join("").select("");
+		table("").groupBy("").select("");
 	});
 
 	test("cannot chain to insert()", () => {
-		table("users")
-			.orderBy("name")
+		table("")
+			.orderBy("")
 			// @ts-expect-error
-			.insert({ name: "Alice" });
-		table("users")
+			.insert({});
+		table("")
 			.limit(10)
 			// @ts-expect-error
-			.insert({ name: "Alice" });
+			.insert({});
 	});
 
 	test("cannot chain to deleteAll()", () => {
-		table("users")
+		table("")
 			.offset(4)
 			// @ts-expect-error
 			.deleteAll();
-		table("users")
-			.rightJoin("foo")
+		table("")
+			.rightJoin("")
 			// @ts-expect-error
 			.deleteAll();
 	});
 
 	test("cannot chain to updateAll()", () => {
-		table("users")
-			.orderBy("name")
+		table("")
+			.orderBy("")
 			// @ts-expect-error
-			.updateAll({ active: false });
+			.updateAll({});
 	});
 
 	test("cannot chain to insert()", () => {
-		table("users")
+		table("")
 			.limit(10)
 			// @ts-expect-error
-			.insert({ name: "Alice" });
+			.insert({});
 	});
 
 	test("can chain to addSelect() and replaceSelect()", () => {
-		table("users").orderBy("name").addSelect("id");
-		table("users").orderBy("name").replaceSelect("id");
-		table("users").orderBy("name").select("id").addSelect("email");
+		table("").orderBy("").addSelect("");
+		table("").orderBy("").replaceSelect("");
+		table("").orderBy("").select("").addSelect("");
 	});
 });
 
 describe("insert()", () => {
 	test("can chain to returning()", () => {
-		table("users").insert({ name: "Alice" }).returning("id", "created_at");
+		void table("").insert({}).returning("", "");
 	});
 
 	test("can chain to returningId()", () => {
-		table("users").insert({ name: "Alice" }).returningId();
+		void table("").insert({}).returningId();
 	});
 
 	test("returningId() accepts custom type parameter", () => {
-		table("users").insert({ name: "Alice" }).returningId<string>();
+		void table("").insert({}).returningId<string>();
 	});
 
 	test("cannot chain to where()", () => {
-		table("users")
-			.insert({ name: "Alice" })
+		table("")
+			.insert({})
 			// @ts-expect-error
-			.where("id = ?", 1);
+			.where("");
 	});
 
 	test("cannot chain to select()", () => {
-		table("users")
-			.insert({ name: "Alice" })
+		table("")
+			.insert({})
 			// @ts-expect-error
-			.select("id");
+			.select("");
 	});
 
 	test("returning() is not valid without insert()", () => {
-		table("users").insert({}).returning();
-		table("users")
+		void table("").insert({}).returning();
+		table("")
 			// @ts-expect-error
 			.returning();
 
-		table("users").insert({}).returning("id");
-		table("users")
+		void table("").insert({}).returning("");
+		table("")
 			// @ts-expect-error
-			.returning("id");
+			.returning("");
 
-		table("users").insert({}).returningId();
-		table("users")
+		void table("").insert({}).returningId();
+		table("")
 			// @ts-expect-error
 			.returningId();
 	});
@@ -214,34 +216,34 @@ describe("insert()", () => {
 
 describe("deleteAll()", () => {
 	test("available on QueryBuilder", () => {
-		table("users").deleteAll();
+		void table("").deleteAll();
 	});
 
 	test("available after where()", () => {
-		table("users").where("active = ?", false).deleteAll();
+		void table("").where("").deleteAll();
 	});
 
 	test("not available after select()", () => {
-		table("users")
-			.select("id")
+		table("")
+			.select("")
 			// @ts-expect-error
 			.deleteAll();
 	});
 
 	test("not available after select query methods", () => {
-		table("users")
-			.orderBy("name")
+		table("")
+			.orderBy("")
 			// @ts-expect-error
 			.deleteAll();
-		table("users")
+		table("")
 			.limit(10)
 			// @ts-expect-error
 			.deleteAll();
 	});
 
 	test("not available after insert()", () => {
-		table("users")
-			.insert({ name: "Alice" })
+		table("")
+			.insert({})
 			// @ts-expect-error
 			.deleteAll();
 	});
@@ -249,69 +251,74 @@ describe("deleteAll()", () => {
 
 describe("updateAll()", () => {
 	test("available on QueryBuilder", () => {
-		table("users").updateAll({ active: false });
+		void table("").updateAll({});
 	});
 
 	test("available after where()", () => {
-		table("users").where("id = ?", 1).updateAll({ status: "archived" });
+		void table("").where("").updateAll({});
 	});
 
 	test("not available after select()", () => {
-		table("users")
-			.select("id")
+		table("")
+			.select("")
 			// @ts-expect-error
-			.updateAll({ active: false });
+			.updateAll({});
 	});
 
 	test("not available after select query methods", () => {
-		table("users")
-			.orderBy("name")
+		table("")
+			.orderBy("")
 			// @ts-expect-error
-			.updateAll({ active: false });
-		table("users")
+			.updateAll({});
+		table("")
 			.distinct()
 			// @ts-expect-error
-			.updateAll({ active: false });
+			.updateAll({});
 	});
 
 	test("not available after insert()", () => {
-		table("users")
-			.insert({ name: "Alice" })
+		table("")
+			.insert({})
 			// @ts-expect-error
-			.updateAll({ active: false });
+			.updateAll({});
 	});
 });
 
 describe("placeholder arity", () => {
 	test("single placeholder with one value", () => {
-		table("t").where("a = ?", 1);
+		table("").where("?", 1);
 	});
 
 	test("multiple placeholders with matching values", () => {
-		table("t").where("a = ? AND b = ?", 1, 2);
+		table("").where("? ?", 1, 2);
 	});
 
 	test("Statement argument as placeholder value", () => {
-		const subquery = table("other").select("id");
-		table("t").where("id IN ?", subquery);
+		const subquery = table("").select("");
+		table("").where("?", subquery);
 	});
 
 	test("too few values is rejected", () => {
-		table("t")
-			// @ts-expect-error
-			.where("a = ? AND b = ?", 1);
+		expect(() =>
+			table("")
+				// @ts-expect-error
+				.where("? ?", 1),
+		).toThrow();
 	});
 
 	test("too many values is rejected", () => {
-		table("t")
-			// @ts-expect-error
-			.where("a = ?", 1, 2);
+		expect(() =>
+			table("")
+				// @ts-expect-error
+				.where("?", 1, 2),
+		).toThrow();
 	});
 
-	test("widened string allows any arity", () => {
-		const condition = "a = ?" as string;
-		table("t").where(condition);
-		table("t").where(condition, 1);
-		table("t").where(condition, 1, 2);
+	test("widened string allows any arity at type level", () => {
+		const condition = "?" as string;
+		// TypeScript allows any arity when string is widened, but runtime still validates
+		expect(() => table("").where(condition)).toThrow();
+		table("").where(condition, 1); // This one matches at runtime
+		expect(() => table("").where(condition, 1, 2)).toThrow();
 	});
 });

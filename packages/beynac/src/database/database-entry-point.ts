@@ -27,7 +27,7 @@ export {
 	TransactionPreCommitEvent,
 	TransactionRetryingEvent,
 } from "./database-events.ts";
-export { DatabaseGrammar, type JoinType } from "./grammar/DatabaseGrammar.ts";
+export { DatabaseGrammar } from "./grammar/DatabaseGrammar.ts";
 export type {
 	AnyQueryBuilder,
 	ExecutableStatement,
