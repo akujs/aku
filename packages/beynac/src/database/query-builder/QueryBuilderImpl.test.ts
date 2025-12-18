@@ -966,6 +966,39 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 			const row = await table.where("id = ?", 50).first();
 			expect(row).toEqual({ id: 50, name: "subset", value: 42 }); // value gets default
 		});
+
+		test("insert single row with sql expression value", async () => {
+			await table.insert({ id: 60, name: sql`'computed_' || 'name'`, value: 100 });
+			const row = await table.where("id = ?", 60).first();
+			expect(row).toEqual({ id: 60, name: "computed_name", value: 100 });
+		});
+
+		test("insert array with subquery value", async () => {
+			await db.run(sql`CREATE TABLE expr_source (id INTEGER PRIMARY KEY, src_value INTEGER)`);
+			await db.table("expr_source").insert([
+				{ id: 1, src_value: 111 },
+				{ id: 2, src_value: 222 },
+			]);
+
+			await table.insert([
+				{
+					id: 61,
+					name: "sub1",
+					value: db.table("expr_source").select("src_value").where("id = ?", 1),
+				},
+				{
+					id: 62,
+					name: "sub2",
+					value: db.table("expr_source").select("src_value").where("id = ?", 2),
+				},
+			]);
+
+			const rows = await table.where("id IN ?", [61, 62]).orderBy("id").all();
+			expect(rows).toEqual([
+				{ id: 61, name: "sub1", value: 111 },
+				{ id: 62, name: "sub2", value: 222 },
+			]);
+		});
 	});
 
 	describe(QueryBuilderImpl.prototype.updateAll, () => {
@@ -994,6 +1027,28 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 
 			const rows = await db.table("test_update_all").orderBy("id").all();
 			expect(rows.every((r) => r.flag === 1)).toBe(true);
+		});
+
+		test("updates with sql expression value", async () => {
+			await table.insert({ id: 70, name: "expr_update", value: 100 });
+
+			await table.where("id = ?", 70).updateAll({ name: sql`'prefix_' || name` });
+
+			const row = await table.where("id = ?", 70).first();
+			expect(row).toEqual({ id: 70, name: "prefix_expr_update", value: 100 });
+		});
+
+		test("updates with subquery value", async () => {
+			await db.run(sql`CREATE TABLE update_source (id INTEGER PRIMARY KEY, src_value INTEGER)`);
+			await db.table("update_source").insert({ id: 1, src_value: 999 });
+			await table.insert({ id: 71, name: "sub_update", value: 0 });
+
+			await table.where("id = ?", 71).updateAll({
+				value: db.table("update_source").select("src_value").where("id = ?", 1),
+			});
+
+			const row = await table.where("id = ?", 71).first();
+			expect(row).toEqual({ id: 71, name: "sub_update", value: 999 });
 		});
 	});
 

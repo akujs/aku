@@ -494,6 +494,17 @@ interface InsertMethod<TSingle, TArray = TSingle> {
 	 * @example
 	 * // Insert from subquery with explicit columns
 	 * await table("users").insert(sql`SELECT name, age FROM temp_users`, { columns: ["name", "age"] })
+	 *
+	 * @example
+	 * // Values can be SQL expressions using the sql tag
+	 * await table("users").insert({ name: "Alice", created_at: sql`NOW()` })
+	 *
+	 * @example
+	 * // Values can be subqueries
+	 * await table("users").insert({
+	 *   name: "Alice",
+	 *   team_id: table("teams").select("id").where("name = ?", "Default")
+	 * })
 	 */
 	insert(values: Row, options?: InsertOptions): TSingle;
 	insert(values: Row[], options?: InsertOptions): TArray;
@@ -546,6 +557,16 @@ interface BulkMutationMethods<TReturn = QueryBuilderWithMutation> {
 	 *
 	 * @example
 	 * await table("users").where("age > ?", 65).updateAll({ status: "retired" })
+	 *
+	 * @example
+	 * // Values can be SQL expressions using the sql tag
+	 * await table("users").where("id = ?", 1).updateAll({ updated_at: sql`NOW()` })
+	 *
+	 * @example
+	 * // Values can be subqueries
+	 * await table("users").where("id = ?", 1).updateAll({
+	 *   team_id: table("teams").select("id").where("name = ?", "Default")
+	 * })
 	 */
 	updateAll(values: Row): TReturn;
 }
