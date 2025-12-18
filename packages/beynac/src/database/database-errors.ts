@@ -95,6 +95,7 @@ export class QueryError extends DatabaseError {
 
 	constructor(sql: string, message: string, cause: unknown, code?: string, errorNumber?: number) {
 		const error = cause instanceof Error ? cause : new Error(String(cause));
+		message = `${message} (query: ${sql})`;
 		super(message, error);
 		this.sql = sql;
 		this.code = code;

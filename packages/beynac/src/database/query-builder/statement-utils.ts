@@ -1,17 +1,26 @@
 import { pluralCount } from "../../utils.ts";
+import { QueryError } from "../database-errors.ts";
 import type { SqlFragment, SqlFragments, StringOrFragment } from "../query-types.ts";
 
 export function getSqlFragmentsParams(statement: SqlFragments): unknown[] {
 	const result: unknown[] = [];
 	for (const item of statement.sqlFragments) {
 		if (typeof item !== "string") {
-			if (item.param === undefined) {
-				throw new Error("Cannot bind undefined value. Use null for NULL values.");
-			}
 			result.push(item.param);
 		}
 	}
 	return result;
+}
+
+export function assertNoUndefinedParams(params: unknown[], sql: string): void {
+	const undefinedIndex = params.findIndex((p) => p === undefined);
+	if (undefinedIndex !== -1) {
+		throw new QueryError(
+			sql,
+			`Cannot bind undefined for parameter ${undefinedIndex + 1}. Use null for NULL values.`,
+			new Error("Undefined parameter"),
+		);
+	}
 }
 
 export function splitSqlToFragments(sql: string, values: unknown[]): SqlFragments {

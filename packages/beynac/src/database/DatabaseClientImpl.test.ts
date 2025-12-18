@@ -14,6 +14,7 @@ import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 import { DatabaseClientImpl } from "./DatabaseClientImpl.ts";
 import { DatabaseError, QueryError } from "./database-errors.ts";
+import { paramAsFragment } from "./query-builder/statement-utils.ts";
 import { sql } from "./sql.ts";
 
 describe(DatabaseClientImpl, () => {
@@ -256,6 +257,16 @@ describe(DatabaseClientImpl, () => {
 
 		const rows = await db.all(sql`SELECT value FROM test`);
 		expect(rows).toEqual([{ value: "escaped" }]);
+	});
+
+	test("throws QueryError with SQL when executing statement with undefined param", async () => {
+		// Manually construct a statement with undefined to bypass sql`` validation
+		// const stmt = new StatementImpl([{ sql: "SELECT * FROM test WHERE id = ", param: undefined }]);
+		const stmt = sql`SELECT ${{ sqlFragments: [paramAsFragment(undefined)] }}`;
+
+		expect(db.run(stmt)).rejects.toThrowErrorMatchingInlineSnapshot(
+			`"Cannot bind undefined for parameter 1. Use null for NULL values. (query: SELECT ( ? ))"`,
+		);
 	});
 });
 

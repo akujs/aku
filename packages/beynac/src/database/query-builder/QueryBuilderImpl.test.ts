@@ -78,35 +78,14 @@ describe(QueryBuilderImpl, () => {
 			);
 		});
 
-		test("join throws with helpful message if placeholder value is undefined", () => {
-			expect(() => table("t").join("other ON other.id = ?", undefined)).toThrow(
-				"Cannot pass undefined for parameter 1 in join('other ON other.id = ?', ...). Use null for NULL values.",
-			);
-		});
-
-		test("innerJoin throws with helpful message if placeholder value is undefined", () => {
-			expect(() => table("t").innerJoin("other ON other.id = ?", undefined)).toThrow(
-				"Cannot pass undefined for parameter 1 in innerJoin('other ON other.id = ?', ...). Use null for NULL values.",
-			);
-		});
-
-		test("leftJoin throws with helpful message if placeholder value is undefined", () => {
-			expect(() => table("t").leftJoin("other ON other.id = ?", undefined)).toThrow(
-				"Cannot pass undefined for parameter 1 in leftJoin('other ON other.id = ?', ...). Use null for NULL values.",
-			);
-		});
-
-		test("rightJoin throws with helpful message if placeholder value is undefined", () => {
-			expect(() => table("t").rightJoin("other ON other.id = ?", undefined)).toThrow(
-				"Cannot pass undefined for parameter 1 in rightJoin('other ON other.id = ?', ...). Use null for NULL values.",
-			);
-		});
-
-		test("fullJoin throws with helpful message if placeholder value is undefined", () => {
-			expect(() => table("t").fullJoin("other ON other.id = ?", undefined)).toThrow(
-				"Cannot pass undefined for parameter 1 in fullJoin('other ON other.id = ?', ...). Use null for NULL values.",
-			);
-		});
+		test.each(["join", "innerJoin", "leftJoin", "rightJoin", "fullJoin"] as const)(
+			"%s throws with helpful message if placeholder value is undefined",
+			(joinType) => {
+				expect(() => table("t")[joinType]("other ON other.id = ?", undefined)).toThrow(
+					`Cannot pass undefined for parameter 1 in ${joinType}('other ON other.id = ?', ...). Use null for NULL values.`,
+				);
+			},
+		);
 
 		test("having throws with helpful message if placeholder value is undefined", () => {
 			expect(() => table("t").groupBy("status").having("COUNT(*) > ?", undefined)).toThrow(

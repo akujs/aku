@@ -44,11 +44,9 @@ describe(StatementImpl.prototype.toHumanReadableSql, () => {
 		expect(stmt.toHumanReadableSql()).toBe("SELECT [$1: null]");
 	});
 
-	test("throws on undefined parameter", () => {
+	test("renders undefined parameter without throwing", () => {
 		const stmt = new StatementImpl([{ sql: "SELECT ", param: undefined }]);
 
-		expect(() => stmt.toHumanReadableSql()).toThrow(
-			"Cannot bind undefined value. Use null for NULL values.",
-		);
+		expect(stmt.toHumanReadableSql()).toBe("SELECT [$1: undefined]");
 	});
 });

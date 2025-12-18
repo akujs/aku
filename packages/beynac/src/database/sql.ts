@@ -19,6 +19,11 @@ export const sql: SqlApi = Object.assign(
 		const fragments: StringOrFragment[] = [];
 		for (let i = 0; i < strings.length; i++) {
 			if (i < values.length) {
+				if (values[i] === undefined) {
+					throw new Error(
+						`Cannot pass undefined for parameter ${i + 1} in sql\`...\`. Use null for NULL values.`,
+					);
+				}
 				fragments.push({ sql: strings[i], param: values[i] });
 			} else if (strings[i]) {
 				fragments.push(strings[i]);
