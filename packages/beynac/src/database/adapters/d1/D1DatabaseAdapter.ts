@@ -4,7 +4,7 @@ import type { CompiledQuery, DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { SqliteGrammar } from "../../grammar/SqliteGrammar.ts";
-import type { StatementResult } from "../../query-types.ts";
+import type { Row, StatementResult } from "../../query-types.ts";
 import type { D1DatabaseAdapterConfig } from "./D1DatabaseAdapterConfig.ts";
 
 export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter<D1Database> {
@@ -54,7 +54,7 @@ export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter<D1Da
 	}
 
 	#toStatementResult(result: D1Result): StatementResult {
-		const rows = result.results as Record<string, unknown>[];
+		const rows = result.results as Row[];
 		return {
 			rows,
 			rowsAffected: rows.length > 0 ? rows.length : (result.meta.changes ?? 0),

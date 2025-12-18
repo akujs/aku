@@ -1,6 +1,8 @@
+import type { Row } from "../../query-types.ts";
+
 export interface SqlitePreparedStatement {
 	readonly isQuery: boolean;
-	all(...params: unknown[]): Record<string, unknown>[];
+	all(...params: unknown[]): Row[];
 	run(...params: unknown[]): { changes: number };
 }
 

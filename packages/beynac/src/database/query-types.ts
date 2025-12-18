@@ -27,6 +27,22 @@ export interface JoinEntry {
 	clause: SqlFragments;
 }
 
+export interface InsertOptions {
+	columns?: string[] | undefined;
+}
+
+export interface InsertPart {
+	data: Row | Row[] | SqlFragments;
+	columns: readonly string[] | null;
+}
+
+export interface LockPart {
+	type: "UPDATE" | "SHARE";
+	options?: LockOptions | undefined;
+}
+
+export type ThenExecutor = "run" | "all" | "column" | "scalar" | "first";
+
 export interface QueryParts {
 	readonly table: string;
 	readonly joins: readonly JoinEntry[];
@@ -38,11 +54,12 @@ export interface QueryParts {
 	readonly limit: number | null;
 	readonly offset: number | null;
 	readonly distinct: boolean;
-	readonly lockType: "UPDATE" | "SHARE" | undefined;
-	readonly lockOptions: LockOptions | undefined;
-	readonly insertData: Record<string, unknown>[] | null;
-	readonly updateData: Record<string, unknown> | null;
+	readonly lock: LockPart | null;
+	readonly insert: InsertPart | null;
+	readonly updateData: Row | null;
 	readonly isDelete: boolean;
+	readonly returningColumns: readonly string[] | null;
+	readonly thenExecutor: ThenExecutor | null;
 }
 
 export interface Statement extends SqlFragments {
@@ -50,10 +67,6 @@ export interface Statement extends SqlFragments {
 	 * Render this statement for logging, with parameter values inlined.
 	 */
 	toHumanReadableSql(): string;
-}
-
-export interface MutationResult {
-	rowsAffected: number;
 }
 
 export interface StatementResult {
@@ -67,8 +80,15 @@ export type Row = Record<string, unknown>;
  * A SQL statement with an associated database client that can be executed
  * directly by awaiting or calling execution methods like `.all()`.
  */
-export interface ExecutableStatement extends Statement, StatementExecutionMethods {}
+export interface ExecutableStatement<TThen = Row[]>
+	extends Statement,
+		StatementExecutionMethods<TThen> {}
 
+/**
+ * A SQL statement with no associated database client. Executing it by awaiting
+ * awaiting or calling execution methods like `.all()` will use the default
+ * database client.
+ */
 export interface ExecutableStatementWithoutClient extends Statement, StatementExecutionMethods {
 	/**
 	 * Specify which database client to use.
@@ -76,7 +96,7 @@ export interface ExecutableStatementWithoutClient extends Statement, StatementEx
 	on(clientName: string): ExecutableStatement;
 }
 
-export interface QueryExecutionMethods {
+interface StatementExecutionMethods<TThen = Row[]> {
 	/**
 	 * Execute the statement on the default client and return the raw result
 	 * with rows and rowsAffected.
@@ -122,32 +142,35 @@ export interface QueryExecutionMethods {
 	 * Execute the statement on the default client and return the first column of all rows.
 	 */
 	column<T = unknown>(): Promise<T[]>;
-}
 
-interface StatementExecutionMethods extends QueryExecutionMethods {
 	/**
-	 * This `then` method allows awaiting the Sql object directly
-	 *
-	 * The return type is equivalent to calling all().
+	 * This `then` method allows awaiting the statement directly.
 	 *
 	 * @example
 	 * const allRows = await sql`SELECT * FROM users`;
 	 */
-	then: Promise<Row[]>["then"];
+	then: Promise<TThen>["then"];
 }
 
 /**
  * An interface with all query builder methods. Normally you will be working
  * with one of the more specific builder types but this can be used when you
  * need to accept any kind of builder.
+ *
+ * Note that this does not have the type protections of the more specific
+ * builder types, so you can make nonsensical call combinations, such as
+ * `builder.offset(10).updateAll({foo: "bar"})` (offset only applies to select
+ * queries and is ignored by update queries).
  */
 export interface AnyQueryBuilder
 	extends Statement,
-		BulkMutationMethods,
+		StatementExecutionMethods<unknown>,
+		BulkMutationMethods<AnyQueryBuilder>,
 		InsertMethod<AnyQueryBuilder>,
-		InsertResultMethods,
+		ReturningMethods<unknown, unknown>,
 		WhereMethod<AnyQueryBuilder>,
 		SelectSetInitialColumns<AnyQueryBuilder>,
+		OrderBySetInitial<AnyQueryBuilder>,
 		SelectClauseMethods<AnyQueryBuilder> {}
 
 /**
@@ -155,12 +178,13 @@ export interface AnyQueryBuilder
  */
 export interface QueryBuilder
 	extends Statement,
-		QueryExecutionMethods,
-		InsertMethod<QueryBuilderWithInsert>,
+		StatementExecutionMethods,
+		InsertMethod<QueryBuilderWithInsertSingle, QueryBuilderWithInsertArray>,
 		BulkMutationMethods,
 		WhereMethod<QueryBuilderWithCondition>,
-		SelectSetInitialColumns<QueryBuilderForSelectWithColumns>,
-		SelectClauseMethods<QueryBuilderForSelect> {}
+		SelectSetInitialColumns<SelectQueryBuilder<true, false>>,
+		OrderBySetInitial<SelectQueryBuilder<false, true>>,
+		SelectClauseMethods<SelectQueryBuilder<false, false>> {}
 
 /**
  * Query builder after where() has been called. Permits bulk updates / deletes
@@ -168,71 +192,50 @@ export interface QueryBuilder
  */
 export interface QueryBuilderWithCondition
 	extends Statement,
-		QueryExecutionMethods,
+		StatementExecutionMethods,
 		BulkMutationMethods,
 		WhereMethod<QueryBuilderWithCondition>,
-		SelectSetInitialColumns<QueryBuilderForSelectWithColumns>,
-		SelectClauseMethods<QueryBuilderForSelect> {}
+		SelectSetInitialColumns<SelectQueryBuilder<true, false>>,
+		OrderBySetInitial<SelectQueryBuilder<false, true>>,
+		SelectClauseMethods<SelectQueryBuilder<false, false>> {}
+
+export type SelectQueryBuilder<
+	TSelect extends boolean = false,
+	TOrderBy extends boolean = false,
+> = Statement &
+	StatementExecutionMethods &
+	WhereMethod<SelectQueryBuilder<TSelect, TOrderBy>> &
+	SelectClauseMethods<SelectQueryBuilder<TSelect, TOrderBy>> &
+	(TSelect extends true
+		? SelectModifyColumns<SelectQueryBuilder<true, TOrderBy>>
+		: SelectSetInitialColumns<SelectQueryBuilder<true, TOrderBy>>) &
+	(TOrderBy extends true
+		? OrderByModify<SelectQueryBuilder<TSelect, true>>
+		: OrderBySetInitial<SelectQueryBuilder<TSelect, true>>);
 
 /**
- * Query builder for SELECT statements before columns have been set.
- * Calling select(), addSelect(), or replaceSelect() transitions to SelectBuilderWithColumns.
+ * Query builder for mutation statements (INSERT, UPDATE, DELETE)
  */
-export interface QueryBuilderForSelect
+export interface QueryBuilderWithMutation
 	extends Statement,
-		QueryExecutionMethods,
-		WhereMethod<QueryBuilderForSelect>,
-		SelectSetInitialColumns<QueryBuilderForSelectWithColumns>,
-		SelectClauseMethods<QueryBuilderForSelect> {}
+		StatementExecutionMethods<StatementResult> {}
 
 /**
- * Query builder for SELECT statements after columns have been set.
- * The select() method is no longer available, use addSelect() or replaceSelect()
- * to modify columns.
+ * Query builder for INSERT statements. Extends mutation with RETURNING support.
  */
-export interface QueryBuilderForSelectWithColumns
-	extends Statement,
-		QueryExecutionMethods,
-		WhereMethod<QueryBuilderForSelectWithColumns>,
-		SelectModifyColumns<QueryBuilderForSelectWithColumns>,
-		SelectClauseMethods<QueryBuilderForSelectWithColumns> {}
+export interface QueryBuilderWithInsert<TReturning, TReturningId>
+	extends QueryBuilderWithMutation,
+		ReturningMethods<TReturning, TReturningId> {}
 
 /**
- * Query builder for INSERT statements
+ * A query builder after calling insert({...}) to add a single row
  */
-export interface QueryBuilderWithInsert extends Statement, InsertResultMethods {}
+export type QueryBuilderWithInsertSingle = QueryBuilderWithInsert<Row, unknown>;
 
-interface InsertResultMethods {
-	/**
-	 * Execute the insert and return specified columns from inserted rows.
-	 *
-	 * @example
-	 * const results = await table("users")
-	 *   .insert({ name: "Alice", age: 30 })
-	 *   .returning("id", "created_at");
-	 */
-	returning<T extends string>(...columns: T[]): Promise<Record<T, unknown>[]>;
-
-	/**
-	 * Execute the insert and return the auto-generated IDs of inserted rows.
-	 *
-	 * @example
-	 * const ids = await table("users")
-	 *   .insert([{ name: "Alice" }, { name: "Bob" }])
-	 *   .returningId();
-	 */
-	returningId<T = number>(column?: string): Promise<T[]>;
-
-	/**
-	 * Execute the insert and return the mutation result. This makes the builder
-	 * awaitable directly.
-	 *
-	 * @example
-	 * const result = await table("users").insert({ name: "Alice", age: 30 });
-	 * console.log(result.rowsAffected); // 1
-	 */
-	then: Promise<MutationResult>["then"];
-}
+/**
+ * A query builder after calling insert([{...}, {...}]) to add a multiple rows
+ */
+export type QueryBuilderWithInsertArray = QueryBuilderWithInsert<Row[], unknown[]>;
 
 interface SelectSetInitialColumns<TReturn> extends SelectModifyColumns<TReturn> {
 	/**
@@ -261,6 +264,35 @@ interface SelectModifyColumns<TReturn> {
 	 * const idsOnly = base.replaceSelect("id");
 	 */
 	replaceSelect: (...columns: string[]) => TReturn;
+}
+
+interface OrderBySetInitial<TReturn> extends OrderByModify<TReturn> {
+	/**
+	 * Set the columns for the ORDER BY clause.
+	 *
+	 * @example
+	 * table("artists").orderBy("lastName", "firstName DESC")
+	 */
+	orderBy: (...columns: string[]) => TReturn;
+}
+
+interface OrderByModify<TReturn> {
+	/**
+	 * Add additional columns to the ORDER BY clause.
+	 *
+	 * @example
+	 * table("artists").orderBy("lastName").addOrderBy("firstName")
+	 */
+	addOrderBy: (...columns: string[]) => TReturn;
+
+	/**
+	 * Replace all ORDER BY columns with new ones.
+	 *
+	 * @example
+	 * const base = table("artists").orderBy("name");
+	 * const byDate = base.replaceOrderBy("created_at DESC");
+	 */
+	replaceOrderBy: (...columns: string[]) => TReturn;
 }
 
 interface SelectClauseMethods<TReturn> {
@@ -349,23 +381,6 @@ interface SelectClauseMethods<TReturn> {
 	 * table("artworks").select("artist_id", "COUNT(*)").groupBy("artist_id")
 	 */
 	groupBy: (...columns: string[]) => TReturn;
-
-	/**
-	 * Add columns to the ORDER BY clause. Can be called multiple times.
-	 *
-	 * @example
-	 * table("artists").orderBy("lastName", "firstName DESC")
-	 */
-	orderBy: (...columns: string[]) => TReturn;
-
-	/**
-	 * Replace all ORDER BY columns with new ones.
-	 *
-	 * @example
-	 * const base = table("artists").orderBy("name");
-	 * const byDate = base.replaceOrderBy("created_at DESC");
-	 */
-	replaceOrderBy: (...columns: string[]) => TReturn;
 
 	/**
 	 * Set the LIMIT clause. Replaces any previous limit.
@@ -460,7 +475,7 @@ interface WhereMethod<TReturn> {
 	where: <S extends string | Statement>(condition: S, ...values: PlaceholderArgs<S>) => TReturn;
 }
 
-interface InsertMethod<TReturn> {
+interface InsertMethod<TSingle, TArray = TSingle> {
 	/**
 	 * Insert one or more rows into the table.
 	 *
@@ -471,28 +486,68 @@ interface InsertMethod<TReturn> {
 	 * @example
 	 * // Multiple rows
 	 * await table("users").insert([{ name: "Alice" }, { name: "Bob" }])
+	 *
+	 * @example
+	 * // With explicit columns (values for unlisted columns will not be inserted)
+	 * await table("users").insert({ name: "Alice", age: 30 }, { columns: ["name"] })
+	 *
+	 * @example
+	 * // Insert from subquery with explicit columns
+	 * await table("users").insert(sql`SELECT name, age FROM temp_users`, { columns: ["name", "age"] })
 	 */
-	insert(values: Record<string, unknown>): TReturn;
-	insert(values: Record<string, unknown>[]): TReturn;
-	insert(statement: Statement): TReturn;
+	insert(values: Row, options?: InsertOptions): TSingle;
+	insert(values: Row[], options?: InsertOptions): TArray;
+	insert(statement: Statement, options?: InsertOptions): TArray;
 }
 
-interface BulkMutationMethods {
+interface ReturningMethods<TReturning, TReturningId> {
 	/**
-	 * Delete all matching rows. Use where() to filter.
+	 * Add a RETURNING clause to return specified columns from inserted row(s).
+	 *
+	 * This returns an object containing the selected columns if you inserted a
+	 * single object, or an array if you inserted an array of
+	 * objects.
+	 *
+	 * @example
+	 * const row = await table("users")
+	 *   .insert({ name: "Alice", age: 30 })
+	 *   .returning("id", "created_at");
+	 */
+	returning(...columns: string[]): ExecutableStatement<TReturning>;
+
+	/**
+	 * Add a RETURNING clause to return the auto-generated IDs of inserted
+	 * row(s).
+	 *
+	 * This returns the id if you inserted an object, or an array of ids if you
+	 * inserted an array of objects.
+	 *
+	 * @example
+	 * const id = await table("users")
+	 *   .insert({ name: "Alice" })
+	 *   .returningId();
+	 */
+	returningId(): ExecutableStatement<TReturningId>;
+}
+
+interface BulkMutationMethods<TReturn = QueryBuilderWithMutation> {
+	/**
+	 * Build a DELETE statement for all matching rows. Use where() to filter.
+	 * The statement is not executed until awaited.
 	 *
 	 * @example
 	 * await table("users").where("archived = true").deleteAll()
 	 */
-	deleteAll(): Promise<MutationResult>;
+	deleteAll(): TReturn;
 
 	/**
-	 * Update all matching rows. Use where() to filter.
+	 * Build an UPDATE statement for all matching rows. Use where() to filter.
+	 * The statement is not executed until awaited.
 	 *
 	 * @example
 	 * await table("users").where("age > ?", 65).updateAll({ status: "retired" })
 	 */
-	updateAll(values: Record<string, unknown>): Promise<MutationResult>;
+	updateAll(values: Row): TReturn;
 }
 
 // For a SQL string with `?` placeholders, returns the required argument types

@@ -28,13 +28,16 @@ export {
 	TransactionRetryingEvent,
 } from "./database-events.ts";
 export { DatabaseGrammar } from "./grammar/DatabaseGrammar.ts";
+// Query builder types representing different states of query construction
 export type {
 	AnyQueryBuilder,
 	ExecutableStatement,
+	ExecutableStatementWithoutClient,
 	QueryBuilder,
-	QueryBuilderForSelect,
-	QueryBuilderForSelectWithColumns,
 	QueryBuilderWithCondition,
 	QueryBuilderWithInsert,
+	QueryBuilderWithInsertArray,
+	QueryBuilderWithInsertSingle,
+	QueryBuilderWithMutation,
 } from "./query-types.ts";
 export { sql } from "./sql.ts";

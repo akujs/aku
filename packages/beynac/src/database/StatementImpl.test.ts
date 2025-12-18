@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { Row } from "./query-types.ts";
 import { StatementImpl } from "./StatementImpl.ts";
 
 describe(StatementImpl.prototype.toHumanReadableSql, () => {
@@ -30,19 +31,24 @@ describe(StatementImpl.prototype.toHumanReadableSql, () => {
 	});
 
 	test("handles non-JSON-serialisable values", () => {
-		const circular: Record<string, unknown> = {};
+		const circular: Row = {};
 		circular.self = circular;
 		const stmt = new StatementImpl([{ sql: "SELECT ", param: circular }]);
 
 		expect(stmt.toHumanReadableSql()).toBe("SELECT [$1: [object Object]]");
 	});
 
-	test("renders null and undefined", () => {
-		const stmt = new StatementImpl([
-			{ sql: "SELECT ", param: null },
-			{ sql: ", ", param: undefined },
-		]);
+	test("renders null parameter", () => {
+		const stmt = new StatementImpl([{ sql: "SELECT ", param: null }]);
 
-		expect(stmt.toHumanReadableSql()).toBe("SELECT [$1: null], [$2: undefined]");
+		expect(stmt.toHumanReadableSql()).toBe("SELECT [$1: null]");
+	});
+
+	test("throws on undefined parameter", () => {
+		const stmt = new StatementImpl([{ sql: "SELECT ", param: undefined }]);
+
+		expect(() => stmt.toHumanReadableSql()).toThrow(
+			"Cannot bind undefined value. Use null for NULL values.",
+		);
 	});
 });

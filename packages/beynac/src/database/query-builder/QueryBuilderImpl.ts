@@ -1,19 +1,23 @@
+import { arrayWrap } from "../../utils.ts";
 import type { DatabaseClient } from "../DatabaseClient.ts";
 import { ExecutableStatementBase } from "../ExecutableStatementBase.ts";
 import type { DatabaseGrammar } from "../grammar/DatabaseGrammar.ts";
 import type {
 	AnyQueryBuilder,
+	ExecutableStatement,
+	InsertOptions,
 	LockOptions,
-	MutationResult,
 	QueryBuilder,
 	QueryParts,
+	Row,
 	SqlFragments,
 	Statement,
 	StringOrFragment,
+	ThenExecutor,
 } from "../query-types.ts";
 import { MutableQueryBuilder } from "./MutableQueryBuilder.ts";
 import { toHumanReadableSql } from "./statement-render.ts";
-import { splitSqlToFragments } from "./statement-utils.ts";
+import { isSqlFragments, splitSqlToFragments } from "./statement-utils.ts";
 
 export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQueryBuilder {
 	readonly #from: string;
@@ -46,26 +50,31 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 	}
 
 	join(clauseOrStatement: string | Statement, ...values: unknown[]): this {
+		assertNoUndefinedValues(clauseOrStatement, values, "join");
 		const stmt = resolveToStatement(clauseOrStatement, values);
 		return this.#derive("pushJoin", ["JOIN", stmt]);
 	}
 
 	innerJoin(clauseOrStatement: string | Statement, ...values: unknown[]): this {
+		assertNoUndefinedValues(clauseOrStatement, values, "innerJoin");
 		const stmt = resolveToStatement(clauseOrStatement, values);
 		return this.#derive("pushJoin", ["INNER JOIN", stmt]);
 	}
 
 	leftJoin(clauseOrStatement: string | Statement, ...values: unknown[]): this {
+		assertNoUndefinedValues(clauseOrStatement, values, "leftJoin");
 		const stmt = resolveToStatement(clauseOrStatement, values);
 		return this.#derive("pushJoin", ["LEFT JOIN", stmt]);
 	}
 
 	rightJoin(clauseOrStatement: string | Statement, ...values: unknown[]): this {
+		assertNoUndefinedValues(clauseOrStatement, values, "rightJoin");
 		const stmt = resolveToStatement(clauseOrStatement, values);
 		return this.#derive("pushJoin", ["RIGHT JOIN", stmt]);
 	}
 
 	fullJoin(clauseOrStatement: string | Statement, ...values: unknown[]): this {
+		assertNoUndefinedValues(clauseOrStatement, values, "fullJoin");
 		const stmt = resolveToStatement(clauseOrStatement, values);
 		return this.#derive("pushJoin", ["FULL OUTER JOIN", stmt]);
 	}
@@ -87,6 +96,7 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 	}
 
 	where(conditionOrStatement: string | Statement, ...values: unknown[]): this {
+		assertNoUndefinedValues(conditionOrStatement, values, "where");
 		const stmt = resolveToStatement(conditionOrStatement, values);
 		return this.#derive("pushWhere", [stmt]);
 	}
@@ -96,11 +106,16 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 	}
 
 	having(conditionOrStatement: string | Statement, ...values: unknown[]): this {
+		assertNoUndefinedValues(conditionOrStatement, values, "having");
 		const stmt = resolveToStatement(conditionOrStatement, values);
 		return this.#derive("pushHaving", [stmt]);
 	}
 
 	orderBy(...columns: string[]): this {
+		return this.#derive("setOrderBy", [columns]);
+	}
+
+	addOrderBy(...columns: string[]): this {
 		return this.#derive("pushOrderBy", [columns]);
 	}
 
@@ -121,70 +136,65 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 	}
 
 	forUpdate(options?: LockOptions): this {
-		return this.#derive("setLock", ["UPDATE", options]);
+		return this.#derive("setLock", [{ type: "UPDATE", options }]);
 	}
 
 	forShare(options?: LockOptions): this {
-		return this.#derive("setLock", ["SHARE", options]);
+		return this.#derive("setLock", [{ type: "SHARE", options }]);
 	}
 
-	insert(values: Record<string, unknown> | Record<string, unknown>[] | Statement): this {
-		// Check if it's a Statement (INSERT...SELECT)
-		if ("sqlFragments" in values) {
-			// TODO: Implement INSERT...SELECT
-			throw new Error("INSERT...SELECT not yet implemented");
-		}
-		const data = Array.isArray(values) ? values : [values];
-		return this.#derive("setInsertData", [data]);
+	insert(values: Row | Row[] | Statement, options?: InsertOptions): this {
+		assertNoUndefinedValues(values, "insert");
+		return this.#derive("setInsert", [{ data: values, columns: options?.columns ?? null }], "run");
 	}
 
-	deleteAll(): Promise<MutationResult> {
-		const derived = this.#derive("setDelete", []);
-		return derived.run().then((r) => ({ rowsAffected: r.rowsAffected }));
+	deleteAll(): this {
+		return this.#derive("setDelete", [], "run");
 	}
 
-	updateAll(values: Record<string, unknown>): Promise<MutationResult> {
-		const derived = this.#derive("setUpdateData", [values]);
-		return derived.run().then((r) => ({ rowsAffected: r.rowsAffected }));
+	updateAll(values: Row): this {
+		assertNoUndefinedValues(values, "updateAll");
+		return this.#derive("setUpdateData", [values], "run");
 	}
 
-	async returning<T extends string>(..._columns: T[]): Promise<Record<T, unknown>[]> {
-		if (this.#isEmptyArrayInsert()) {
-			return [];
-		}
-		// TODO: Implement RETURNING clause compilation
-		throw new Error("returning() not yet implemented");
+	returning(...columns: string[]): ExecutableStatement<unknown> {
+		const executor = this.#isSingleRowInsert() ? "first" : "all";
+		return this.#derive("setReturning", [columns], executor) as ExecutableStatement<unknown>;
 	}
 
-	async returningId<T = number>(_column?: string): Promise<T[]> {
-		if (this.#isEmptyArrayInsert()) {
-			return [];
-		}
-		// TODO: Implement RETURNING id clause compilation
-		throw new Error("returningId() not yet implemented");
+	returningId(): ExecutableStatement<unknown> {
+		const executor = this.#isSingleRowInsert() ? "scalar" : "column";
+		return this.#derive("setReturning", [["id"]], executor) as ExecutableStatement<unknown>;
 	}
 
 	// oxlint-disable-next-line unicorn/no-thenable -- intentionally awaitable API
-	then: Promise<MutationResult>["then"] = (onfulfilled, onrejected) => {
+	then: Promise<unknown>["then"] = (onfulfilled, onrejected) => {
+		const executor = this.#getParts().thenExecutor ?? "all";
 		if (this.#isEmptyArrayInsert()) {
-			return Promise.resolve({ rowsAffected: 0 }).then(onfulfilled, onrejected);
+			const emptyResult = executor === "run" ? { rowsAffected: 0 } : [];
+			return Promise.resolve(emptyResult).then(onfulfilled, onrejected);
 		}
-		return this.run()
-			.then((r) => ({ rowsAffected: r.rowsAffected }))
-			.then(onfulfilled, onrejected);
+		return this[executor]().then(onfulfilled, onrejected);
 	};
 
 	static table(table: string, grammar: DatabaseGrammar, client: DatabaseClient): QueryBuilder {
-		return new QueryBuilderImpl(table, grammar, client, []);
+		return new QueryBuilderImpl(table, grammar, client, []) as QueryBuilder;
 	}
 
 	#isEmptyArrayInsert(): boolean {
-		return this.#getParts().insertData?.length === 0;
+		const insert = this.#getParts().insert;
+		return insert !== null && Array.isArray(insert.data) && insert.data.length === 0;
+	}
+
+	#isSingleRowInsert(): boolean {
+		const insert = this.#getParts().insert;
+		return insert !== null && !Array.isArray(insert.data) && !isSqlFragments(insert.data);
 	}
 
 	#derive<K extends MutableQueryBuilderMethod>(
 		method: K,
 		args: Parameters<MutableQueryBuilder[K]>,
+		thenExecutor?: ThenExecutor,
 	): this {
 		let commands = this.#commands;
 
@@ -194,6 +204,9 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		}
 
 		commands.push([method, args]);
+		if (thenExecutor) {
+			commands.push(["setThenExecutor", [thenExecutor]]);
+		}
 		return new QueryBuilderImpl(this.#from, this.#grammar, this.#client, commands) as this;
 	}
 
@@ -231,9 +244,11 @@ type MutableQueryBuilderMethod =
 	| "setOffset"
 	| "setDistinct"
 	| "setLock"
-	| "setInsertData"
+	| "setInsert"
 	| "setUpdateData"
-	| "setDelete";
+	| "setDelete"
+	| "setReturning"
+	| "setThenExecutor";
 
 type Command = [MutableQueryBuilderMethod, unknown[]];
 
@@ -246,4 +261,42 @@ function resolveToStatement(
 	}
 	// It's already a Statement which extends SqlFragments
 	return conditionOrStatement;
+}
+
+function assertNoUndefinedValues(
+	firstArg: string | Statement | Row | Row[],
+	secondArg: unknown[] | string,
+	thirdArg?: string,
+): void {
+	// Skip validation for Statements (values will be empty anyway)
+	if (isSqlFragments(firstArg)) {
+		return;
+	}
+
+	// Row/Row[] mode: assertNoUndefinedValues(rowOrRows, methodName)
+	if (typeof secondArg === "string") {
+		const methodName = secondArg;
+		for (const row of arrayWrap(firstArg as Row | Row[])) {
+			for (const [key, value] of Object.entries(row)) {
+				if (value === undefined) {
+					throw new Error(
+						`Cannot pass undefined for property '${key}' to ${methodName}(...). Use null for NULL values.`,
+					);
+				}
+			}
+		}
+		return;
+	}
+
+	// Placeholder mode: assertNoUndefinedValues(sql, values, methodName)
+	const sql = firstArg as string;
+	const values = secondArg;
+	const methodName = thirdArg!;
+	for (let i = 0; i < values.length; i++) {
+		if (values[i] === undefined) {
+			throw new Error(
+				`Cannot pass undefined for parameter ${i + 1} in ${methodName}('${sql}', ...). Use null for NULL values.`,
+			);
+		}
+	}
 }

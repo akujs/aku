@@ -1,4 +1,4 @@
-import { BaseClass } from "../../utils.ts";
+import { arrayWrap, BaseClass } from "../../utils.ts";
 import type { TransactionOptions } from "../DatabaseClient.ts";
 import type { SqlDialect } from "../query-builder/dialect.ts";
 import { quoteIdentifiers } from "../query-builder/quoteIdentifiers.ts";
@@ -6,6 +6,7 @@ import {
 	bracketedCommaSeparatedFragments,
 	bracketedCommaSeparatedParams,
 	commaSeparatedFragments,
+	isSqlFragments,
 	paramAsFragment,
 } from "../query-builder/statement-utils.ts";
 import type {
@@ -63,6 +64,12 @@ export abstract class DatabaseGrammar extends BaseClass {
 		return parts.join(" ");
 	}
 
+	compileReturning(columns: readonly string[] | null): string | null {
+		if (columns === null) return null;
+		if (columns.length === 0) return "RETURNING *";
+		return "RETURNING " + columns.join(", ");
+	}
+
 	quoteIdentifiers(sql: string): string {
 		return quoteIdentifiers(sql, this.dialect);
 	}
@@ -88,7 +95,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 		if (state.updateData) {
 			return this.compileUpdate(state);
 		}
-		if (state.insertData) {
+		if (state.insert) {
 			return this.compileInsert(state);
 		}
 		return this.compileSelect(state);
@@ -109,14 +116,14 @@ export abstract class DatabaseGrammar extends BaseClass {
 			selectClause,
 			"FROM",
 			state.table,
-			...state.joins.flatMap(({ type, clause }) => [this.compileJoin(type, "").trim(), clause]),
-			...andClause("WHERE", state.where),
-			...listClause("GROUP BY", state.groupBy),
-			...andClause("HAVING", state.having),
-			...listClause("ORDER BY", state.orderBy),
+			state.joins.flatMap(({ type, clause }) => [this.compileJoin(type, "").trim(), clause]),
+			andClause("WHERE", state.where),
+			listClause("GROUP BY", state.groupBy),
+			andClause("HAVING", state.having),
+			listClause("ORDER BY", state.orderBy),
 			limit !== null ? `LIMIT ${limit}` : null,
 			state.offset !== null ? `OFFSET ${state.offset}` : null,
-			state.lockType ? this.compileLock(state.lockType, state.lockOptions) : null,
+			state.lock ? this.compileLock(state.lock.type, state.lock.options) : null,
 		]);
 	}
 
@@ -124,34 +131,49 @@ export abstract class DatabaseGrammar extends BaseClass {
 	 * Compile an INSERT query from builder state.
 	 */
 	compileInsert(state: QueryParts): SqlFragments {
-		const rows = state.insertData ?? [];
+		const insert = state.insert;
+		if (!insert) {
+			throw new Error("Internal error: cannot compile INSERT without data");
+		}
+
+		const { data, columns: explicitColumns } = insert;
+
+		// INSERT...SELECT
+		if (isSqlFragments(data)) {
+			return this.#mergeAndQuote([
+				"INSERT INTO",
+				state.table,
+				explicitColumns ? bracketedCommaSeparatedFragments(explicitColumns) : null,
+				data,
+				this.compileReturning(state.returningColumns),
+			]);
+		}
+
+		const rows = arrayWrap(data);
 		if (rows.length === 0) {
 			throw new Error("Internal error: cannot compile INSERT without data");
 		}
 
-		const columns = Object.keys(rows[0]);
+		const columns = explicitColumns ?? Object.keys(rows[0]);
 
-		// Empty object {} means use default values for all columns
 		if (columns.length === 0) {
-			if (rows.length === 1) {
-				return this.#mergeAndQuote(["INSERT INTO", state.table, "DEFAULT VALUES"]);
-			}
-			// Multiple empty objects - use dialect-specific syntax
 			return this.#mergeAndQuote([
 				"INSERT INTO",
 				state.table,
 				this.compileInsertDefaultValueRows(rows.length),
+				this.compileReturning(state.returningColumns),
 			]);
 		}
 
 		return this.#mergeAndQuote([
 			"INSERT INTO",
 			state.table,
-			...bracketedCommaSeparatedFragments(columns),
+			bracketedCommaSeparatedFragments(columns),
 			"VALUES",
-			...commaSeparatedFragments(
+			commaSeparatedFragments(
 				rows.map((row) => bracketedCommaSeparatedParams(columns.map((col) => row[col]))),
 			),
+			this.compileReturning(state.returningColumns),
 		]);
 	}
 
@@ -173,8 +195,8 @@ export abstract class DatabaseGrammar extends BaseClass {
 			"UPDATE",
 			state.table,
 			"SET",
-			...commaSeparatedFragments(setClauses),
-			...andClause("WHERE", state.where),
+			commaSeparatedFragments(setClauses),
+			andClause("WHERE", state.where),
 		]);
 	}
 
@@ -182,11 +204,11 @@ export abstract class DatabaseGrammar extends BaseClass {
 	 * Compile a DELETE query from builder state.
 	 */
 	compileDelete(state: QueryParts): SqlFragments {
-		return this.#mergeAndQuote(["DELETE FROM", state.table, ...andClause("WHERE", state.where)]);
+		return this.#mergeAndQuote(["DELETE FROM", state.table, andClause("WHERE", state.where)]);
 	}
 
-	#mergeAndQuote(parts: Array<StringOrFragment | SqlFragments | null | undefined>): SqlFragments {
-		const merged = mergeFragments(parts);
+	#mergeAndQuote(parts: Array<Mergeable | Mergeable[]>): SqlFragments {
+		const merged = mergeFragments(parts.flat());
 		const quotedItems = merged.sqlFragments.map((item): StringOrFragment => {
 			if (typeof item === "string") {
 				return this.quoteIdentifiers(item);
@@ -196,6 +218,8 @@ export abstract class DatabaseGrammar extends BaseClass {
 		return { sqlFragments: quotedItems };
 	}
 }
+
+type Mergeable = StringOrFragment | SqlFragments | null | undefined;
 
 function listClause(type: string, items: readonly string[]): Array<SqlFragments | string> {
 	if (items.length === 0) {
@@ -227,16 +251,14 @@ function andClause(
 	return result;
 }
 
-function mergeFragments(
-	parts: Array<StringOrFragment | SqlFragments | null | undefined>,
-): SqlFragments {
+function mergeFragments(parts: Array<Mergeable>): SqlFragments {
 	const items: StringOrFragment[] = [];
 
 	for (const part of parts) {
 		if (!part) continue;
 		if (typeof part === "string") {
 			items.push(part);
-		} else if ("sqlFragments" in part) {
+		} else if (isSqlFragments(part)) {
 			items.push(...part.sqlFragments);
 		} else {
 			items.push(part);

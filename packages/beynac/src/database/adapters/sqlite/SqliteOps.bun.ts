@@ -1,5 +1,6 @@
 // Bun-specific SQLite operations using bun:sqlite.
 import { Database, type SQLQueryBindings } from "bun:sqlite";
+import type { Row } from "../../query-types.ts";
 import type {
 	SqliteConnection,
 	SqliteConnectionOptions,
@@ -14,8 +15,8 @@ class BunPreparedStatement implements SqlitePreparedStatement {
 		this.#stmt = stmt;
 	}
 
-	all(...params: unknown[]): Record<string, unknown>[] {
-		return this.#stmt.all(...(params as SQLQueryBindings[])) as Record<string, unknown>[];
+	all(...params: unknown[]): Row[] {
+		return this.#stmt.all(...(params as SQLQueryBindings[])) as Row[];
 	}
 
 	run(...params: unknown[]): { changes: number } {

@@ -1,5 +1,14 @@
 import { BaseClass } from "../../utils.ts";
-import type { JoinEntry, JoinType, LockOptions, QueryParts, SqlFragments } from "../query-types.ts";
+import type {
+	InsertPart,
+	JoinEntry,
+	JoinType,
+	LockPart,
+	QueryParts,
+	Row,
+	SqlFragments,
+	ThenExecutor,
+} from "../query-types.ts";
 
 export class MutableQueryBuilder extends BaseClass implements QueryParts {
 	readonly table: string;
@@ -12,11 +21,12 @@ export class MutableQueryBuilder extends BaseClass implements QueryParts {
 	limit: number | null = null;
 	offset: number | null = null;
 	distinct: boolean = false;
-	lockType: "UPDATE" | "SHARE" | undefined = undefined;
-	lockOptions: LockOptions | undefined = undefined;
-	insertData: Record<string, unknown>[] | null = null;
-	updateData: Record<string, unknown> | null = null;
+	lock: LockPart | null = null;
+	insert: InsertPart | null = null;
+	updateData: Row | null = null;
 	isDelete: boolean = false;
+	returningColumns: string[] | null = null;
+	thenExecutor: ThenExecutor | null = null;
 
 	constructor(table: string) {
 		super();
@@ -67,20 +77,27 @@ export class MutableQueryBuilder extends BaseClass implements QueryParts {
 		this.distinct = true;
 	}
 
-	setLock(type: "UPDATE" | "SHARE", options: LockOptions | undefined): void {
-		this.lockType = type;
-		this.lockOptions = options;
+	setLock(lock: LockPart): void {
+		this.lock = lock;
 	}
 
-	setInsertData(data: Record<string, unknown>[]): void {
-		this.insertData = data;
+	setInsert(insert: InsertPart): void {
+		this.insert = insert;
 	}
 
-	setUpdateData(data: Record<string, unknown>): void {
+	setUpdateData(data: Row): void {
 		this.updateData = data;
 	}
 
 	setDelete(): void {
 		this.isDelete = true;
+	}
+
+	setReturning(columns: string[]): void {
+		this.returningColumns = columns;
+	}
+
+	setThenExecutor(executor: ThenExecutor): void {
+		this.thenExecutor = executor;
 	}
 }

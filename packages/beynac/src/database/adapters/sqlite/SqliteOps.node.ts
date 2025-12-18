@@ -1,4 +1,5 @@
 import { DatabaseSync, type SQLInputValue, type StatementSync } from "node:sqlite";
+import type { Row } from "../../query-types.ts";
 import type {
 	SqliteConnection,
 	SqliteConnectionOptions,
@@ -13,8 +14,8 @@ class NodePreparedStatement implements SqlitePreparedStatement {
 		this.#stmt = stmt;
 	}
 
-	all(...params: unknown[]): Record<string, unknown>[] {
-		return this.#stmt.all(...(params as SQLInputValue[])) as Record<string, unknown>[];
+	all(...params: unknown[]): Row[] {
+		return this.#stmt.all(...(params as SQLInputValue[])) as Row[];
 	}
 
 	run(...params: unknown[]): { changes: number } {

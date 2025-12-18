@@ -5,6 +5,9 @@ export function getSqlFragmentsParams(statement: SqlFragments): unknown[] {
 	const result: unknown[] = [];
 	for (const item of statement.sqlFragments) {
 		if (typeof item !== "string") {
+			if (item.param === undefined) {
+				throw new Error("Cannot bind undefined value. Use null for NULL values.");
+			}
 			result.push(item.param);
 		}
 	}
@@ -52,7 +55,7 @@ export function expandArraysAndSubqueries(statement: SqlFragments): SqlFragments
 
 		if (isSqlFragments(param)) {
 			result.push(...expandSubquery(sql, param));
-		} else if (Array.isArray(param) && /\bIN\s*\(?\s*$/i.test(sql)) {
+		} else if (Array.isArray(param) && /\bIN\b\s*\(?\s*$/i.test(sql)) {
 			result.push(...expandArrayParam(sql, param));
 		} else {
 			result.push(item);
@@ -89,7 +92,7 @@ export function bracketedCommaSeparatedParams(values: unknown[]): StringOrFragme
 }
 
 export function commaSeparatedFragments(
-	items: Array<StringOrFragment | StringOrFragment[]>,
+	items: ReadonlyArray<StringOrFragment | readonly StringOrFragment[]>,
 ): StringOrFragment[] {
 	const result: StringOrFragment[] = [];
 	for (let i = 0; i < items.length; i++) {
@@ -100,23 +103,23 @@ export function commaSeparatedFragments(
 		if (Array.isArray(item)) {
 			result.push(...item);
 		} else {
-			result.push(item);
+			result.push(item as StringOrFragment);
 		}
 	}
 	return result;
 }
 
 export function bracketedCommaSeparatedFragments(
-	items: Array<StringOrFragment | StringOrFragment[]>,
+	items: ReadonlyArray<StringOrFragment | readonly StringOrFragment[]>,
 ): StringOrFragment[] {
 	return ["(", ...commaSeparatedFragments(items), ")"];
 }
 
-function isSqlFragments(value: unknown): value is SqlFragments {
+export function isSqlFragments(value: unknown): value is SqlFragments {
 	return (
 		value != null &&
 		typeof value === "object" &&
 		"sqlFragments" in value &&
-		Array.isArray((value as SqlFragments).sqlFragments)
+		Array.isArray(value.sqlFragments)
 	);
 }

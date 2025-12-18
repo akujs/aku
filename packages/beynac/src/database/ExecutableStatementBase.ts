@@ -1,12 +1,12 @@
 import type { DatabaseClient } from "./DatabaseClient.ts";
-import type { QueryExecutionMethods, Row, StatementResult } from "./query-types.ts";
+import type { Row, StatementResult } from "./query-types.ts";
 import { StatementImpl } from "./StatementImpl.ts";
 
-export abstract class ExecutableStatementBase
-	extends StatementImpl
-	implements QueryExecutionMethods
-{
+export abstract class ExecutableStatementBase extends StatementImpl {
 	protected abstract getClient(): DatabaseClient;
+
+	// oxlint-disable-next-line unicorn/no-thenable -- intentionally awaitable API
+	abstract then: Promise<unknown>["then"];
 
 	run(): Promise<StatementResult> {
 		return this.getClient().run(this);

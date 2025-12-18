@@ -5,11 +5,11 @@ import type { TransactionOptions } from "../../DatabaseClient.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { PostgresGrammar } from "../../grammar/PostgresGrammar.ts";
-import type { StatementResult } from "../../query-types.ts";
+import type { Row, StatementResult } from "../../query-types.ts";
 import type { PostgresDatabaseAdapterConfig } from "./PostgresDatabaseAdapterConfig.ts";
 
-type PostgresJS = Sql<Record<string, unknown>>;
-type PostgresConnection = ReservedSql<Record<string, unknown>>;
+type PostgresJS = Sql<Row>;
+type PostgresConnection = ReservedSql<Row>;
 
 export class PostgresDatabaseAdapter
 	extends BaseClass
@@ -46,7 +46,7 @@ export class PostgresDatabaseAdapter
 		try {
 			const result = await connection.unsafe(sql, params);
 			return {
-				rows: result as Record<string, unknown>[],
+				rows: result as Row[],
 				rowsAffected: result.count ?? result.length,
 			};
 		} catch (error) {

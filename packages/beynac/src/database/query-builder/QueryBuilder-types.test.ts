@@ -3,7 +3,11 @@ import { SqliteGrammar } from "../grammar/SqliteGrammar.ts";
 import type { QueryBuilder } from "../query-types.ts";
 import { QueryBuilderImpl } from "./QueryBuilderImpl.ts";
 
-const stubClient = { run: () => Promise.resolve({ rows: [], rowsAffected: 0 }) };
+const stubClient = {
+	run: () => Promise.resolve({ rows: [], rowsAffected: 0 }),
+	all: () => Promise.resolve([]),
+	column: () => Promise.resolve([]),
+};
 
 function table(name: string): QueryBuilder {
 	return QueryBuilderImpl.table(name, new SqliteGrammar(), stubClient as never);
@@ -105,17 +109,73 @@ describe("select()", () => {
 	});
 });
 
-describe("select query methods", () => {
-	test("orderBy() can chain to where()", () => {
+describe("orderBy()", () => {
+	test("can chain to where()", () => {
 		table("").orderBy("").where("");
 	});
 
-	test("orderBy() can chain to select methods", () => {
+	test("can chain to select methods", () => {
 		table("").orderBy("").select("");
 		table("").orderBy("").limit(10);
 		table("").limit(10).offset(5);
 	});
 
+	test("can chain to modify the order by columns", () => {
+		table("").orderBy("").addOrderBy("");
+		table("").orderBy("", "").replaceOrderBy("");
+	});
+
+	test("cannot chain to call orderBy twice", () => {
+		table("")
+			.orderBy("")
+			// @ts-expect-error
+			.orderBy("");
+		table("")
+			.orderBy("")
+			.where("")
+			// @ts-expect-error
+			.orderBy("");
+		table("")
+			.orderBy("")
+			.join("")
+			// @ts-expect-error
+			.orderBy("");
+	});
+
+	test("cannot chain to call orderBy after addOrderBy / replaceOrderBy", () => {
+		table("")
+			.addOrderBy("")
+			// @ts-expect-error
+			.orderBy("");
+		table("")
+			.replaceOrderBy("")
+			// @ts-expect-error
+			.orderBy("");
+	});
+
+	test("cannot chain to insert()", () => {
+		table("")
+			.orderBy("")
+			// @ts-expect-error
+			.insert({});
+	});
+
+	test("cannot chain to deleteAll()", () => {
+		table("")
+			.orderBy("")
+			// @ts-expect-error
+			.deleteAll();
+	});
+
+	test("cannot chain to updateAll()", () => {
+		table("")
+			.orderBy("")
+			// @ts-expect-error
+			.updateAll({});
+	});
+});
+
+describe("other select query methods", () => {
 	test("can chain to where()", () => {
 		table("").distinct().where("");
 		table("").having("").where("");
@@ -126,13 +186,18 @@ describe("select query methods", () => {
 		table("").groupBy("").select("");
 	});
 
+	test("can chain to orderBy()", () => {
+		table("").distinct().orderBy("");
+		table("").limit(10).orderBy("");
+	});
+
 	test("cannot chain to insert()", () => {
 		table("")
-			.orderBy("")
+			.limit(10)
 			// @ts-expect-error
 			.insert({});
 		table("")
-			.limit(10)
+			.distinct()
 			// @ts-expect-error
 			.insert({});
 	});
@@ -150,22 +215,23 @@ describe("select query methods", () => {
 
 	test("cannot chain to updateAll()", () => {
 		table("")
-			.orderBy("")
+			.distinct()
+			// @ts-expect-error
+			.updateAll({});
+		table("")
+			.limit(10)
 			// @ts-expect-error
 			.updateAll({});
 	});
 
-	test("cannot chain to insert()", () => {
-		table("")
-			.limit(10)
-			// @ts-expect-error
-			.insert({});
+	test("can chain to addSelect() and replaceSelect()", () => {
+		table("").distinct().addSelect("");
+		table("").limit(10).replaceSelect("");
 	});
 
-	test("can chain to addSelect() and replaceSelect()", () => {
-		table("").orderBy("").addSelect("");
-		table("").orderBy("").replaceSelect("");
-		table("").orderBy("").select("").addSelect("");
+	test("can chain to addOrderBy() and replaceOrderBy()", () => {
+		table("").distinct().addOrderBy("");
+		table("").limit(10).replaceOrderBy("");
 	});
 });
 
@@ -176,10 +242,6 @@ describe("insert()", () => {
 
 	test("can chain to returningId()", () => {
 		void table("").insert({}).returningId();
-	});
-
-	test("returningId() accepts custom type parameter", () => {
-		void table("").insert({}).returningId<string>();
 	});
 
 	test("cannot chain to where()", () => {

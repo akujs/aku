@@ -4,7 +4,7 @@ import type { CompiledQuery, DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { PostgresGrammar } from "../../grammar/PostgresGrammar.ts";
-import type { StatementResult } from "../../query-types.ts";
+import type { Row, StatementResult } from "../../query-types.ts";
 import type { PGLiteDatabaseAdapterConfig } from "./PGLiteDatabaseAdapterConfig.ts";
 
 // PGLite only supports single-connection access, so we use the PGlite instance
@@ -36,7 +36,7 @@ export class PGLiteDatabaseAdapter extends BaseClass implements DatabaseAdapter<
 		try {
 			const result = await connection.query(sql, params);
 			return {
-				rows: result.rows as Record<string, unknown>[],
+				rows: result.rows as Row[],
 				rowsAffected: result.rows.length > 0 ? result.rows.length : (result.affectedRows ?? 0),
 			};
 		} catch (error) {
