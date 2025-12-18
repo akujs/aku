@@ -532,10 +532,10 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		});
 	});
 
-	describe(QueryBuilderImpl.prototype.forUpdate, () => {
-		test("locks rows for update", async () => {
+	describe(QueryBuilderImpl.prototype.withRowLock, () => {
+		test("locks rows for update by default", async () => {
 			await db.transaction(async () => {
-				const query = db.table("teams").select("name").forUpdate();
+				const query = db.table("teams").select("name").withRowLock();
 				expect(await query).toHaveLength(3);
 
 				if (dialect === "postgresql") {
@@ -544,15 +544,28 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 					);
 				}
 				if (dialect === "sqlite") {
-					// SQLite ignores FOR UPDATE
+					// SQLite ignores row locks
 					expect(query.toHumanReadableSql()).toMatchInlineSnapshot(`"SELECT "name" FROM "teams""`);
 				}
 			});
 		});
 
-		test("with noWait option", async () => {
+		test("locks rows for share with mode option", async () => {
 			await db.transaction(async () => {
-				const query = db.table("teams").select("name").forUpdate({ noWait: true });
+				const query = db.table("teams").select("name").withRowLock({ mode: "share" });
+				expect(await query).toHaveLength(3);
+
+				if (dialect === "postgresql") {
+					expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
+						`"SELECT "name" FROM "teams" FOR SHARE"`,
+					);
+				}
+			});
+		});
+
+		test("with onLocked: fail option", async () => {
+			await db.transaction(async () => {
+				const query = db.table("teams").select("name").withRowLock({ onLocked: "fail" });
 				expect(await query).toHaveLength(3);
 
 				if (dialect === "postgresql") {
@@ -563,9 +576,9 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 			});
 		});
 
-		test("with skipLocked option", async () => {
+		test("with onLocked: skip option", async () => {
 			await db.transaction(async () => {
-				const query = db.table("teams").select("name").forUpdate({ skipLocked: true });
+				const query = db.table("teams").select("name").withRowLock({ onLocked: "skip" });
 				expect(await query).toHaveLength(3);
 
 				if (dialect === "postgresql") {
@@ -575,40 +588,28 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				}
 			});
 		});
-	});
 
-	describe(QueryBuilderImpl.prototype.forShare, () => {
-		test("locks rows for share", async () => {
+		test("combines mode and onLocked options", async () => {
 			await db.transaction(async () => {
-				const result = await db.table("teams").select("name").forShare();
-				expect(result.length).toBe(3);
-			});
-		});
+				const query = db.table("teams").select("name").withRowLock({
+					mode: "share",
+					onLocked: "skip",
+				});
+				expect(await query).toHaveLength(3);
 
-		test("with noWait option", async () => {
-			await db.transaction(async () => {
-				const result = await db.table("teams").select("name").forShare({ noWait: true });
-				expect(result.length).toBe(3);
-			});
-		});
-
-		test("with skipLocked option", async () => {
-			await db.transaction(async () => {
-				const result = await db.table("teams").select("name").forShare({ skipLocked: true });
-				expect(result.length).toBe(3);
+				if (dialect === "postgresql") {
+					expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
+						`"SELECT "name" FROM "teams" FOR SHARE SKIP LOCKED"`,
+					);
+				}
 			});
 		});
 	});
 
 	if (dialect === "sqlite") {
 		describe("SQLite locking behaviour", () => {
-			test("forUpdate is silently ignored", async () => {
-				const result = await db.table("teams").select("name").forUpdate();
-				expect(result.length).toBe(3);
-			});
-
-			test("forShare is silently ignored", async () => {
-				const result = await db.table("teams").select("name").forShare();
+			test("withRowLock is silently ignored", async () => {
+				const result = await db.table("teams").select("name").withRowLock();
 				expect(result.length).toBe(3);
 			});
 		});

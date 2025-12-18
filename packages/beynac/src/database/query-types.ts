@@ -9,9 +9,9 @@ export interface SqlFragments {
 	get sqlFragments(): readonly StringOrFragment[];
 }
 
-export interface LockOptions {
-	skipLocked?: boolean | undefined;
-	noWait?: boolean | undefined;
+export interface RowLockOptions {
+	mode?: "update" | "share" | undefined;
+	onLocked?: "wait" | "fail" | "skip" | undefined;
 }
 
 export type JoinType =
@@ -37,8 +37,8 @@ export interface InsertPart {
 }
 
 export interface LockPart {
-	type: "UPDATE" | "SHARE";
-	options?: LockOptions | undefined;
+	mode: "update" | "share";
+	onLocked: "wait" | "fail" | "skip";
 }
 
 export type ThenExecutor = "run" | "all" | "column" | "scalar" | "first";
@@ -411,38 +411,33 @@ interface SelectClauseMethods<TReturn> {
 	distinct: () => TReturn;
 
 	/**
-	 * Add FOR UPDATE clause for exclusive row-level locking. Blocks other
-	 * transactions from modifying or locking the selected rows.
+	 * Add row-level locking (FOR UPDATE or FOR SHARE) to the query.
 	 *
 	 * SQLite ignores this. However SQLite does not support concurrent write
 	 * transactions, so in effect every write transaction locks the whole
-	 * database, so row-level locks are redundant.
+	 * database, making row-level locks redundant.
+	 *
+	 * @param options.mode - `update` (default) acquires an exclusive lock
+	 *                preventing other transactions from locking the row.
+	 *                `share` acquires a shared lock, permitting other shared
+	 *                locks but not update locks.
+	 * @param options.onLocked - Behaviour when the row is already locked:
+	 *                `wait` (default) waits for the lock, `fail` fails
+	 *                immediately, `skip` excludes locked rows from the result.
 	 *
 	 * @example
-	 * // Lock row for update within a transaction
-	 * table("accounts").where("id = 1").forUpdate()
+	 * // Lock row for update (default mode)
+	 * table("accounts").where("id = 1").withRowLock()
 	 *
 	 * @example
-	 * // Fail immediately if row is already locked
-	 * table("accounts").where("id = 1").forUpdate({ noWait: true })
+	 * // Lock row for shared reading
+	 * table("accounts").where("id = 1").withRowLock({ mode: "share" })
 	 *
-	 * @param [options.noWait] - Fail immediately if lock cannot be acquired
-	 * @param [options.skipLocked] - Skip rows that are already locked
+	 * @example
+	 * // Fail immediately if lock cannot be acquired
+	 * table("accounts").where("id = 1").withRowLock({ onLocked: "fail" })
 	 */
-	forUpdate: (options?: LockOptions) => TReturn;
-
-	/**
-	 * Add FOR SHARE clause for shared row-level locking. Allows other
-	 * transactions to read but not modify the selected rows.
-	 *
-	 * @example
-	 * // Lock rows for reading within a transaction
-	 * table("accounts").where("user_id = 1").forShare()
-	 *
-	 * @param [options.noWait] - Fail immediately if lock cannot be acquired
-	 * @param [options.skipLocked] - Skip rows that are already locked
-	 */
-	forShare: (options?: LockOptions) => TReturn;
+	withRowLock: (options?: RowLockOptions) => TReturn;
 }
 
 interface WhereMethod<TReturn> {

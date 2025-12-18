@@ -6,10 +6,10 @@ import type {
 	AnyQueryBuilder,
 	ExecutableStatement,
 	InsertOptions,
-	LockOptions,
 	QueryBuilder,
 	QueryParts,
 	Row,
+	RowLockOptions,
 	SqlFragments,
 	Statement,
 	StringOrFragment,
@@ -135,12 +135,13 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		return this.#derive("setDistinct", []);
 	}
 
-	forUpdate(options?: LockOptions): this {
-		return this.#derive("setLock", [{ type: "UPDATE", options }]);
-	}
-
-	forShare(options?: LockOptions): this {
-		return this.#derive("setLock", [{ type: "SHARE", options }]);
+	withRowLock(options?: RowLockOptions): this {
+		return this.#derive("setLock", [
+			{
+				mode: options?.mode ?? "update",
+				onLocked: options?.onLocked ?? "wait",
+			},
+		]);
 	}
 
 	insert(values: Row | Row[] | Statement, options?: InsertOptions): this {

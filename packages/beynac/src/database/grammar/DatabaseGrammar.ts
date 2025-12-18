@@ -11,7 +11,7 @@ import {
 } from "../query-builder/statement-utils.ts";
 import type {
 	JoinType,
-	LockOptions,
+	LockPart,
 	QueryParts,
 	SqlFragments,
 	StringOrFragment,
@@ -57,10 +57,10 @@ export abstract class DatabaseGrammar extends BaseClass {
 		return `${type} ${clause}`;
 	}
 
-	compileLock(type: "UPDATE" | "SHARE", options?: LockOptions): string {
-		const parts = ["FOR", type];
-		if (options?.noWait) parts.push("NOWAIT");
-		if (options?.skipLocked) parts.push("SKIP LOCKED");
+	compileLock(lock: LockPart): string {
+		const parts = ["FOR", lock.mode.toUpperCase()];
+		if (lock.onLocked === "fail") parts.push("NOWAIT");
+		if (lock.onLocked === "skip") parts.push("SKIP LOCKED");
 		return parts.join(" ");
 	}
 
@@ -123,7 +123,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 			listClause("ORDER BY", state.orderBy),
 			limit !== null ? `LIMIT ${limit}` : null,
 			state.offset !== null ? `OFFSET ${state.offset}` : null,
-			state.lock ? this.compileLock(state.lock.type, state.lock.options) : null,
+			state.lock ? this.compileLock(state.lock) : null,
 		]);
 	}
 
