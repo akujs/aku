@@ -9,7 +9,7 @@ import { unicodeReplacements } from "./replacements.ts";
  * This function handles accents and diacritics, but - unlike transliterate() -
  * does not go as far as language-aware replacements like German "ß" to "ss"
  *
- * @param [options.allowLatin1] - If true, preserve ISO-8859-1 characters like é
+ * @param options.allowLatin1 - If true, preserve ISO-8859-1 characters like é
  *
  * @example
  * withoutMarks('Crème Brûlée') // 'Creme Brulee'
@@ -109,12 +109,12 @@ export interface SlugOptions {
  * Applies Unicode normalisation (transliterate → withoutMarks → withoutComplexChars) to convert
  * all characters to ASCII, then creates a URL-safe slug with only unreserved characters.
  *
- * @param [options.separator] - Separator character (default: "-")
- * @param [options.replacements] - Character replacements (default: { '@': 'at', '&': 'and', '%': 'percent', '+': 'plus' })
+ * @param options.separator - Separator character (default: "-")
+ * @param options.replacements - Character replacements (default: { '@': 'at', '&': 'and', '%': 'percent', '+': 'plus' })
  *   - Record<string, string>: Custom replacements (replaces default entirely)
  *   - true: Use default dictionary
  *   - false: Disable replacements
- * @param [options.lowercase] - Convert to lowercase (default: true)
+ * @param options.lowercase - Convert to lowercase (default: true)
  *
  * @example
  * slug('Größe café') // 'groesse-cafe'

@@ -50,7 +50,7 @@ export interface SplitWordsOptions {
  * - If string contains whitespace, assume that it is already organised into words and split by whitespace
  * - Otherwise, split on punctuation, underscores, hyphens, or case changes that indicate word boundaries, see the examples below
  *
- * @param [options.splitOn] - An alternative regular expression, or set of characters, to split the string on
+ * @param options.splitOn - An alternative regular expression, or set of characters, to split the string on
  *
  * @example
  * // Identifier splitting (has no spaces)
@@ -110,10 +110,10 @@ interface TitleCaseOptions {
  * existing capital letters are preserved. Minor words like "of" and "the"
  * appearing in the middle of sentences are lowercased.
  *
- * @param [options.locale] - Locale for case conversion (default: "en")
- * @param [options.minorWords] - List of minor words. If true or omitted, will use APA style guide. If false, will not treat minor words specially.
- * @param [options.splitOn] - determine how the input string is split into words for processing, see splitWords for details
- * @param [options.sentenceEndChars] - Characters that mark the end of a sentence (default: ['.', '!', '?']). Words after these are always capitalised, even if they're minor words
+ * @param options.locale - Locale for case conversion (default: "en")
+ * @param options.minorWords - List of minor words. If true or omitted, will use APA style guide. If false, will not treat minor words specially.
+ * @param options.splitOn - determine how the input string is split into words for processing, see splitWords for details
+ * @param options.sentenceEndChars - Characters that mark the end of a sentence (default: ['.', '!', '?']). Words after these are always capitalised, even if they're minor words
  *
  * @example
  * titleCase("hello world") // "Hello World"
@@ -138,7 +138,7 @@ interface SentenceCaseOptions {
  *
  * @param options.locale - Locale for case conversion (default: "en")
  * @param options.sentenceEndChars - Characters that mark the end of a sentence (default: ['.', '!', '?'])
- * @param [options.splitOn] - determine how the input string is split into words for processing, see splitWords for details
+ * @param options.splitOn - determine how the input string is split into words for processing, see splitWords for details
  *
  * @example
  * sentenceCase("hello world") // "Hello world"
@@ -206,9 +206,9 @@ interface SnakeCaseOptions {
  * Convert string to snake_case
  *
  * @param str - Input string
- * @param [options.locale] - Locale for case conversion (default: "en")
- * @param [options.case] - Case style for output: "upper", "lower" or "preserve"
- * @param [options.splitOn] - determine how the input string is split into words for processing, see splitWords for details
+ * @param options.locale - Locale for case conversion (default: "en")
+ * @param options.case - Case style for output: "upper", "lower" or "preserve"
+ * @param options.splitOn - determine how the input string is split into words for processing, see splitWords for details
  *
  * @example
  * snakeCase("helloWorld") // "hello_world"
@@ -240,8 +240,8 @@ interface CaseOptions {
 /**
  * Convert string to PascalCase
  *
- * @param [options.locale] - Locale for case conversion (default: "en")
- * @param [options.splitOn] - determine how the input string is split into words for processing, see splitWords for details
+ * @param options.locale - Locale for case conversion (default: "en")
+ * @param options.splitOn - determine how the input string is split into words for processing, see splitWords for details
  *
  * @example
  * pascalCase("hello world") // "HelloWorld"
@@ -256,8 +256,8 @@ export function pascalCase(str: string, options?: CaseOptions): string {
 /**
  * Convert string to camelCase
  *
- * @param [options.locale] - Locale for case conversion (default: "en")
- * @param [options.splitOn] - determine how the input string is split into words for processing, see splitWords for details
+ * @param options.locale - Locale for case conversion (default: "en")
+ * @param options.splitOn - determine how the input string is split into words for processing, see splitWords for details
  *
  * @example
  * camelCase("hello world") // "helloWorld"
@@ -293,8 +293,8 @@ function camelPascalHelper(
 /**
  * Convert string to kebab-case
  *
- * @param [options.locale] - Locale for case conversion (default: "en")
- * @param [options.splitOn] - determine how the input string is split into words for processing, see splitWords for details
+ * @param options.locale - Locale for case conversion (default: "en")
+ * @param options.splitOn - determine how the input string is split into words for processing, see splitWords for details
  *
  * @example
  * kebabCase("helloWorld") // "hello-world"
@@ -312,7 +312,7 @@ export function kebabCase(str: string, options?: CaseOptions): string {
  * produce different output because the implementation uses Math.random() to
  * determine case.
  *
- * @param [options.locale] - Locale for case conversion (default: "en")
+ * @param options.locale - Locale for case conversion (default: "en")
  *
  * @example
  * studlyCase("hello world") // "HeLLo WoRLd" (random)

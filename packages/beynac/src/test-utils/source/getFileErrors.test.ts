@@ -125,6 +125,19 @@ describe(getFileErrors, () => {
 		`);
 	});
 
+	test("detects @param with square brackets", () => {
+		const file = project.getFile("errors/bad-doc-comment-params.ts");
+		const errors = getFileErrors(file);
+
+		expect(errors).toMatchInlineSnapshot(`
+		  [
+		    "errors/bad-doc-comment-params.ts:3-5 @param [options.noWait] in doc comment for bothBrackets() has square brackets",
+		    "errors/bad-doc-comment-params.ts:10-12 @param [name in doc comment for openingBracketOnly() has square brackets",
+		    "errors/bad-doc-comment-params.ts:17-19 @param name] in doc comment for closingBracketOnly() has square brackets",
+		  ]
+		`);
+	});
+
 	test("detects imports from central contracts.ts file", () => {
 		const file = project.getFile("errors/bad-contracts-import.ts");
 		const errors = getFileErrors(file);

@@ -204,7 +204,7 @@ export interface StorageFile {
 	 *
 	 * This will be a regular unsigned URL and so relies on the file being publicly accessible.
 	 *
-	 * @param [options.downloadAs] - The suggested filename for the file, for s3. Storage adapters that do not support suggested download names will ignore this option.
+	 * @param options.downloadAs - The suggested filename for the file, for s3. Storage adapters that do not support suggested download names will ignore this option.
 	 */
 	url(options?: DownloadUrlOptions): Promise<string>;
 
@@ -214,8 +214,8 @@ export interface StorageFile {
 	 * Storage adapters may clamp the expiry range to an acceptable limit, for example s3
 	 * supports at most 7 days.
 	 *
-	 * @param [options.downloadAs] - The suggested filename for the file, for s3. Storage adapters that do not support suggested download names will ignore this option.
-	 * @param [options.expires] - A Date defining expiry time, or string in the format "1h" or "5d4h" representing a duration into the future
+	 * @param options.downloadAs - The suggested filename for the file, for s3. Storage adapters that do not support suggested download names will ignore this option.
+	 * @param options.expires - A Date defining expiry time, or string in the format "1h" or "5d4h" representing a duration into the future
 	 */
 	signedUrl(options?: DownloadUrlOptions & SignUrlOptions): Promise<string>;
 
@@ -225,7 +225,7 @@ export interface StorageFile {
 	 * Storage adapters may clamp the expiry range to an acceptable limit, for example s3
 	 * supports at most 7 days.
 	 *
-	 * @param [options.expires] - A Date defining expiry time, or string in the format "1h" or "5d4h" representing a duration into the future
+	 * @param options.expires - A Date defining expiry time, or string in the format "1h" or "5d4h" representing a duration into the future
 	 */
 	uploadUrl(options?: SignUrlOptions): Promise<string>;
 
@@ -359,7 +359,7 @@ export interface StorageDirectoryOperations {
 	/**
 	 * List child files in alphabetical order. By default, only direct children are returned.
 	 *
-	 * @param [options.recursive] - if true, include files in subdirectories in the results
+	 * @param options.recursive - if true, include files in subdirectories in the results
 	 */
 	listFiles(options?: { recursive?: boolean }): Promise<Array<StorageFile>>;
 
@@ -368,7 +368,7 @@ export interface StorageDirectoryOperations {
 	 *
 	 * Stream results to avoid buffering the whole list in memory.
 	 *
-	 * @param [options.recursive] - if true, include files in subdirectories in the results
+	 * @param options.recursive - if true, include files in subdirectories in the results
 	 */
 	listFilesStreaming(options?: { recursive?: boolean }): AsyncGenerator<StorageFile, void>;
 
@@ -410,8 +410,8 @@ export interface StorageDirectoryOperations {
 	 * support colons, the file will be saved as "test_file-3c5b0673" (3c5b0673
 	 * is a hash of the original name).
 	 *
-	 * @param [options.onInvalid] - "convert" to generate valid file names (the
-	 *                              default), or "error" to throw an error
+	 * @param options.onInvalid - "convert" to generate valid file names (the
+	 *                            default), or "error" to throw an error
 	 *
 	 * @param path - a directory name e.g. "pokemon" or path e.g.
 	 *               "pokemon/pikachu/images"
@@ -435,7 +435,7 @@ export interface StorageDirectoryOperations {
 	 * doesn't support colons, the file will be saved as
 	 * "test_file-3c5b0673" (3c5b0673 is a hash of the original name).
 	 *
-	 * @param [options.onInvalid] - "convert" to generate valid file names (the default), or "error" to throw an error
+	 * @param options.onInvalid - "convert" to generate valid file names (the default), or "error" to throw an error
 	 *
 	 * @path a filename e.g. "image.png"
 	 */

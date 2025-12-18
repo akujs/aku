@@ -236,6 +236,22 @@ export function getFileErrors(file: SourceFile): string[] {
 				`${file.path}:${lineRange} doc comment not followed by export statement, type, or indented content`,
 			);
 		}
+
+		// Check for @param with square brackets (not allowed)
+		const docCommentText = match[0];
+		const bracketedParamPattern = /@param\s+(\[[\w.]+\]?|[\w.]+\])/g;
+		let paramMatch;
+		while ((paramMatch = bracketedParamPattern.exec(docCommentText)) !== null) {
+			// Extract the name of the thing being documented (function, class, etc.)
+			const afterComment = file.source.slice(commentEnd);
+			const nameMatch = afterComment.match(
+				/^\s*export\s+(?:async\s+)?(?:function|class|const|let|var|type|interface)\s+(\w+)/,
+			);
+			const name = nameMatch ? nameMatch[1] : "unknown";
+			errors.push(
+				`${file.path}:${lineRange} @param ${paramMatch[1]} in doc comment for ${name}() has square brackets`,
+			);
+		}
 	}
 
 	// Check for imports from central contracts.ts file
