@@ -1,23 +1,22 @@
 /** @jsxImportSource beynac/view **/
-import { BaseController } from "beynac/http";
-import { Component, PropsWithChildren, raw } from "beynac/view";
+import type { Controller } from "beynac/http";
+import { raw } from "beynac/view";
 import { readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { Layout } from "../components/Layout";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const clientScript = readFileSync(join(__dirname, "../public/client.js"), "utf-8");
 
-export class IndexController extends BaseController {
-	handle() {
-		return <IndexView />;
-	}
-}
+export const CookiePageController: Controller = ({ url }) => {
+	return <CookiePageView currentPath={url.pathname} />;
+};
 
-const IndexView = () => (
-	<Layout>
+const CookiePageView = ({ currentPath }: { currentPath: string }) => (
+	<Layout currentPath={currentPath}>
 		<h2>Cookie API Test</h2>
 
 		<div style="margin-bottom: 20px;">
@@ -52,16 +51,4 @@ const IndexView = () => (
 
 		<script>{raw(clientScript)}</script>
 	</Layout>
-);
-
-const Layout: Component<PropsWithChildren> = ({ children }) => (
-	<html>
-		<head>
-			<title>Beynac Test App</title>
-		</head>
-		<body>
-			<h1>Beynac Test App</h1>
-			{children}
-		</body>
-	</html>
 );

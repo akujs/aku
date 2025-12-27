@@ -187,7 +187,9 @@ export class FilesystemEndpoint extends BaseClass implements StorageEndpoint {
 			}
 			throw storageError;
 		} finally {
-			await dir?.close();
+			try {
+				await dir?.close();
+			} catch {}
 		}
 	}
 
@@ -253,7 +255,9 @@ export class FilesystemEndpoint extends BaseClass implements StorageEndpoint {
 			}
 			throw storageError;
 		} finally {
-			await dir?.close();
+			try {
+				await dir?.close();
+			} catch {}
 		}
 
 		entries.sort();

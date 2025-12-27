@@ -1,4 +1,4 @@
-/** @jsxImportSource beynac/view */
+/** @jsxImportSource ../view */
 import { beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { ContainerImpl } from "../container/ContainerImpl.ts";
 import { createTypeToken } from "../container/container-key.ts";
@@ -460,7 +460,9 @@ describe("handler validation", () => {
 
 		expect(async () => {
 			await handle("/item/456");
-		}).toThrow("Expected Response, JSX element, or null, but got: [object Object]");
+		}).toThrow(
+			"Expected Response, JSX element, ConvertsToResponse, or null, but got: [object Object]",
+		);
 	});
 });
 
@@ -622,6 +624,91 @@ describe("special routes", () => {
 		const response = await handle("/old-api", "POST");
 		expect(response.status).toBe(307);
 		expect(response.headers.get("Location")).toBe("/new-api");
+	});
+
+	test("redirect can be returned from a controller", async () => {
+		const route = get("/dynamic", () => redirect("/target", { permanent: true }));
+		router.register(route);
+
+		const response = await handle("/dynamic");
+		expect(response.status).toBe(301);
+		expect(response.headers.get("Location")).toBe("/target");
+	});
+});
+
+describe("ConvertsToResponse handling", () => {
+	test("controller returning ConvertsToResponse", async () => {
+		const route = get("/custom", () => ({
+			toResponse: () => new Response("custom", { status: 201 }),
+		}));
+		router.register(route);
+
+		const response = await handle("/custom");
+		expect(response.status).toBe(201);
+		expect(await response.text()).toBe("custom");
+	});
+
+	test("async controller returning ConvertsToResponse", async () => {
+		const route = get("/async", async () => ({
+			toResponse: () => new Response("async"),
+		}));
+		router.register(route);
+
+		const response = await handle("/async");
+		expect(await response.text()).toBe("async");
+	});
+
+	test("async controller returning async ConvertsToResponse", async () => {
+		const route = get("/async", async () => ({
+			toResponse: async () => new Response("async"),
+		}));
+		router.register(route);
+
+		const response = await handle("/async");
+		expect(await response.text()).toBe("async");
+	});
+
+	test("toResponse returning JSX element", async () => {
+		const route = get("/jsx", () => ({
+			toResponse: () => <div>JSX from toResponse</div>,
+		}));
+		router.register(route);
+
+		const response = await handle("/jsx");
+		expect(await response.text()).toContain("JSX from toResponse");
+	});
+
+	test("toResponse returning null", async () => {
+		const route = get("/null", () => ({
+			toResponse: () => null,
+		}));
+		router.register(route);
+
+		const response = await handle("/null");
+		expect(response.status).toBe(200);
+		expect(await response.text()).toBe("");
+	});
+
+	test("toResponse returning another ConvertsToResponse (chaining)", async () => {
+		const route = get("/chained", () => ({
+			toResponse: () => ({
+				toResponse: () => new Response("chained"),
+			}),
+		}));
+		router.register(route);
+
+		const response = await handle("/chained");
+		expect(await response.text()).toBe("chained");
+	});
+
+	test("toResponse returning a Promise", async () => {
+		const route = get("/promise", () => ({
+			toResponse: async () => new Response("promised"),
+		}));
+		router.register(route);
+
+		const response = await handle("/promise");
+		expect(await response.text()).toBe("promised");
 	});
 });
 

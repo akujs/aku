@@ -2,12 +2,14 @@ import type { NoArgConstructor } from "../utils.ts";
 import { BaseClass } from "../utils.ts";
 import type { JSX } from "../view/view-types.ts";
 
+/** */
 export type FunctionController = (ctx: ControllerContext) => ControllerReturn;
 
 interface IClassControllerInstance {
 	handle(ctx: ControllerContext): ControllerReturn;
 }
 
+/** */
 export type ClassController = NoArgConstructor<IClassControllerInstance> & {
 	isClassController: true;
 };
@@ -21,19 +23,26 @@ export function isClassController(value: unknown): value is ClassController {
 	);
 }
 
+export interface ConvertsToResponse {
+	toResponse(): ResponseValue | Promise<ResponseValue>;
+}
+
+export function convertsToResponse(value: unknown): value is ConvertsToResponse {
+	return value != null && typeof (value as ConvertsToResponse).toResponse === "function";
+}
+
+type ResponseValue = Response | JSX.Element | null | ConvertsToResponse;
+
 /**
  * The return type for controllers.
  *
  * - Response: A standard HTTP response
  * - JSX.Element: A JSX element to be rendered as HTML
+ * - ConvertsToResponse: An object with a toResponse() method
  * - null: empty response
  * - Promise of any of the above
  */
-export type ControllerReturn =
-	| Response
-	| JSX.Element
-	| null
-	| Promise<Response | JSX.Element | null>;
+export type ControllerReturn = ResponseValue | Promise<ResponseValue>;
 
 /**
  * Context passed to controller handlers.

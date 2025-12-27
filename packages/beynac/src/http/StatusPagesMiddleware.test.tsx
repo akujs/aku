@@ -1,4 +1,4 @@
-/** @jsxImportSource beynac/view */
+/** @jsxImportSource ../view */
 
 import { describe, expect, mock, test } from "bun:test";
 import { controllerContext } from "../test-utils/http-test-utils.bun.ts";

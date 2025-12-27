@@ -214,3 +214,29 @@ export function fifoLock<T>(resource: T): FifoLock<T> {
 		},
 	};
 }
+
+export class StringKeyWeakMap<T extends object> extends BaseClass {
+	#cache = new Map<string, WeakRef<T>>();
+	#registry = new FinalizationRegistry<string>((key) => {
+		this.#cache.delete(key);
+	});
+
+	get(key: string): T | undefined {
+		const ref = this.#cache.get(key);
+		return ref?.deref();
+	}
+
+	set(key: string, value: T): void {
+		this.#cache.set(key, new WeakRef(value));
+		this.#registry.register(value, key);
+	}
+
+	has(key: string): boolean {
+		const ref = this.#cache.get(key);
+		return ref?.deref() !== undefined;
+	}
+
+	delete(key: string): boolean {
+		return this.#cache.delete(key);
+	}
+}

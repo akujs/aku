@@ -18,7 +18,7 @@ export const scopedStorageSharedTestConfig: SharedTestConfig[] = [
 		createEndpoint: () =>
 			new ScopedEndpoint(
 				{
-					disk: new MemoryEndpoint({}),
+					disk: new MemoryEndpoint({ fakeUrls: true }),
 					prefix: "/",
 				},
 				dummyStorageFactory,
@@ -29,7 +29,7 @@ export const scopedStorageSharedTestConfig: SharedTestConfig[] = [
 		createEndpoint: () =>
 			new ScopedEndpoint(
 				{
-					disk: new MemoryEndpoint({}),
+					disk: new MemoryEndpoint({ fakeUrls: true }),
 					prefix: "/scoped/",
 				},
 				dummyStorageFactory,
@@ -173,29 +173,32 @@ describe(scopedStorage, () => {
 	});
 
 	test("getPublicDownloadUrl() prepends prefix to path", async () => {
-		const spy = spyOn(wrappedDisk, "getPublicDownloadUrl");
+		const spy = spyOn(wrappedDisk, "getPublicDownloadUrl").mockResolvedValue("mocked-url");
 
-		await scopedDisk.getPublicDownloadUrl("/file.txt", "download.txt");
+		const result = await scopedDisk.getPublicDownloadUrl("/file.txt", "download.txt");
 
 		expect(spy).toHaveBeenCalledWith("/videos/file.txt", "download.txt");
+		expect(result).toBe("mocked-url");
 	});
 
 	test("getSignedDownloadUrl() prepends prefix to path", async () => {
-		const spy = spyOn(wrappedDisk, "getSignedDownloadUrl");
+		const spy = spyOn(wrappedDisk, "getSignedDownloadUrl").mockResolvedValue("mocked-url");
 		const expires = new Date();
 
-		await scopedDisk.getSignedDownloadUrl("/file.txt", expires, "download.txt");
+		const result = await scopedDisk.getSignedDownloadUrl("/file.txt", expires, "download.txt");
 
 		expect(spy).toHaveBeenCalledWith("/videos/file.txt", expires, "download.txt");
+		expect(result).toBe("mocked-url");
 	});
 
 	test("getTemporaryUploadUrl() prepends prefix to path", async () => {
-		const spy = spyOn(wrappedDisk, "getTemporaryUploadUrl");
+		const spy = spyOn(wrappedDisk, "getTemporaryUploadUrl").mockResolvedValue("mocked-url");
 		const expires = new Date();
 
-		await scopedDisk.getTemporaryUploadUrl("/file.txt", expires);
+		const result = await scopedDisk.getTemporaryUploadUrl("/file.txt", expires);
 
 		expect(spy).toHaveBeenCalledWith("/videos/file.txt", expires);
+		expect(result).toBe("mocked-url");
 	});
 
 	test("operations are isolated to the scoped prefix", async () => {

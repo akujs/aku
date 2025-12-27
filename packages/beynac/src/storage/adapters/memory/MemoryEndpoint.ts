@@ -20,12 +20,14 @@ export class MemoryEndpoint extends BaseClass implements StorageEndpoint {
 	readonly #files: Map<string, MemoryFile> = new Map();
 	readonly supportsMimeTypes: boolean;
 	readonly invalidNameChars: string;
+	readonly #fakeUrls: boolean;
 
 	constructor(config: MemoryStorageConfig) {
 		super();
 		const supportsMimeTypes = config.supportsMimeTypes ?? true;
 		this.supportsMimeTypes = supportsMimeTypes;
 		this.invalidNameChars = config.invalidNameChars ?? "";
+		this.#fakeUrls = config.fakeUrls ?? false;
 
 		if (config.initialFiles) {
 			for (const [path, fileData] of Object.entries(config.initialFiles)) {
@@ -96,6 +98,8 @@ export class MemoryEndpoint extends BaseClass implements StorageEndpoint {
 	}
 
 	async getPublicDownloadUrl(path: string, downloadFileName?: string): Promise<string> {
+		validatePath(path);
+		this.#requireFakeUrls();
 		return fakeUrl(path, { download: downloadFileName });
 	}
 
@@ -105,6 +109,7 @@ export class MemoryEndpoint extends BaseClass implements StorageEndpoint {
 		downloadFileName?: string,
 	): Promise<string> {
 		validatePath(path);
+		this.#requireFakeUrls();
 		return fakeUrl(path, {
 			download: downloadFileName,
 			expires,
@@ -113,7 +118,16 @@ export class MemoryEndpoint extends BaseClass implements StorageEndpoint {
 
 	async getTemporaryUploadUrl(path: string, expires: Date): Promise<string> {
 		validatePath(path);
+		this.#requireFakeUrls();
 		return fakeUrl(path, { upload: "true", expires });
+	}
+
+	#requireFakeUrls(): void {
+		if (!this.#fakeUrls) {
+			throw new Error(
+				"memoryStorage does not support URLs, pass fakeUrls:true to generate mock URLs for tests.",
+			);
+		}
 	}
 
 	async copy(source: string, destination: string): Promise<void> {

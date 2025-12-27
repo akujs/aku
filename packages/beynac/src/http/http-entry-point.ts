@@ -1,9 +1,11 @@
 export { AbortException, abort, abortExceptionKey } from "./abort.ts";
 export {
 	BaseController,
+	type ClassController,
 	type Controller,
 	type ControllerContext,
 	type ControllerReturn,
+	type FunctionController,
 } from "./Controller.ts";
 
 export {

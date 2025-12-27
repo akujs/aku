@@ -1,15 +1,25 @@
-import { apiResource, delete as delete_, get, group, post } from "beynac/http";
+import { apiResource, delete as delete_, get, group, post, redirect } from "beynac/http";
 import {
 	DeleteCookieController,
 	EchoParamController,
 	GetCookiesController,
 	SetCookieController,
 } from "../controllers/CookieApiController";
-import { IndexController } from "../controllers/IndexController";
+import { CookiePageController } from "../controllers/CookiePageController";
 import { StorageController } from "../controllers/StorageController";
+import {
+	StorageDeleteController,
+	StoragePageController,
+	StorageUploadController,
+} from "../controllers/StoragePageController";
 
 export default group({}, [
-	get("/beynac", IndexController),
+	// Page routes
+	get("/beynac", redirect("/beynac/cookies")),
+	get("/beynac/cookies", CookiePageController),
+	get("/beynac/storage", StoragePageController),
+	post("/beynac/storage/upload", StorageUploadController),
+	post("/beynac/storage/delete/{filename}", StorageDeleteController),
 
 	// API routes for cookie testing
 	get("/beynac/api/cookies", GetCookiesController),
@@ -22,5 +32,5 @@ export default group({}, [
 	// API routes for storage testing
 	apiResource("/beynac/api/storage", StorageController),
 
-	get("/people/{personId}", IndexController, { name: "people" }),
+	get("/people/{personId}", CookiePageController, { name: "people" }),
 ]);

@@ -1,4 +1,4 @@
-/** @jsxImportSource beynac/view */
+/** @jsxImportSource . */
 import { expect, test } from "bun:test";
 import { createKey } from "../core/Key.ts";
 import { render } from "../test-utils/view-test-utils.bun.ts";

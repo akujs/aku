@@ -1,4 +1,4 @@
-/** @jsxImportSource beynac/view */
+/** @jsxImportSource . */
 import { expect, test } from "bun:test";
 import { createKey } from "../core/Key.ts";
 import { asyncGate } from "../test-utils/async-gate.bun.ts";

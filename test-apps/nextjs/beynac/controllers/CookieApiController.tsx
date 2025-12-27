@@ -1,5 +1,5 @@
 import { Cookies } from "beynac/facades";
-import { BaseController, type ControllerContext } from "beynac/http";
+import type { Controller } from "beynac/http";
 
 function jsonResponse(data: unknown, status = 200): Response {
 	return new Response(JSON.stringify(data), {
@@ -8,46 +8,38 @@ function jsonResponse(data: unknown, status = 200): Response {
 	});
 }
 
-export class GetCookiesController extends BaseController {
-	handle() {
-		const cookies = Object.fromEntries(Cookies.entries());
-		return jsonResponse({ cookies });
+export const GetCookiesController: Controller = () => {
+	const cookies = Object.fromEntries(Cookies.entries());
+	return jsonResponse({ cookies });
+};
+
+export const SetCookieController: Controller = async ({ request }) => {
+	const body = (await request.json()) as any;
+
+	if (!body.name) {
+		return jsonResponse({ error: "Cookie name is required" }, 400);
 	}
-}
 
-export class SetCookieController extends BaseController {
-	async handle({ request }: ControllerContext) {
-		const body = (await request.json()) as any;
+	Cookies.set(body.name, body.value || "", body.options);
 
-		if (!body.name) {
-			return jsonResponse({ error: "Cookie name is required" }, 400);
-		}
+	return jsonResponse({
+		success: true,
+		cookie: { name: body.name, value: body.value, options: body.options },
+	});
+};
 
-		Cookies.set(body.name, body.value || "", body.options);
+export const DeleteCookieController: Controller = ({ params }) => {
+	const { name } = params;
 
-		return jsonResponse({
-			success: true,
-			cookie: { name: body.name, value: body.value, options: body.options },
-		});
+	if (!name) {
+		return jsonResponse({ error: "Cookie name is required" }, 400);
 	}
-}
 
-export class DeleteCookieController extends BaseController {
-	handle({ params }: ControllerContext) {
-		const { name } = params;
+	Cookies.delete(name);
 
-		if (!name) {
-			return jsonResponse({ error: "Cookie name is required" }, 400);
-		}
+	return jsonResponse({ success: true, deleted: name });
+};
 
-		Cookies.delete(name);
-
-		return jsonResponse({ success: true, deleted: name });
-	}
-}
-
-export class EchoParamController extends BaseController {
-	handle({ params }: ControllerContext) {
-		return jsonResponse({ param: params.param });
-	}
-}
+export const EchoParamController: Controller = async ({ params }) => {
+	return jsonResponse({ param: params.param });
+};

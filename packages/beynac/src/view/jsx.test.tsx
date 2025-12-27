@@ -1,4 +1,4 @@
-/** @jsxImportSource beynac/view */
+/** @jsxImportSource . */
 import { expect, test } from "bun:test";
 import { ContainerImpl } from "../container/ContainerImpl.ts";
 import { createTypeToken } from "../container/container-key.ts";

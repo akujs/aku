@@ -1,5 +1,10 @@
 import { BeynacEvent } from "../core/core-events.ts";
-import type { StorageData, StorageDisk, StorageFileInfo } from "./contracts/Storage.ts";
+import type {
+	StorageData,
+	StorageDisk,
+	StorageFileInfo,
+	StorageFileSignedUrlOptions,
+} from "./contracts/Storage.ts";
 import type { StorageError } from "./storage-errors.ts";
 
 /**
@@ -152,21 +157,13 @@ export class FileInfoRetrievedEvent extends StorageOperationCompletedEvent {
 export class FileUrlGeneratingEvent extends StorageOperationStartingEvent {
 	public readonly type = "file:url-generate" as const;
 	readonly urlType: "url" | "signed" | "upload";
-	readonly options:
-		| {
-				expires?: string | Date;
-				downloadAs?: string;
-		  }
-		| undefined;
+	readonly options: StorageFileSignedUrlOptions;
 
 	constructor(
 		disk: StorageDisk,
 		path: string,
 		urlType: "url" | "signed" | "upload",
-		options?: {
-			expires?: string | Date;
-			downloadAs?: string;
-		},
+		options: StorageFileSignedUrlOptions,
 	) {
 		super(disk, path);
 		this.urlType = urlType;
@@ -191,12 +188,7 @@ export class FileUrlGeneratedEvent extends StorageOperationCompletedEvent {
 		return this.#startEvent.urlType;
 	}
 
-	get options():
-		| {
-				expires?: string | Date;
-				downloadAs?: string;
-		  }
-		| undefined {
+	get options(): StorageFileSignedUrlOptions {
 		return this.#startEvent.options;
 	}
 }

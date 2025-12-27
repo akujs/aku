@@ -4,13 +4,14 @@ import { Configuration, resolveEnvironmentChoice } from "../core/contracts/Confi
 import { Dispatcher } from "../core/contracts/Dispatcher.ts";
 import { BaseClass } from "../utils.ts";
 import { ViewRenderer } from "../view/contracts/ViewRenderer.ts";
-import { isJsxElement, type JSX } from "../view/view-types.ts";
+import { isJsxElement } from "../view/view-types.ts";
 import { AbortException, abortExceptionKey } from "./abort.ts";
 import type { BaseController } from "./Controller.ts";
 import {
 	type Controller,
 	type ControllerContext,
 	type ControllerReturn,
+	convertsToResponse,
 	isClassController,
 } from "./Controller.ts";
 import { RequestLocals } from "./contracts/RequestLocals.ts";
@@ -98,7 +99,7 @@ export class RequestHandler extends BaseClass {
 					result = match.route.controller(ctx);
 				}
 
-				return this.#convertToResponse(match.route, await result);
+				return this.#convertToResponse(match.route, result);
 			};
 
 			const pipeline = match.route.middleware
@@ -132,10 +133,7 @@ export class RequestHandler extends BaseClass {
 		}
 	}
 
-	async #convertToResponse(
-		route: RouteDefinition,
-		result: Response | JSX.Element | null,
-	): Promise<Response> {
+	async #convertToResponse(route: RouteDefinition, result: ControllerReturn): Promise<Response> {
 		result = await result;
 		if (result instanceof Response) {
 			return result;
@@ -143,6 +141,10 @@ export class RequestHandler extends BaseClass {
 
 		if (result === null) {
 			return new Response();
+		}
+
+		if (convertsToResponse(result)) {
+			return this.#convertToResponse(route, result.toResponse());
 		}
 
 		if (isJsxElement(result)) {
@@ -157,8 +159,7 @@ export class RequestHandler extends BaseClass {
 		}
 
 		throw new Error(
-			`${controllerDescription(route.controller)} for ${route.path} returned an invalid value. Expected Response, JSX element, or null, ` +
-				`but got: ${Object.prototype.toString.call(result)}`,
+			`${controllerDescription(route.controller)} for ${route.path} returned an invalid value. Expected Response, JSX element, ConvertsToResponse, or null, but got: ${String(result)}`,
 		);
 	}
 }

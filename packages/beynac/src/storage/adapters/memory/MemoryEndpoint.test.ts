@@ -4,5 +4,5 @@ import { memoryStorage } from "./memoryStorage.ts";
 
 export const memoryStorageSharedTestConfig: SharedTestConfig = {
 	name: memoryStorage.name,
-	createEndpoint: () => new MemoryEndpoint({}),
+	createEndpoint: () => new MemoryEndpoint({ fakeUrls: true }),
 };

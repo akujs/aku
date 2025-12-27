@@ -1,4 +1,4 @@
-// Client-side API interaction script
+// Client-side API interaction script for cookie management
 
 async function callApi(method, path, body = null) {
 	const output = document.getElementById("output");

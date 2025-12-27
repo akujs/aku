@@ -96,6 +96,25 @@ export class SourceFile extends BaseClass {
 	}
 
 	/**
+	 * Returns true if this file is an entry point.
+	 * Entry points are files matching *-entry-point.ts when mode is "discover".
+	 */
+	isIndexFile(): boolean {
+		return this.basename === "index.ts" || this.basename === "index.tsx";
+	}
+
+	/**
+	 * Returns true if this file is an entry point.
+	 * Entry points are files matching *-entry-point.ts when mode is "discover".
+	 */
+	isJsxRuntimeIndexFile(): boolean {
+		return (
+			this.isIndexFile() &&
+			(this.folder.basename === "jsx-runtime" || this.folder.basename === "jsx-dev-runtime")
+		);
+	}
+
+	/**
 	 * Returns the entry point name derived from the file path.
 	 * - Root level: foo-entry-point.ts → "foo"
 	 * - Nested: a/b/b-entry-point.ts → "a/b"

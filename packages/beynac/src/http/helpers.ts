@@ -1,5 +1,5 @@
 import { arrayWrapOptional } from "../utils.ts";
-import type { Controller, ControllerContext } from "./Controller.ts";
+import type { Controller, ConvertsToResponse } from "./Controller.ts";
 import { MiddlewareSet } from "./MiddlewareSet.ts";
 import type { ApiResourceAction, ResourceAction } from "./ResourceController.ts";
 import type { RedirectOptions } from "./redirect.ts";
@@ -224,11 +224,14 @@ export function any<
 }
 
 /**
- * Create a controller that responds with an HTTP redirect.
+ * Respond with an HTTP redirect. The result of this function can either be used
+ * as a controller or returned from a controller or middleware.
  *
  * @param to - The URL to redirect to
- * @param options.permanent - If true, Make a permanent redirect that instructs search engines to update their index to the new URL (default: false)
- * @param options.preserveHttpMethod - If true, preserves HTTP method so POST requests will result in a POST request to the new URL (default: false)
+ * @param options.permanent - If true, Make a permanent redirect that instructs
+ *        search engines to update their index to the new URL (default: false)
+ * @param options.preserveHttpMethod - If true, preserves HTTP method so POST
+ *        requests will result in a POST request to the new URL (default: false)
  *
  * Status codes used:
  * - 303 Temporary redirect, changes to GET method
@@ -237,30 +240,24 @@ export function any<
  * - 308 Permanent redirect, preserves method
  *
  * @example
- * // Basic redirect - changes to GET
- * any('/old', redirect('/new'))
+ * // Use as a controller:
+ * get('/old', redirect('/new'));
  *
- * // Preserve HTTP method
- * post('/old-api', redirect('/new-api', { preserveHttpMethod: true }))
- *
- * // Permanent redirect
- * get('/moved', redirect('/here', { permanent: true }))
- *
- * // Permanent + preserve method
- * any('/api/v1', redirect('/api/v2', { permanent: true, preserveHttpMethod: true }))
+ * // Use as a return value from a controller or middleware:
+ * get('/old', async (ctx) => {
+ *   return redirect(theNewUrl);
+ * })
  */
-export function redirect(
-	to: string,
-	options?: RedirectOptions,
-): (ctx: ControllerContext) => Response {
+export function redirect(to: string, options?: RedirectOptions): Controller & ConvertsToResponse {
 	const status = redirectStatus(options);
 
-	return () => {
-		return new Response(null, {
+	const createResponse = () =>
+		new Response(null, {
 			status,
 			headers: { Location: to },
 		});
-	};
+
+	return Object.assign(createResponse, { toResponse: createResponse });
 }
 
 /**

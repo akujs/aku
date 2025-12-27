@@ -13,14 +13,18 @@ export function getFileErrors(file: SourceFile): string[] {
 	const errors: string[] = [];
 
 	// No index.ts files - use *-entry-point.ts instead
-	if (file.basename === "index.ts" || file.basename === "index.tsx") {
+	if (
+		file.isIndexFile() &&
+		// TS requires index.ts for @jsxImportSource to work locally
+		!file.isJsxRuntimeIndexFile()
+	) {
 		errors.push(
 			`${file.path} is an index file. Avoid index files, only entry point files may re-export symbols.`,
 		);
 	}
 
 	// Only entry points can re-export
-	if (!file.isEntryPoint()) {
+	if (!file.isEntryPoint() && !file.isJsxRuntimeIndexFile()) {
 		for (const exp of file.exports) {
 			if (exp.reexport) {
 				errors.push(

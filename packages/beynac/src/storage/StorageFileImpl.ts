@@ -3,7 +3,7 @@ import { durationStringToDate } from "../helpers/time/duration.ts";
 import { BaseClass } from "../utils.ts";
 import type {
 	StorageData,
-	StorageDisk,
+	StorageDirectory,
 	StorageEndpoint,
 	StorageEndpointFileInfoResult,
 	StorageFile,
@@ -15,6 +15,7 @@ import type {
 	StorageFileUrlOptions,
 } from "./contracts/Storage.ts";
 import { mimeTypeFromFileName } from "./file-names.ts";
+import type { StorageDiskImpl } from "./StorageDiskImpl.ts";
 import { InvalidPathError } from "./storage-errors.ts";
 import {
 	FileCopiedEvent,
@@ -39,19 +40,31 @@ import { storageOperation } from "./storage-operation.ts";
 export class StorageFileImpl extends BaseClass implements StorageFile {
 	readonly type = "file" as const;
 	readonly path: string;
-	readonly disk: StorageDisk;
+	readonly name: string;
+	readonly disk: StorageDiskImpl;
 	readonly #endpoint: StorageEndpoint;
 	readonly #dispatcher: Dispatcher;
 
-	constructor(disk: StorageDisk, endpoint: StorageEndpoint, path: string, dispatcher: Dispatcher) {
-		super();
-		this.disk = disk;
-		this.path = path;
-		this.#endpoint = endpoint;
-		this.#dispatcher = dispatcher;
+	constructor(
+		disk: StorageDiskImpl,
+		endpoint: StorageEndpoint,
+		path: string,
+		dispatcher: Dispatcher,
+	) {
 		if (!path.startsWith("/")) {
 			throw new InvalidPathError(path, "must start with a slash");
 		}
+		super();
+		this.disk = disk;
+		this.path = path;
+		this.name = path.substring(path.lastIndexOf("/") + 1);
+		this.#endpoint = endpoint;
+		this.#dispatcher = dispatcher;
+	}
+
+	get parent(): StorageDirectory {
+		const dirName = this.path.substring(0, this.path.lastIndexOf("/"));
+		return this.disk.directory(dirName);
 	}
 
 	async delete(): Promise<void> {
@@ -152,33 +165,18 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 		);
 	}
 
-	async url(options?: StorageFileUrlOptions): Promise<string> {
-		const urlOptions: { expires?: string | Date; downloadAs?: string } = { expires: "100y" };
-		if (options?.downloadAs) {
-			urlOptions.downloadAs = options.downloadAs;
-		}
+	async url(options: StorageFileUrlOptions = {}): Promise<string> {
 		return await storageOperation(
 			"file:url-generate",
-			() =>
-				this.#endpoint.getSignedDownloadUrl(
-					this.path,
-					durationStringToDate("100y"),
-					options?.downloadAs,
-				),
-			() => new FileUrlGeneratingEvent(this.disk, this.path, "url", urlOptions),
+			() => this.#endpoint.getPublicDownloadUrl(this.path, options?.downloadAs),
+			() => new FileUrlGeneratingEvent(this.disk, this.path, "url", options),
 			(start, url) => new FileUrlGeneratedEvent(start, url),
 			this.#dispatcher,
 			{ onNotFound: "throw" },
 		);
 	}
 
-	async signedUrl(options?: StorageFileSignedUrlOptions): Promise<string> {
-		const urlOptions: { expires?: string | Date; downloadAs?: string } = {
-			expires: options?.expires ?? "100y",
-		};
-		if (options?.downloadAs) {
-			urlOptions.downloadAs = options.downloadAs;
-		}
+	async signedUrl(options: StorageFileSignedUrlOptions = {}): Promise<string> {
 		return await storageOperation(
 			"file:url-generate",
 			() =>
@@ -187,17 +185,14 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 					durationStringToDate(options?.expires ?? "100y"),
 					options?.downloadAs,
 				),
-			() => new FileUrlGeneratingEvent(this.disk, this.path, "signed", urlOptions),
+			() => new FileUrlGeneratingEvent(this.disk, this.path, "signed", options),
 			(start, url) => new FileUrlGeneratedEvent(start, url),
 			this.#dispatcher,
 			{ onNotFound: "throw" },
 		);
 	}
 
-	async uploadUrl(options?: StorageFileUploadUrlOptions): Promise<string> {
-		const urlOptions: { expires?: string | Date; downloadAs?: string } = {
-			expires: options?.expires ?? "100y",
-		};
+	async uploadUrl(options: StorageFileUploadUrlOptions = {}): Promise<string> {
 		return await storageOperation(
 			"file:url-generate",
 			() =>
@@ -205,7 +200,7 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 					this.path,
 					durationStringToDate(options?.expires ?? "100y"),
 				),
-			() => new FileUrlGeneratingEvent(this.disk, this.path, "upload", urlOptions),
+			() => new FileUrlGeneratingEvent(this.disk, this.path, "upload", options),
 			(start, url) => new FileUrlGeneratedEvent(start, url),
 			this.#dispatcher,
 			{ onNotFound: "throw" },

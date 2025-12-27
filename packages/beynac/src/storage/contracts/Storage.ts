@@ -149,6 +149,16 @@ export interface StorageFile {
 	readonly path: string;
 
 	/**
+	 * The name of this file, e.g. "file.txt" for "/path/to/file.txt"
+	 */
+	readonly name: string;
+
+	/**
+	 * The directory containing this file
+	 */
+	readonly parent: StorageDirectory;
+
+	/**
 	 * Delete the file, if it exists.
 	 *
 	 * This method will throw if it fails to delete the file, for example due
@@ -316,6 +326,16 @@ export interface StorageDirectory extends StorageDirectoryOperations {
 	 * The path of this directory inside `disk`, beginning and ending with a slash "/"
 	 */
 	readonly path: string;
+
+	/**
+	 * The name of this directory, e.g. "foo" for "/path/to/foo/". "" for the root directory.
+	 */
+	readonly name: string;
+
+	/**
+	 * The parent directory, or null for the root directory "/"
+	 */
+	readonly parent: StorageDirectory | null;
 }
 
 type FileSanitiseOptions = {

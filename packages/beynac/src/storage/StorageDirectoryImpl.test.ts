@@ -80,6 +80,48 @@ describe(StorageDirectoryImpl, () => {
 		});
 	});
 
+	describe("name", () => {
+		test('returns last segment for "/foo/bar/"', () => {
+			const dir = create("/foo/bar/");
+			expect(dir.name).toBe("bar");
+		});
+
+		test('returns empty string for root "/"', () => {
+			const dir = create("/");
+			expect(dir.name).toBe("");
+		});
+
+		test("returns segment for single-level directory", () => {
+			const dir = create("/foo/");
+			expect(dir.name).toBe("foo");
+		});
+	});
+
+	describe("parent", () => {
+		test('returns parent directory for "/foo/bar/"', () => {
+			const dir = create("/foo/bar/");
+			expect(dir.parent?.path).toBe("/foo/");
+		});
+
+		test('returns null for root "/"', () => {
+			const dir = create("/");
+			expect(dir.parent).toBe(null);
+		});
+
+		test("returns root for single-level directory", () => {
+			const dir = create("/foo/");
+			expect(dir.parent?.path).toBe("/");
+		});
+
+		test("supports chaining parent.parent", () => {
+			const dir = create("/a/b/c/");
+			expect(dir.parent?.path).toBe("/a/b/");
+			expect(dir.parent?.parent?.path).toBe("/a/");
+			expect(dir.parent?.parent?.parent?.path).toBe("/");
+			expect(dir.parent?.parent?.parent?.parent).toBe(null);
+		});
+	});
+
 	describe("exists()", () => {
 		test("returns true when directory contains files", async () => {
 			const dir = create("/subdir/");
@@ -219,10 +261,22 @@ describe(StorageDirectoryImpl, () => {
 			expect(dir.path).toBe("/subdir/");
 		});
 
-		test('returns same directory when passed "" or "/"', () => {
+		test("throws when directory name is empty", () => {
 			const dir = create("/parent/");
-			expect(dir.directory("").path).toBe(dir.path);
+			expectError(
+				() => dir.directory(""),
+				InvalidPathError,
+				(error) => {
+					expect(error.path).toBe("");
+					expect(error.reason).toBe("directory name cannot be empty");
+				},
+			);
+		});
+
+		test('returns same directory when passed "/" or "."', () => {
+			const dir = create("/parent/");
 			expect(dir.directory("/").path).toBe(dir.path);
+			expect(dir.directory(".").path).toBe(dir.path);
 		});
 
 		test("sanitises each path segment individually", () => {
@@ -611,6 +665,55 @@ describe(StorageDirectoryImpl, () => {
 			const endpoint = new MemoryEndpoint({});
 			const dir = create("/path/to/dir/", endpoint);
 			expect(dir.toString()).toBe("[StorageDirectoryImpl memory://path/to/dir/]");
+		});
+	});
+
+	describe("reference equality", () => {
+		test("directories preserve reference equality", async () => {
+			// Same path from same directory
+			expect(disk.directory("foo")).toBe(disk.directory("foo"));
+
+			// Same path from different parent directories
+			expect(disk.directory("a/b")).toBe(disk.directory("a").directory("b"));
+
+			// Parent references
+			const dir = disk.directory("a/b/c");
+			expect(dir.parent).toBe(dir.parent);
+			expect(dir.parent).toBe(disk.directory("a/b"));
+
+			// Root directory
+			expect(disk.directory("/")).toBe(disk.directory("."));
+			expect(disk.directory("a").parent).toBe(disk.directory("/"));
+
+			// Normalised paths
+			expect(disk.directory("a/b/../c")).toBe(disk.directory("a/c"));
+
+			// Entries from listing return cached instances
+			const subdir = disk.directory("subdir");
+			const listed = await subdir.listDirectories();
+			expect(listed[0]).toBe(disk.directory("subdir/a"));
+		});
+
+		test("files preserve reference equality", async () => {
+			// Same path from same directory
+			expect(disk.file("foo.txt")).toBe(disk.file("foo.txt"));
+
+			// Same path from different parent directories
+			expect(disk.directory("a").file("b.txt")).toBe(disk.directory("a").file("b.txt"));
+			expect(disk.file("a/b.txt")).toBe(disk.directory("a").file("b.txt"));
+
+			// Parent directory of file
+			const file = disk.file("a/b/c.txt");
+			expect(file.parent).toBe(file.parent);
+			expect(file.parent).toBe(disk.directory("a/b"));
+
+			// Normalised paths
+			expect(disk.file("a/b/../c.txt")).toBe(disk.file("a/c.txt"));
+
+			// Entries from listing return cached instances
+			const subdir = disk.directory("subdir");
+			const listed = await subdir.listFiles();
+			expect(listed[0]).toBe(disk.file("subdir/file1.txt"));
 		});
 	});
 
