@@ -7,7 +7,8 @@ export interface PostgresDatabaseAdapterConfig {
 	/**
 	 * A postgres.js instance.
 	 *
-	 * NOTE: calling dispose() on the PostgresDatabaseAdapter will NOT affect this.
+	 * NOTE: calling dispose() on the PostgresDatabaseAdapter does not close
+	 * this client, you are responsible for closing it yourself.
 	 */
 	sql: Sql;
 
@@ -32,4 +33,22 @@ export interface PostgresDatabaseAdapterConfig {
 	 * `"serializable"`.
 	 */
 	transactionIsolation?: IsolationLevel | undefined;
+
+	/**
+	 * Whether to use cached prepared statements. Only supported by the Postgres
+	 * adapter.
+	 *
+	 * When enabled (the default), statements are prepared and cached based on
+	 * the SQL string, so future queries using the same string will use the same
+	 * prepared statement. This improves performance significantly.
+	 *
+	 * To save memory use on the server, you may want to disable prepared
+	 * statements when you know a statement will not be reused often, either by
+	 * default using this option, or per-query using `query.withPrepare(false)`.
+	 *
+	 * Can be overridden per-query using `statement.withPrepare(false)`.
+	 *
+	 * @default true
+	 */
+	prepare?: boolean | undefined;
 }

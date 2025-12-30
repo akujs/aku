@@ -80,7 +80,9 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 			const params = getSqlFragmentsParams(expanded);
 			assertNoUndefinedParams(params, sqlString);
 
-			return this.#enrichError(() => this.#adapter.run(sqlString, params, connection)).then(
+			return this.#enrichError(() =>
+				this.#adapter.run(sqlString, params, connection, statement.prepare),
+			).then(
 				(result) => {
 					this.#dispatcher.dispatchIfHasListeners(
 						QueryExecutedEvent,
@@ -146,7 +148,7 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 			const sql = grammar.compileFragments(expanded);
 			const params = getSqlFragmentsParams(expanded);
 			assertNoUndefinedParams(params, sql);
-			return { sql, params };
+			return { sql, params, prepare: stmt.prepare };
 		});
 		if (this.#adapter.supportsTransactions) {
 			return this.transaction(() => {
@@ -254,7 +256,7 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 			const savepointName = `sp_${depth}`;
 
 			const execCtrl = async (sqlString: string): Promise<void> => {
-				await this.#enrichError(() => this.#adapter.run(sqlString, [], connection));
+				await this.#enrichError(() => this.#adapter.run(sqlString, [], connection, false));
 			};
 
 			try {

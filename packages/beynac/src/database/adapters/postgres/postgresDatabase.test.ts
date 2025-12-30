@@ -1,4 +1,5 @@
-import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { beforeAll, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import type { Sql } from "postgres";
 import { asyncGate } from "../../../test-utils/async-gate.bun.ts";
 import { type MockDispatcher, mockDispatcher } from "../../../test-utils/internal-mocks.bun.ts";
 import type { DatabaseClient } from "../../DatabaseClient.ts";
@@ -7,14 +8,21 @@ import { QueryError } from "../../database-errors.ts";
 import { TransactionRetryingEvent } from "../../database-events.ts";
 import { sql } from "../../sql.ts";
 import { PostgresDatabaseAdapter } from "./PostgresDatabaseAdapter.ts";
-import { createPostgresAdapter, recreatePostgresPublicSchema } from "./postgres-test-utils.ts";
+import {
+	createPostgresAdapter,
+	getSharedPostgresJsClient,
+	recreatePostgresPublicSchema,
+} from "./postgres-test-utils.ts";
 
 describe(PostgresDatabaseAdapter, () => {
 	let db: DatabaseClient;
+	let adapter: PostgresDatabaseAdapter;
 	let dispatcher: MockDispatcher;
+	let postgresJs: Sql;
 
 	beforeAll(async () => {
-		const adapter = await createPostgresAdapter();
+		postgresJs = await getSharedPostgresJsClient();
+		adapter = (await createPostgresAdapter()) as PostgresDatabaseAdapter;
 		dispatcher = mockDispatcher();
 		db = new DatabaseClientImpl(adapter, dispatcher);
 
@@ -185,5 +193,68 @@ describe(PostgresDatabaseAdapter, () => {
 			expect(e).toBeInstanceOf(QueryError);
 			expect((e as QueryError).code).toBe("23505"); // unique_violation
 		}
+	});
+
+	describe("prepare option", () => {
+		let unsafeMock: ReturnType<typeof spyOn>;
+		beforeEach(async () => {
+			const connection = await postgresJs.reserve();
+
+			unsafeMock = spyOn(connection, "unsafe").mockResolvedValue([] as never);
+			spyOn(postgresJs, "reserve").mockResolvedValue(connection);
+		});
+
+		const getSqlAndPrepare = () =>
+			(unsafeMock.mock.calls as [string, unknown[], { prepare: boolean }][]).map((call) => [
+				call[0],
+				call[2].prepare,
+			]);
+
+		test("uses adapter default prepare: true", async () => {
+			await db.all(sql`SELECT 1`);
+			expect(getSqlAndPrepare()).toEqual([["SELECT 1", true]]);
+		});
+
+		test("respects adapter config for prepare: false", async () => {
+			const customAdapter = new PostgresDatabaseAdapter({
+				sql: postgresJs,
+				transactionRetry: false,
+				prepare: false,
+			});
+			const client = new DatabaseClientImpl(customAdapter, mockDispatcher());
+
+			await client.all(sql`SELECT 1`);
+			expect(getSqlAndPrepare()).toEqual([["SELECT 1", false]]);
+		});
+
+		test("withPrepare(false) on sql tag overrides adapter default", async () => {
+			await db.all(sql`SELECT 1`.withPrepare(false));
+			expect(getSqlAndPrepare()).toEqual([["SELECT 1", false]]);
+		});
+
+		test("withPrepare(false) on query builder overrides adapter default", async () => {
+			await db.table("test").select("1").withPrepare(false);
+			expect(getSqlAndPrepare()).toEqual([['SELECT 1 FROM "test"', false]]);
+		});
+
+		test("batch respects per-statement prepare values", async () => {
+			await db.batch([
+				sql`SELECT 1`.withPrepare(true),
+				sql`SELECT 2`.withPrepare(false),
+				sql`SELECT 3`,
+			]);
+			expect(getSqlAndPrepare()).toEqual([
+				["BEGIN", false],
+				["SELECT 1", true],
+				["SELECT 2", false],
+				["SELECT 3", true],
+				["COMMIT", false],
+			]);
+		});
+
+		test("prepare option is respected with run()", async () => {
+			await db.run(sql`SELECT 1`.withPrepare(false));
+			expect(getSqlAndPrepare()).toEqual([["SELECT 1", false]]);
+		});
 	});
 });

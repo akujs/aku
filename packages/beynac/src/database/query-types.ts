@@ -60,6 +60,7 @@ export interface QueryParts {
 	readonly isDelete: boolean;
 	readonly returningColumns: readonly string[] | null;
 	readonly thenExecutor: ThenExecutor | null;
+	readonly prepare: boolean | null;
 }
 
 export interface Statement extends SqlFragments {
@@ -67,6 +68,11 @@ export interface Statement extends SqlFragments {
 	 * Render this statement for logging, with parameter values inlined.
 	 */
 	toHumanReadableSql(): string;
+
+	/**
+	 * Optionally override the default behavior of whether to use prepared statements
+	 */
+	readonly prepare?: boolean | undefined;
 }
 
 export interface StatementResult {
@@ -150,6 +156,16 @@ interface StatementExecutionMethods<TThen = Row[]> {
 	 * const allRows = await sql`SELECT * FROM users`;
 	 */
 	then: Promise<TThen>["then"];
+
+	/**
+	 * Override the default behavior of whether to use prepared statements.
+	 *
+	 * This only has an effect on adapters that support prepared statements -
+	 * currently only the Postgres adapter.
+	 *
+	 * @param value - Whether to use prepared statements. Defaults to `true`.
+	 */
+	withPrepare(value?: boolean): this;
 }
 
 /**

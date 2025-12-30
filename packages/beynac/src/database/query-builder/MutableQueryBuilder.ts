@@ -27,6 +27,7 @@ export class MutableQueryBuilder extends BaseClass implements QueryParts {
 	isDelete: boolean = false;
 	returningColumns: string[] | null = null;
 	thenExecutor: ThenExecutor | null = null;
+	prepare: boolean | null = null;
 
 	constructor(table: string) {
 		super();
@@ -99,5 +100,9 @@ export class MutableQueryBuilder extends BaseClass implements QueryParts {
 
 	setThenExecutor(executor: ThenExecutor): void {
 		this.thenExecutor = executor;
+	}
+
+	setPrepare(value: boolean): void {
+		this.prepare = value;
 	}
 }

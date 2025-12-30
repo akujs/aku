@@ -14,6 +14,10 @@ export class StatementImpl extends BaseClass implements Statement {
 		return this.#sqlFragments;
 	}
 
+	get prepare(): boolean | undefined {
+		return undefined;
+	}
+
 	toHumanReadableSql(): string {
 		return toHumanReadableSql(this);
 	}

@@ -37,6 +37,10 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		this.#length = commands.length;
 	}
 
+	override get prepare(): boolean | undefined {
+		return this.#getParts().prepare ?? undefined;
+	}
+
 	protected getClient(): DatabaseClient {
 		return this.#client;
 	}
@@ -144,6 +148,10 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		]);
 	}
 
+	withPrepare(value = true): this {
+		return this.#derive("setPrepare", [value]);
+	}
+
 	insert(values: Row | Row[] | Statement, options?: InsertOptions): this {
 		assertNoUndefinedValues(values, "insert");
 		return this.#derive("setInsert", [{ data: values, columns: options?.columns ?? null }], "run");
@@ -249,7 +257,8 @@ type MutableQueryBuilderMethod =
 	| "setUpdateData"
 	| "setDelete"
 	| "setReturning"
-	| "setThenExecutor";
+	| "setThenExecutor"
+	| "setPrepare";
 
 type Command = [MutableQueryBuilderMethod, unknown[]];
 

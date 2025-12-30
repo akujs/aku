@@ -13,7 +13,7 @@ const TEST_LOCK_KEY = 948572;
 const LOCK_TIMEOUT_MS = 10_000;
 let sharedPool: Sql | null = null;
 
-async function getSharedPool(): Promise<Sql> {
+export async function getSharedPostgresJsClient(): Promise<Sql> {
 	if (sharedPool) return sharedPool;
 
 	sharedPool = postgres(POSTGRES_URL, {
@@ -46,7 +46,7 @@ async function getSharedPool(): Promise<Sql> {
 
 export async function createPostgresAdapter(): Promise<DatabaseAdapter<unknown>> {
 	return postgresDatabase({
-		sql: await getSharedPool(),
+		sql: await getSharedPostgresJsClient(),
 		transactionRetry: false,
 	});
 }

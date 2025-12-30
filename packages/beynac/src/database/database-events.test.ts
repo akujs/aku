@@ -86,9 +86,9 @@ describe("database events", () => {
 		test("query events timeTakenMs reflects duration", async () => {
 			mockCurrentTime(1000);
 			const originalRun = adapter.run.bind(adapter);
-			spyOn(adapter, "run").mockImplementation(async (sqlString, params, connection) => {
+			spyOn(adapter, "run").mockImplementation(async (sqlString, params, connection, prepare) => {
 				mockCurrentTime(1075);
-				return originalRun(sqlString, params, connection);
+				return originalRun(sqlString, params, connection, prepare);
 			});
 
 			await db.run(sql`SELECT 1`);
@@ -239,11 +239,11 @@ describe("database events", () => {
 			// Force a retry by making first BEGIN fail with SQLITE_BUSY
 			let beginAttempts = 0;
 			const originalRun = adapter.run.bind(adapter);
-			spyOn(adapter, "run").mockImplementation(async (sqlString, params, conn) => {
+			spyOn(adapter, "run").mockImplementation(async (sqlString, params, conn, prepare) => {
 				if (sqlString === "BEGIN" && beginAttempts++ === 0) {
 					throw new QueryError("BEGIN", "database is locked", undefined, "SQLITE_BUSY", 5);
 				}
-				return originalRun(sqlString, params, conn);
+				return originalRun(sqlString, params, conn, prepare);
 			});
 
 			await db.transaction(

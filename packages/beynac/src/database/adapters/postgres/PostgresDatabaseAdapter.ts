@@ -20,10 +20,12 @@ export class PostgresDatabaseAdapter
 	readonly transactionOptions: TransactionOptions;
 
 	readonly #sql: PostgresJS;
+	readonly #defaultPrepare: boolean;
 
 	constructor(config: PostgresDatabaseAdapterConfig) {
 		super();
 		this.#sql = config.sql as PostgresJS;
+		this.#defaultPrepare = config.prepare ?? true;
 		this.transactionOptions = Object.freeze({
 			retry: config.transactionRetry,
 			isolation: config.transactionIsolation,
@@ -42,11 +44,14 @@ export class PostgresDatabaseAdapter
 		sql: string,
 		params: unknown[],
 		connection: PostgresConnection,
+		prepare: boolean | undefined,
 	): Promise<StatementResult> {
 		try {
-			const result = await connection.unsafe(sql, params);
+			const result = await connection.unsafe(sql, params, {
+				prepare: prepare ?? this.#defaultPrepare,
+			});
 			return {
-				rows: result as Row[],
+				rows: [...result],
 				rowsAffected: result.count ?? result.length,
 			};
 		} catch (error) {
@@ -62,7 +67,9 @@ export class PostgresDatabaseAdapter
 
 		// Postgres.js will use pipelining to send queries serially but
 		// without waiting for each
-		return Promise.all(queries.map(({ sql, params }) => this.run(sql, params, connection)));
+		return Promise.all(
+			queries.map(({ sql, params, prepare }) => this.run(sql, params, connection, prepare)),
+		);
 	}
 
 	dispose(): void {}

@@ -17,6 +17,7 @@ export interface DatabaseConfig {
 export interface CompiledQuery {
 	sql: string;
 	params: unknown[];
+	prepare?: boolean | undefined;
 }
 
 /**
@@ -67,7 +68,12 @@ export interface DatabaseAdapter<TConnection = unknown> {
 	 *   statement did not modify any rows, or if this is not the kind of
 	 *   statement that modifies rows.
 	 */
-	run(sql: string, params: unknown[], connection: TConnection): Promise<StatementResult>;
+	run(
+		sql: string,
+		params: unknown[],
+		connection: TConnection,
+		prepare: boolean | undefined,
+	): Promise<StatementResult>;
 
 	/**
 	 * Execute a batch of compiled queries using the provided connection.

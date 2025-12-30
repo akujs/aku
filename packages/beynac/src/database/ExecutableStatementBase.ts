@@ -8,6 +8,8 @@ export abstract class ExecutableStatementBase extends StatementImpl {
 	// oxlint-disable-next-line unicorn/no-thenable -- intentionally awaitable API
 	abstract then: Promise<unknown>["then"];
 
+	abstract withPrepare(value?: boolean): this;
+
 	run(): Promise<StatementResult> {
 		return this.getClient().run(this);
 	}
