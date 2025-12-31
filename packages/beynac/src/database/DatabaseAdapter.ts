@@ -14,11 +14,23 @@ export interface DatabaseConfig {
 	additional?: Record<string, DatabaseAdapter>;
 }
 
-export interface CompiledQuery {
+export interface DatabaseAdapterRunOptions<TConnection> {
 	sql: string;
 	params: unknown[];
-	prepare?: boolean | undefined;
+	connection: TConnection;
+	prepare: boolean | undefined;
 }
+
+export interface DatabaseAdapterBatchOptions<TConnection> {
+	connection: TConnection;
+	queries: DatabaseAdapterBatchQuery[];
+}
+
+type DatabaseAdapterBatchQuery = {
+	sql: string;
+	params: unknown[];
+	prepare: boolean | undefined;
+};
 
 /**
  * Interface for database adapters. Implement this to add support for new
@@ -67,13 +79,13 @@ export interface DatabaseAdapter<TConnection = unknown> {
 	 * - `rowsAffected`: the number of rows affected by the statement, 0 if the
 	 *   statement did not modify any rows, or if this is not the kind of
 	 *   statement that modifies rows.
+	 *
+	 * @param options.sql - the SQL string to execute
+	 * @param options.params - the query parameters
+	 * @param options.connection - the database connection to use
+	 * @param options.prepare - whether to use prepared statements (Adapters that don't support prepared statements can ignore this option)
 	 */
-	run(
-		sql: string,
-		params: unknown[],
-		connection: TConnection,
-		prepare: boolean | undefined,
-	): Promise<StatementResult>;
+	run(options: DatabaseAdapterRunOptions<TConnection>): Promise<StatementResult>;
 
 	/**
 	 * Execute a batch of compiled queries using the provided connection.
@@ -88,8 +100,11 @@ export interface DatabaseAdapter<TConnection = unknown> {
 	 * using a transactional batch. Many HTTP databases like Neon and D1 offer
 	 * Do not support interactive transactions but do support a transactional
 	 * batch API call.
+	 *
+	 * @param options.connection - the database connection to use
+	 * @param options.queries - the queries to execute
 	 */
-	batch(queries: CompiledQuery[], connection: TConnection): Promise<StatementResult[]>;
+	batch(options: DatabaseAdapterBatchOptions<TConnection>): Promise<StatementResult[]>;
 
 	/**
 	 * Called when the adapter is no longer required. The convention is that

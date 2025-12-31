@@ -101,9 +101,11 @@ describe(readOnlyStorage, () => {
 	test("getPublicDownloadUrl() delegates to wrapped disk", async () => {
 		const spy = spyOn(wrappedDisk, "getPublicDownloadUrl").mockResolvedValue("mocked-url");
 
-		const result = await readOnlyDisk.getPublicDownloadUrl("/file.txt", "download.txt");
+		const result = await readOnlyDisk.getPublicDownloadUrl("/file.txt", {
+			downloadAs: "download.txt",
+		});
 
-		expect(spy).toHaveBeenCalledWith("/file.txt", "download.txt");
+		expect(spy).toHaveBeenCalledWith("/file.txt", { downloadAs: "download.txt" });
 		expect(result).toBe("mocked-url");
 	});
 
@@ -111,9 +113,12 @@ describe(readOnlyStorage, () => {
 		const spy = spyOn(wrappedDisk, "getSignedDownloadUrl").mockResolvedValue("mocked-url");
 		const expires = new Date();
 
-		const result = await readOnlyDisk.getSignedDownloadUrl("/file.txt", expires, "download.txt");
+		const result = await readOnlyDisk.getSignedDownloadUrl("/file.txt", {
+			expires,
+			downloadAs: "download.txt",
+		});
 
-		expect(spy).toHaveBeenCalledWith("/file.txt", expires, "download.txt");
+		expect(spy).toHaveBeenCalledWith("/file.txt", { expires, downloadAs: "download.txt" });
 		expect(result).toBe("mocked-url");
 	});
 
@@ -138,11 +143,15 @@ describe(readOnlyStorage, () => {
 	});
 
 	test("copy() throws PermissionsError", async () => {
-		expect(readOnlyDisk.copy("/source.txt", "/dest.txt")).rejects.toThrow(PermissionsError);
+		expect(readOnlyDisk.copy({ source: "/source.txt", destination: "/dest.txt" })).rejects.toThrow(
+			PermissionsError,
+		);
 	});
 
 	test("move() throws PermissionsError", async () => {
-		expect(readOnlyDisk.move("/source.txt", "/dest.txt")).rejects.toThrow(PermissionsError);
+		expect(readOnlyDisk.move({ source: "/source.txt", destination: "/dest.txt" })).rejects.toThrow(
+			PermissionsError,
+		);
 	});
 
 	test("deleteSingle() throws PermissionsError", async () => {

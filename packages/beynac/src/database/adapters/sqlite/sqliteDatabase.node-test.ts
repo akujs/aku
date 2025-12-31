@@ -61,7 +61,12 @@ void test("readOnly prevents writes in Node.js", async () => {
 	// Create database and add a table
 	const adapter1 = new SqliteDatabaseAdapter({ path: dbPath, transactionRetry: false });
 	const conn1 = await adapter1.acquireConnection();
-	await adapter1.run("CREATE TABLE test (id INTEGER)", [], conn1);
+	await adapter1.run({
+		sql: "CREATE TABLE test (id INTEGER)",
+		params: [],
+		connection: conn1,
+		prepare: undefined,
+	});
 	adapter1.releaseConnection(conn1);
 	adapter1.dispose();
 
@@ -73,7 +78,12 @@ void test("readOnly prevents writes in Node.js", async () => {
 	});
 	const conn2 = await adapter2.acquireConnection();
 	await assert.rejects(
-		adapter2.run("INSERT INTO test (id) VALUES (1)", [], conn2),
+		adapter2.run({
+			sql: "INSERT INTO test (id) VALUES (1)",
+			params: [],
+			connection: conn2,
+			prepare: undefined,
+		}),
 		"QueryError: SQLITE_READONLY (Attempt to write a readonly database)",
 	);
 	adapter2.releaseConnection(conn2);
@@ -86,7 +96,12 @@ void test("useWalMode enables WAL by default in Node.js", async () => {
 
 	const adapter = new SqliteDatabaseAdapter({ path: dbPath, transactionRetry: false });
 	const conn = await adapter.acquireConnection();
-	const result = await adapter.run("PRAGMA journal_mode", [], conn);
+	const result = await adapter.run({
+		sql: "PRAGMA journal_mode",
+		params: [],
+		connection: conn,
+		prepare: undefined,
+	});
 	assert.strictEqual(result.rows[0].journal_mode, "wal");
 	adapter.releaseConnection(conn);
 	adapter.dispose();
@@ -102,7 +117,12 @@ void test("useWalMode=false disables WAL in Node.js", async () => {
 		transactionRetry: false,
 	});
 	const conn = await adapter.acquireConnection();
-	const result = await adapter.run("PRAGMA journal_mode", [], conn);
+	const result = await adapter.run({
+		sql: "PRAGMA journal_mode",
+		params: [],
+		connection: conn,
+		prepare: undefined,
+	});
 	assert.strictEqual(result.rows[0].journal_mode, "delete");
 	adapter.releaseConnection(conn);
 	adapter.dispose();
@@ -115,7 +135,12 @@ void test("QueryError captures error code in Node.js", async () => {
 	// Create database and table
 	const adapter1 = new SqliteDatabaseAdapter({ path: dbPath, transactionRetry: false });
 	const conn1 = await adapter1.acquireConnection();
-	await adapter1.run("CREATE TABLE test (id INTEGER)", [], conn1);
+	await adapter1.run({
+		sql: "CREATE TABLE test (id INTEGER)",
+		params: [],
+		connection: conn1,
+		prepare: undefined,
+	});
 	adapter1.releaseConnection(conn1);
 	adapter1.dispose();
 
@@ -127,7 +152,12 @@ void test("QueryError captures error code in Node.js", async () => {
 	});
 	const conn2 = await adapter2.acquireConnection();
 	try {
-		await adapter2.run("INSERT INTO test (id) VALUES (1)", [], conn2);
+		await adapter2.run({
+			sql: "INSERT INTO test (id) VALUES (1)",
+			params: [],
+			connection: conn2,
+			prepare: undefined,
+		});
 		assert.fail("Should have thrown");
 	} catch (e) {
 		assert.ok(e instanceof QueryError);

@@ -81,7 +81,7 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 			assertNoUndefinedParams(params, sqlString);
 
 			return this.#enrichError(() =>
-				this.#adapter.run(sqlString, params, connection, statement.prepare),
+				this.#adapter.run({ sql: sqlString, params, connection, prepare: statement.prepare }),
 			).then(
 				(result) => {
 					this.#dispatcher.dispatchIfHasListeners(
@@ -139,9 +139,7 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 	}
 
 	async batch(statements: Statement[]): Promise<StatementResult[]> {
-		if (statements.length === 0) {
-			return [];
-		}
+		if (statements.length === 0) return [];
 		const grammar = this.#adapter.grammar;
 		const queries = statements.map((stmt) => {
 			const expanded = expandArraysAndSubqueries(stmt);
@@ -153,11 +151,13 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 		if (this.#adapter.supportsTransactions) {
 			return this.transaction(() => {
 				const ctx = this.#connectionStorage.getStore()!;
-				return this.#enrichError(() => this.#adapter.batch(queries, ctx.connection));
+				return this.#enrichError(() =>
+					this.#adapter.batch({ queries, connection: ctx.connection }),
+				);
 			});
 		} else {
 			return this.#withConnection((connection) =>
-				this.#enrichError(() => this.#adapter.batch(queries, connection)),
+				this.#enrichError(() => this.#adapter.batch({ queries, connection })),
 			);
 		}
 	}
@@ -256,7 +256,9 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 			const savepointName = `sp_${depth}`;
 
 			const execCtrl = async (sqlString: string): Promise<void> => {
-				await this.#enrichError(() => this.#adapter.run(sqlString, [], connection, false));
+				await this.#enrichError(() =>
+					this.#adapter.run({ sql: sqlString, params: [], connection, prepare: false }),
+				);
 			};
 
 			try {

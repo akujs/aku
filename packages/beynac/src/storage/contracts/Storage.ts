@@ -134,6 +134,20 @@ export type StorageFileSignedUrlOptions = SignUrlOptions & DownloadUrlOptions;
 /***/
 export type StorageFileUploadUrlOptions = SignUrlOptions;
 
+export interface StorageEndpointSignedDownloadUrlOptions {
+	expires: Date;
+	downloadAs?: string | undefined;
+}
+
+export interface StorageEndpointPublicDownloadUrlOptions {
+	downloadAs?: string | undefined;
+}
+
+export interface StorageEndpointCopyMoveOptions {
+	source: string;
+	destination: string;
+}
+
 /***/
 export interface StorageFile {
 	readonly type: "file";
@@ -558,13 +572,26 @@ export interface StorageEndpoint {
 
 	/**
 	 * Get an unsigned URL that will work to download this file if it is public.
+	 *
+	 * @param path - the file path
+	 * @param options.downloadAs - suggested filename for download
 	 */
-	getPublicDownloadUrl(path: string, downloadFileName?: string): Promise<string>;
+	getPublicDownloadUrl(
+		path: string,
+		options?: StorageEndpointPublicDownloadUrlOptions,
+	): Promise<string>;
 
 	/**
 	 * Get a temporary download URL for a path.
+	 *
+	 * @param path - the file path
+	 * @param options.expires - expiration date for the URL
+	 * @param options.downloadAs - suggested filename for download
 	 */
-	getSignedDownloadUrl(path: string, expires: Date, downloadFileName?: string): Promise<string>;
+	getSignedDownloadUrl(
+		path: string,
+		options: StorageEndpointSignedDownloadUrlOptions,
+	): Promise<string>;
 
 	/**
 	 * Get a temporary upload URL for a path.
@@ -573,13 +600,19 @@ export interface StorageEndpoint {
 
 	/**
 	 * Copy a file internally within this endpoint. Should throw NotFoundError if the source file does not exist.
+	 *
+	 * @param options.source - source file path
+	 * @param options.destination - destination file path
 	 */
-	copy(source: string, destination: string): Promise<void>;
+	copy(options: StorageEndpointCopyMoveOptions): Promise<void>;
 
 	/**
-	 * Copy a file internally within this endpoint. Should throw NotFoundError if the source file does not exist.
+	 * Move a file internally within this endpoint. Should throw NotFoundError if the source file does not exist.
+	 *
+	 * @param options.source - source file path
+	 * @param options.destination - destination file path
 	 */
-	move(source: string, destination: string): Promise<void>;
+	move(options: StorageEndpointCopyMoveOptions): Promise<void>;
 
 	/**
 	 * Check if a file exists at the given path.

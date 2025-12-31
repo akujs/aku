@@ -1,6 +1,10 @@
 import type { D1Database, D1PreparedStatement, D1Result } from "@cloudflare/workers-types";
 import { BaseClass } from "../../../utils.ts";
-import type { CompiledQuery, DatabaseAdapter } from "../../DatabaseAdapter.ts";
+import type {
+	DatabaseAdapter,
+	DatabaseAdapterBatchOptions,
+	DatabaseAdapterRunOptions,
+} from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { SqliteGrammar } from "../../grammar/SqliteGrammar.ts";
@@ -25,7 +29,7 @@ export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter<D1Da
 
 	releaseConnection(): void {}
 
-	async run(sql: string, params: unknown[]): Promise<StatementResult> {
+	async run({ sql, params }: DatabaseAdapterRunOptions<D1Database>): Promise<StatementResult> {
 		try {
 			return this.#toStatementResult(await this.#prepare(sql, params).all());
 		} catch (error) {
@@ -33,8 +37,7 @@ export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter<D1Da
 		}
 	}
 
-	async batch(queries: CompiledQuery[]): Promise<StatementResult[]> {
-		if (queries.length === 0) return [];
+	async batch({ queries }: DatabaseAdapterBatchOptions<D1Database>): Promise<StatementResult[]> {
 		try {
 			const results = await this.#d1.batch(
 				queries.map(({ sql, params }) => this.#prepare(sql, params)),

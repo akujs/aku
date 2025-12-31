@@ -168,7 +168,7 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 	async url(options: StorageFileUrlOptions = {}): Promise<string> {
 		return await storageOperation(
 			"file:url-generate",
-			() => this.#endpoint.getPublicDownloadUrl(this.path, options?.downloadAs),
+			() => this.#endpoint.getPublicDownloadUrl(this.path, { downloadAs: options?.downloadAs }),
 			() => new FileUrlGeneratingEvent(this.disk, this.path, "url", options),
 			(start, url) => new FileUrlGeneratedEvent(start, url),
 			this.#dispatcher,
@@ -180,11 +180,10 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 		return await storageOperation(
 			"file:url-generate",
 			() =>
-				this.#endpoint.getSignedDownloadUrl(
-					this.path,
-					durationStringToDate(options?.expires ?? "100y"),
-					options?.downloadAs,
-				),
+				this.#endpoint.getSignedDownloadUrl(this.path, {
+					expires: durationStringToDate(options?.expires ?? "100y"),
+					downloadAs: options?.downloadAs,
+				}),
 			() => new FileUrlGeneratingEvent(this.disk, this.path, "signed", options),
 			(start, url) => new FileUrlGeneratedEvent(start, url),
 			this.#dispatcher,
@@ -248,7 +247,7 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 		if (destination.disk === this.disk) {
 			await storageOperation(
 				"file:copy",
-				() => this.#endpoint.copy(this.path, destination.path),
+				() => this.#endpoint.copy({ source: this.path, destination: destination.path }),
 				() => new FileCopyingEvent(this.disk, this.path, destination.disk.name, destination.path),
 				(start) => new FileCopiedEvent(start),
 				this.#dispatcher,
@@ -269,7 +268,7 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 		if (destination.disk === this.disk) {
 			await storageOperation(
 				"file:move",
-				() => this.#endpoint.move(this.path, destination.path),
+				() => this.#endpoint.move({ source: this.path, destination: destination.path }),
 				() => new FileMovingEvent(this.disk, this.path, destination.disk.name, destination.path),
 				(start) => new FileMovedEvent(start),
 				this.#dispatcher,

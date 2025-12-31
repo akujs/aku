@@ -268,14 +268,14 @@ describe(StorageFileImpl, () => {
 			const file = disk.file("test.txt");
 			const result = await file.url();
 			expect(result).toBe("mocked-url");
-			expect(spy).toHaveBeenCalledWith("/test.txt", undefined);
+			expect(spy).toHaveBeenCalledWith("/test.txt", { downloadAs: undefined });
 		});
 
 		test("passes downloadAs to endpoint.getPublicDownloadUrl()", async () => {
 			const spy = spyOn(endpoint, "getPublicDownloadUrl").mockResolvedValue("mocked-url");
 			const file = disk.file("test.txt");
 			await file.url({ downloadAs: "custom.txt" });
-			expect(spy).toHaveBeenCalledWith("/test.txt", "custom.txt");
+			expect(spy).toHaveBeenCalledWith("/test.txt", { downloadAs: "custom.txt" });
 		});
 	});
 
@@ -285,22 +285,20 @@ describe(StorageFileImpl, () => {
 			const file = disk.file("test.txt");
 			const result = await file.signedUrl();
 			expect(result).toBe("mocked-url");
-			expect(spy).toHaveBeenCalledWith(
-				"/test.txt",
-				new Date("2124-12-08T00:00:00.000Z"),
-				undefined,
-			);
+			expect(spy).toHaveBeenCalledWith("/test.txt", {
+				expires: new Date("2124-12-08T00:00:00.000Z"),
+				downloadAs: undefined,
+			});
 		});
 
 		test("accepts custom expires duration string", async () => {
 			const spy = spyOn(endpoint, "getSignedDownloadUrl").mockResolvedValue("mocked-url");
 			const file = disk.file("test.txt");
 			await file.signedUrl({ expires: "1h" });
-			expect(spy).toHaveBeenCalledWith(
-				"/test.txt",
-				new Date("2025-01-01T01:00:00.000Z"),
-				undefined,
-			);
+			expect(spy).toHaveBeenCalledWith("/test.txt", {
+				expires: new Date("2025-01-01T01:00:00.000Z"),
+				downloadAs: undefined,
+			});
 		});
 
 		test("accepts custom expires Date", async () => {
@@ -308,14 +306,20 @@ describe(StorageFileImpl, () => {
 			const file = disk.file("test.txt");
 			const customDate = new Date("2025-06-15T12:30:00Z");
 			await file.signedUrl({ expires: customDate });
-			expect(spy).toHaveBeenCalledWith("/test.txt", customDate, undefined);
+			expect(spy).toHaveBeenCalledWith("/test.txt", {
+				expires: customDate,
+				downloadAs: undefined,
+			});
 		});
 
 		test("passes downloadAs to endpoint.getSignedDownloadUrl()", async () => {
 			const spy = spyOn(endpoint, "getSignedDownloadUrl").mockResolvedValue("mocked-url");
 			const file = disk.file("test.txt");
 			await file.signedUrl({ downloadAs: "custom.txt" });
-			expect(spy).toHaveBeenCalledWith("/test.txt", expect.any(Date), "custom.txt");
+			expect(spy).toHaveBeenCalledWith("/test.txt", {
+				expires: expect.any(Date),
+				downloadAs: "custom.txt",
+			});
 		});
 	});
 
@@ -458,7 +462,10 @@ describe(StorageFileImpl, () => {
 			spyOnAll(endpoint);
 			await source.copyTo(dest);
 			expect(endpoint.readSingle).not.toHaveBeenCalled();
-			expect(endpoint.copy).toHaveBeenCalledWith("/source.txt", "/dest.txt");
+			expect(endpoint.copy).toHaveBeenCalledWith({
+				source: "/source.txt",
+				destination: "/dest.txt",
+			});
 			expect(await dest.exists()).toBe(true);
 			const fetchResult = await dest.get();
 			expect(await fetchResult.response.text()).toBe("hello");
@@ -519,7 +526,10 @@ describe(StorageFileImpl, () => {
 			const dest = disk.file("dest.txt");
 			spyOnAll(endpoint);
 			await source.moveTo(dest);
-			expect(endpoint.move).toHaveBeenCalledWith("/source.txt", "/dest.txt");
+			expect(endpoint.move).toHaveBeenCalledWith({
+				source: "/source.txt",
+				destination: "/dest.txt",
+			});
 			expect(endpoint.copy).not.toHaveBeenCalled();
 			expect(endpoint.readSingle).not.toHaveBeenCalled();
 			expect(await dest.exists()).toBe(true);

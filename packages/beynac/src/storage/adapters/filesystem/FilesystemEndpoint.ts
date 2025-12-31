@@ -4,8 +4,11 @@ import { promisify } from "node:util";
 import { BaseClass } from "../../../utils.ts";
 import type {
 	StorageEndpoint,
+	StorageEndpointCopyMoveOptions,
 	StorageEndpointFileInfoResult,
 	StorageEndpointFileReadResult,
+	StorageEndpointPublicDownloadUrlOptions,
+	StorageEndpointSignedDownloadUrlOptions,
 	StorageEndpointWriteOptions,
 } from "../../contracts/Storage.ts";
 import { joinSlashPaths } from "../../file-names.ts";
@@ -86,9 +89,9 @@ export class FilesystemEndpoint extends BaseClass implements StorageEndpoint {
 		await withNodeErrors(fsPath, () => fsOps.unlink(fsPath));
 	}
 
-	async copy(source: string, destination: string): Promise<void> {
-		const sourceFsPath = this.#toFilesystemPath(source);
-		const destFsPath = this.#toFilesystemPath(destination);
+	async copy(options: StorageEndpointCopyMoveOptions): Promise<void> {
+		const sourceFsPath = this.#toFilesystemPath(options.source);
+		const destFsPath = this.#toFilesystemPath(options.destination);
 
 		await withNodeErrors(sourceFsPath, async () => {
 			await this.#ensureParentDirectoryExists(destFsPath);
@@ -96,9 +99,9 @@ export class FilesystemEndpoint extends BaseClass implements StorageEndpoint {
 		});
 	}
 
-	async move(source: string, destination: string): Promise<void> {
-		const sourceFsPath = this.#toFilesystemPath(source);
-		const destFsPath = this.#toFilesystemPath(destination);
+	async move(options: StorageEndpointCopyMoveOptions): Promise<void> {
+		const sourceFsPath = this.#toFilesystemPath(options.source);
+		const destFsPath = this.#toFilesystemPath(options.destination);
 
 		await withNodeErrors(sourceFsPath, async () => {
 			await this.#ensureParentDirectoryExists(destFsPath);
@@ -106,7 +109,10 @@ export class FilesystemEndpoint extends BaseClass implements StorageEndpoint {
 		});
 	}
 
-	async getPublicDownloadUrl(path: string, downloadFileName?: string): Promise<string> {
+	async getPublicDownloadUrl(
+		path: string,
+		options?: StorageEndpointPublicDownloadUrlOptions,
+	): Promise<string> {
 		if (!this.#makePublicUrlWith) {
 			throw new Error("makePublicUrlWith is required for URL generation");
 		}
@@ -116,24 +122,23 @@ export class FilesystemEndpoint extends BaseClass implements StorageEndpoint {
 				? joinSlashPaths(this.#makePublicUrlWith, path)
 				: this.#makePublicUrlWith(path);
 
-		if (downloadFileName) {
-			return `${baseUrl}?download=${encodeURIComponent(downloadFileName)}`;
+		if (options?.downloadAs) {
+			return `${baseUrl}?download=${encodeURIComponent(options.downloadAs)}`;
 		}
 		return baseUrl;
 	}
 
 	async getSignedDownloadUrl(
 		path: string,
-		expires: Date,
-		downloadFileName?: string,
+		options: StorageEndpointSignedDownloadUrlOptions,
 	): Promise<string> {
 		if (!this.#config.makeSignedDownloadUrlWith) {
 			throw new Error("makeSignedDownloadUrlWith is required for signed URL generation");
 		}
 		return await this.#config.makeSignedDownloadUrlWith({
 			path,
-			expires,
-			downloadFileName,
+			expires: options.expires,
+			downloadFileName: options.downloadAs,
 			config: this.#config,
 		});
 	}

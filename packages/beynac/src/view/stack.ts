@@ -4,7 +4,7 @@ import { SPECIAL_NODE } from "./special-node.ts";
 import type { JSXNode, PropsWithChildren } from "./view-types.ts";
 import { tagAsJsxElement } from "./view-types.ts";
 
-type CreateStackArgs = { displayName?: string };
+type CreateStackOptions = { displayName?: string };
 
 /**
  * Creates a pair of components for implementing a stack pattern.
@@ -22,7 +22,7 @@ type CreateStackArgs = { displayName?: string };
  * </div>
  * ```
  */
-export function createStack({ displayName = "Stack" }: CreateStackArgs = {}): {
+export function createStack({ displayName = "Stack" }: CreateStackOptions = {}): {
 	Push: FunctionComponent<PropsWithChildren>;
 	Out: FunctionComponent;
 } {

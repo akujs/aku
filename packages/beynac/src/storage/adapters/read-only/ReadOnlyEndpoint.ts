@@ -2,8 +2,11 @@ import { injectFactory } from "../../../container/inject.ts";
 import type {
 	Storage,
 	StorageEndpoint,
+	StorageEndpointCopyMoveOptions,
 	StorageEndpointFileInfoResult,
 	StorageEndpointFileReadResult,
+	StorageEndpointPublicDownloadUrlOptions,
+	StorageEndpointSignedDownloadUrlOptions,
 	StorageEndpointWriteOptions,
 } from "../../contracts/Storage.ts";
 import { Storage as StorageKey } from "../../contracts/Storage.ts";
@@ -29,16 +32,18 @@ export class ReadOnlyEndpoint extends WrappedEndpoint implements StorageEndpoint
 		return await this.endpoint.getInfoSingle(path);
 	}
 
-	async getPublicDownloadUrl(path: string, downloadFileName?: string): Promise<string> {
-		return await this.endpoint.getPublicDownloadUrl(path, downloadFileName);
+	async getPublicDownloadUrl(
+		path: string,
+		options?: StorageEndpointPublicDownloadUrlOptions,
+	): Promise<string> {
+		return await this.endpoint.getPublicDownloadUrl(path, options);
 	}
 
 	async getSignedDownloadUrl(
 		path: string,
-		expires: Date,
-		downloadFileName?: string,
+		options: StorageEndpointSignedDownloadUrlOptions,
 	): Promise<string> {
-		return await this.endpoint.getSignedDownloadUrl(path, expires, downloadFileName);
+		return await this.endpoint.getSignedDownloadUrl(path, options);
 	}
 
 	async getTemporaryUploadUrl(path: string, expires: Date): Promise<string> {
@@ -65,12 +70,12 @@ export class ReadOnlyEndpoint extends WrappedEndpoint implements StorageEndpoint
 		throw new PermissionsError(options.path, 403, `"${this.name}" disk is read-only`);
 	}
 
-	async copy(source: string, _destination: string): Promise<void> {
-		throw new PermissionsError(source, 403, `"${this.name}" disk is read-only`);
+	async copy(options: StorageEndpointCopyMoveOptions): Promise<void> {
+		throw new PermissionsError(options.source, 403, `"${this.name}" disk is read-only`);
 	}
 
-	async move(source: string, _destination: string): Promise<void> {
-		throw new PermissionsError(source, 403, `"${this.name}" disk is read-only`);
+	async move(options: StorageEndpointCopyMoveOptions): Promise<void> {
+		throw new PermissionsError(options.source, 403, `"${this.name}" disk is read-only`);
 	}
 
 	async deleteSingle(path: string): Promise<void> {

@@ -1,7 +1,11 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { BaseClass, type FifoLock, fifoLock } from "../../../utils.ts";
-import type { CompiledQuery, DatabaseAdapter } from "../../DatabaseAdapter.ts";
+import type {
+	DatabaseAdapter,
+	DatabaseAdapterBatchOptions,
+	DatabaseAdapterRunOptions,
+} from "../../DatabaseAdapter.ts";
 import type { TransactionOptions } from "../../DatabaseClient.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
@@ -92,11 +96,11 @@ export class SqliteDatabaseAdapter extends BaseClass implements DatabaseAdapter<
 		}
 	}
 
-	async run(
-		sql: string,
-		params: unknown[],
-		connection: SqliteConnection,
-	): Promise<StatementResult> {
+	async run({
+		connection,
+		sql,
+		params,
+	}: DatabaseAdapterRunOptions<SqliteConnection>): Promise<StatementResult> {
 		try {
 			const prepared = connection.prepare(sql);
 
@@ -111,10 +115,10 @@ export class SqliteDatabaseAdapter extends BaseClass implements DatabaseAdapter<
 		}
 	}
 
-	async batch(queries: CompiledQuery[], connection: SqliteConnection): Promise<StatementResult[]> {
+	async batch(options: DatabaseAdapterBatchOptions<SqliteConnection>): Promise<StatementResult[]> {
 		const results: StatementResult[] = [];
-		for (const { sql, params } of queries) {
-			results.push(await this.run(sql, params, connection));
+		for (const query of options.queries) {
+			results.push(await this.run({ ...query, connection: options.connection }));
 		}
 		return results;
 	}

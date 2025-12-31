@@ -32,7 +32,12 @@ describe("SqliteDatabase", () => {
 
 	test("readOnly prevents writes", async () => {
 		const conn1 = await adapter.acquireConnection();
-		await adapter.run("CREATE TABLE test (id INTEGER)", [], conn1);
+		await adapter.run({
+			sql: "CREATE TABLE test (id INTEGER)",
+			params: [],
+			connection: conn1,
+			prepare: undefined,
+		});
 		adapter.releaseConnection(conn1);
 		adapter.dispose();
 
@@ -42,7 +47,14 @@ describe("SqliteDatabase", () => {
 			transactionRetry: false,
 		});
 		const conn2 = await readOnlyAdapter.acquireConnection();
-		expect(readOnlyAdapter.run("INSERT INTO test (id) VALUES (1)", [], conn2)).rejects.toThrow();
+		expect(
+			readOnlyAdapter.run({
+				sql: "INSERT INTO test (id) VALUES (1)",
+				params: [],
+				connection: conn2,
+				prepare: undefined,
+			}),
+		).rejects.toThrow();
 		readOnlyAdapter.releaseConnection(conn2);
 		readOnlyAdapter.dispose();
 	});
@@ -51,7 +63,12 @@ describe("SqliteDatabase", () => {
 		const nestedPath = join(testDir, "subdir", "nested", "test.db");
 		const nestedAdapter = new SqliteDatabaseAdapter({ path: nestedPath, transactionRetry: false });
 		const conn = await nestedAdapter.acquireConnection();
-		await nestedAdapter.run("CREATE TABLE test (id INTEGER)", [], conn);
+		await nestedAdapter.run({
+			sql: "CREATE TABLE test (id INTEGER)",
+			params: [],
+			connection: conn,
+			prepare: undefined,
+		});
 		nestedAdapter.releaseConnection(conn);
 		nestedAdapter.dispose();
 
@@ -67,7 +84,12 @@ describe("SqliteDatabase", () => {
 
 	test("enables WAL by default", async () => {
 		const conn = await adapter.acquireConnection();
-		const result = await adapter.run("PRAGMA journal_mode", [], conn);
+		const result = await adapter.run({
+			sql: "PRAGMA journal_mode",
+			params: [],
+			connection: conn,
+			prepare: undefined,
+		});
 		expect(result.rows[0].journal_mode).toBe("wal");
 		adapter.releaseConnection(conn);
 	});
@@ -79,7 +101,12 @@ describe("SqliteDatabase", () => {
 			transactionRetry: false,
 		});
 		const conn = await noWalAdapter.acquireConnection();
-		const result = await noWalAdapter.run("PRAGMA journal_mode", [], conn);
+		const result = await noWalAdapter.run({
+			sql: "PRAGMA journal_mode",
+			params: [],
+			connection: conn,
+			prepare: undefined,
+		});
 		expect(result.rows[0].journal_mode).toBe("wal");
 		noWalAdapter.releaseConnection(conn);
 		noWalAdapter.dispose();
@@ -92,7 +119,12 @@ describe("SqliteDatabase", () => {
 			transactionRetry: false,
 		});
 		const conn = await noWalAdapter.acquireConnection();
-		const result = await noWalAdapter.run("PRAGMA journal_mode", [], conn);
+		const result = await noWalAdapter.run({
+			sql: "PRAGMA journal_mode",
+			params: [],
+			connection: conn,
+			prepare: undefined,
+		});
 		expect(result.rows[0].journal_mode).toBe("delete");
 		noWalAdapter.releaseConnection(conn);
 		noWalAdapter.dispose();

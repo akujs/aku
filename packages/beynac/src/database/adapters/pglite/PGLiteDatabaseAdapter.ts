@@ -1,6 +1,10 @@
 import { PGlite } from "@electric-sql/pglite";
 import { BaseClass, type FifoLock, fifoLock } from "../../../utils.ts";
-import type { CompiledQuery, DatabaseAdapter } from "../../DatabaseAdapter.ts";
+import type {
+	DatabaseAdapter,
+	DatabaseAdapterBatchOptions,
+	DatabaseAdapterRunOptions,
+} from "../../DatabaseAdapter.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { PostgresGrammar } from "../../grammar/PostgresGrammar.ts";
@@ -32,7 +36,11 @@ export class PGLiteDatabaseAdapter extends BaseClass implements DatabaseAdapter<
 		this.#lock.release();
 	}
 
-	async run(sql: string, params: unknown[], connection: PGlite): Promise<StatementResult> {
+	async run({
+		connection,
+		sql,
+		params,
+	}: DatabaseAdapterRunOptions<PGlite>): Promise<StatementResult> {
 		try {
 			const result = await connection.query(sql, params);
 			return {
@@ -44,10 +52,13 @@ export class PGLiteDatabaseAdapter extends BaseClass implements DatabaseAdapter<
 		}
 	}
 
-	async batch(queries: CompiledQuery[], connection: PGlite): Promise<StatementResult[]> {
+	async batch({
+		queries,
+		connection,
+	}: DatabaseAdapterBatchOptions<PGlite>): Promise<StatementResult[]> {
 		const results: StatementResult[] = [];
-		for (const { sql, params } of queries) {
-			results.push(await this.run(sql, params, connection));
+		for (const query of queries) {
+			results.push(await this.run({ ...query, connection }));
 		}
 		return results;
 	}

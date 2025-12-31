@@ -121,9 +121,12 @@ describe(scopedStorage, () => {
 			mimeType: "text/plain",
 		});
 
-		await scopedDisk.copy("/source.txt", "/dest.txt");
+		await scopedDisk.copy({ source: "/source.txt", destination: "/dest.txt" });
 
-		expect(spy).toHaveBeenCalledWith("/videos/source.txt", "/videos/dest.txt");
+		expect(spy).toHaveBeenCalledWith({
+			source: "/videos/source.txt",
+			destination: "/videos/dest.txt",
+		});
 	});
 
 	test("move() prepends prefix to both source and destination", async () => {
@@ -135,9 +138,12 @@ describe(scopedStorage, () => {
 			mimeType: "text/plain",
 		});
 
-		await scopedDisk.move("/source.txt", "/dest.txt");
+		await scopedDisk.move({ source: "/source.txt", destination: "/dest.txt" });
 
-		expect(spy).toHaveBeenCalledWith("/videos/source.txt", "/videos/dest.txt");
+		expect(spy).toHaveBeenCalledWith({
+			source: "/videos/source.txt",
+			destination: "/videos/dest.txt",
+		});
 	});
 
 	test("deleteSingle() prepends prefix to path", async () => {
@@ -175,9 +181,11 @@ describe(scopedStorage, () => {
 	test("getPublicDownloadUrl() prepends prefix to path", async () => {
 		const spy = spyOn(wrappedDisk, "getPublicDownloadUrl").mockResolvedValue("mocked-url");
 
-		const result = await scopedDisk.getPublicDownloadUrl("/file.txt", "download.txt");
+		const result = await scopedDisk.getPublicDownloadUrl("/file.txt", {
+			downloadAs: "download.txt",
+		});
 
-		expect(spy).toHaveBeenCalledWith("/videos/file.txt", "download.txt");
+		expect(spy).toHaveBeenCalledWith("/videos/file.txt", { downloadAs: "download.txt" });
 		expect(result).toBe("mocked-url");
 	});
 
@@ -185,9 +193,12 @@ describe(scopedStorage, () => {
 		const spy = spyOn(wrappedDisk, "getSignedDownloadUrl").mockResolvedValue("mocked-url");
 		const expires = new Date();
 
-		const result = await scopedDisk.getSignedDownloadUrl("/file.txt", expires, "download.txt");
+		const result = await scopedDisk.getSignedDownloadUrl("/file.txt", {
+			expires,
+			downloadAs: "download.txt",
+		});
 
-		expect(spy).toHaveBeenCalledWith("/videos/file.txt", expires, "download.txt");
+		expect(spy).toHaveBeenCalledWith("/videos/file.txt", { expires, downloadAs: "download.txt" });
 		expect(result).toBe("mocked-url");
 	});
 

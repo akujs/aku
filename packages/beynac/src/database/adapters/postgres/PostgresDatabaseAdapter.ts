@@ -1,6 +1,10 @@
 import type { ReservedSql, Sql } from "postgres";
 import { BaseClass } from "../../../utils.ts";
-import type { CompiledQuery, DatabaseAdapter } from "../../DatabaseAdapter.ts";
+import type {
+	DatabaseAdapter,
+	DatabaseAdapterBatchOptions,
+	DatabaseAdapterRunOptions,
+} from "../../DatabaseAdapter.ts";
 import type { TransactionOptions } from "../../DatabaseClient.ts";
 import { QueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
@@ -40,12 +44,12 @@ export class PostgresDatabaseAdapter
 		connection.release();
 	}
 
-	async run(
-		sql: string,
-		params: unknown[],
-		connection: PostgresConnection,
-		prepare: boolean | undefined,
-	): Promise<StatementResult> {
+	async run({
+		connection,
+		sql,
+		params,
+		prepare,
+	}: DatabaseAdapterRunOptions<PostgresConnection>): Promise<StatementResult> {
 		try {
 			const result = await connection.unsafe(sql, params, {
 				prepare: prepare ?? this.#defaultPrepare,
@@ -60,15 +64,11 @@ export class PostgresDatabaseAdapter
 	}
 
 	async batch(
-		queries: CompiledQuery[],
-		connection: PostgresConnection,
+		options: DatabaseAdapterBatchOptions<PostgresConnection>,
 	): Promise<StatementResult[]> {
-		if (queries.length === 0) return [];
-
-		// Postgres.js will use pipelining to send queries serially but
-		// without waiting for each
+		// Postgres.js will use pipelining to send queries serially but without waiting for each
 		return Promise.all(
-			queries.map(({ sql, params, prepare }) => this.run(sql, params, connection, prepare)),
+			options.queries.map((query) => this.run({ ...query, connection: options.connection })),
 		);
 	}
 

@@ -571,7 +571,7 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 					data: "old",
 					mimeType: "text/plain",
 				});
-				await endpoint.copy("/source.txt", "/dest.txt");
+				await endpoint.copy({ source: "/source.txt", destination: "/dest.txt" });
 				const result = await endpoint.readSingle("/dest.txt");
 				const response = new Response(result.data);
 				expect(await response.text()).toBe("new");
@@ -584,7 +584,7 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 					data: "content",
 					mimeType: "text/plain",
 				});
-				await endpoint.copy("/dir1/source.txt", "/dir2/dest.txt");
+				await endpoint.copy({ source: "/dir1/source.txt", destination: "/dir2/dest.txt" });
 				expect(await endpoint.existsSingle("/dir2/dest.txt")).toBe(true);
 			});
 		});
@@ -601,7 +601,7 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 					data: "old",
 					mimeType: "text/plain",
 				});
-				await endpoint.move("/source.txt", "/dest.txt");
+				await endpoint.move({ source: "/source.txt", destination: "/dest.txt" });
 				const result = await endpoint.readSingle("/dest.txt");
 				const response = new Response(result.data);
 				expect(await response.text()).toBe("new");
@@ -614,7 +614,7 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 					data: "content",
 					mimeType: "text/plain",
 				});
-				await endpoint.move("/dir1/source.txt", "/dir2/dest.txt");
+				await endpoint.move({ source: "/dir1/source.txt", destination: "/dir2/dest.txt" });
 				expect(await endpoint.existsSingle("/dir2/dest.txt")).toBe(true);
 				expect(await endpoint.existsSingle("/dir1/source.txt")).toBe(false);
 			});
@@ -628,7 +628,10 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 					mimeType: "text/plain",
 				});
 				const expires = new Date(Date.now() + 3600000);
-				const url = await endpoint.getSignedDownloadUrl("/test.txt", expires, "custom.txt");
+				const url = await endpoint.getSignedDownloadUrl("/test.txt", {
+					expires,
+					downloadAs: "custom.txt",
+				});
 				expect(url).toInclude("custom");
 			});
 		});
