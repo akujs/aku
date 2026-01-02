@@ -288,6 +288,14 @@ describe("deleteAll()", () => {
 		void table("").where("").deleteAll();
 	});
 
+	test("can chain to returning()", () => {
+		void table("").deleteAll().returning("id");
+	});
+
+	test("can chain to returningId()", () => {
+		void table("").deleteAll().returningId();
+	});
+
 	test("not available after select()", () => {
 		table("")
 			.select("")
@@ -312,6 +320,20 @@ describe("deleteAll()", () => {
 			// @ts-expect-error
 			.deleteAll();
 	});
+
+	test("cannot chain to where() after deleteAll()", () => {
+		table("")
+			.deleteAll()
+			// @ts-expect-error
+			.where("");
+	});
+
+	test("cannot chain to select() after deleteAll()", () => {
+		table("")
+			.deleteAll()
+			// @ts-expect-error
+			.select("");
+	});
 });
 
 describe("updateAll()", () => {
@@ -321,6 +343,14 @@ describe("updateAll()", () => {
 
 	test("available after where()", () => {
 		void table("").where("").updateAll({});
+	});
+
+	test("can chain to returning()", () => {
+		void table("").updateAll({}).returning("id");
+	});
+
+	test("can chain to returningId()", () => {
+		void table("").updateAll({}).returningId();
 	});
 
 	test("not available after select()", () => {
@@ -346,6 +376,48 @@ describe("updateAll()", () => {
 			.insert({})
 			// @ts-expect-error
 			.updateAll({});
+	});
+
+	test("cannot chain to where() after updateAll()", () => {
+		table("")
+			.updateAll({})
+			// @ts-expect-error
+			.where("");
+	});
+
+	test("cannot chain to select() after updateAll()", () => {
+		table("")
+			.updateAll({})
+			// @ts-expect-error
+			.select("");
+	});
+});
+
+describe("updateFrom()", () => {
+	test("can chain to returning()", () => {
+		void table("")
+			.updateFrom([{ id: 1 }])
+			.returning("id");
+	});
+
+	test("can chain to returningId()", () => {
+		void table("")
+			.updateFrom([{ id: 1 }])
+			.returningId();
+	});
+
+	test("cannot chain to where() after updateFrom()", () => {
+		table("")
+			.updateFrom([{ id: 1 }])
+			// @ts-expect-error
+			.where("");
+	});
+
+	test("cannot chain to select() after updateFrom()", () => {
+		table("")
+			.updateFrom([{ id: 1 }])
+			// @ts-expect-error
+			.select("");
 	});
 });
 

@@ -238,9 +238,9 @@ export interface AnyQueryBuilder
 	extends Statement,
 		StatementExecutionMethods<unknown>,
 		BulkMutationMethods<AnyQueryBuilder>,
-		InsertMethod<AnyQueryBuilder>,
+		InsertMethod<AnyQueryBuilder, AnyQueryBuilder>,
 		ReturningMethods<unknown, unknown>,
-		WhereMethod<AnyQueryBuilder>,
+		WhereMethods<AnyQueryBuilder>,
 		SelectSetInitialColumns<AnyQueryBuilder>,
 		OrderBySetInitial<AnyQueryBuilder>,
 		SelectClauseMethods<AnyQueryBuilder> {}
@@ -254,7 +254,7 @@ export interface QueryBuilder
 		ByIdMethods,
 		InsertMethod<QueryBuilderWithInsertSingle, QueryBuilderWithInsertArray>,
 		BulkMutationMethods,
-		WhereMethod<QueryBuilderWithCondition>,
+		WhereMethods<QueryBuilderWithCondition>,
 		SelectSetInitialColumns<SelectQueryBuilder<true, false>>,
 		OrderBySetInitial<SelectQueryBuilder<false, true>>,
 		SelectClauseMethods<SelectQueryBuilder<false, false>> {}
@@ -267,7 +267,7 @@ export interface QueryBuilderWithCondition
 	extends Statement,
 		StatementExecutionMethods,
 		BulkMutationMethods,
-		WhereMethod<QueryBuilderWithCondition>,
+		WhereMethods<QueryBuilderWithCondition>,
 		SelectSetInitialColumns<SelectQueryBuilder<true, false>>,
 		OrderBySetInitial<SelectQueryBuilder<false, true>>,
 		SelectClauseMethods<SelectQueryBuilder<false, false>> {}
@@ -277,7 +277,7 @@ export type SelectQueryBuilder<
 	TOrderBy extends boolean = false,
 > = Statement &
 	StatementExecutionMethods &
-	WhereMethod<SelectQueryBuilder<TSelect, TOrderBy>> &
+	WhereMethods<SelectQueryBuilder<TSelect, TOrderBy>> &
 	SelectClauseMethods<SelectQueryBuilder<TSelect, TOrderBy>> &
 	(TSelect extends true
 		? SelectModifyColumns<SelectQueryBuilder<true, TOrderBy>>
@@ -287,15 +287,11 @@ export type SelectQueryBuilder<
 		: OrderBySetInitial<SelectQueryBuilder<TSelect, true>>);
 
 /**
- * Query builder for mutation statements (INSERT, UPDATE, DELETE)
- */
-export interface QueryBuilderWithMutation extends Statement, MutationExecutionMethods {}
-
-/**
- * Query builder for INSERT statements. Extends mutation with RETURNING support.
+ * Query builder for INSERT statements. Supports RETURNING and ON CONFLICT.
  */
 export interface QueryBuilderWithInsert<TReturning, TReturningId>
-	extends QueryBuilderWithMutation,
+	extends Statement,
+		MutationExecutionMethods,
 		ReturningMethods<TReturning, TReturningId> {
 	/**
 	 * Handle conflicts when inserting rows that violate unique constraints.
@@ -330,6 +326,14 @@ export type QueryBuilderWithInsertSingle = QueryBuilderWithInsert<Row, unknown>;
  * A query builder after calling insert([{...}, {...}]) to add a multiple rows
  */
 export type QueryBuilderWithInsertArray = QueryBuilderWithInsert<Row[], unknown[]>;
+
+/**
+ * Query builder for UPDATE and DELETE statements. Supports RETURNING.
+ */
+export interface QueryBuilderWithBulkMutation
+	extends Statement,
+		MutationExecutionMethods,
+		ReturningMethods<Row[], unknown[]> {}
 
 /**
  * A query builder after calling a byIdOrXXX(id) method to fetch a single row by id
@@ -560,7 +564,7 @@ interface ByIdMethods {
 	byIdOrNull(id: unknown): QueryBuilderWithById<Row | null, false>;
 }
 
-interface WhereMethod<TReturn> {
+interface WhereMethods<TReturn> {
 	/**
 	 * Add a WHERE condition. The method can be called multiple times to add
 	 * more conditions which will be combined with AND.
@@ -587,10 +591,15 @@ interface WhereMethod<TReturn> {
 	 * table("artists").where("id IN ?", [1, 2, 3])
 	 * // -> WHERE id IN (1, 2, 3)
 	 */
-	where: <S extends string | Statement>(condition: S, ...values: PlaceholderArgs<S>) => TReturn;
+	where<S extends string | Statement>(condition: S, ...values: PlaceholderArgs<S>): TReturn;
+
+	/**
+	 * Match only rows with a specific ID. This is a shorthand for `where("id = ?", id)`.
+	 */
+	whereId(id: unknown): TReturn;
 }
 
-interface InsertMethod<TSingle, TArray = TSingle> {
+interface InsertMethod<TSingle, TArray> {
 	/**
 	 * Insert one or more rows into the table.
 	 *
@@ -659,7 +668,7 @@ interface ReturningMethods<TReturning, TReturningId> {
 	returningId(): QueryBuilderWithReturning<TReturningId>;
 }
 
-interface BulkMutationMethods<TReturn = QueryBuilderWithMutation> {
+interface BulkMutationMethods<TReturn = QueryBuilderWithBulkMutation> {
 	/**
 	 * Delete all matching rows.
 	 *

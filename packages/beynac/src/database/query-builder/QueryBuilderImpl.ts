@@ -108,6 +108,10 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		return this.#derive("pushWhere", [stmt]);
 	}
 
+	whereId(id: unknown): AnyQueryBuilder {
+		return this.where("id = ?", id);
+	}
+
 	groupBy(...columns: string[]): this {
 		return this.#derive("pushGroupBy", [columns]);
 	}

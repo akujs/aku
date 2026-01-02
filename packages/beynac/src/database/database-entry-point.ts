@@ -34,11 +34,11 @@ export type {
 	ExecutableStatement,
 	ExecutableStatementWithoutClient,
 	QueryBuilder,
+	QueryBuilderWithBulkMutation,
 	QueryBuilderWithById,
 	QueryBuilderWithCondition,
 	QueryBuilderWithInsert,
 	QueryBuilderWithInsertArray,
 	QueryBuilderWithInsertSingle,
-	QueryBuilderWithMutation,
 } from "./query-types.ts";
 export { sql } from "./sql.ts";

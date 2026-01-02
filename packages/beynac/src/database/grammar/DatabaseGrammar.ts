@@ -72,7 +72,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 	compileOnConflict(conflict: ConflictOptions, insertColumns: readonly string[]): string {
 		const onColumns = arrayWrap(conflict.on);
 
-		const quotedOnColumns = onColumns.map(quoteIdentifier).join(", ");
+		const quotedOnColumns = onColumns.map(identifier).join(", ");
 
 		if (conflict.do === "ignore") {
 			return `ON CONFLICT (${quotedOnColumns}) DO NOTHING`;
@@ -88,7 +88,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 		}
 
 		const setClauses = updateCols
-			.map((col) => `${quoteIdentifier(col)} = EXCLUDED.${quoteIdentifier(col)}`)
+			.map((col) => `${identifier(col)} = EXCLUDED.${identifier(col)}`)
 			.join(", ");
 
 		return `ON CONFLICT (${quotedOnColumns}) DO UPDATE SET ${setClauses}`;
@@ -97,7 +97,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 	compileReturning(columns: readonly string[] | null): string | null {
 		if (columns === null) return null;
 		if (columns.length === 0) return "RETURNING *";
-		return "RETURNING " + columns.map(quoteIdentifier).join(", ");
+		return "RETURNING " + columns.map(identifier).join(", ");
 	}
 
 	quoteIdentifiers(sql: string): string {
@@ -194,7 +194,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 			]);
 		}
 
-		const quotedColumns = columns.map(quoteIdentifier);
+		const quotedColumns = columns.map(identifier);
 
 		return this.mergeAndQuote([
 			"INSERT INTO",
@@ -217,7 +217,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 		columns: readonly string[] | null,
 		state: QueryParts,
 	): SqlFragments {
-		const quotedColumns = columns?.map(quoteIdentifier) ?? null;
+		const quotedColumns = columns?.map(identifier) ?? null;
 
 		return this.mergeAndQuote([
 			"INSERT INTO",
@@ -234,7 +234,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 	 */
 	compileUpdateAll(data: Row, state: QueryParts): SqlFragments {
 		const setClauses = Object.entries(data).map(([col, value]): StringOrFragment[] => [
-			quoteIdentifier(col),
+			identifier(col),
 			"=",
 			paramAsFragment(value),
 		]);
@@ -245,6 +245,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 			"SET",
 			commaSeparatedFragments(setClauses),
 			andClause("WHERE", state.where),
+			this.compileReturning(state.returningColumns),
 		]);
 	}
 
@@ -254,7 +255,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 	 */
 	compileUpdateFrom({ data, on, updateColumns }: UpdateFromPart, state: QueryParts): SqlFragments {
 		const setColumns = updateColumns.filter((col) => col !== on);
-		const quotedOn = quoteIdentifier(on);
+		const quotedOn = identifier(on);
 
 		const inColumns = new Set(data.map((row) => row[on]));
 		const inCondition = [quotedOn, "IN", ...bracketedCommaSeparatedParams(inColumns)];
@@ -266,7 +267,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 			commaSeparatedFragments(
 				setColumns.map((col) => {
 					// col = CASE on WHEN key1 THEN val1 WHEN key2 THEN val2 ELSE col END
-					const quotedCol = quoteIdentifier(col);
+					const quotedCol = identifier(col);
 					const caseParts: StringOrFragment[] = [quotedCol, "= CASE", quotedOn];
 					for (const row of data) {
 						caseParts.push("WHEN", paramAsFragment(row[on]), "THEN", paramAsFragment(row[col]));
@@ -276,6 +277,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 				}),
 			),
 			andClause("WHERE", [inCondition, ...state.where]),
+			this.compileReturning(state.returningColumns),
 		]);
 	}
 
@@ -283,7 +285,12 @@ export abstract class DatabaseGrammar extends BaseClass {
 	 * Compile a DELETE query from builder state.
 	 */
 	compileDelete(state: QueryParts): SqlFragments {
-		return this.mergeAndQuote(["DELETE FROM", state.table, andClause("WHERE", state.where)]);
+		return this.mergeAndQuote([
+			"DELETE FROM",
+			state.table,
+			andClause("WHERE", state.where),
+			this.compileReturning(state.returningColumns),
+		]);
 	}
 
 	protected mergeAndQuote(parts: Array<Mergeable | Mergeable[]>): SqlFragments {
@@ -347,6 +354,6 @@ function mergeFragments(parts: Array<Mergeable>): SqlFragments {
 	return { sqlFragments: items };
 }
 
-export function quoteIdentifier(identifier: string): string {
+export function identifier(identifier: string): string {
 	return '"' + identifier.replaceAll('"', '""') + '"';
 }
