@@ -96,8 +96,9 @@ export function paramAsFragment(value: unknown): SqlFragment {
 	return { sql: "", param: value };
 }
 
-export function bracketedCommaSeparatedParams(values: unknown[]): StringOrFragment[] {
-	return ["(", ...commaSeparatedFragments(values.map(paramAsFragment)), ")"];
+export function bracketedCommaSeparatedParams(values: Iterable<unknown>): StringOrFragment[] {
+	const valuesArray: unknown[] = Array.isArray(values) ? values : Array.from(values);
+	return ["(", ...commaSeparatedFragments(valuesArray.map(paramAsFragment)), ")"];
 }
 
 export function commaSeparatedFragments(

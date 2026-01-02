@@ -119,6 +119,38 @@ describe(QueryBuilderImpl, () => {
 			);
 		});
 	});
+
+	describe("identifier quoting for object keys", () => {
+		test("INSERT quotes column names with spaces, keywords, and quotes", () => {
+			const query = table("t").insert({ "my column": 1, ORDER: 2, 'has"quote': 3 });
+			expect(query.toHumanReadableSql()).toContain('"my column", "ORDER", "has""quote"');
+		});
+
+		test("RETURNING quotes column names with spaces and keywords", () => {
+			const query = table("t").insert({ id: 1 }).returning("my column", "ORDER");
+			expect(query.toHumanReadableSql()).toContain('RETURNING "my column", "ORDER"');
+		});
+
+		test("ON CONFLICT quotes conflict and update columns with spaces", () => {
+			const query = table("t")
+				.insert({ "my key": 1, "my column": "test" })
+				.onConflict({ on: "my key", do: "update" });
+			expect(query.toHumanReadableSql()).toContain('ON CONFLICT ("my key")');
+			expect(query.toHumanReadableSql()).toContain('"my column" = EXCLUDED."my column"');
+		});
+
+		test("UPDATE quotes column names with spaces and keywords", () => {
+			const query = table("t").where("id = 1").updateAll({ "my column": 2, ORDER: 3 });
+			expect(query.toHumanReadableSql()).toContain('SET "my column" =');
+			expect(query.toHumanReadableSql()).toContain('"ORDER" =');
+		});
+
+		test("updateFrom quotes column names with spaces and keywords", () => {
+			const query = table("t").updateFrom([{ id: 1, "my column": "val", ORDER: "x" }]);
+			expect(query.toHumanReadableSql()).toContain('"my column" = CASE');
+			expect(query.toHumanReadableSql()).toContain('"ORDER" = CASE');
+		});
+	});
 });
 
 const adapterConfigs: SharedTestConfig[] = [sqliteMemorySharedTestConfig, pgLiteSharedTestConfig];
@@ -1003,6 +1035,163 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 		});
 	});
 
+	describe(QueryBuilderImpl.prototype.onConflict, () => {
+		test("ignore conflict", async () => {
+			await table.insert({ id: 1, name: "existing", value: 100 });
+
+			await table
+				.insert({ id: 1, name: "new name", value: 200 })
+				.onConflict({ on: "id", do: "ignore" });
+
+			const result = await table.where("id = ?", 1);
+			expect(result).toEqual([{ id: 1, name: "existing", value: 100 }]); // unchanged
+
+			expect();
+		});
+
+		test("ignore conflict with no conflict columns", async () => {
+			expect(() =>
+				table.insert({ id: 1, name: "new name", value: 200 }).onConflict({ on: [], do: "ignore" }),
+			).toThrowErrorMatchingInlineSnapshot(
+				`"At least one 'on' is required to onConflict({on: ...})"`,
+			);
+		});
+
+		test("update on conflict - all columns", async () => {
+			await table.insert({ id: 2, name: "existing", value: 100 });
+
+			await table
+				.insert({ id: 2, name: "updated", value: 200 })
+				.onConflict({ on: "id", do: "update" });
+
+			const result = await table.where("id = ?", 2);
+			expect(result).toEqual([{ id: 2, name: "updated", value: 200 }]);
+		});
+
+		test("update on conflict - specific columns", async () => {
+			await table.insert({ id: 3, name: "existing", value: 100 });
+
+			await table
+				.insert({ id: 3, name: "updated", value: 200 })
+				.onConflict({ on: "id", do: "update", updateColumns: ["name"] });
+
+			const result = await table.where("id = ?", 3);
+			expect(result).toEqual([{ id: 3, name: "updated", value: 100 }]); // value unchanged
+		});
+
+		test("multiple conflict columns", async () => {
+			await db.run(sql`CREATE TABLE conflict_test (
+				a INTEGER,
+				b INTEGER,
+				c TEXT,
+				PRIMARY KEY (a, b)
+			)`);
+			const conflictTable = db.table("conflict_test");
+
+			await conflictTable.insert({ a: 1, b: 1, c: "original" });
+
+			await conflictTable
+				.insert({ a: 1, b: 1, c: "updated" })
+				.onConflict({ on: ["a", "b"], do: "update" });
+
+			const result = await conflictTable.where("a = ? AND b = ?", 1, 1);
+			expect(result).toEqual([{ a: 1, b: 1, c: "updated" }]);
+		});
+
+		test("generates correct SQL for ignore", () => {
+			const query = table.insert({ id: 1, name: "test" }).onConflict({ on: "id", do: "ignore" });
+
+			expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
+				`"INSERT INTO "test_mutations" ( "id", "name" ) VALUES ( [$1: 1], [$2: "test"] ) ON CONFLICT ("id") DO NOTHING"`,
+			);
+		});
+
+		test("generates correct SQL for update", () => {
+			const query = table
+				.insert({ id: 1, name: "test", value: 100 })
+				.onConflict({ on: "id", do: "update" });
+
+			expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
+				`"INSERT INTO "test_mutations" ( "id", "name", "value" ) VALUES ( [$1: 1], [$2: "test"], [$3: 100] ) ON CONFLICT ("id") DO UPDATE SET "name" = EXCLUDED."name", "value" = EXCLUDED."value""`,
+			);
+		});
+
+		test("generates correct SQL for update with specific columns", () => {
+			const query = table
+				.insert({ id: 1, name: "test", value: 100 })
+				.onConflict({ on: "id", do: "update", updateColumns: ["name"] });
+
+			expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
+				`"INSERT INTO "test_mutations" ( "id", "name", "value" ) VALUES ( [$1: 1], [$2: "test"], [$3: 100] ) ON CONFLICT ("id") DO UPDATE SET "name" = EXCLUDED."name""`,
+			);
+		});
+
+		test("works with returning", async () => {
+			await table.insert({ id: 4, name: "existing", value: 100 });
+
+			const result = await table
+				.insert({ id: 4, name: "updated", value: 200 })
+				.onConflict({ on: "id", do: "update" })
+				.returning("id", "name");
+
+			expect(result).toEqual({ id: 4, name: "updated" });
+		});
+
+		test("update with all columns as conflict columns uses no-op", async () => {
+			// The default behaviour is to update all columns that are not
+			// conflict columns, but if all columns are conflict columns, we
+			// need to pick one to update in order to generate a valid SQL
+			await table.insert({ id: 1 });
+
+			const query = table.insert({ id: 1 }).onConflict({ on: "id", do: "update" }).returning("id");
+			const result = await query;
+
+			expect(result).toEqual({ id: 1 });
+
+			expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
+				`"INSERT INTO "test_mutations" ( "id" ) VALUES ( [$1: 1] ) ON CONFLICT ("id") DO UPDATE SET "id" = EXCLUDED."id" RETURNING "id""`,
+			);
+		});
+
+		test("throws for INSERT...SELECT without explicit columns", () => {
+			const subquery = db.table("other").select("id", "name");
+
+			expect(() => {
+				table.insert(subquery).onConflict({ on: "id", do: "update" }).toHumanReadableSql();
+			}).toThrow(
+				"Using insert(subquery).onConflict({do: 'update'}) requires you to specify the columns",
+			);
+		});
+
+		test("INSERT...SELECT without explicit columns throws explanatory error", async () => {
+			expect(
+				table
+					.insert(db.table("test_mutations").select("id", "name"))
+					.onConflict({ on: "id", do: "update" })
+					.then(),
+			).rejects.toMatchInlineSnapshot(
+				`[DatabaseError: Using insert(subquery).onConflict({do: 'update'}) requires you to specify the columns. Either set options.columns in insert() or options.updateColumns in onConflict().]`,
+			);
+		});
+
+		test("INSERT...SELECT with explicit columns works", async () => {
+			await db.run(sql`CREATE TABLE source_table (id INTEGER PRIMARY KEY, name TEXT)`);
+			await db.table("source_table").insert({ id: 100, name: "from_source" });
+
+			// First insert to create conflict
+			await table.insert({ id: 100, name: "existing", value: 42 });
+
+			await table
+				.insert(db.table("source_table").select("id", "name"), {
+					columns: ["id", "name"],
+				})
+				.onConflict({ on: "id", do: "update" });
+
+			const result = await table.where("id = ?", 100);
+			expect(result).toEqual([{ id: 100, name: "from_source", value: 42 }]);
+		});
+	});
+
 	describe(QueryBuilderImpl.prototype.updateAll, () => {
 		test("updates rows matching condition", async () => {
 			// First insert some test data
@@ -1076,6 +1265,111 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 
 			const rows = await db.table("test_delete_all").all();
 			expect(rows).toEqual([]);
+		});
+	});
+
+	describe(QueryBuilderImpl.prototype.updateFrom, () => {
+		test("updates multiple rows with different values", async () => {
+			await table.insert([
+				{ id: 1, name: "alice", value: 100 },
+				{ id: 2, name: "bob", value: 200 },
+				{ id: 3, name: "charlie", value: 300 },
+			]);
+
+			const result = await table.updateFrom([
+				{ id: 1, name: "alice_updated" },
+				{ id: 2, name: "bob_updated" },
+			]);
+
+			expect(result.rowsAffected).toBe(2);
+
+			expect(await table.orderBy("id").all()).toEqual([
+				{ id: 1, name: "alice_updated", value: 100 },
+				{ id: 2, name: "bob_updated", value: 200 },
+				{ id: 3, name: "charlie", value: 300 },
+			]);
+		});
+
+		test("updates single row", async () => {
+			await table.insert({ id: 1, name: "single", value: 100 });
+
+			const result = await table.updateFrom({ id: 1, name: "single_updated" });
+
+			expect(result.rowsAffected).toBe(1);
+			expect(await table.all()).toEqual([{ id: 1, name: "single_updated", value: 100 }]);
+		});
+
+		test("uses custom 'on' column", async () => {
+			await table.insert([
+				{ id: 1, name: "match_by_name", value: 100 },
+				{ id: 2, name: "other", value: 200 },
+			]);
+
+			await table.updateFrom([{ name: "match_by_name", value: 999 }], { on: "name" });
+
+			expect(await table.orderBy("id").all()).toEqual([
+				{ id: 1, name: "match_by_name", value: 999 },
+				{ id: 2, name: "other", value: 200 },
+			]);
+		});
+
+		test("uses explicit updateColumns to select subset", async () => {
+			await table.insert({ id: 1, name: "subset", value: 100 });
+
+			await table.updateFrom([{ id: 1, name: "new_name", value: 999, extra: "ignored" }], {
+				updateColumns: ["id", "name"],
+			});
+
+			// value unchanged because it's not in updateColumns
+			expect(await table.all()).toEqual([{ id: 1, name: "new_name", value: 100 }]);
+		});
+
+		test("combines with where to filter subset", async () => {
+			await table.insert([
+				{ id: 1, name: "active1", value: 1 },
+				{ id: 2, name: "inactive", value: 0 },
+				{ id: 3, name: "active2", value: 1 },
+			]);
+
+			await table.where("value = ?", 1).updateFrom([
+				{ id: 1, name: "updated1" },
+				{ id: 2, name: "updated2" },
+				{ id: 3, name: "updated3" },
+			]);
+
+			expect(await table.orderBy("id").all()).toEqual([
+				{ id: 1, name: "updated1", value: 1 },
+				{ id: 2, name: "inactive", value: 0 }, // Not updated - value != 1
+				{ id: 3, name: "updated3", value: 1 },
+			]);
+		});
+
+		test("handles partial match - only existing rows updated", async () => {
+			await table.insert({ id: 1, name: "exists", value: 100 });
+
+			const result = await table.updateFrom([
+				{ id: 1, name: "updated" },
+				{ id: 999, name: "nonexistent" },
+			]);
+
+			expect(result.rowsAffected).toBe(1);
+			expect(await table.all()).toEqual([{ id: 1, name: "updated", value: 100 }]);
+		});
+
+		test("throws for empty array", () => {
+			expect(() => table.updateFrom([])).toThrow("updateFrom requires at least one row");
+		});
+
+		test("throws when 'on' column missing from rows", () => {
+			expect(() => table.updateFrom([{ name: "no_id" }])).toThrow(
+				"updateFrom: the 'on' column 'id' must be present in the update columns",
+			);
+		});
+
+		test("throws when undefined value in rows", () => {
+			expect(() => table.updateFrom([{ id: 1, name: undefined }])).toThrow(
+				"Cannot pass undefined for property 'name' to updateFrom(...). Use null for NULL values.",
+			);
 		});
 	});
 

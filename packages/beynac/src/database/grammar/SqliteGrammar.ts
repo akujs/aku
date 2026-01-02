@@ -1,7 +1,8 @@
 import type { SqliteTransactionMode } from "../DatabaseClient.ts";
 import { UnsupportedFeatureError } from "../database-errors.ts";
 import { renderSqlFragments } from "../query-builder/statement-render.ts";
-import type { JoinType, SqlFragments } from "../query-types.ts";
+import { bracketedCommaSeparatedFragments } from "../query-builder/statement-utils.ts";
+import type { JoinType, QueryParts, SqlFragments } from "../query-types.ts";
 import { DatabaseGrammar, type TransactionBeginOptions } from "./DatabaseGrammar.ts";
 
 const SQLITE_MODE_SQL: Record<SqliteTransactionMode, string> = {
@@ -34,6 +35,30 @@ export class SqliteGrammar extends DatabaseGrammar {
 	 */
 	override compileLock(): string {
 		return "";
+	}
+
+	protected override compileInsertFromSubquery(
+		data: SqlFragments,
+		columns: readonly string[] | null,
+		state: QueryParts,
+	): SqlFragments {
+		if (!state.conflict) {
+			return super.compileInsertFromSubquery(data, columns, state);
+		}
+
+		// SQLite has a parsing ambiguity with INSERT...SELECT...ON CONFLICT
+		// We wrap subqueries in a CTE to disambiguate.
+		// See: https://sqlite.org/lang_upsert.html#parsing_ambiguity
+		return this.mergeAndQuote([
+			"WITH _beynac_insert_source AS (",
+			data,
+			") INSERT INTO",
+			state.table,
+			columns ? bracketedCommaSeparatedFragments(columns) : null,
+			"SELECT * FROM _beynac_insert_source WHERE TRUE",
+			this.compileOnConflict(state.conflict, columns ?? []),
+			this.compileReturning(state.returningColumns),
+		]);
 	}
 
 	override compileFragments(statement: SqlFragments): string {

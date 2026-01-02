@@ -87,8 +87,7 @@ TSDoc comments, markdown files and test names are all "documentation"
 - **Ensure consistency and correctness**: Review the information in doc comments carefully looking for inconsistencies between what is documented and the actual method/parameter names and behaviour
 - **tags in TSDoc**: where a function takes an optional object of parameters:
     - **Optional parameters in TSDoc**: where a function takes an optional object of parameters:
-        - ✅ CORRECT: `@param [options.optName] - Description of option`
-        - ❌ WRONG: `@param options.optName Description of option` - no square brackets or hyphen
+        - ✅ CORRECT: `@param options.optName - Description of option` - description with no square brackets around the parameter name
         - ❌ WRONG: `@param options - Options to control behaviour` - the options parameter itself does not need a @param
     - **Obvious parameters in TSDoc**: where a function takes an argument whose behaviour is obvious, don't include a useless @param tag:
         - ❌ WRONG: `@param input - Input string` - stating the obvious

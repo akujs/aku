@@ -50,6 +50,44 @@ export type ThenExecutor =
 	| "firstOrNotFound"
 	| "firstOrNull";
 
+export interface ConflictOptions {
+	/**
+	 * Column(s) that define the unique constraint
+	 */
+	on: string | string[];
+
+	/**
+	 * `ignore` skips conflicting rows, `update` updates them
+	 */
+	do: "update" | "ignore";
+
+	/**
+	 * Columns to update on conflict, if do: "update" is specified. Defaults to
+	 * all insert columns except the `on` columns.
+	 */
+	updateColumns?: string[] | undefined;
+}
+
+export interface UpdateFromOptions {
+	/**
+	 * Column to match rows on. Defaults to "id".
+	 */
+	on?: string | undefined;
+
+	/**
+	 * Columns to include in the update. Defaults to all columns from the first
+	 * row. Use this to select a subset of properties when source objects contain
+	 * extra fields.
+	 */
+	updateColumns?: string[] | undefined;
+}
+
+export interface UpdateFromPart {
+	data: Row[];
+	on: string;
+	updateColumns: string[];
+}
+
 export interface QueryParts {
 	readonly table: string;
 	readonly joins: readonly JoinEntry[];
@@ -63,7 +101,9 @@ export interface QueryParts {
 	readonly distinct: boolean;
 	readonly lock: LockPart | null;
 	readonly insert: InsertPart | null;
+	readonly conflict: ConflictOptions | null;
 	readonly updateData: Row | null;
+	readonly updateFrom: UpdateFromPart | null;
 	readonly isDelete: boolean;
 	readonly returningColumns: readonly string[] | null;
 	readonly thenExecutor: ThenExecutor | null;
@@ -256,7 +296,30 @@ export interface QueryBuilderWithMutation extends Statement, MutationExecutionMe
  */
 export interface QueryBuilderWithInsert<TReturning, TReturningId>
 	extends QueryBuilderWithMutation,
-		ReturningMethods<TReturning, TReturningId> {}
+		ReturningMethods<TReturning, TReturningId> {
+	/**
+	 * Handle conflicts when inserting rows that violate unique constraints.
+	 *
+	 * @param options.on - Column(s) that define the unique constraint
+	 * @param options.do - `ignore` skips conflicting rows, `update` updates them
+	 * @param options.updateColumns - Columns to update on conflict. Defaults to
+	 *   all insert columns except the conflict columns.
+	 *
+	 * @example
+	 * // Ignore conflicts
+	 * table("users").insert({ email: "foo@bar.com" }).onConflict({ on: "email", do: "ignore" })
+	 *
+	 * @example
+	 * // Update on conflict
+	 * table("users").insert({ email: "foo@bar.com", name: "Foo" }).onConflict({ on: "email", do: "update" })
+	 *
+	 * @example
+	 * // Update specific columns
+	 * table("users").insert({ email: "foo@bar.com", name: "Foo", age: 30 })
+	 *   .onConflict({ on: "email", do: "update", updateColumns: ["name"] })
+	 */
+	onConflict(options: ConflictOptions): this;
+}
 
 /**
  * A query builder after calling insert({...}) to add a single row
@@ -620,6 +683,33 @@ interface BulkMutationMethods<TReturn = QueryBuilderWithMutation> {
 	 * // -> UPDATE "users" SET "team_id" = (SELECT "id" FROM "teams" WHERE "name" = 'Default') WHERE "id" = 1
 	 */
 	updateAll(values: Row): TReturn;
+
+	/**
+	 * Update multiple rows with different values.
+	 *
+	 * @param source - Row or array of rows containing the new values. Each row
+	 *   must include the matching column (defaults to "id").
+	 * @param options.on - Column to match rows on. Defaults to "id".
+	 * @param options.updateColumns - Columns to include in the update. Defaults
+	 *   to all columns from the first row. Use this to select a subset of
+	 *   properties when source objects contain extra fields.
+	 *
+	 * @example
+	 * // Update multiple rows by id
+	 * await table("users").updateFrom([
+	 *   { id: 1, name: "Alice" },
+	 *   { id: 2, name: "Bob" }
+	 * ])
+	 *
+	 * @example
+	 * // Match on a different column
+	 * await table("users").updateFrom(rows, { on: "email" })
+	 *
+	 * @example
+	 * // Select specific columns to update
+	 * await table("users").updateFrom(rows, { updateColumns: ["id", "name"] })
+	 */
+	updateFrom(source: Row | Row[], options?: UpdateFromOptions): TReturn;
 }
 
 // For a SQL string with `?` placeholders, returns the required argument types

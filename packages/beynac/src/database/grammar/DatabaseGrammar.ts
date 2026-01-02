@@ -1,5 +1,6 @@
 import { arrayWrap, BaseClass } from "../../utils.ts";
 import type { TransactionOptions } from "../DatabaseClient.ts";
+import { DatabaseError } from "../database-errors.ts";
 import type { SqlDialect } from "../query-builder/dialect.ts";
 import { quoteIdentifiers } from "../query-builder/quoteIdentifiers.ts";
 import {
@@ -10,11 +11,15 @@ import {
 	paramAsFragment,
 } from "../query-builder/statement-utils.ts";
 import type {
+	ConflictOptions,
+	InsertPart,
 	JoinType,
 	LockPart,
 	QueryParts,
+	Row,
 	SqlFragments,
 	StringOrFragment,
+	UpdateFromPart,
 } from "../query-types.ts";
 
 const DEFAULT_LIMIT_FOR_OFFSET: number = 2 ** 31 - 1;
@@ -64,10 +69,35 @@ export abstract class DatabaseGrammar extends BaseClass {
 		return parts.join(" ");
 	}
 
+	compileOnConflict(conflict: ConflictOptions, insertColumns: readonly string[]): string {
+		const onColumns = arrayWrap(conflict.on);
+
+		const quotedOnColumns = onColumns.map(quoteIdentifier).join(", ");
+
+		if (conflict.do === "ignore") {
+			return `ON CONFLICT (${quotedOnColumns}) DO NOTHING`;
+		}
+
+		let updateCols =
+			conflict.updateColumns ?? insertColumns.filter((col) => !onColumns.includes(col));
+
+		// SQL grammar requires at least one update column, if there are none,
+		// make this a no-op by assigning the first ON column to itself
+		if (updateCols.length === 0) {
+			updateCols = [onColumns[0]];
+		}
+
+		const setClauses = updateCols
+			.map((col) => `${quoteIdentifier(col)} = EXCLUDED.${quoteIdentifier(col)}`)
+			.join(", ");
+
+		return `ON CONFLICT (${quotedOnColumns}) DO UPDATE SET ${setClauses}`;
+	}
+
 	compileReturning(columns: readonly string[] | null): string | null {
 		if (columns === null) return null;
 		if (columns.length === 0) return "RETURNING *";
-		return "RETURNING " + columns.join(", ");
+		return "RETURNING " + columns.map(quoteIdentifier).join(", ");
 	}
 
 	quoteIdentifiers(sql: string): string {
@@ -93,10 +123,13 @@ export abstract class DatabaseGrammar extends BaseClass {
 			return this.compileDelete(state);
 		}
 		if (state.updateData) {
-			return this.compileUpdate(state);
+			return this.compileUpdate(state.updateData, state);
+		}
+		if (state.updateFrom) {
+			return this.compileUpdateFrom(state.updateFrom, state);
 		}
 		if (state.insert) {
-			return this.compileInsert(state);
+			return this.compileInsert(state.insert, state);
 		}
 		return this.compileSelect(state);
 	}
@@ -112,7 +145,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 
 		const limit = state.limit ?? (state.offset !== null ? DEFAULT_LIMIT_FOR_OFFSET : null);
 
-		return this.#mergeAndQuote([
+		return this.mergeAndQuote([
 			selectClause,
 			"FROM",
 			state.table,
@@ -130,34 +163,30 @@ export abstract class DatabaseGrammar extends BaseClass {
 	/**
 	 * Compile an INSERT query from builder state.
 	 */
-	compileInsert(state: QueryParts): SqlFragments {
-		const insert = state.insert;
-		if (!insert) {
-			throw new Error("Internal error: cannot compile INSERT without data");
-		}
-
-		const { data, columns: explicitColumns } = insert;
+	compileInsert(insert: InsertPart, state: QueryParts): SqlFragments {
+		const { conflict } = state;
 
 		// INSERT...SELECT
-		if (isSqlFragments(data)) {
-			return this.#mergeAndQuote([
-				"INSERT INTO",
-				state.table,
-				explicitColumns ? bracketedCommaSeparatedFragments(explicitColumns) : null,
-				data,
-				this.compileReturning(state.returningColumns),
-			]);
+		if (isSqlFragments(insert.data)) {
+			if (conflict?.do === "update" && !conflict.updateColumns && !insert.columns) {
+				throw new DatabaseError(
+					"Using insert(subquery).onConflict({do: 'update'}) requires you to specify the columns. " +
+						"Either set options.columns in insert() or options.updateColumns in onConflict().",
+				);
+			}
+			return this.compileInsertFromSubquery(insert.data, insert.columns, state);
 		}
 
-		const rows = arrayWrap(data);
+		const rows = arrayWrap(insert.data);
 		if (rows.length === 0) {
+			// Should never happen because we exit early on zero row insert
 			throw new Error("Internal error: cannot compile INSERT without data");
 		}
 
-		const columns = explicitColumns ?? Object.keys(rows[0]);
+		const columns = insert.columns ?? Object.keys(rows[0]);
 
 		if (columns.length === 0) {
-			return this.#mergeAndQuote([
+			return this.mergeAndQuote([
 				"INSERT INTO",
 				state.table,
 				this.compileInsertDefaultValueRows(rows.length),
@@ -165,14 +194,37 @@ export abstract class DatabaseGrammar extends BaseClass {
 			]);
 		}
 
-		return this.#mergeAndQuote([
+		const quotedColumns = columns.map(quoteIdentifier);
+
+		return this.mergeAndQuote([
 			"INSERT INTO",
 			state.table,
-			bracketedCommaSeparatedFragments(columns),
+			bracketedCommaSeparatedFragments(quotedColumns),
 			"VALUES",
 			commaSeparatedFragments(
 				rows.map((row) => bracketedCommaSeparatedParams(columns.map((col) => row[col]))),
 			),
+			conflict ? this.compileOnConflict(conflict, columns) : null,
+			this.compileReturning(state.returningColumns),
+		]);
+	}
+
+	/**
+	 * Compile an INSERT...SELECT query. Override in subclasses for database-specific behaviour.
+	 */
+	protected compileInsertFromSubquery(
+		data: SqlFragments,
+		columns: readonly string[] | null,
+		state: QueryParts,
+	): SqlFragments {
+		const quotedColumns = columns?.map(quoteIdentifier) ?? null;
+
+		return this.mergeAndQuote([
+			"INSERT INTO",
+			state.table,
+			quotedColumns ? bracketedCommaSeparatedFragments(quotedColumns) : null,
+			data,
+			state.conflict ? this.compileOnConflict(state.conflict, columns ?? []) : null,
 			this.compileReturning(state.returningColumns),
 		]);
 	}
@@ -180,18 +232,14 @@ export abstract class DatabaseGrammar extends BaseClass {
 	/**
 	 * Compile an UPDATE query from builder state.
 	 */
-	compileUpdate(state: QueryParts): SqlFragments {
-		if (!state.updateData) {
-			throw new Error("Cannot compile UPDATE without data");
-		}
-
-		const setClauses = Object.entries(state.updateData).map(([col, value]): StringOrFragment[] => [
-			col,
+	compileUpdate(updateData: Row, state: QueryParts): SqlFragments {
+		const setClauses = Object.entries(updateData).map(([col, value]): StringOrFragment[] => [
+			quoteIdentifier(col),
 			"=",
 			paramAsFragment(value),
 		]);
 
-		return this.#mergeAndQuote([
+		return this.mergeAndQuote([
 			"UPDATE",
 			state.table,
 			"SET",
@@ -201,13 +249,44 @@ export abstract class DatabaseGrammar extends BaseClass {
 	}
 
 	/**
+	 * Compile an UPDATE query for bulk updates using CASE expressions.
+	 * Generates: UPDATE table SET col = CASE on WHEN v1 THEN x WHEN v2 THEN y ELSE col END WHERE on IN (v1, v2)
+	 */
+	compileUpdateFrom({ data, on, updateColumns }: UpdateFromPart, state: QueryParts): SqlFragments {
+		const setColumns = updateColumns.filter((col) => col !== on);
+		const quotedOn = quoteIdentifier(on);
+
+		const inColumns = new Set(data.map((row) => row[on]));
+		const inCondition = [quotedOn, "IN", ...bracketedCommaSeparatedParams(inColumns)];
+
+		return this.mergeAndQuote([
+			"UPDATE",
+			state.table,
+			"SET",
+			commaSeparatedFragments(
+				setColumns.map((col) => {
+					// col = CASE on WHEN key1 THEN val1 WHEN key2 THEN val2 ELSE col END
+					const quotedCol = quoteIdentifier(col);
+					const caseParts: StringOrFragment[] = [quotedCol, "= CASE", quotedOn];
+					for (const row of data) {
+						caseParts.push("WHEN", paramAsFragment(row[on]), "THEN", paramAsFragment(row[col]));
+					}
+					caseParts.push("ELSE", quotedCol, "END");
+					return caseParts;
+				}),
+			),
+			andClause("WHERE", [inCondition, ...state.where]),
+		]);
+	}
+
+	/**
 	 * Compile a DELETE query from builder state.
 	 */
 	compileDelete(state: QueryParts): SqlFragments {
-		return this.#mergeAndQuote(["DELETE FROM", state.table, andClause("WHERE", state.where)]);
+		return this.mergeAndQuote(["DELETE FROM", state.table, andClause("WHERE", state.where)]);
 	}
 
-	#mergeAndQuote(parts: Array<Mergeable | Mergeable[]>): SqlFragments {
+	protected mergeAndQuote(parts: Array<Mergeable | Mergeable[]>): SqlFragments {
 		const merged = mergeFragments(parts.flat());
 		const quotedItems = merged.sqlFragments.map((item): StringOrFragment => {
 			if (typeof item === "string") {
@@ -219,7 +298,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 	}
 }
 
-type Mergeable = StringOrFragment | SqlFragments | null | undefined;
+export type Mergeable = StringOrFragment | SqlFragments | StringOrFragment[] | null | undefined;
 
 function listClause(type: string, items: readonly string[]): Array<SqlFragments | string> {
 	if (items.length === 0) {
@@ -229,17 +308,15 @@ function listClause(type: string, items: readonly string[]): Array<SqlFragments 
 	return [type, items.join(", ")];
 }
 
-function andClause(
-	type: string,
-	conditions: readonly SqlFragments[],
-): Array<SqlFragments | string> {
+type Condition = SqlFragments | StringOrFragment[];
+
+function andClause(type: string, conditions: readonly Condition[]): Mergeable[] {
 	if (conditions.length === 0) {
 		return [];
 	}
 
-	const result: Array<SqlFragments | string> = [type];
+	const result: Mergeable[] = [type, "("];
 
-	result.push("(");
 	for (let i = 0; i < conditions.length; i++) {
 		if (i > 0) {
 			result.push(") AND (");
@@ -260,10 +337,16 @@ function mergeFragments(parts: Array<Mergeable>): SqlFragments {
 			items.push(part);
 		} else if (isSqlFragments(part)) {
 			items.push(...part.sqlFragments);
+		} else if (Array.isArray(part)) {
+			items.push(...part);
 		} else {
 			items.push(part);
 		}
 	}
 
 	return { sqlFragments: items };
+}
+
+export function quoteIdentifier(identifier: string): string {
+	return '"' + identifier.replaceAll('"', '""') + '"';
 }

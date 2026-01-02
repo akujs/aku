@@ -4,6 +4,7 @@ import { ExecutableStatementBase } from "../ExecutableStatementBase.ts";
 import type { DatabaseGrammar } from "../grammar/DatabaseGrammar.ts";
 import type {
 	AnyQueryBuilder,
+	ConflictOptions,
 	ExecutableStatement,
 	InsertOptions,
 	QueryBuilder,
@@ -15,6 +16,7 @@ import type {
 	Statement,
 	StringOrFragment,
 	ThenExecutor,
+	UpdateFromOptions,
 } from "../query-types.ts";
 import { MutableQueryBuilder } from "./MutableQueryBuilder.ts";
 import { toHumanReadableSql } from "./statement-render.ts";
@@ -158,6 +160,14 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		return this.#derive("setInsert", [{ data: values, columns: options?.columns ?? null }], "run");
 	}
 
+	onConflict(options: ConflictOptions): this {
+		const option = "on";
+		if (arrayWrap(options[option]).length === 0) {
+			throw new Error(`At least one '${option}' is required to onConflict({${option}: ...})`);
+		}
+		return this.#derive("setConflict", [options]);
+	}
+
 	deleteAll(): this {
 		return this.#derive("setDelete", [], "run");
 	}
@@ -165,6 +175,25 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 	updateAll(values: Row): this {
 		assertNoUndefinedValues(values, "updateAll");
 		return this.#derive("setUpdateData", [values], "run");
+	}
+
+	updateFrom(source: Row | Row[], options?: UpdateFromOptions): this {
+		const rows = arrayWrap(source);
+		if (rows.length === 0) {
+			throw new Error("updateFrom requires at least one row");
+		}
+		assertNoUndefinedValues(rows, "updateFrom");
+
+		const on = options?.on ?? "id";
+		const updateColumns = options?.updateColumns ?? Object.keys(rows[0]);
+
+		if (!updateColumns.includes(on)) {
+			throw new Error(
+				`updateFrom: the 'on' column '${on}' must be present in the update columns: ${updateColumns.join(", ")}`,
+			);
+		}
+
+		return this.#derive("setUpdateFrom", [{ data: rows, on, updateColumns }], "run");
 	}
 
 	returning(...columns: string[]): ExecutableStatement<unknown> {
@@ -270,7 +299,9 @@ type MutableQueryBuilderMethod =
 	| "setDistinct"
 	| "setLock"
 	| "setInsert"
+	| "setConflict"
 	| "setUpdateData"
+	| "setUpdateFrom"
 	| "setDelete"
 	| "setReturning"
 	| "setThenExecutor"
