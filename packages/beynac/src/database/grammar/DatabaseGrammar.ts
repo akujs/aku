@@ -119,11 +119,11 @@ export abstract class DatabaseGrammar extends BaseClass {
 	 * compile method based on the state.
 	 */
 	compileQuery(state: QueryParts): SqlFragments {
-		if (state.isDelete) {
+		if (state.deleteAll) {
 			return this.compileDelete(state);
 		}
-		if (state.updateData) {
-			return this.compileUpdate(state.updateData, state);
+		if (state.updateAll) {
+			return this.compileUpdateAll(state.updateAll, state);
 		}
 		if (state.updateFrom) {
 			return this.compileUpdateFrom(state.updateFrom, state);
@@ -232,8 +232,8 @@ export abstract class DatabaseGrammar extends BaseClass {
 	/**
 	 * Compile an UPDATE query from builder state.
 	 */
-	compileUpdate(updateData: Row, state: QueryParts): SqlFragments {
-		const setClauses = Object.entries(updateData).map(([col, value]): StringOrFragment[] => [
+	compileUpdateAll(data: Row, state: QueryParts): SqlFragments {
+		const setClauses = Object.entries(data).map(([col, value]): StringOrFragment[] => [
 			quoteIdentifier(col),
 			"=",
 			paramAsFragment(value),

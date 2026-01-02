@@ -26,9 +26,9 @@ export class MutableQueryBuilder extends BaseClass implements QueryParts {
 	lock: LockPart | null = null;
 	insert: InsertPart | null = null;
 	conflict: ConflictOptions | null = null;
-	updateData: Row | null = null;
+	updateAll: Row | null = null;
 	updateFrom: UpdateFromPart | null = null;
-	isDelete: boolean = false;
+	deleteAll: boolean = false;
 	returningColumns: string[] | null = null;
 	thenExecutor: ThenExecutor | null = null;
 	prepare: boolean | null = null;
@@ -94,16 +94,16 @@ export class MutableQueryBuilder extends BaseClass implements QueryParts {
 		this.conflict = conflict;
 	}
 
-	setUpdateData(data: Row): void {
-		this.updateData = data;
+	setUpdateAll(data: Row): void {
+		this.updateAll = data;
 	}
 
 	setUpdateFrom(part: UpdateFromPart): void {
 		this.updateFrom = part;
 	}
 
-	setDelete(): void {
-		this.isDelete = true;
+	setDeleteAll(): void {
+		this.deleteAll = true;
 	}
 
 	setReturning(columns: string[]): void {

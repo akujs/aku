@@ -169,12 +169,12 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 	}
 
 	deleteAll(): this {
-		return this.#derive("setDelete", [], "run");
+		return this.#derive("setDeleteAll", [], "run");
 	}
 
 	updateAll(values: Row): this {
 		assertNoUndefinedValues(values, "updateAll");
-		return this.#derive("setUpdateData", [values], "run");
+		return this.#derive("setUpdateAll", [values], "run");
 	}
 
 	updateFrom(source: Row | Row[], options?: UpdateFromOptions): this {
@@ -284,28 +284,11 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 	}
 }
 
-// Method names on MutableQueryBuilder that can be called via #derive
-type MutableQueryBuilderMethod =
-	| "pushJoin"
-	| "setSelect"
-	| "pushSelect"
-	| "pushWhere"
-	| "pushGroupBy"
-	| "pushHaving"
-	| "pushOrderBy"
-	| "setOrderBy"
-	| "setLimit"
-	| "setOffset"
-	| "setDistinct"
-	| "setLock"
-	| "setInsert"
-	| "setConflict"
-	| "setUpdateData"
-	| "setUpdateFrom"
-	| "setDelete"
-	| "setReturning"
-	| "setThenExecutor"
-	| "setPrepare";
+type MutableQueryBuilderMethod = {
+	[K in keyof MutableQueryBuilder]: MutableQueryBuilder[K] extends (...args: never[]) => unknown
+		? K
+		: never;
+}[keyof MutableQueryBuilder];
 
 type Command = [MutableQueryBuilderMethod, unknown[]];
 

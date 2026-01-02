@@ -102,9 +102,9 @@ export interface QueryParts {
 	readonly lock: LockPart | null;
 	readonly insert: InsertPart | null;
 	readonly conflict: ConflictOptions | null;
-	readonly updateData: Row | null;
+	readonly updateAll: Row | null;
 	readonly updateFrom: UpdateFromPart | null;
-	readonly isDelete: boolean;
+	readonly deleteAll: boolean;
 	readonly returningColumns: readonly string[] | null;
 	readonly thenExecutor: ThenExecutor | null;
 	readonly prepare: boolean | null;
