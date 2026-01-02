@@ -103,7 +103,7 @@ describe(PostgresDatabaseAdapter, () => {
 		// TX1: Reads then writes
 		const tx1Promise = db.transaction(
 			async () => {
-				const row = await db.first<{ value: string }>(sql`SELECT value FROM test`);
+				const row = await db.firstOrFail<{ value: string }>(sql`SELECT value FROM test`);
 				await gate?.block();
 				gate = null;
 				await db.run(sql`UPDATE test SET value = ${row.value + "+tx1"}`);
@@ -116,7 +116,7 @@ describe(PostgresDatabaseAdapter, () => {
 		// TX2: Also reads and writes, will conflict
 		const tx2Promise = db.transaction(
 			async () => {
-				const row = await db.first<{ value: string }>(sql`SELECT value FROM test`);
+				const row = await db.firstOrFail<{ value: string }>(sql`SELECT value FROM test`);
 				await db.run(sql`UPDATE test SET value = ${row.value + "+tx2"}`);
 			},
 			{

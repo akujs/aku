@@ -7,6 +7,7 @@ import type {
 	ExecutableStatement,
 	InsertOptions,
 	QueryBuilder,
+	QueryBuilderWithById,
 	QueryParts,
 	Row,
 	RowLockOptions,
@@ -167,13 +168,28 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 	}
 
 	returning(...columns: string[]): ExecutableStatement<unknown> {
-		const executor = this.#isSingleRowInsert() ? "first" : "all";
+		const executor = this.#isSingleRowInsert() ? "firstOrFail" : "all";
 		return this.#derive("setReturning", [columns], executor) as ExecutableStatement<unknown>;
 	}
 
 	returningId(): ExecutableStatement<unknown> {
 		const executor = this.#isSingleRowInsert() ? "scalar" : "column";
 		return this.#derive("setReturning", [["id"]], executor) as ExecutableStatement<unknown>;
+	}
+
+	byIdOrFail(id: unknown): QueryBuilderWithById<Row> {
+		const stmt = splitSqlToFragments("id = ?", [id]);
+		return this.#derive("pushWhere", [stmt], "firstOrFail") as QueryBuilderWithById<Row>;
+	}
+
+	byIdOrNotFound(id: unknown): QueryBuilderWithById<Row> {
+		const stmt = splitSqlToFragments("id = ?", [id]);
+		return this.#derive("pushWhere", [stmt], "firstOrNotFound") as QueryBuilderWithById<Row>;
+	}
+
+	byIdOrNull(id: unknown): QueryBuilderWithById<Row | null> {
+		const stmt = splitSqlToFragments("id = ?", [id]);
+		return this.#derive("pushWhere", [stmt], "firstOrNull") as QueryBuilderWithById<Row | null>;
 	}
 
 	// oxlint-disable-next-line unicorn/no-thenable -- intentionally awaitable API

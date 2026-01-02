@@ -170,12 +170,6 @@ export interface DatabaseClient {
 	all<T = Row>(statement: Statement): Promise<T[]>;
 
 	/**
-	 * Execute a statement and return the first row.
-	 * Throws if no rows are returned.
-	 */
-	first<T = Row>(statement: Statement): Promise<T>;
-
-	/**
 	 * Execute a statement and return the first row, or null if no rows.
 	 */
 	firstOrNull<T = Row>(statement: Statement): Promise<T | null>;

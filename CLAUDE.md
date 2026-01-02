@@ -39,6 +39,8 @@ These guidelines must be followed when writing code for the Beynac project. Afte
     - ✅ CORRECT: `expectTypeOf(value).toEqualTypeOf<Expected>()`
     - ❌ WRONG: `expectTypeOf(value).toMatchTypeOf<Expected>()`
 
+- **Mocking**: Do not explicitly call mockRestore() after tests that use mocking, as we do that in common test setup anyway
+
 ## Code Style
 
 - **Avoid `any` type**: Use `unknown` where possible. When type casting is necessary:

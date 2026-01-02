@@ -37,11 +37,6 @@ describe("Sql execution methods", () => {
 		expect(rows).toEqual([{ name: "Alice" }, { name: "Bob" }]);
 	});
 
-	test("first() returns first row", async () => {
-		const row = await sql`SELECT * FROM test ORDER BY id`.first();
-		expect(row.name).toBe("Alice");
-	});
-
 	test("firstOrNull() returns null when no rows", async () => {
 		const row = await sql`SELECT * FROM test WHERE name = 'Unknown'`.firstOrNull();
 		expect(row).toBeNull();
@@ -124,7 +119,7 @@ describe("client routing", () => {
 
 		const result = await sql`SELECT db_name FROM info`
 			.on("additional")
-			.first<{ db_name: string }>();
+			.firstOrFail<{ db_name: string }>();
 
 		expect(result.db_name).toBe("additional");
 	});
@@ -134,7 +129,7 @@ describe("client routing", () => {
 			database: { default: defaultAdapter, additional: { additional: additionalAdapter } },
 		});
 
-		const result = await sql`SELECT db_name FROM info`.first<{ db_name: string }>();
+		const result = await sql`SELECT db_name FROM info`.firstOrFail<{ db_name: string }>();
 
 		expect(result.db_name).toBe("default");
 	});

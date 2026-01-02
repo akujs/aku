@@ -79,10 +79,6 @@ export class DatabaseImpl extends BaseClass implements Database {
 		return this.#defaultClient.all<T>(statement);
 	}
 
-	first<T = Row>(statement: Statement): Promise<T> {
-		return this.#defaultClient.first<T>(statement);
-	}
-
 	firstOrNull<T = Row>(statement: Statement): Promise<T | null> {
 		return this.#defaultClient.firstOrNull<T>(statement);
 	}

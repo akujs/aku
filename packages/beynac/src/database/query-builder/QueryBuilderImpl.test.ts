@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, expectTypeOf, spyOn, test } from "bun:test";
 import { sleep } from "../../helpers/async/sleep.ts";
+import { abort } from "../../http/abort.ts";
 import { mockDispatcher } from "../../test-utils/internal-mocks.bun.ts";
 import { pgLiteSharedTestConfig } from "../adapters/pglite/pglite-test-utils.ts";
 import { sqliteMemorySharedTestConfig } from "../adapters/sqlite/sqlite-test-utils.ts";
@@ -964,13 +965,13 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 
 		test("insert with columns option selects subset of properties", async () => {
 			await table.insert({ id: 50, name: "subset", value: 500 }, { columns: ["id", "name"] });
-			const row = await table.where("id = ?", 50).first();
+			const row = await table.where("id = ?", 50).firstOrFail();
 			expect(row).toEqual({ id: 50, name: "subset", value: 42 }); // value gets default
 		});
 
 		test("insert single row with sql expression value", async () => {
 			await table.insert({ id: 60, name: sql`'computed_' || 'name'`, value: 100 });
-			const row = await table.where("id = ?", 60).first();
+			const row = await table.where("id = ?", 60).firstOrFail();
 			expect(row).toEqual({ id: 60, name: "computed_name", value: 100 });
 		});
 
@@ -1035,7 +1036,7 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 
 			await table.where("id = ?", 70).updateAll({ name: sql`'prefix_' || name` });
 
-			const row = await table.where("id = ?", 70).first();
+			const row = await table.where("id = ?", 70).firstOrFail();
 			expect(row).toEqual({ id: 70, name: "prefix_expr_update", value: 100 });
 		});
 
@@ -1048,7 +1049,7 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 				value: db.table("update_source").select("src_value").where("id = ?", 1),
 			});
 
-			const row = await table.where("id = ?", 71).first();
+			const row = await table.where("id = ?", 71).firstOrFail();
 			expect(row).toEqual({ id: 71, name: "sub_update", value: 999 });
 		});
 	});
@@ -1086,13 +1087,6 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 			expect(rows).toEqual([{ id: 30, name: "direct_test", value: 42 }]);
 		});
 
-		test("first() returns first row from builder", async () => {
-			await table.insert({ id: 31, name: "first_test", value: 43 });
-
-			const row = await table.where("id = ?", 31).first();
-			expect(row).toEqual({ id: 31, name: "first_test", value: 43 });
-		});
-
 		test("firstOrNull() returns null when no rows", async () => {
 			const row = await table.where("id = ?", -999).firstOrNull();
 			expect(row).toBeNull();
@@ -1121,6 +1115,70 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 		});
 	});
 
+	describe("byId methods", () => {
+		test("byIdOrFail() returns row when found", async () => {
+			await table.insert({ id: 200, name: "by_id_test", value: 200 });
+
+			const row = await table.byIdOrFail(200);
+			expect(row).toEqual({ id: 200, name: "by_id_test", value: 200 });
+		});
+
+		test("byIdOrFail() throws QueryError when not found", async () => {
+			expect(table.byIdOrFail(999).then()).rejects.toMatchInlineSnapshot(
+				`[QueryError: Query returned no rows (query: SELECT * FROM "test_mutations" WHERE ( "id" = [$1: 999] ))]`,
+			);
+		});
+
+		test("byIdOrNotFound() throws QueryError when not found", async () => {
+			expect(table.byIdOrFail(999).then()).rejects.toMatchInlineSnapshot(
+				`[QueryError: Query returned no rows (query: SELECT * FROM "test_mutations" WHERE ( "id" = [$1: 999] ))]`,
+			);
+		});
+
+		test("byIdOrNotFound() returns row when found", async () => {
+			await table.insert({ id: 201, name: "by_id_notfound", value: 201 });
+
+			const row = await table.byIdOrNotFound(201);
+			expect(row).toEqual({ id: 201, name: "by_id_notfound", value: 201 });
+		});
+
+		test("byIdOrNotFound() calls abort.notFound when not found", async () => {
+			const spy = spyOn(abort, "notFound");
+			try {
+				await table.byIdOrNotFound(998);
+			} catch {
+				// Expected to throw
+			}
+			expect(spy).toHaveBeenCalled();
+		});
+
+		test("byIdOrNull() returns row when found", async () => {
+			await table.insert({ id: 202, name: "by_id_null", value: 202 });
+
+			const row = await table.byIdOrNull(202);
+			expect(row).toEqual({ id: 202, name: "by_id_null", value: 202 });
+		});
+
+		test("byIdOrNull() returns null when not found", async () => {
+			const row = await table.byIdOrNull(997);
+			expect(row).toBeNull();
+		});
+
+		test("byIdOrFail() with select() returns subset of columns", async () => {
+			await table.insert({ id: 203, name: "by_id_select", value: 203 });
+
+			const row = await table.byIdOrFail(203).select("id", "name");
+			expect(row).toEqual({ id: 203, name: "by_id_select" });
+		});
+
+		test("byIdOrFail() does not execute until awaited", async () => {
+			const query = table.byIdOrFail(204);
+			await table.insert({ id: 204, name: "by_id_deferred", value: 204 });
+			const row = await query;
+			expect(row.name).toBe("by_id_deferred");
+		});
+	});
+
 	describe("deferred execution", () => {
 		test("insert() does not execute until awaited", async () => {
 			await db.transaction(async () => {
@@ -1145,10 +1203,10 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 				const query = table.where("id = ?", 51).updateAll({ value: 999 });
 				await sleep(0);
 				// Verify not updated yet
-				expect((await table.where("id = ?", 51).first()).value).toBe(100);
+				expect((await table.where("id = ?", 51).firstOrFail()).value).toBe(100);
 				// Now execute
 				await query;
-				expect((await table.where("id = ?", 51).first()).value).toBe(999);
+				expect((await table.where("id = ?", 51).firstOrFail()).value).toBe(999);
 			});
 		});
 
@@ -1214,7 +1272,7 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 			const query = db.table("test_reuse_update").updateAll({ value: 42 });
 			await query;
 			await query;
-			expect((await db.table("test_reuse_update").first()).value).toBe(42);
+			expect((await db.table("test_reuse_update").firstOrFail()).value).toBe(42);
 		});
 	});
 

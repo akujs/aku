@@ -41,7 +41,14 @@ export interface LockPart {
 	onLocked: "wait" | "fail" | "skip";
 }
 
-export type ThenExecutor = "run" | "all" | "column" | "scalar" | "first";
+export type ThenExecutor =
+	| "run"
+	| "all"
+	| "column"
+	| "scalar"
+	| "firstOrFail"
+	| "firstOrNotFound"
+	| "firstOrNull";
 
 export interface QueryParts {
 	readonly table: string;
@@ -115,12 +122,6 @@ interface StatementExecutionMethods<TThen = Row[]> {
 	all<T = Row>(): Promise<T[]>;
 
 	/**
-	 * Execute the statement on the default client and return the first row.
-	 * Throws if no rows returned.
-	 */
-	first<T = Row>(): Promise<T>;
-
-	/**
 	 * Execute the statement on the default client and return the first row, or
 	 * null if no rows returned.
 	 */
@@ -168,6 +169,21 @@ interface StatementExecutionMethods<TThen = Row[]> {
 	withPrepare(value?: boolean): this;
 }
 
+type ByIdExecutionMethods<T> = Pick<
+	StatementExecutionMethods<T>,
+	"run" | "scalar" | "then" | "withPrepare"
+>;
+
+type MutationExecutionMethods = Pick<
+	StatementExecutionMethods<StatementResult>,
+	"run" | "then" | "withPrepare"
+>;
+
+type ReturningExecutionMethods<T> = Pick<
+	StatementExecutionMethods<T>,
+	"run" | "all" | "scalar" | "column" | "then" | "withPrepare"
+>;
+
 /**
  * An interface with all query builder methods. Normally you will be working
  * with one of the more specific builder types but this can be used when you
@@ -195,6 +211,7 @@ export interface AnyQueryBuilder
 export interface QueryBuilder
 	extends Statement,
 		StatementExecutionMethods,
+		ByIdMethods,
 		InsertMethod<QueryBuilderWithInsertSingle, QueryBuilderWithInsertArray>,
 		BulkMutationMethods,
 		WhereMethod<QueryBuilderWithCondition>,
@@ -232,9 +249,7 @@ export type SelectQueryBuilder<
 /**
  * Query builder for mutation statements (INSERT, UPDATE, DELETE)
  */
-export interface QueryBuilderWithMutation
-	extends Statement,
-		StatementExecutionMethods<StatementResult> {}
+export interface QueryBuilderWithMutation extends Statement, MutationExecutionMethods {}
 
 /**
  * Query builder for INSERT statements. Extends mutation with RETURNING support.
@@ -252,6 +267,15 @@ export type QueryBuilderWithInsertSingle = QueryBuilderWithInsert<Row, unknown>;
  * A query builder after calling insert([{...}, {...}]) to add a multiple rows
  */
 export type QueryBuilderWithInsertArray = QueryBuilderWithInsert<Row[], unknown[]>;
+
+/**
+ * A query builder after calling a byIdOrXXX(id) method to fetch a single row by id
+ */
+export type QueryBuilderWithById<T = Row, TSelect extends boolean = false> = Statement &
+	ByIdExecutionMethods<T> &
+	(TSelect extends true
+		? SelectModifyColumns<QueryBuilderWithById<T, true>>
+		: SelectSetInitialColumns<QueryBuilderWithById<T, true>>);
 
 interface SelectSetInitialColumns<TReturn> extends SelectModifyColumns<TReturn> {
 	/**
@@ -456,6 +480,23 @@ interface SelectClauseMethods<TReturn> {
 	withRowLock: (options?: RowLockOptions) => TReturn;
 }
 
+interface ByIdMethods {
+	/**
+	 * Fetch a row by its id column, throwing QueryError if not found.
+	 */
+	byIdOrFail(id: unknown): QueryBuilderWithById<Row, false>;
+
+	/**
+	 * Fetch a row by its id column, throwing NotFoundError if not found.
+	 */
+	byIdOrNotFound(id: unknown): QueryBuilderWithById<Row, false>;
+
+	/**
+	 * Fetch a row by its id column, returning null if not found.
+	 */
+	byIdOrNull(id: unknown): QueryBuilderWithById<Row | null, false>;
+}
+
 interface WhereMethod<TReturn> {
 	/**
 	 * Add a WHERE condition. The method can be called multiple times to add
@@ -522,6 +563,9 @@ interface InsertMethod<TSingle, TArray = TSingle> {
 	insert(statement: Statement, options?: InsertOptions): TArray;
 }
 
+// Query builder after calling returning() or returningId() on an insert
+export type QueryBuilderWithReturning<T> = Statement & ReturningExecutionMethods<T>;
+
 interface ReturningMethods<TReturning, TReturningId> {
 	/**
 	 * Add a RETURNING clause to return specified columns from inserted row(s).
@@ -535,7 +579,7 @@ interface ReturningMethods<TReturning, TReturningId> {
 	 *   .insert({ name: "Alice", age: 30 })
 	 *   .returning("id", "created_at");
 	 */
-	returning(...columns: string[]): ExecutableStatement<TReturning>;
+	returning(...columns: string[]): QueryBuilderWithReturning<TReturning>;
 
 	/**
 	 * Add a RETURNING clause to return the auto-generated IDs of inserted
@@ -549,13 +593,12 @@ interface ReturningMethods<TReturning, TReturningId> {
 	 *   .insert({ name: "Alice" })
 	 *   .returningId();
 	 */
-	returningId(): ExecutableStatement<TReturningId>;
+	returningId(): QueryBuilderWithReturning<TReturningId>;
 }
 
 interface BulkMutationMethods<TReturn = QueryBuilderWithMutation> {
 	/**
-	 * Build a DELETE statement for all matching rows. Use where() to filter.
-	 * The statement is not executed until awaited.
+	 * Delete all matching rows.
 	 *
 	 * @example
 	 * await table("users").where("archived = true").deleteAll()
@@ -563,21 +606,18 @@ interface BulkMutationMethods<TReturn = QueryBuilderWithMutation> {
 	deleteAll(): TReturn;
 
 	/**
-	 * Build an UPDATE statement for all matching rows. Use where() to filter.
-	 * The statement is not executed until awaited.
+	 * Update all matching rows.
 	 *
 	 * @example
 	 * await table("users").where("age > ?", 65).updateAll({ status: "retired" })
-	 *
-	 * @example
-	 * // Values can be SQL expressions using the sql tag
-	 * await table("users").where("id = ?", 1).updateAll({ updated_at: sql`NOW()` })
+	 * // -> UPDATE "users" SET "status" = 'retired' WHERE "age" > 65
 	 *
 	 * @example
 	 * // Values can be subqueries
 	 * await table("users").where("id = ?", 1).updateAll({
 	 *   team_id: table("teams").select("id").where("name = ?", "Default")
 	 * })
+	 * // -> UPDATE "users" SET "team_id" = (SELECT "id" FROM "teams" WHERE "name" = 'Default') WHERE "id" = 1
 	 */
 	updateAll(values: Row): TReturn;
 }

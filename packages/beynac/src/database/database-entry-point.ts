@@ -34,6 +34,7 @@ export type {
 	ExecutableStatement,
 	ExecutableStatementWithoutClient,
 	QueryBuilder,
+	QueryBuilderWithById,
 	QueryBuilderWithCondition,
 	QueryBuilderWithInsert,
 	QueryBuilderWithInsertArray,

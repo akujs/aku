@@ -18,10 +18,6 @@ export abstract class ExecutableStatementBase extends StatementImpl {
 		return this.getClient().all<T>(this);
 	}
 
-	first<T = Row>(): Promise<T> {
-		return this.getClient().first<T>(this);
-	}
-
 	firstOrNull<T = Row>(): Promise<T | null> {
 		return this.getClient().firstOrNull<T>(this);
 	}

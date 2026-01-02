@@ -7,6 +7,9 @@ const stubClient = {
 	run: () => Promise.resolve({ rows: [], rowsAffected: 0 }),
 	all: () => Promise.resolve([]),
 	column: () => Promise.resolve([]),
+	firstOrNull: () => Promise.resolve(null),
+	firstOrFail: () => Promise.resolve({}),
+	scalar: () => Promise.resolve(null),
 };
 
 function table(name: string): QueryBuilder {
@@ -382,5 +385,190 @@ describe("placeholder arity", () => {
 		expect(() => table("").where(condition)).toThrow();
 		table("").where(condition, 1); // This one matches at runtime
 		expect(() => table("").where(condition, 1, 2)).toThrow();
+	});
+});
+
+describe("byIdOrXXX()", () => {
+	test("available on QueryBuilder", () => {
+		void table("").byIdOrFail(1);
+		void table("").byIdOrNotFound(1);
+		void table("").byIdOrNull(1);
+	});
+
+	test("can chain to select()", () => {
+		table("").byIdOrFail(1).select("");
+	});
+
+	test("can chain to addSelect() and replaceSelect()", () => {
+		table("").byIdOrFail(1).addSelect("");
+		table("").byIdOrFail(1).replaceSelect("");
+	});
+
+	test("cannot chain to where()", () => {
+		table("")
+			.byIdOrFail(1)
+			// @ts-expect-error
+			.where("");
+		table("")
+			.byIdOrNotFound(1)
+			// @ts-expect-error
+			.where("");
+		table("")
+			.byIdOrNull(1)
+			// @ts-expect-error
+			.where("");
+	});
+
+	test("cannot chain to orderBy()", () => {
+		table("")
+			.byIdOrFail(1)
+			// @ts-expect-error
+			.orderBy("");
+	});
+
+	test("cannot chain to insert()", () => {
+		table("")
+			.byIdOrFail(1)
+			// @ts-expect-error
+			.insert({});
+	});
+
+	test("not available after where()", () => {
+		table("")
+			.where("")
+			// @ts-expect-error
+			.byIdOrFail(1);
+	});
+
+	test("not available after select()", () => {
+		table("")
+			.select("")
+			// @ts-expect-error
+			.byIdOrFail(1);
+	});
+
+	test("select-once pattern: select() cannot be called twice", () => {
+		table("")
+			.byIdOrFail(1)
+			.select("id")
+			// @ts-expect-error
+			.select("name");
+	});
+
+	test("select-once pattern: addSelect() available after select()", () => {
+		void table("").byIdOrFail(1).select("id").addSelect("name");
+	});
+
+	test("cannot chain to all()", () => {
+		void table("")
+			.byIdOrFail(1)
+			// @ts-expect-error
+			.all();
+	});
+
+	test("cannot chain to firstOrNull()", () => {
+		void table("")
+			.byIdOrFail(1)
+			// @ts-expect-error
+			.firstOrNull();
+	});
+
+	test("cannot chain to firstOrFail()", () => {
+		void table("")
+			.byIdOrFail(1)
+			// @ts-expect-error
+			.firstOrFail();
+	});
+
+	test("cannot chain to column()", () => {
+		void table("")
+			.byIdOrFail(1)
+			// @ts-expect-error
+			.column();
+	});
+
+	test("can chain to run()", () => {
+		const _run: () => Promise<unknown> = table("").byIdOrFail(1).run;
+		void _run;
+	});
+
+	test("can chain to scalar()", () => {
+		const _scalar: () => Promise<unknown> = table("").byIdOrFail(1).scalar;
+		void _scalar;
+	});
+
+	test("can chain to withPrepare()", () => {
+		void table("").byIdOrFail(1).withPrepare;
+	});
+});
+
+describe("terminal method restrictions", () => {
+	test("deleteAll() can use run()", () => {
+		const _run: () => Promise<unknown> = table("").deleteAll().run;
+		void _run;
+	});
+
+	test("deleteAll() cannot use all()", () => {
+		void table("")
+			.deleteAll()
+			// @ts-expect-error
+			.all();
+	});
+
+	test("deleteAll() cannot use scalar()", () => {
+		void table("")
+			.deleteAll()
+			// @ts-expect-error
+			.scalar();
+	});
+
+	test("insert() can use run()", () => {
+		const _run: () => Promise<unknown> = table("").insert({}).run;
+		void _run;
+	});
+
+	test("insert() cannot use all()", () => {
+		void table("")
+			.insert({})
+			// @ts-expect-error
+			.all();
+	});
+
+	test("insert() cannot use firstOrFail()", () => {
+		void table("")
+			.insert({})
+			// @ts-expect-error
+			.firstOrFail();
+	});
+
+	test("returning() can use all()", () => {
+		const _all: () => Promise<unknown> = table("").insert({}).returning("id").all;
+		void _all;
+	});
+
+	test("returning() can use scalar()", () => {
+		const _scalar: () => Promise<unknown> = table("").insert({}).returning("id").scalar;
+		void _scalar;
+	});
+
+	test("returning() can use column()", () => {
+		const _column: () => Promise<unknown> = table("").insert({}).returning("id").column;
+		void _column;
+	});
+
+	test("returning() cannot use firstOrFail()", () => {
+		void table("")
+			.insert({})
+			.returning("id")
+			// @ts-expect-error
+			.firstOrFail();
+	});
+
+	test("returning() cannot use firstOrNull()", () => {
+		void table("")
+			.insert({})
+			.returning("id")
+			// @ts-expect-error
+			.firstOrNull();
 	});
 });

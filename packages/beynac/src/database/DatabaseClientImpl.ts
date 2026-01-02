@@ -332,14 +332,6 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 		return result.rows as T[];
 	}
 
-	async first<T = Row>(statement: Statement): Promise<T> {
-		const result = await this.run(statement);
-		if (result.rows.length === 0) {
-			throw new DatabaseError("Query returned no rows");
-		}
-		return result.rows[0] as T;
-	}
-
 	async firstOrNull<T = Row>(statement: Statement): Promise<T | null> {
 		const result = await this.run(statement);
 		return (result.rows[0] as T) ?? null;

@@ -49,15 +49,6 @@ describe("DatabaseImpl", () => {
 			expect(rows).toEqual([]);
 		});
 
-		test("first() returns first row", async () => {
-			const row = await db.first(sql`SELECT * FROM test ORDER BY name`);
-			expect(row.name).toBe("Alice");
-		});
-
-		test("first() throws when no rows", async () => {
-			expect(db.first(sql`SELECT * FROM test WHERE 0`)).rejects.toThrow("Query returned no rows");
-		});
-
 		test("firstOrNull() returns first row when exists", async () => {
 			const row = await db.firstOrNull(sql`SELECT * FROM test`);
 			expect(row?.name).toBe("Alice");
