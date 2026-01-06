@@ -36,13 +36,12 @@ export async function ensureDockerServicesRunning(services: DockerService[]): Pr
 
 	const packageRoot = path.resolve(__dirname, "../..");
 	const serviceList = servicesNotRunning.join(", ");
-	const composeCommand = `docker compose up -d ${servicesNotRunning.join(" ")}`;
 
 	throw new Error(
 		`Required services are not running: ${serviceList}\n\n` +
 			`Please start them with:\n` +
 			`  cd ${packageRoot}\n` +
-			`  ${composeCommand}\n\n` +
+			`  docker compose up -d\n\n` +
 			`Or skip Docker tests by setting: SKIP_DOCKER_INTEGRATION_TESTS=1`,
 	);
 }

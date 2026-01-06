@@ -778,6 +778,18 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				{ name: "team_b", member_count: 2 },
 			]);
 		});
+
+		test("correlated EXISTS subquery", async () => {
+			const result = await db
+				.table("teams t")
+				.select("t.name")
+				.where(
+					"EXISTS ?",
+					db.table("members m").where("m.team_id = t.id").where("m.score >= ?", 40),
+				)
+				.orderBy("t.id");
+			expect(result).toEqual([{ name: "team_a" }, { name: "team_b" }]);
+		});
 	});
 });
 
