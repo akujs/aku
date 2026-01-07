@@ -628,20 +628,12 @@ describe("terminal method restrictions", () => {
 		void _column;
 	});
 
-	test("returning() cannot use firstOrFail()", () => {
-		void table("")
-			.insert({})
-			.returning("id")
-			// @ts-expect-error
-			.firstOrFail();
+	test("returning() can use firstOrFail()", () => {
+		void table("").insert({}).returning("id").firstOrFail();
 	});
 
-	test("returning() cannot use firstOrNull()", () => {
-		void table("")
-			.insert({})
-			.returning("id")
-			// @ts-expect-error
-			.firstOrNull();
+	test("returning() can use firstOrNull()", () => {
+		void table("").insert({}).returning("id").firstOrNull();
 	});
 });
 

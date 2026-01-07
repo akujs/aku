@@ -225,11 +225,6 @@ type MutationExecutionMethods = Pick<
 	"run" | "then" | "withPrepare"
 >;
 
-type ReturningExecutionMethods<T> = Pick<
-	StatementExecutionMethods<T>,
-	"run" | "all" | "scalar" | "column" | "then" | "withPrepare"
->;
-
 /**
  * An interface with all query builder methods. Normally you will be working
  * with one of the more specific builder types but this can be used when you
@@ -676,7 +671,7 @@ interface InsertMethod<TSingle, TArray> {
 }
 
 // Query builder after calling returning() or returningId() on an insert
-export type QueryBuilderWithReturning<T> = Statement & ReturningExecutionMethods<T>;
+export type QueryBuilderWithReturning<T> = Statement & StatementExecutionMethods<T>;
 
 interface ReturningMethods<TReturning, TReturningId> {
 	/**
