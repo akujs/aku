@@ -11,7 +11,7 @@ const ISOLATION_LEVEL_SQL: Record<string, string> = {
 export class PostgresGrammar extends DatabaseGrammar {
 	override readonly dialect = "postgresql";
 
-	override transactionBegin(options?: TransactionBeginOptions): string {
+	override compileTransactionBegin(options?: TransactionBeginOptions): string {
 		if (options?.isolation) {
 			return ISOLATION_LEVEL_SQL[options?.isolation] ?? "BEGIN";
 		}

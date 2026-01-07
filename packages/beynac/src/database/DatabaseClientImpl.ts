@@ -274,8 +274,8 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 
 					await execCtrl(
 						depth === 1
-							? grammar.transactionBegin(options)
-							: grammar.savepointCreate(savepointName),
+							? grammar.compileTransactionBegin(options)
+							: grammar.compileSavepointCreate(savepointName),
 					);
 
 					try {
@@ -287,7 +287,9 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 						);
 
 						await execCtrl(
-							depth === 1 ? grammar.transactionCommit() : grammar.savepointRelease(savepointName),
+							depth === 1
+								? grammar.compileTransactionCommit()
+								: grammar.compileSavepointRelease(savepointName),
 						);
 
 						ctx.committed = true;
@@ -301,8 +303,8 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 					} catch (error) {
 						await execCtrl(
 							depth === 1
-								? grammar.transactionRollback()
-								: grammar.savepointRollback(savepointName),
+								? grammar.compileTransactionRollback()
+								: grammar.compileSavepointRollback(savepointName),
 						);
 
 						ctx.committed = true;

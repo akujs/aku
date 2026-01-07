@@ -19,6 +19,7 @@ import type {
 	Row,
 	SqlFragments,
 	StringOrFragment,
+	UnionEntry,
 	UpdateFromPart,
 } from "../query-types.ts";
 
@@ -34,27 +35,27 @@ export type TransactionBeginOptions = Pick<TransactionOptions, "isolation" | "sq
 export abstract class DatabaseGrammar extends BaseClass {
 	abstract readonly dialect: SqlDialect;
 
-	transactionBegin(_options?: TransactionBeginOptions): string {
+	compileTransactionBegin(_options?: TransactionBeginOptions): string {
 		return "BEGIN";
 	}
 
-	transactionCommit(): string {
+	compileTransactionCommit(): string {
 		return "COMMIT";
 	}
 
-	transactionRollback(): string {
+	compileTransactionRollback(): string {
 		return "ROLLBACK";
 	}
 
-	savepointCreate(name: string): string {
+	compileSavepointCreate(name: string): string {
 		return `SAVEPOINT ${name}`;
 	}
 
-	savepointRelease(name: string): string {
+	compileSavepointRelease(name: string): string {
 		return `RELEASE SAVEPOINT ${name}`;
 	}
 
-	savepointRollback(name: string): string {
+	compileSavepointRollback(name: string): string {
 		return `ROLLBACK TO SAVEPOINT ${name}`;
 	}
 
@@ -104,21 +105,14 @@ export abstract class DatabaseGrammar extends BaseClass {
 		return quoteIdentifiers(sql, this.dialect);
 	}
 
-	/**
-	 * Compile a statement's fragments and params into a SQL string with appropriate placeholders.
-	 */
 	abstract compileFragments(statement: SqlFragments): string;
 
-	/**
-	 * Compile the columns and VALUES clause for inserting multiple rows with all default values.
-	 */
 	abstract compileInsertDefaultValueRows(count: number): string;
 
-	/**
-	 * Compile a query from builder state, dispatching to the appropriate
-	 * compile method based on the state.
-	 */
 	compileQuery(state: QueryParts): SqlFragments {
+		if (state.unionMembers) {
+			return this.compileUnion(state.unionMembers, state);
+		}
 		if (state.deleteAll) {
 			return this.compileDelete(state);
 		}
@@ -134,16 +128,11 @@ export abstract class DatabaseGrammar extends BaseClass {
 		return this.compileSelect(state);
 	}
 
-	/**
-	 * Compile a SELECT query from builder state.
-	 */
 	compileSelect(state: QueryParts): SqlFragments {
 		const selectClause =
 			"SELECT" +
 			(state.distinct ? " DISTINCT " : " ") +
 			(state.select.length > 0 ? state.select.join(", ") : "*");
-
-		const limit = state.limit ?? (state.offset !== null ? DEFAULT_LIMIT_FOR_OFFSET : null);
 
 		return this.mergeAndQuote([
 			selectClause,
@@ -154,15 +143,26 @@ export abstract class DatabaseGrammar extends BaseClass {
 			listClause("GROUP BY", state.groupBy),
 			andClause("HAVING", state.having),
 			listClause("ORDER BY", state.orderBy),
-			limit !== null ? `LIMIT ${limit}` : null,
-			state.offset !== null ? `OFFSET ${state.offset}` : null,
+			limitOffsetClauses(state),
 			state.lock ? this.compileLock(state.lock) : null,
 		]);
 	}
 
-	/**
-	 * Compile an INSERT query from builder state.
-	 */
+	compileStatementForUnion(statement: SqlFragments): Mergeable[] {
+		return ["(", statement, ")"];
+	}
+
+	compileUnion(members: readonly UnionEntry[], state: QueryParts): SqlFragments {
+		return this.mergeAndQuote([
+			members.flatMap((member) => [
+				member.type,
+				...this.compileStatementForUnion(member.statement),
+			]),
+			listClause("ORDER BY", state.orderBy),
+			limitOffsetClauses(state),
+		]);
+	}
+
 	compileInsert(insert: InsertPart, state: QueryParts): SqlFragments {
 		const { conflict } = state;
 
@@ -209,9 +209,6 @@ export abstract class DatabaseGrammar extends BaseClass {
 		]);
 	}
 
-	/**
-	 * Compile an INSERT...SELECT query. Override in subclasses for database-specific behaviour.
-	 */
 	protected compileInsertFromSubquery(
 		data: SqlFragments,
 		columns: readonly string[] | null,
@@ -229,9 +226,6 @@ export abstract class DatabaseGrammar extends BaseClass {
 		]);
 	}
 
-	/**
-	 * Compile an UPDATE query from builder state.
-	 */
 	compileUpdateAll(data: Row, state: QueryParts): SqlFragments {
 		const setClauses = Object.entries(data).map(([col, value]): StringOrFragment[] => [
 			identifier(col),
@@ -249,10 +243,6 @@ export abstract class DatabaseGrammar extends BaseClass {
 		]);
 	}
 
-	/**
-	 * Compile an UPDATE query for bulk updates using CASE expressions.
-	 * Generates: UPDATE table SET col = CASE on WHEN v1 THEN x WHEN v2 THEN y ELSE col END WHERE on IN (v1, v2)
-	 */
 	compileUpdateFrom({ data, on, updateColumns }: UpdateFromPart, state: QueryParts): SqlFragments {
 		const setColumns = updateColumns.filter((col) => col !== on);
 		const quotedOn = identifier(on);
@@ -281,9 +271,6 @@ export abstract class DatabaseGrammar extends BaseClass {
 		]);
 	}
 
-	/**
-	 * Compile a DELETE query from builder state.
-	 */
 	compileDelete(state: QueryParts): SqlFragments {
 		return this.mergeAndQuote([
 			"DELETE FROM",
@@ -313,6 +300,17 @@ function listClause(type: string, items: readonly string[]): Array<SqlFragments 
 	}
 
 	return [type, items.join(", ")];
+}
+
+function limitOffsetClauses({ limit, offset }: QueryParts): string | null {
+	if (limit == null && offset == null) return null;
+	if (limit == null) {
+		limit = DEFAULT_LIMIT_FOR_OFFSET;
+	}
+	if (offset == null) {
+		return `LIMIT ${limit}`;
+	}
+	return `LIMIT ${limit} OFFSET ${offset}`;
 }
 
 type Condition = SqlFragments | StringOrFragment[];

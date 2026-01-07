@@ -88,6 +88,11 @@ export interface UpdateFromPart {
 	updateColumns: string[];
 }
 
+export interface UnionEntry {
+	type: "UNION" | "UNION ALL" | null;
+	statement: SqlFragments;
+}
+
 export interface QueryParts {
 	readonly table: string;
 	readonly joins: readonly JoinEntry[];
@@ -108,6 +113,7 @@ export interface QueryParts {
 	readonly returningColumns: readonly string[] | null;
 	readonly thenExecutor: ThenExecutor | null;
 	readonly prepare: boolean | null;
+	readonly unionMembers: readonly UnionEntry[] | null;
 }
 
 export interface Statement extends SqlFragments {
@@ -206,7 +212,7 @@ interface StatementExecutionMethods<TThen = Row[]> {
 	 *
 	 * @param value - Whether to use prepared statements. Defaults to `true`.
 	 */
-	withPrepare(value?: boolean): this;
+	withPrepare(value?: boolean): ExecutableStatement<TThen>;
 }
 
 type ByIdExecutionMethods<T> = Pick<
@@ -241,6 +247,7 @@ export interface AnyQueryBuilder
 		InsertMethod<AnyQueryBuilder, AnyQueryBuilder>,
 		ReturningMethods<unknown, unknown>,
 		WhereMethods<AnyQueryBuilder>,
+		UnionMethods<AnyQueryBuilder>,
 		SelectSetInitialColumns<AnyQueryBuilder>,
 		OrderBySetInitial<AnyQueryBuilder>,
 		SelectClauseMethods<AnyQueryBuilder> {}
@@ -255,6 +262,7 @@ export interface QueryBuilder
 		InsertMethod<QueryBuilderWithInsertSingle, QueryBuilderWithInsertArray>,
 		BulkMutationMethods,
 		WhereMethods<QueryBuilderWithCondition>,
+		UnionMethods<QueryBuilderWithUnion<false>>,
 		SelectSetInitialColumns<SelectQueryBuilder<true, false>>,
 		OrderBySetInitial<SelectQueryBuilder<false, true>>,
 		SelectClauseMethods<SelectQueryBuilder<false, false>> {}
@@ -268,6 +276,7 @@ export interface QueryBuilderWithCondition
 		StatementExecutionMethods,
 		BulkMutationMethods,
 		WhereMethods<QueryBuilderWithCondition>,
+		UnionMethods<QueryBuilderWithUnion<false>>,
 		SelectSetInitialColumns<SelectQueryBuilder<true, false>>,
 		OrderBySetInitial<SelectQueryBuilder<false, true>>,
 		SelectClauseMethods<SelectQueryBuilder<false, false>> {}
@@ -278,6 +287,7 @@ export type SelectQueryBuilder<
 > = Statement &
 	StatementExecutionMethods &
 	WhereMethods<SelectQueryBuilder<TSelect, TOrderBy>> &
+	UnionMethods<QueryBuilderWithUnion<false>> &
 	SelectClauseMethods<SelectQueryBuilder<TSelect, TOrderBy>> &
 	(TSelect extends true
 		? SelectModifyColumns<SelectQueryBuilder<true, TOrderBy>>
@@ -314,7 +324,7 @@ export interface QueryBuilderWithInsert<TReturning, TReturningId>
 	 * table("users").insert({ email: "foo@bar.com", name: "Foo", age: 30 })
 	 *   .onConflict({ on: "email", do: "update", updateColumns: ["name"] })
 	 */
-	onConflict(options: ConflictOptions): this;
+	onConflict(options: ConflictOptions): QueryBuilderWithInsert<TReturning, TReturningId>;
 }
 
 /**
@@ -598,6 +608,36 @@ interface WhereMethods<TReturn> {
 	 */
 	whereId(id: unknown): TReturn;
 }
+
+interface UnionMethods<TReturn> {
+	/**
+	 * Combine results with another query using UNION, removing duplicates.
+	 *
+	 * @example
+	 * table("users").select("name").union(table("admins").select("name"))
+	 *
+	 * @example
+	 * // With sql literal
+	 * table("users").select("id").union(sql`SELECT id FROM archived_users`)
+	 */
+	union(other: Statement): TReturn;
+
+	/**
+	 * Combine results with another query using UNION ALL, keeping duplicates.
+	 *
+	 * @example
+	 * table("orders_2023").unionAll(table("orders_2024"))
+	 */
+	unionAll(other: Statement): TReturn;
+}
+
+export type QueryBuilderWithUnion<TOrderBy extends boolean = false> = Statement &
+	StatementExecutionMethods &
+	UnionMethods<QueryBuilderWithUnion<TOrderBy>> &
+	Pick<SelectClauseMethods<QueryBuilderWithUnion<TOrderBy>>, "limit" | "offset"> &
+	(TOrderBy extends true
+		? OrderByModify<QueryBuilderWithUnion<true>>
+		: OrderBySetInitial<QueryBuilderWithUnion<true>>);
 
 interface InsertMethod<TSingle, TArray> {
 	/**

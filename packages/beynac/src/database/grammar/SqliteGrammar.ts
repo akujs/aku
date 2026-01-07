@@ -3,7 +3,11 @@ import { UnsupportedFeatureError } from "../database-errors.ts";
 import { renderSqlFragments } from "../query-builder/statement-render.ts";
 import { bracketedCommaSeparatedFragments } from "../query-builder/statement-utils.ts";
 import type { JoinType, QueryParts, SqlFragments } from "../query-types.ts";
-import { DatabaseGrammar, type TransactionBeginOptions } from "./DatabaseGrammar.ts";
+import {
+	DatabaseGrammar,
+	type Mergeable,
+	type TransactionBeginOptions,
+} from "./DatabaseGrammar.ts";
 
 const SQLITE_MODE_SQL: Record<SqliteTransactionMode, string> = {
 	deferred: "BEGIN DEFERRED",
@@ -14,7 +18,7 @@ const SQLITE_MODE_SQL: Record<SqliteTransactionMode, string> = {
 export class SqliteGrammar extends DatabaseGrammar {
 	override readonly dialect = "sqlite";
 
-	override transactionBegin(options?: TransactionBeginOptions): string {
+	override compileTransactionBegin(options?: TransactionBeginOptions): string {
 		if (options?.sqliteMode) {
 			return SQLITE_MODE_SQL[options.sqliteMode] ?? "BEGIN";
 		}
@@ -28,12 +32,16 @@ export class SqliteGrammar extends DatabaseGrammar {
 		return super.compileJoin(type, clause);
 	}
 
-	/**
-	 * SQLite uses connection-level locking rather than row-level locks.
-	 * FOR UPDATE/SHARE clauses are silently ignored as the semantic intent
-	 * (preventing concurrent modification) is achieved by SQLite's architecture.
-	 */
+	override compileStatementForUnion(statement: SqlFragments): Mergeable[] {
+		// SQLite doesn't support parentheses around UNION subqueries e.g.
+		// ( SELECT 1 ) UNION ( SELECT 2 ) so turn it into a sub-select
+		return ["SELECT * FROM (", statement, ")"];
+	}
+
 	override compileLock(): string {
+		// SQLite uses connection-level locking rather than row-level locks
+		// Silently ignore a request to lock a row, since any write connection
+		// implicitly has a global lock on the whole DB
 		return "";
 	}
 

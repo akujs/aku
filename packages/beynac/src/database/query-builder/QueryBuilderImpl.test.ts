@@ -791,6 +791,57 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 			expect(result).toEqual([{ name: "team_a" }, { name: "team_b" }]);
 		});
 	});
+
+	describe(QueryBuilderImpl.prototype.union, () => {
+		const select = (n: number) => db.table("members").select("id").where("id = ?", n);
+
+		test("union combines results", async () => {
+			const result = await select(1).union(select(2)).orderBy("id").column();
+			expect(result).toEqual([1, 2]);
+		});
+
+		test("union removes duplicates", async () => {
+			const result = await select(1).union(select(1)).column();
+			expect(result).toEqual([1]);
+		});
+
+		test("unionAll keeps duplicates", async () => {
+			const result = await select(1).unionAll(select(1)).orderBy("id").column();
+			expect(result).toEqual([1, 1]);
+		});
+
+		test("multiple unions in chain", async () => {
+			const result = await select(1).union(select(2)).unionAll(select(2)).orderBy("id").column();
+			expect(result).toEqual([1, 2, 2]);
+		});
+
+		test("order by applies to combined result", async () => {
+			const result = await select(2).union(select(1)).orderBy("id DESC").column();
+			expect(result).toEqual([2, 1]);
+		});
+
+		test("limit and offset on union result", async () => {
+			const result = await select(1)
+				.union(select(2))
+				.union(select(3))
+				.orderBy("id")
+				.limit(2)
+				.offset(1)
+				.column();
+			expect(result).toEqual([2, 3]);
+		});
+
+		test("nested unions", async () => {
+			const inner = select(2).union(select(3));
+			const result = await select(1).union(inner).orderBy("id").column();
+			expect(result).toEqual([1, 2, 3]);
+		});
+
+		test("union components can use limit and order", async () => {
+			const result = await select(1).limit(1).union(select(2).orderBy("name")).column();
+			expect(result).toEqual([1, 2]);
+		});
+	});
 });
 
 describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) => {

@@ -644,3 +644,132 @@ describe("terminal method restrictions", () => {
 			.firstOrNull();
 	});
 });
+
+describe("union() and unionAll()", () => {
+	test("available on QueryBuilder", () => {
+		table("").union(table(""));
+		table("").unionAll(table(""));
+	});
+
+	test("available after where()", () => {
+		table("").where("").union(table(""));
+	});
+
+	test("available after select()", () => {
+		table("").select("").union(table(""));
+	});
+
+	test("available after orderBy()", () => {
+		table("").orderBy("").union(table(""));
+	});
+
+	test("can chain multiple unions mixing union and unionAll", () => {
+		table("").union(table("")).unionAll(table("")).union(table(""));
+	});
+
+	test("can chain to orderBy()", () => {
+		table("").union(table("")).orderBy("");
+		table("").unionAll(table("")).orderBy("");
+	});
+
+	test("can chain to limit() and offset()", () => {
+		table("").union(table("")).limit(10).offset(5);
+	});
+
+	test("cannot call orderBy() twice on union", () => {
+		table("")
+			.union(table(""))
+			.orderBy("")
+			// @ts-expect-error
+			.orderBy("");
+	});
+
+	test("can call addOrderBy() after orderBy() on union", () => {
+		table("").union(table("")).orderBy("").addOrderBy("");
+	});
+
+	test("can call replaceOrderBy() after orderBy() on union", () => {
+		table("").union(table("")).orderBy("").replaceOrderBy("");
+	});
+
+	test("cannot chain to where()", () => {
+		table("")
+			.union(table(""))
+			// @ts-expect-error
+			.where("");
+	});
+
+	test("cannot chain to select()", () => {
+		table("")
+			.union(table(""))
+			// @ts-expect-error
+			.select("");
+	});
+
+	test("cannot chain to join()", () => {
+		table("")
+			.union(table(""))
+			// @ts-expect-error
+			.join("");
+	});
+
+	test("cannot chain to groupBy()", () => {
+		table("")
+			.union(table(""))
+			// @ts-expect-error
+			.groupBy("");
+	});
+
+	test("cannot chain to insert()", () => {
+		table("")
+			.union(table(""))
+			// @ts-expect-error
+			.insert({});
+	});
+
+	test("cannot chain to deleteAll()", () => {
+		table("")
+			.union(table(""))
+			// @ts-expect-error
+			.deleteAll();
+	});
+
+	test("cannot chain to updateAll()", () => {
+		table("")
+			.union(table(""))
+			// @ts-expect-error
+			.updateAll({});
+	});
+
+	test("not available after insert()", () => {
+		table("")
+			.insert({})
+			// @ts-expect-error
+			.union(table(""));
+	});
+
+	test("not available after deleteAll()", () => {
+		table("")
+			.deleteAll()
+			// @ts-expect-error
+			.union(table(""));
+	});
+
+	test("not available after updateAll()", () => {
+		table("")
+			.updateAll({})
+			// @ts-expect-error
+			.union(table(""));
+	});
+
+	test("unionAll has same restrictions as union", () => {
+		table("")
+			.unionAll(table(""))
+			// @ts-expect-error
+			.where("");
+		table("")
+			.unionAll(table(""))
+			// @ts-expect-error
+			.select("");
+	});
+});

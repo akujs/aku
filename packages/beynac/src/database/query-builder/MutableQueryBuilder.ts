@@ -9,6 +9,7 @@ import type {
 	Row,
 	SqlFragments,
 	ThenExecutor,
+	UnionEntry,
 	UpdateFromPart,
 } from "../query-types.ts";
 
@@ -32,6 +33,7 @@ export class MutableQueryBuilder extends BaseClass implements QueryParts {
 	returningColumns: string[] | null = null;
 	thenExecutor: ThenExecutor | null = null;
 	prepare: boolean | null = null;
+	unionMembers: UnionEntry[] | null = null;
 
 	constructor(table: string) {
 		super();
@@ -116,5 +118,9 @@ export class MutableQueryBuilder extends BaseClass implements QueryParts {
 
 	setPrepare(value: boolean): void {
 		this.prepare = value;
+	}
+
+	pushUnionMember(type: "UNION" | "UNION ALL" | null, statement: SqlFragments): void {
+		(this.unionMembers ??= []).push({ type, statement });
 	}
 }

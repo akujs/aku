@@ -56,97 +56,97 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		return toHumanReadableSql(this.#getBuild());
 	}
 
-	join(clauseOrStatement: string | Statement, ...values: unknown[]): this {
+	join(clauseOrStatement: string | Statement, ...values: unknown[]): QueryBuilderImpl {
 		assertNoUndefinedValues(clauseOrStatement, values, "join");
 		const stmt = resolveToStatement(clauseOrStatement, values);
 		return this.#derive("pushJoin", ["JOIN", stmt]);
 	}
 
-	innerJoin(clauseOrStatement: string | Statement, ...values: unknown[]): this {
+	innerJoin(clauseOrStatement: string | Statement, ...values: unknown[]): QueryBuilderImpl {
 		assertNoUndefinedValues(clauseOrStatement, values, "innerJoin");
 		const stmt = resolveToStatement(clauseOrStatement, values);
 		return this.#derive("pushJoin", ["INNER JOIN", stmt]);
 	}
 
-	leftJoin(clauseOrStatement: string | Statement, ...values: unknown[]): this {
+	leftJoin(clauseOrStatement: string | Statement, ...values: unknown[]): QueryBuilderImpl {
 		assertNoUndefinedValues(clauseOrStatement, values, "leftJoin");
 		const stmt = resolveToStatement(clauseOrStatement, values);
 		return this.#derive("pushJoin", ["LEFT JOIN", stmt]);
 	}
 
-	rightJoin(clauseOrStatement: string | Statement, ...values: unknown[]): this {
+	rightJoin(clauseOrStatement: string | Statement, ...values: unknown[]): QueryBuilderImpl {
 		assertNoUndefinedValues(clauseOrStatement, values, "rightJoin");
 		const stmt = resolveToStatement(clauseOrStatement, values);
 		return this.#derive("pushJoin", ["RIGHT JOIN", stmt]);
 	}
 
-	fullJoin(clauseOrStatement: string | Statement, ...values: unknown[]): this {
+	fullJoin(clauseOrStatement: string | Statement, ...values: unknown[]): QueryBuilderImpl {
 		assertNoUndefinedValues(clauseOrStatement, values, "fullJoin");
 		const stmt = resolveToStatement(clauseOrStatement, values);
 		return this.#derive("pushJoin", ["FULL OUTER JOIN", stmt]);
 	}
 
-	crossJoin(table: string): this {
+	crossJoin(table: string): QueryBuilderImpl {
 		return this.#derive("pushJoin", ["CROSS JOIN", { sqlFragments: [table] }]);
 	}
 
-	select(...columns: string[]): this {
+	select(...columns: string[]): QueryBuilderImpl {
 		return this.#derive("setSelect", [columns]);
 	}
 
-	addSelect(...columns: string[]): this {
+	addSelect(...columns: string[]): QueryBuilderImpl {
 		return this.#derive("pushSelect", [columns]);
 	}
 
-	replaceSelect(...columns: string[]): this {
+	replaceSelect(...columns: string[]): QueryBuilderImpl {
 		return this.#derive("setSelect", [columns]);
 	}
 
-	where(conditionOrStatement: string | Statement, ...values: unknown[]): this {
+	where(conditionOrStatement: string | Statement, ...values: unknown[]): QueryBuilderImpl {
 		assertNoUndefinedValues(conditionOrStatement, values, "where");
 		const stmt = resolveToStatement(conditionOrStatement, values);
 		return this.#derive("pushWhere", [stmt]);
 	}
 
-	whereId(id: unknown): AnyQueryBuilder {
+	whereId(id: unknown): QueryBuilderImpl {
 		return this.where("id = ?", id);
 	}
 
-	groupBy(...columns: string[]): this {
+	groupBy(...columns: string[]): QueryBuilderImpl {
 		return this.#derive("pushGroupBy", [columns]);
 	}
 
-	having(conditionOrStatement: string | Statement, ...values: unknown[]): this {
+	having(conditionOrStatement: string | Statement, ...values: unknown[]): QueryBuilderImpl {
 		assertNoUndefinedValues(conditionOrStatement, values, "having");
 		const stmt = resolveToStatement(conditionOrStatement, values);
 		return this.#derive("pushHaving", [stmt]);
 	}
 
-	orderBy(...columns: string[]): this {
+	orderBy(...columns: string[]): QueryBuilderImpl {
 		return this.#derive("setOrderBy", [columns]);
 	}
 
-	addOrderBy(...columns: string[]): this {
+	addOrderBy(...columns: string[]): QueryBuilderImpl {
 		return this.#derive("pushOrderBy", [columns]);
 	}
 
-	replaceOrderBy(...columns: string[]): this {
+	replaceOrderBy(...columns: string[]): QueryBuilderImpl {
 		return this.#derive("setOrderBy", [columns]);
 	}
 
-	limit(n: number): this {
+	limit(n: number): QueryBuilderImpl {
 		return this.#derive("setLimit", [n]);
 	}
 
-	offset(n: number): this {
+	offset(n: number): QueryBuilderImpl {
 		return this.#derive("setOffset", [n]);
 	}
 
-	distinct(): this {
+	distinct(): QueryBuilderImpl {
 		return this.#derive("setDistinct", []);
 	}
 
-	withRowLock(options?: RowLockOptions): this {
+	withRowLock(options?: RowLockOptions): QueryBuilderImpl {
 		return this.#derive("setLock", [
 			{
 				mode: options?.mode ?? "update",
@@ -155,16 +155,16 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		]);
 	}
 
-	withPrepare(value = true): this {
+	withPrepare(value = true): QueryBuilderImpl {
 		return this.#derive("setPrepare", [value]);
 	}
 
-	insert(values: Row | Row[] | Statement, options?: InsertOptions): this {
+	insert(values: Row | Row[] | Statement, options?: InsertOptions): QueryBuilderImpl {
 		assertNoUndefinedValues(values, "insert");
 		return this.#derive("setInsert", [{ data: values, columns: options?.columns ?? null }], "run");
 	}
 
-	onConflict(options: ConflictOptions): this {
+	onConflict(options: ConflictOptions): QueryBuilderImpl {
 		const option = "on";
 		if (arrayWrap(options[option]).length === 0) {
 			throw new Error(`At least one '${option}' is required to onConflict({${option}: ...})`);
@@ -172,16 +172,16 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		return this.#derive("setConflict", [options]);
 	}
 
-	deleteAll(): this {
+	deleteAll(): QueryBuilderImpl {
 		return this.#derive("setDeleteAll", [], "run");
 	}
 
-	updateAll(values: Row): this {
+	updateAll(values: Row): QueryBuilderImpl {
 		assertNoUndefinedValues(values, "updateAll");
 		return this.#derive("setUpdateAll", [values], "run");
 	}
 
-	updateFrom(source: Row | Row[], options?: UpdateFromOptions): this {
+	updateFrom(source: Row | Row[], options?: UpdateFromOptions): QueryBuilderImpl {
 		const rows = arrayWrap(source);
 		if (rows.length === 0) {
 			throw new Error("updateFrom requires at least one row");
@@ -225,6 +225,28 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		return this.#derive("pushWhere", [stmt], "firstOrNull") as QueryBuilderWithById<Row | null>;
 	}
 
+	union(other: Statement): QueryBuilderImpl {
+		if (this.#getParts().unionMembers) {
+			return this.#derive("pushUnionMember", ["UNION", other]);
+		}
+		const commands: Command[] = [
+			["pushUnionMember", [null, this]],
+			["pushUnionMember", ["UNION", other]],
+		];
+		return new QueryBuilderImpl("", this.#grammar, this.#client, commands);
+	}
+
+	unionAll(other: Statement): QueryBuilderImpl {
+		if (this.#getParts().unionMembers) {
+			return this.#derive("pushUnionMember", ["UNION ALL", other]);
+		}
+		const commands: Command[] = [
+			["pushUnionMember", [null, this]],
+			["pushUnionMember", ["UNION ALL", other]],
+		];
+		return new QueryBuilderImpl("", this.#grammar, this.#client, commands);
+	}
+
 	// oxlint-disable-next-line unicorn/no-thenable -- intentionally awaitable API
 	then: Promise<unknown>["then"] = (onfulfilled, onrejected) => {
 		const executor = this.#getParts().thenExecutor ?? "all";
@@ -253,7 +275,7 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		method: K,
 		args: Parameters<MutableQueryBuilder[K]>,
 		thenExecutor?: ThenExecutor,
-	): this {
+	): QueryBuilderImpl {
 		let commands = this.#commands;
 
 		if (commands.length > this.#length) {
@@ -265,7 +287,7 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		if (thenExecutor) {
 			commands.push(["setThenExecutor", [thenExecutor]]);
 		}
-		return new QueryBuilderImpl(this.#from, this.#grammar, this.#client, commands) as this;
+		return new QueryBuilderImpl(this.#from, this.#grammar, this.#client, commands);
 	}
 
 	#getParts(): QueryParts {

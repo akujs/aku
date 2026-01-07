@@ -11,31 +11,7 @@
     "prefer-node-protocol": "error",
     "no-unused-private-class-members": "error",
     "no-console": "error",
-    "no-debugger": "error",
-    "no-restricted-imports": ["error", {
-      "patterns": [
-        {
-          "group": ["bun", "bun:*"],
-          "message": "Direct imports from 'bun' or 'bun:*' are only allowed in test files"
-        },
-        {
-          "group": ["**/contracts"],
-          "message": "Do not import from the central contracts.ts file"
-        },
-        {
-          "group": ["**/events"],
-          "message": "Do not import from the central events.ts file"
-        },
-        {
-          "group": ["**/errors"],
-          "message": "Do not import from the central errors.ts file"
-        },
-        {
-          "group": ["**/entry", "**/entry/**"],
-          "message": "Do not import from entry point files. Import from the specific implementation files instead."
-        }
-      ]
-    }]
+    "no-debugger": "error"
   },
   "overrides": [
     {
@@ -46,26 +22,6 @@
             {
               "group": ["node:path"],
               "message": "Use the abstraction from src/storage/path-operations.ts instead"
-            },
-            {
-              "group": ["bun", "bun:*"],
-              "message": "Direct imports from 'bun' or 'bun:*' are only allowed in test files"
-            },
-            {
-              "group": ["**/contracts"],
-              "message": "Do not import from the central contracts.ts file"
-            },
-            {
-              "group": ["**/events"],
-              "message": "Do not import from the central events.ts file"
-            },
-            {
-              "group": ["**/errors"],
-              "message": "Do not import from the central errors.ts file"
-            },
-            {
-              "group": ["**/*-entry-point"],
-              "message": "Do not import from entry point files. Import from the specific implementation files instead."
             }
           ]
         }]
