@@ -548,6 +548,24 @@ interface SelectClauseMethods<TReturn> {
 	distinct: (options?: DistinctOptions) => TReturn;
 
 	/**
+	 * Order results randomly using the database's RANDOM() function.
+	 *
+	 * For large tables this is inefficient as it generates a random number for
+	 * every matching row _before_ and sorts them before applying any LIMIT
+	 * you've added, but for relatively small data sets it's an easy way to
+	 * select one or more random rows.
+	 *
+	 * @example
+	 * // Get a random quote
+	 * await table("quotes").inRandomOrder().getFirstOrNull();
+	 *
+	 * @example
+	 * // Get 5 random products
+	 * table("products").inRandomOrder().limit(5)
+	 */
+	inRandomOrder: () => TReturn;
+
+	/**
 	 * Add row-level locking (FOR UPDATE or FOR SHARE) to the query.
 	 *
 	 * SQLite ignores this. However SQLite does not support concurrent write

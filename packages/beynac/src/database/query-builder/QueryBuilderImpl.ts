@@ -143,6 +143,10 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		return this.#derive("setDistinct", [options ?? {}]);
 	}
 
+	inRandomOrder(): QueryBuilderImpl {
+		return this.addOrderBy("RANDOM()");
+	}
+
 	withRowLock(options?: RowLockOptions): QueryBuilderImpl {
 		return this.#derive("setLock", [
 			{

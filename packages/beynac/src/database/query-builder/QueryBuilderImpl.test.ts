@@ -647,6 +647,19 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		});
 	});
 
+	describe(QueryBuilderImpl.prototype.inRandomOrder, () => {
+		test("generates ORDER BY RANDOM()", async () => {
+			const query = db.table("members").select("id").inRandomOrder();
+			expect(query.toHumanReadableSql()).toContain("ORDER BY RANDOM()");
+			expect(await query.get()).toHaveLength(6);
+		});
+
+		test("works with limit", async () => {
+			const result = await db.table("members").select("id").inRandomOrder().limit(2).get();
+			expect(result).toHaveLength(2);
+		});
+	});
+
 	describe(QueryBuilderImpl.prototype.withRowLock, () => {
 		test("locks rows for update by default", async () => {
 			await db.transaction(async () => {
