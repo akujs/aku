@@ -605,6 +605,46 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.get();
 			expect(result).toEqual([{ team_id: null }, { team_id: 1 }, { team_id: 2 }]);
 		});
+
+		test("DISTINCT ON returns first row per group (PostgreSQL only)", async () => {
+			const query = db
+				.table("members")
+				.select("team_id", "name", "score")
+				.distinct({ on: ["team_id"] })
+				.orderBy("team_id NULLS FIRST", "score DESC");
+
+			if (dialect === "postgresql") {
+				// PostgreSQL: Returns highest-scoring member from each team
+				const result = await query.get();
+				expect(result).toEqual([
+					{ team_id: null, name: "member_x1", score: 60 },
+					{ team_id: 1, name: "member_a3", score: 50 },
+					{ team_id: 2, name: "member_b2", score: 40 },
+				]);
+
+				// Verify SQL generation
+				expect(query.toHumanReadableSql()).toContain('DISTINCT ON ("team_id")');
+			} else {
+				// SQLite: Throws UnsupportedFeatureError
+				expect(async () => await query.get()).toThrow("does not support DISTINCT ON");
+			}
+		});
+
+		test("DISTINCT ON with multiple columns", async () => {
+			const query = db
+				.table("members")
+				.select("team_id", "name")
+				.distinct({ on: ["team_id", "name"] })
+				.orderBy("team_id NULLS FIRST", "name");
+
+			if (dialect === "postgresql") {
+				const result = await query.get();
+				// All rows should be returned since combination is unique
+				expect(result.length).toBe(await db.table("members").getCount());
+			} else {
+				expect(async () => await query.get()).toThrow("does not support DISTINCT ON");
+			}
+		});
 	});
 
 	describe(QueryBuilderImpl.prototype.withRowLock, () => {

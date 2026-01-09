@@ -5,6 +5,7 @@ import type { DatabaseGrammar } from "../grammar/DatabaseGrammar.ts";
 import type {
 	AnyQueryBuilder,
 	ConflictOptions,
+	DistinctOptions,
 	Executor,
 	InsertOptions,
 	QueryBuilder,
@@ -138,8 +139,8 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		return this.#derive("setOffset", [n]);
 	}
 
-	distinct(): QueryBuilderImpl {
-		return this.#derive("setDistinct", []);
+	distinct(options?: DistinctOptions): QueryBuilderImpl {
+		return this.#derive("setDistinct", [options ?? {}]);
 	}
 
 	withRowLock(options?: RowLockOptions): QueryBuilderImpl {

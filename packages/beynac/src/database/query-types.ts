@@ -14,6 +14,14 @@ export interface RowLockOptions {
 	onLocked?: "wait" | "fail" | "skip" | undefined;
 }
 
+export interface DistinctOptions {
+	/**
+	 * Columns for DISTINCT ON clause (PostgreSQL only - other databases will
+	 * throw an error if you provide this option)
+	 */
+	on?: string[] | undefined;
+}
+
 export type JoinType =
 	| "JOIN"
 	| "INNER JOIN"
@@ -103,7 +111,7 @@ export interface QueryParts {
 	readonly orderBy: readonly string[];
 	readonly limit: number | null;
 	readonly offset: number | null;
-	readonly distinct: boolean;
+	readonly distinct: DistinctOptions | null;
 	readonly lock: LockPart | null;
 	readonly insert: InsertPart | null;
 	readonly conflict: ConflictOptions | null;
@@ -534,8 +542,10 @@ interface SelectClauseMethods<TReturn> {
 	 *
 	 * @example
 	 * table("artworks").select("artist_id").distinct()
+	 *
+	 * @param options.on - Columns for DISTINCT ON clause (PostgreSQL only - other databases will throw an error if you provide this option)
 	 */
-	distinct: () => TReturn;
+	distinct: (options?: DistinctOptions) => TReturn;
 
 	/**
 	 * Add row-level locking (FOR UPDATE or FOR SHARE) to the query.

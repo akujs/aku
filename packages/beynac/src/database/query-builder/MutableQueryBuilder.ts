@@ -1,6 +1,7 @@
 import { BaseClass } from "../../utils.ts";
 import type {
 	ConflictOptions,
+	DistinctOptions,
 	Executor,
 	InsertPart,
 	JoinEntry,
@@ -23,7 +24,7 @@ export class MutableQueryBuilder extends BaseClass implements QueryParts {
 	orderBy: string[] = [];
 	limit: number | null = null;
 	offset: number | null = null;
-	distinct: boolean = false;
+	distinct: DistinctOptions | null = null;
 	lock: LockPart | null = null;
 	insert: InsertPart | null = null;
 	conflict: ConflictOptions | null = null;
@@ -80,8 +81,8 @@ export class MutableQueryBuilder extends BaseClass implements QueryParts {
 		this.offset = n;
 	}
 
-	setDistinct(): void {
-		this.distinct = true;
+	setDistinct(options: DistinctOptions | null): void {
+		this.distinct = options;
 	}
 
 	setLock(lock: LockPart): void {

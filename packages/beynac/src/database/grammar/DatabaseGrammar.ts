@@ -1,6 +1,6 @@
 import { arrayWrap, BaseClass } from "../../utils.ts";
 import type { TransactionOptions } from "../DatabaseClient.ts";
-import { DatabaseError } from "../database-errors.ts";
+import { DatabaseError, UnsupportedFeatureError } from "../database-errors.ts";
 import type { SqlDialect } from "../query-builder/dialect.ts";
 import { quoteIdentifiers } from "../query-builder/quoteIdentifiers.ts";
 import {
@@ -132,13 +132,14 @@ export abstract class DatabaseGrammar extends BaseClass {
 	}
 
 	compileSelect(state: QueryParts): SqlFragments {
-		const selectClause =
-			"SELECT" +
-			(state.distinct ? " DISTINCT " : " ") +
-			(state.select.length > 0 ? state.select.join(", ") : "*");
-
 		return this.mergeAndQuote([
-			selectClause,
+			"SELECT",
+			state.distinct == null
+				? null
+				: state.distinct.on
+					? this.compileDistinctOn(state.distinct.on)
+					: "DISTINCT",
+			state.select.length > 0 ? state.select.join(", ") : "*",
 			"FROM",
 			state.table,
 			state.joins.flatMap(({ type, clause }) => [this.compileJoin(type, "").trim(), clause]),
@@ -149,6 +150,10 @@ export abstract class DatabaseGrammar extends BaseClass {
 			limitOffsetClauses(state),
 			state.lock ? this.compileLock(state.lock) : null,
 		]);
+	}
+
+	protected compileDistinctOn(_: string[]): string {
+		throw new UnsupportedFeatureError("DISTINCT ON", this.dialect);
 	}
 
 	compileStatementForUnion(statement: SqlFragments): Mergeable[] {
