@@ -4,7 +4,6 @@ import { ExecutableStatementBase } from "./ExecutableStatementBase.ts";
 import type {
 	ExecutableStatement,
 	ExecutableStatementWithoutClient,
-	Row,
 	StringOrFragment,
 } from "./query-types.ts";
 
@@ -36,9 +35,5 @@ export class ExecutableStatementImpl
 	protected getClient(): DatabaseClient {
 		const app = getFacadeApplication();
 		return app.database.client(this.#clientName);
-	}
-
-	get(): Promise<Row[]> {
-		return this.getAll();
 	}
 }

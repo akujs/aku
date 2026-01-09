@@ -25,6 +25,8 @@ import type {
 
 const DEFAULT_LIMIT_FOR_OFFSET: number = 2 ** 31 - 1;
 
+export const NO_OP_SENTINEL = "$beynac-no-op$";
+
 export type TransactionBeginOptions = Pick<TransactionOptions, "isolation" | "sqliteMode">;
 
 /**
@@ -187,8 +189,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 
 		const rows = arrayWrap(insert.data);
 		if (rows.length === 0) {
-			// Should never happen because we exit early on zero row insert
-			throw new Error("Internal error: cannot compile INSERT without data");
+			return { sqlFragments: [NO_OP_SENTINEL] };
 		}
 
 		const columns = insert.columns ?? Object.keys(rows[0]);

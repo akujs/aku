@@ -6,7 +6,6 @@ import type {
 	AnyQueryBuilder,
 	ConflictOptions,
 	DistinctOptions,
-	Executor,
 	InsertOptions,
 	QueryBuilder,
 	QueryParts,
@@ -168,7 +167,7 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 			QueryBuilderImpl
 		: QueryBuilderImpl {
 		assertNoUndefinedValues(values, "insert");
-		return this.#derive("setInsert", [{ data: values, columns: options?.columns ?? null }], "run");
+		return this.#derive("setInsert", [{ data: values, columns: options?.columns ?? null }]);
 	}
 
 	onConflict(options: ConflictOptions): QueryBuilderImpl {
@@ -180,12 +179,12 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 	}
 
 	deleteAll(): QueryBuilderImpl {
-		return this.#derive("setDeleteAll", [], "run");
+		return this.#derive("setDeleteAll", []);
 	}
 
 	updateAll(values: Row): QueryBuilderImpl {
 		assertNoUndefinedValues(values, "updateAll");
-		return this.#derive("setUpdateAll", [values], "run");
+		return this.#derive("setUpdateAll", [values]);
 	}
 
 	updateFrom(source: Row | Row[], options?: UpdateFromOptions): QueryBuilderImpl {
@@ -204,17 +203,31 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 			);
 		}
 
-		return this.#derive("setUpdateFrom", [{ data: rows, on, updateColumns }], "run");
+		return this.#derive("setUpdateFrom", [{ data: rows, on, updateColumns }]);
 	}
 
 	returning(...columns: string[]): QueryBuilderImpl {
-		const executor = this.#isSingleRowInsert() ? "getFirstOrFail" : "getAll";
-		return this.#derive("setReturning", [columns], executor);
+		return this.#derive("setReturning", [columns]);
 	}
 
 	returningId(): QueryBuilderImpl {
-		const executor = this.#isSingleRowInsert() ? "getScalar" : "getColumn";
-		return this.#derive("setReturning", [["id"]], executor);
+		return this.#derive("setReturning", [["id"]]);
+	}
+
+	runAndReturn(...columns: string[]): Promise<Row | Row[]> {
+		const builder = this.returning(...columns);
+		if (this.#isSingleRowInsert()) {
+			return builder.getFirstOrFail();
+		}
+		return builder.getAll();
+	}
+
+	runAndReturnId(): Promise<unknown> {
+		const builder = this.returningId();
+		if (this.#isSingleRowInsert()) {
+			return builder.getScalar();
+		}
+		return builder.getColumn();
 	}
 
 	getByIdOrFail(id: unknown): Promise<Row> {
@@ -275,21 +288,8 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		return new QueryBuilderImpl(this.#grammar, this.#client, commands);
 	}
 
-	get(): Promise<unknown> {
-		const executor = this.#getParts().executor ?? "getAll";
-		if (this.#isEmptyArrayInsert()) {
-			return Promise.resolve(executor === "run" ? { rowsAffected: 0 } : []);
-		}
-		return this[executor]();
-	}
-
 	static table(table: string, grammar: DatabaseGrammar, client: DatabaseClient): QueryBuilder {
 		return new QueryBuilderImpl(grammar, client, [["setTable", [table]]]) as QueryBuilder;
-	}
-
-	#isEmptyArrayInsert(): boolean {
-		const insert = this.#getParts().insert;
-		return insert !== null && Array.isArray(insert.data) && insert.data.length === 0;
 	}
 
 	#isSingleRowInsert(): boolean {
@@ -300,7 +300,6 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 	#derive<K extends MutableQueryBuilderMethod>(
 		method: K,
 		args: Parameters<MutableQueryBuilder[K]>,
-		executor?: Executor,
 	): QueryBuilderImpl {
 		let commands = this.#commands;
 
@@ -310,9 +309,6 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		}
 
 		commands.push([method, args]);
-		if (executor) {
-			commands.push(["setExecutor", [executor]]);
-		}
 		return new QueryBuilderImpl(this.#grammar, this.#client, commands);
 	}
 

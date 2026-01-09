@@ -233,7 +233,7 @@ describe(PostgresDatabaseAdapter, () => {
 		});
 
 		test("withPrepare(false) on query builder overrides adapter default", async () => {
-			await db.table("test").select("1").withPrepare(false).get();
+			await db.table("test").select("1").withPrepare(false).getAll();
 			expect(getSqlAndPrepare()).toEqual([['SELECT 1 FROM "test"', false]]);
 		});
 

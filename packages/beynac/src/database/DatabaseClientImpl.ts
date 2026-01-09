@@ -17,6 +17,7 @@ import {
 	TransactionPreCommitEvent,
 	TransactionRetryingEvent,
 } from "./database-events.ts";
+import { NO_OP_SENTINEL } from "./grammar/DatabaseGrammar.ts";
 import { QueryBuilderImpl } from "./query-builder/QueryBuilderImpl.ts";
 import {
 	assertNoUndefinedParams,
@@ -72,11 +73,15 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 				);
 			}
 
-			const startEvent = new QueryExecutingEvent(this.#getEventInit({ statement }));
-			this.#dispatcher.dispatchIfHasListeners(QueryExecutingEvent, () => startEvent);
-
 			const expanded = expandArraysAndSubqueries(statement);
 			const sqlString = this.#adapter.grammar.compileFragments(expanded);
+
+			if (sqlString === NO_OP_SENTINEL) {
+				return Promise.resolve({ rows: [], rowsAffected: 0 });
+			}
+
+			const startEvent = new QueryExecutingEvent(this.#getEventInit({ statement }));
+			this.#dispatcher.dispatchIfHasListeners(QueryExecutingEvent, () => startEvent);
 			const params = getSqlFragmentsParams(expanded);
 			assertNoUndefinedParams(params, sqlString);
 

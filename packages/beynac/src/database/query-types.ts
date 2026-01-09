@@ -49,15 +49,6 @@ export interface LockPart {
 	onLocked: "wait" | "fail" | "skip";
 }
 
-export type Executor =
-	| "run"
-	| "getAll"
-	| "getColumn"
-	| "getScalar"
-	| "getFirstOrFail"
-	| "getFirstOrNotFound"
-	| "getFirstOrNull";
-
 export interface ConflictOptions {
 	/**
 	 * Column(s) that define the unique constraint
@@ -119,7 +110,6 @@ export interface QueryParts {
 	readonly updateFrom: UpdateFromPart | null;
 	readonly deleteAll: boolean;
 	readonly returningColumns: readonly string[] | null;
-	readonly executor: Executor | null;
 	readonly prepare: boolean | null;
 	readonly exists: boolean;
 	readonly unionMembers: readonly UnionEntry[] | null;
@@ -146,21 +136,24 @@ export interface StatementResult {
 	rowsAffected: number;
 }
 
-// oxlint-disable-next-line no-explicit-any -- deliberate public API choice
-export type Row = Record<string, any>;
+/**
+ * A row of data returned by a query.
+ */
+export type Row = Record<
+	string,
+	// oxlint-disable-next-line no-explicit-any -- deliberate public API choice
+	any
+>;
 
 /**
  * A SQL statement with an associated database client that can be executed
- * directly by awaiting or calling execution methods like `.all()`.
+ * by calling execution methods like `.getAll()` or `.run()`.
  */
-export interface ExecutableStatement<TThen = Row[]>
-	extends Statement,
-		StatementExecutionMethods<TThen> {}
+export interface ExecutableStatement extends Statement, StatementExecutionMethods {}
 
 /**
- * A SQL statement with no associated database client. Executing it by awaiting
- * awaiting or calling execution methods like `.all()` will use the default
- * database client.
+ * A SQL statement with no associated database client. Calling execution methods
+ * like `.getAll()` will use the default database client.
  */
 export interface ExecutableStatementWithoutClient extends Statement, StatementExecutionMethods {
 	/**
@@ -169,7 +162,7 @@ export interface ExecutableStatementWithoutClient extends Statement, StatementEx
 	on(clientName: string): ExecutableStatement;
 }
 
-interface StatementExecutionMethods<TGet = Row[]> {
+interface StatementExecutionMethods {
 	/**
 	 * Execute the statement on the default client and return the raw result
 	 * with rows and rowsAffected.
@@ -213,14 +206,6 @@ interface StatementExecutionMethods<TGet = Row[]> {
 	getColumn(): Promise<any[]>;
 
 	/**
-	 * Execute the statement and return the result.
-	 *
-	 * @example
-	 * const allRows = await sql`SELECT * FROM users`.get();
-	 */
-	get(): Promise<TGet>;
-
-	/**
 	 * Override the default behavior of whether to use prepared statements.
 	 *
 	 * This only has an effect on adapters that support prepared statements -
@@ -228,13 +213,10 @@ interface StatementExecutionMethods<TGet = Row[]> {
 	 *
 	 * @param value - Whether to use prepared statements. Defaults to `true`.
 	 */
-	withPrepare(value?: boolean): ExecutableStatement<TGet>;
+	withPrepare(value?: boolean): ExecutableStatement;
 }
 
-type MutationExecutionMethods = Pick<
-	StatementExecutionMethods<MutationResult>,
-	"run" | "get" | "withPrepare"
->;
+type MutationExecutionMethods = Pick<StatementExecutionMethods, "run" | "withPrepare">;
 
 /**
  * An interface with all query builder methods. Normally you will be working
@@ -248,12 +230,12 @@ type MutationExecutionMethods = Pick<
  */
 export interface AnyQueryBuilder
 	extends Statement,
-		// oxlint-disable-next-line no-explicit-any -- deliberate public API choice
-		StatementExecutionMethods<any>,
+		StatementExecutionMethods,
 		BulkMutationMethods<AnyQueryBuilder>,
 		InsertMethod<AnyQueryBuilder, AnyQueryBuilder>,
+		ReturningMethods,
 		// oxlint-disable-next-line no-explicit-any -- deliberate public API choice
-		ReturningMethods<any, any>,
+		RunAndReturnMethods<any, any>,
 		WhereMethods<AnyQueryBuilder>,
 		UnionMethods<AnyQueryBuilder>,
 		SelectSetInitialColumns<AnyQueryBuilder>,
@@ -320,7 +302,8 @@ export type SelectQueryBuilder<
 export interface QueryBuilderWithInsert<TReturning, TReturningId>
 	extends Statement,
 		MutationExecutionMethods,
-		ReturningMethods<TReturning, TReturningId> {
+		ReturningMethods,
+		RunAndReturnMethods<TReturning, TReturningId> {
 	/**
 	 * Handle conflicts when inserting rows that violate unique constraints.
 	 *
@@ -369,8 +352,9 @@ export type QueryBuilderWithInsertArray = QueryBuilderWithInsert<
 export interface QueryBuilderWithBulkMutation
 	extends Statement,
 		MutationExecutionMethods,
+		ReturningMethods,
 		// oxlint-disable-next-line no-explicit-any -- deliberate public API choice
-		ReturningMethods<Row[], any[]> {}
+		RunAndReturnMethods<Row[], any[]> {}
 
 interface SelectSetInitialColumns<TReturn> extends SelectModifyColumns<TReturn> {
 	/**
@@ -430,7 +414,29 @@ interface OrderByModify<TReturn> {
 	replaceOrderBy: (...columns: string[]) => TReturn;
 }
 
-interface SelectClauseMethods<TReturn> {
+interface LimitOffsetMethods<TReturn> {
+	/**
+	 * Set the LIMIT clause. Replaces any previous limit.
+	 *
+	 * @example
+	 * table("artists").limit(10)
+	 */
+	limit: (n: number) => TReturn;
+
+	/**
+	 * Set the OFFSET clause. Replaces any previous offset.
+	 *
+	 * SQL does not permit an offset without a limit. If you do not provide a
+	 * limit, then a default large limit of 2^31-1 will be automatically added.
+	 *
+	 * @example
+	 * table("artists").limit(10).offset(20) // Records 21-30
+	 * table("artists").offset(20) // Records 21 onwards
+	 */
+	offset: (n: number) => TReturn;
+}
+
+interface SelectClauseMethods<TReturn> extends LimitOffsetMethods<TReturn> {
 	/**
 	 * Add a default JOIN clause (semantically equivalent to INNER JOIN).
 	 *
@@ -516,26 +522,6 @@ interface SelectClauseMethods<TReturn> {
 	 * table("artworks").select("artist_id", "COUNT(*)").groupBy("artist_id")
 	 */
 	groupBy: (...columns: string[]) => TReturn;
-
-	/**
-	 * Set the LIMIT clause. Replaces any previous limit.
-	 *
-	 * @example
-	 * table("artists").limit(10)
-	 */
-	limit: (n: number) => TReturn;
-
-	/**
-	 * Set the OFFSET clause. Replaces any previous offset.
-	 *
-	 * SQL does not permit an offset without a limit. If you do not provide a
-	 * limit, then a default large limit of 2^31-1 will be automatically added.
-	 *
-	 * @example
-	 * table("artists").limit(10).offset(20) // Records 21-30
-	 * table("artists").offset(20) // Records 21 onwards
-	 */
-	offset: (n: number) => TReturn;
 
 	/**
 	 * Add DISTINCT to the SELECT clause.
@@ -743,7 +729,7 @@ interface UnionMethods<TReturn> {
 export type QueryBuilderWithUnion<TOrderBy extends boolean = false> = Statement &
 	StatementExecutionMethods &
 	UnionMethods<QueryBuilderWithUnion<TOrderBy>> &
-	Pick<SelectClauseMethods<QueryBuilderWithUnion<TOrderBy>>, "limit" | "offset"> &
+	LimitOffsetMethods<QueryBuilderWithUnion<TOrderBy>> &
 	(TOrderBy extends true
 		? OrderByModify<QueryBuilderWithUnion<true>>
 		: OrderBySetInitial<QueryBuilderWithUnion<true>>);
@@ -785,39 +771,86 @@ interface InsertMethod<TSingle, TArray> {
 	): V extends unknown[] ? TArray : V extends Statement ? TArray : TSingle;
 }
 
-/**
- * Query builder after calling returning() or returningId() on an insert/update/delete query
- */
-export type QueryBuilderWithReturning<T> = Statement & StatementExecutionMethods<T>;
-
-interface ReturningMethods<TReturning, TReturningId> {
+interface ReturningMethods {
 	/**
-	 * Add a RETURNING clause to return specified columns from inserted row(s).
+	 * Add a `RETURNING` clause to the query to return the data of affected rows.
+	 * This method can be used with insert(), updateAll(), and deleteAll().
 	 *
-	 * This returns an object containing the selected columns if you inserted a
-	 * single object, or an array if you inserted an array of
-	 * objects.
+	 * This method does not execute the query, you need to call an execution
+	 * method like .getAll(). For a shorthand, you may use `.runAndReturn()` to
+	 * execute the query and return an array of rows.
 	 *
 	 * @example
-	 * const row = await table("users")
+	 * const rows = await table("users")
 	 *   .insert({ name: "Alice", age: 30 })
-	 *   .returning("id", "created_at");
+	 *   .returning("id", "created_at")
+	 *   .getAll();
+	 *
+	 * @param columns - Columns to return. Defaults to all columns (`*`).
 	 */
-	returning(...columns: string[]): QueryBuilderWithReturning<TReturning>;
+	returning(...columns: string[]): ExecutableStatement;
 
 	/**
-	 * Add a RETURNING clause to return the auto-generated IDs of inserted
-	 * row(s).
+	 * Add a `RETURNING "id"` clause to the query to return the ids of affected
+	 * rows. This method can be used with insert(), updateAll(), and deleteAll().
 	 *
-	 * This returns the id if you inserted an object, or an array of ids if you
-	 * inserted an array of objects.
+	 * This method does not execute the query, you need to call an execution
+	 * method like `.getColumn()`. For a shorthand, you may use
+	 * `.runAndReturnId()` execute the query and return ids as an array.
 	 *
 	 * @example
-	 * const id = await table("users")
+	 * const aliceId = await table("users")
 	 *   .insert({ name: "Alice" })
-	 *   .returningId();
+	 *   .returningId()
+	 *   .getScalar();
+	 *
+	 * @example
+	 * const deletedIds = await table("users")
+	 *   .where("archived = ?", true)
+	 *   .returningId()
+	 *   .getColumn();
 	 */
-	returningId(): QueryBuilderWithReturning<TReturningId>;
+	returningId(): ExecutableStatement;
+}
+
+interface RunAndReturnMethods<TReturning, TReturningId> {
+	/**
+	 * Execute the query and return the affected rows.
+	 *
+	 * Returns an array of rows, except when an object (as opposed to an
+	 * array) was passed to insert() in which case it returns a single row
+	 *
+	 * @example
+	 * const row: Row = await table("users")
+	 *   .insert({ name: "Alice", age: 30 })
+	 *   .runAndReturn("id", "created_at");
+	 *
+	 * @example
+	 * const rows: Row[] = await table("users")
+	 *   .insert([{ name: "Alice", age: 30 }])
+	 *   .runAndReturn("id", "created_at");
+	 *
+	 * @param columns - Columns to return. Defaults to all columns (`*`).
+	 */
+	runAndReturn(...columns: string[]): Promise<TReturning>;
+
+	/**
+	 * Execute the query and return the ids of affected rows
+	 *
+	 * Returns an array of ids, except when an object (as opposed to an
+	 * array) was passed to insert() in which case it returns a single id
+	 *
+	 * @example
+	 * const id: string = await table("users")
+	 *   .insert({ name: "Alice" })
+	 *   .runAndReturnId();
+	 *
+	 * @example
+	 * const ids: string[] = await table("users")
+	 *   .insert([{ name: "Alice" }])
+	 *   .runAndReturnId();
+	 */
+	runAndReturnId(): Promise<TReturningId>;
 }
 
 interface BulkMutationMethods<TReturn = QueryBuilderWithBulkMutation> {

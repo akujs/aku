@@ -57,11 +57,6 @@ describe("Sql execution methods", () => {
 		const names = await sql`SELECT name FROM test ORDER BY id`.getColumn();
 		expect(names).toEqual(["Alice", "Bob"]);
 	});
-
-	test("get() returns all rows", async () => {
-		const rows = await sql`SELECT name FROM test ORDER BY id`.get();
-		expect(rows).toEqual([{ name: "Alice" }, { name: "Bob" }]);
-	});
 });
 
 describe(ExecutableStatementImpl.prototype.getFirstOrNotFound, () => {
@@ -130,15 +125,5 @@ describe("client routing", () => {
 		const result = await sql`SELECT db_name FROM info`.getFirstOrFail();
 
 		expect(result.db_name).toBe("default");
-	});
-
-	test("get() on sql`...`.on() runs getAll() on named client", async () => {
-		createTestApplication({
-			database: { default: defaultAdapter, additional: { additional: additionalAdapter } },
-		});
-
-		const rows = await sql`SELECT db_name FROM info`.on("additional").get();
-
-		expect(rows).toEqual([{ db_name: "additional" }]);
 	});
 });

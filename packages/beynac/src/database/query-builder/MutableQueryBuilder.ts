@@ -2,7 +2,6 @@ import { BaseClass } from "../../utils.ts";
 import type {
 	ConflictOptions,
 	DistinctOptions,
-	Executor,
 	InsertPart,
 	JoinEntry,
 	JoinType,
@@ -32,7 +31,6 @@ export class MutableQueryBuilder extends BaseClass implements QueryParts {
 	updateFrom: UpdateFromPart | null = null;
 	deleteAll: boolean = false;
 	returningColumns: string[] | null = null;
-	executor: Executor | null = null;
 	prepare: boolean | null = null;
 	exists: boolean = false;
 	unionMembers: UnionEntry[] | null = null;
@@ -111,10 +109,6 @@ export class MutableQueryBuilder extends BaseClass implements QueryParts {
 
 	setReturning(columns: string[]): void {
 		this.returningColumns = columns;
-	}
-
-	setExecutor(executor: Executor): void {
-		this.executor = executor;
 	}
 
 	setPrepare(value: boolean): void {

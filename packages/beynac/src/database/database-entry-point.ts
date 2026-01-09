@@ -39,8 +39,8 @@ export type {
 	QueryBuilderWithInsert,
 	QueryBuilderWithInsertArray,
 	QueryBuilderWithInsertSingle,
-	QueryBuilderWithReturning,
 	QueryBuilderWithUnion,
+	Row,
 	SelectQueryBuilder,
 } from "./query-types.ts";
 export { sql } from "./sql.ts";

@@ -5,8 +5,6 @@ import { StatementImpl } from "./StatementImpl.ts";
 export abstract class ExecutableStatementBase extends StatementImpl {
 	protected abstract getClient(): DatabaseClient;
 
-	abstract get(): Promise<unknown>;
-
 	abstract withPrepare(value?: boolean): ExecutableStatementBase;
 
 	run(): Promise<StatementResult> {

@@ -10,7 +10,7 @@ import type { DatabaseClient } from "../DatabaseClient.ts";
 import { DatabaseImpl } from "../DatabaseImpl.ts";
 import type { SharedTestConfig } from "../database-test-utils.ts";
 import { PostgresGrammar } from "../grammar/PostgresGrammar.ts";
-import type { MutationResult, QueryBuilder, Row } from "../query-types.ts";
+import type { QueryBuilder, Row, StatementResult } from "../query-types.ts";
 import { sql } from "../sql.ts";
 import { QueryBuilderImpl } from "./QueryBuilderImpl.ts";
 
@@ -201,7 +201,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 	describe(QueryBuilderImpl.prototype.select, () => {
 		test("selects all columns when not called", async () => {
-			const result = await db.table("teams").orderBy("id").get();
+			const result = await db.table("teams").orderBy("id").getAll();
 
 			expectTypeOf(result).toEqualTypeOf<Row[]>();
 
@@ -213,7 +213,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		});
 
 		test("selects specific columns", async () => {
-			const result = await db.table("teams").select("name").orderBy("id").get();
+			const result = await db.table("teams").select("name").orderBy("id").getAll();
 
 			expectTypeOf(result).toEqualTypeOf<Row[]>();
 
@@ -221,14 +221,14 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		});
 
 		test("selects columns with keyword names", async () => {
-			const result = await db.table("teams").select("order").orderBy("id").get();
+			const result = await db.table("teams").select("order").orderBy("id").getAll();
 			expect(result).toEqual([{ order: "first" }, { order: "second" }, { order: "third" }]);
 		});
 	});
 
 	describe(QueryBuilderImpl.prototype.addSelect, () => {
 		test("adds columns to existing selection", async () => {
-			const result = await db.table("teams").select("id").addSelect("name").orderBy("id").get();
+			const result = await db.table("teams").select("id").addSelect("name").orderBy("id").getAll();
 
 			expect(result).toEqual([
 				{ id: 1, name: "team_a" },
@@ -245,7 +245,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.select("id", "name")
 				.replaceSelect("order")
 				.orderBy("id")
-				.get();
+				.getAll();
 
 			expect(result).toEqual([{ order: "first" }, { order: "second" }, { order: "third" }]);
 		});
@@ -256,7 +256,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.select("id", "name")
 				.replaceSelect("id", "order")
 				.orderBy("id")
-				.get();
+				.getAll();
 			expect(result).toEqual([
 				{ id: 1, order: "first" },
 				{ id: 2, order: "second" },
@@ -270,7 +270,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.select("id", "name")
 				.replaceSelect()
 				.orderBy("id")
-				.get();
+				.getAll();
 			expect(result).toEqual([
 				{ id: 1, name: "team_a", order: "first" },
 				{ id: 2, name: "team_b", order: "second" },
@@ -286,7 +286,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.select("name")
 				.where("score > 30")
 				.orderBy("id")
-				.get();
+				.getAll();
 			expect(result).toEqual([{ name: "member_b2" }, { name: "member_a3" }, { name: "member_x1" }]);
 		});
 
@@ -297,7 +297,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.where("score > 20")
 				.where("score < 50")
 				.orderBy("id");
-			const result = await query.get();
+			const result = await query.getAll();
 			expect(result).toEqual([{ name: "member_b1" }, { name: "member_b2" }]);
 
 			// clauses should be wrapped in parentheses
@@ -312,7 +312,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.select("name")
 				.where("order = 'first' OR order = 'third'")
 				.orderBy("id")
-				.get();
+				.getAll();
 			expect(result).toEqual([{ name: "team_a" }, { name: "team_c" }]);
 		});
 	});
@@ -324,7 +324,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.select("members.name", "teams.name AS team_name")
 				.join("teams ON teams.id = members.team_id")
 				.orderBy("members.id")
-				.get();
+				.getAll();
 			expect(result).toEqual([
 				{ name: "member_a1", team_name: "team_a" },
 				{ name: "member_a2", team_name: "team_a" },
@@ -342,7 +342,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.select("members.name", "teams.name AS team_name")
 				.innerJoin("teams ON teams.id = members.team_id")
 				.orderBy("members.id")
-				.get();
+				.getAll();
 			expect(result).toEqual([
 				{ name: "member_a1", team_name: "team_a" },
 				{ name: "member_a2", team_name: "team_a" },
@@ -360,7 +360,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.select("members.name", "teams.name AS team_name")
 				.leftJoin("teams ON teams.id = members.team_id")
 				.orderBy("members.id")
-				.get();
+				.getAll();
 			expect(result).toEqual([
 				{ name: "member_a1", team_name: "team_a" },
 				{ name: "member_a2", team_name: "team_a" },
@@ -380,7 +380,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 					.select("members.name", "teams.name AS team_name")
 					.rightJoin("teams ON teams.id = members.team_id")
 					.orderBy("teams.id", "members.id")
-					.get();
+					.getAll();
 				expect(result).toEqual([
 					{ name: "member_a1", team_name: "team_a" },
 					{ name: "member_a2", team_name: "team_a" },
@@ -399,7 +399,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 					.select("members.name", "teams.name AS team_name")
 					.fullJoin("teams ON teams.id = members.team_id")
 					.orderBy("members.id NULLS LAST", "teams.id")
-					.get();
+					.getAll();
 				expect(result).toEqual([
 					{ name: "member_a1", team_name: "team_a" },
 					{ name: "member_a2", team_name: "team_a" },
@@ -420,7 +420,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.select("teams.name AS team_name", "tags.tag")
 				.crossJoin("tags")
 				.orderBy("teams.id", "tags.id")
-				.get();
+				.getAll();
 			expect(result).toEqual([
 				{ team_name: "team_a", tag: "tag_x" },
 				{ team_name: "team_a", tag: "tag_y" },
@@ -440,7 +440,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.where("team_id IS NOT NULL")
 				.groupBy("team_id")
 				.orderBy("team_id")
-				.get();
+				.getAll();
 
 			expect(result).toEqual([
 				{ team_id: 1, count: 3 },
@@ -457,7 +457,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.groupBy("team_id")
 				.having("COUNT(*) > 2")
 				.orderBy("team_id")
-				.get();
+				.getAll();
 
 			expect(result).toEqual([{ team_id: 1, count: 3 }]);
 		});
@@ -470,7 +470,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.having("COUNT(*) > 2")
 				.having("SUM(score) > 0")
 				.orderBy("team_id");
-			const result = await query.get();
+			const result = await query.getAll();
 			expect(result).toEqual([{ team_id: 1, count: 3 }]);
 			expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
 				`"SELECT "team_id", COUNT(*) AS "count" FROM "members" GROUP BY "team_id" HAVING ( COUNT(*) > 2 ) AND ( SUM("score") > 0 ) ORDER BY "team_id""`,
@@ -480,7 +480,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 	describe(QueryBuilderImpl.prototype.orderBy, () => {
 		test("orders ascending by default", async () => {
-			const result = await db.table("members").select("name", "score").orderBy("score").get();
+			const result = await db.table("members").select("name", "score").orderBy("score").getAll();
 			expect(result).toEqual([
 				{ name: "member_a1", score: 10 },
 				{ name: "member_a2", score: 20 },
@@ -492,7 +492,11 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		});
 
 		test("orders descending with DESC", async () => {
-			const result = await db.table("members").select("name", "score").orderBy("score DESC").get();
+			const result = await db
+				.table("members")
+				.select("name", "score")
+				.orderBy("score DESC")
+				.getAll();
 			expect(result).toEqual([
 				{ name: "member_x1", score: 60 },
 				{ name: "member_a3", score: 50 },
@@ -510,7 +514,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.where("team_id IS NOT NULL")
 				.orderBy("team_id")
 				.addOrderBy("score DESC")
-				.get();
+				.getAll();
 			expect(result).toEqual([
 				{ name: "member_a3", team_id: 1, score: 50 },
 				{ name: "member_a2", team_id: 1, score: 20 },
@@ -526,7 +530,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.select("name", "team_id", "score")
 				.where("team_id IS NOT NULL")
 				.orderBy("team_id", "score DESC")
-				.get();
+				.getAll();
 			expect(result).toEqual([
 				{ name: "member_a3", team_id: 1, score: 50 },
 				{ name: "member_a2", team_id: 1, score: 20 },
@@ -544,14 +548,14 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.select("name")
 				.orderBy("name")
 				.replaceOrderBy("id DESC")
-				.get();
+				.getAll();
 			expect(result).toEqual([{ name: "team_c" }, { name: "team_b" }, { name: "team_a" }]);
 		});
 	});
 
 	describe(QueryBuilderImpl.prototype.limit, () => {
 		test("limits result count", async () => {
-			const result = await db.table("members").select("id", "name").orderBy("id").limit(3).get();
+			const result = await db.table("members").select("id", "name").orderBy("id").limit(3).getAll();
 			expect(result).toEqual([
 				{ id: 1, name: "member_a1" },
 				{ id: 2, name: "member_a2" },
@@ -566,7 +570,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.orderBy("id")
 				.limit(5)
 				.limit(2)
-				.get();
+				.getAll();
 			expect(result).toEqual([
 				{ id: 1, name: "member_a1" },
 				{ id: 2, name: "member_a2" },
@@ -576,7 +580,12 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 	describe(QueryBuilderImpl.prototype.offset, () => {
 		test("skips rows (with limit)", async () => {
-			const result = await db.table("members").select("id", "name").orderBy("id").offset(4).get();
+			const result = await db
+				.table("members")
+				.select("id", "name")
+				.orderBy("id")
+				.offset(4)
+				.getAll();
 			expect(result).toEqual([
 				{ id: 5, name: "member_a3" },
 				{ id: 6, name: "member_x1" },
@@ -590,7 +599,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.orderBy("id")
 				.limit(1)
 				.offset(2)
-				.get();
+				.getAll();
 			expect(result).toEqual([{ id: 3, name: "member_b1" }]);
 		});
 	});
@@ -602,7 +611,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.select("team_id")
 				.distinct()
 				.orderBy("team_id NULLS FIRST")
-				.get();
+				.getAll();
 			expect(result).toEqual([{ team_id: null }, { team_id: 1 }, { team_id: 2 }]);
 		});
 
@@ -615,7 +624,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 
 			if (dialect === "postgresql") {
 				// PostgreSQL: Returns highest-scoring member from each team
-				const result = await query.get();
+				const result = await query.getAll();
 				expect(result).toEqual([
 					{ team_id: null, name: "member_x1", score: 60 },
 					{ team_id: 1, name: "member_a3", score: 50 },
@@ -626,7 +635,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				expect(query.toHumanReadableSql()).toContain('DISTINCT ON ("team_id")');
 			} else {
 				// SQLite: Throws UnsupportedFeatureError
-				expect(async () => await query.get()).toThrow("does not support DISTINCT ON");
+				expect(async () => await query.getAll()).toThrow("does not support DISTINCT ON");
 			}
 		});
 
@@ -638,11 +647,11 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.orderBy("team_id NULLS FIRST", "name");
 
 			if (dialect === "postgresql") {
-				const result = await query.get();
+				const result = await query.getAll();
 				// All rows should be returned since combination is unique
 				expect(result.length).toBe(await db.table("members").getCount());
 			} else {
-				expect(async () => await query.get()).toThrow("does not support DISTINCT ON");
+				expect(async () => await query.getAll()).toThrow("does not support DISTINCT ON");
 			}
 		});
 	});
@@ -651,11 +660,11 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		test("generates ORDER BY RANDOM()", async () => {
 			const query = db.table("members").select("id").inRandomOrder();
 			expect(query.toHumanReadableSql()).toContain("ORDER BY RANDOM()");
-			expect(await query.get()).toHaveLength(6);
+			expect(await query.getAll()).toHaveLength(6);
 		});
 
 		test("works with limit", async () => {
-			const result = await db.table("members").select("id").inRandomOrder().limit(2).get();
+			const result = await db.table("members").select("id").inRandomOrder().limit(2).getAll();
 			expect(result).toHaveLength(2);
 		});
 	});
@@ -664,7 +673,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		test("locks rows for update by default", async () => {
 			await db.transaction(async () => {
 				const query = db.table("teams").select("name").withRowLock();
-				const result = await query.get();
+				const result = await query.getAll();
 				expect(result).toHaveLength(3);
 
 				if (dialect === "postgresql") {
@@ -682,7 +691,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		test("locks rows for share with mode option", async () => {
 			await db.transaction(async () => {
 				const query = db.table("teams").select("name").withRowLock({ mode: "share" });
-				expect(await query.get()).toHaveLength(3);
+				expect(await query.getAll()).toHaveLength(3);
 
 				if (dialect === "postgresql") {
 					expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
@@ -695,7 +704,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		test("with onLocked: fail option", async () => {
 			await db.transaction(async () => {
 				const query = db.table("teams").select("name").withRowLock({ onLocked: "fail" });
-				expect(await query.get()).toHaveLength(3);
+				expect(await query.getAll()).toHaveLength(3);
 
 				if (dialect === "postgresql") {
 					expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
@@ -708,7 +717,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		test("with onLocked: skip option", async () => {
 			await db.transaction(async () => {
 				const query = db.table("teams").select("name").withRowLock({ onLocked: "skip" });
-				expect(await query.get()).toHaveLength(3);
+				expect(await query.getAll()).toHaveLength(3);
 
 				if (dialect === "postgresql") {
 					expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
@@ -724,7 +733,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 					mode: "share",
 					onLocked: "skip",
 				});
-				expect(await query.get()).toHaveLength(3);
+				expect(await query.getAll()).toHaveLength(3);
 
 				if (dialect === "postgresql") {
 					expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
@@ -738,7 +747,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 	if (dialect === "sqlite") {
 		describe("SQLite locking behaviour", () => {
 			test("withRowLock is silently ignored", async () => {
-				const result = await db.table("teams").select("name").withRowLock().get();
+				const result = await db.table("teams").select("name").withRowLock().getAll();
 				expect(result.length).toBe(3);
 			});
 		});
@@ -751,7 +760,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.select("name")
 				.where("score > ? AND team_id = ?", 20, 1)
 				.orderBy("id")
-				.get();
+				.getAll();
 			expect(result).toEqual([{ name: "member_a3" }]);
 		});
 
@@ -764,7 +773,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.groupBy("team_id")
 				.having("COUNT(*) >= ?", 2)
 				.orderBy("team_id")
-				.get();
+				.getAll();
 			// Team 1: scores 10, 20, 50 all in range → 3 members
 			// Team 2: scores 30, 40 both in range → 2 members
 			expect(result).toEqual([
@@ -779,7 +788,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.select("teams.name", "members.name AS member_name")
 				.join("members ON members.team_id = teams.id AND members.score > ?", 30)
 				.orderBy("teams.id", "members.id")
-				.get();
+				.getAll();
 			expect(result).toEqual([
 				{ name: "team_a", member_name: "member_a3" },
 				{ name: "team_b", member_name: "member_b2" },
@@ -792,7 +801,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.select("teams.name", "members.name AS member_name")
 				.join(sql`members ON members.team_id = teams.id AND members.score > ${30}`)
 				.orderBy("teams.id", "members.id")
-				.get();
+				.getAll();
 			expect(result).toEqual([
 				{ name: "team_a", member_name: "member_a3" },
 				{ name: "team_b", member_name: "member_b2" },
@@ -810,7 +819,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 						.select("name")
 						.where(idInExpr, [1, 2, 3])
 						.orderBy("id")
-						.get();
+						.getAll();
 					expect(result).toEqual([
 						{ name: "member_a1" },
 						{ name: "member_a2" },
@@ -819,14 +828,14 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				});
 
 				test("single-element array", async () => {
-					const result = await db.table("members").select("name").where(idInExpr, [1]).get();
+					const result = await db.table("members").select("name").where(idInExpr, [1]).getAll();
 					expect(result).toEqual([{ name: "member_a1" }]);
 				});
 
 				test("empty array returns no rows", async () => {
 					// Query on team_id which has NULL values (member_x1) to verify that
 					// IN (NULL) correctly returns no rows - nothing equals NULL, not even NULL
-					const result = await db.table("members").where(idInExpr, []).get();
+					const result = await db.table("members").where(idInExpr, []).getAll();
 					expect(result).toEqual([]);
 				});
 			},
@@ -837,7 +846,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		test("subquery in WHERE clause", async () => {
 			const subquery = db.table("members").select("team_id").where("score > ?", 40);
 			const query = db.table("teams").select("id", "name").where("id IN ?", subquery).orderBy("id");
-			expect(await query.get()).toEqual([{ id: 1, name: "team_a" }]);
+			expect(await query.getAll()).toEqual([{ id: 1, name: "team_a" }]);
 			expect(query.toHumanReadableSql()).toMatchInlineSnapshot(
 				`"SELECT "id", "name" FROM "teams" WHERE ( "id" IN ( SELECT "team_id" FROM "members" WHERE ( "score" > [$1: 40] ) ) ) ORDER BY "id""`,
 			);
@@ -852,7 +861,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.where("id IN ?", subquery)
 				.where("id < ?", 10)
 				.orderBy("id")
-				.get();
+				.getAll();
 			expect(result).toEqual([{ name: "team_a" }]);
 		});
 
@@ -860,7 +869,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 			// Find teams that have members who won gold awards
 			const innerSub = db.table("awards").select("member_id").where("title = ?", "gold");
 			const middleSub = db.table("members").select("team_id").where("id IN ?", innerSub);
-			const result = await db.table("teams").where("id IN ?", middleSub).orderBy("id").get();
+			const result = await db.table("teams").where("id IN ?", middleSub).orderBy("id").getAll();
 			expect(result).toEqual([{ id: 1, name: "team_a", order: "first" }]);
 		});
 
@@ -875,7 +884,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				.select("t.name", "counts.member_count")
 				.join("? AS counts ON counts.team_id = t.id", subquery)
 				.orderBy("t.id")
-				.get();
+				.getAll();
 			expect(result).toEqual([
 				{ name: "team_a", member_count: 3 },
 				{ name: "team_b", member_count: 2 },
@@ -891,7 +900,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 					db.table("members m").where("m.team_id = t.id").where("m.score >= ?", 40),
 				)
 				.orderBy("t.id")
-				.get();
+				.getAll();
 			expect(result).toEqual([{ name: "team_a" }, { name: "team_b" }]);
 		});
 	});
@@ -900,7 +909,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 		const select = (n: number) => db.table("members").select("id").where("id = ?", n);
 
 		test("union combines results", async () => {
-			const result = await select(1).union(select(2)).orderBy("id").get();
+			const result = await select(1).union(select(2)).orderBy("id").getAll();
 
 			expectTypeOf(result).toEqualTypeOf<Row[]>();
 
@@ -1089,8 +1098,8 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 
 	describe(QueryBuilderImpl.prototype.insert, () => {
 		test("inserts a single row", async () => {
-			const result = await table.insert({ id: 1, name: "alice", value: 100 }).get();
-			expectTypeOf(result).toEqualTypeOf<MutationResult>();
+			const result = await table.insert({ id: 1, name: "alice", value: 100 }).run();
+			expectTypeOf(result).toEqualTypeOf<StatementResult>();
 			expect(result.rowsAffected).toBe(1);
 
 			const row = await table.getByIdOrFail(1);
@@ -1103,8 +1112,8 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 					{ id: 1, name: "bob", value: 200 },
 					{ id: 2, name: "charlie", value: 300 },
 				])
-				.get();
-			expectTypeOf(result).toEqualTypeOf<MutationResult>();
+				.run();
+			expectTypeOf(result).toEqualTypeOf<StatementResult>();
 			expect(result.rowsAffected).toBe(2);
 
 			const rows = await table.where("id IN ?", [1, 2]).orderBy("id").getAll();
@@ -1115,7 +1124,7 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 		});
 
 		test("empty object {} inserts row with default values", async () => {
-			const result = await table.insert({}).get();
+			const result = await table.insert({}).run();
 			expect(result.rowsAffected).toBe(1);
 
 			const rows = await table.getAll();
@@ -1125,7 +1134,7 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 		});
 
 		test("multiple empty objects [{}, {}, {}] inserts multiple rows with defaults", async () => {
-			const result = await table.insert([{}, {}, {}]).get();
+			const result = await table.insert([{}, {}, {}]).run();
 			expect(result.rowsAffected).toBe(3);
 
 			const rows = await table.getAll();
@@ -1133,13 +1142,13 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 			expect(rows.every((r) => r.name === "default_name" && r.value === 42)).toBe(true);
 		});
 
-		test("empty array [] returns early without hitting database when awaited", async () => {
+		test("empty array []", async () => {
 			spyOn(db, "run");
-			const result = await table.insert([]).get();
+			const result = await table.insert([]).run();
 			expect(result.rowsAffected).toBe(0);
-			const returned = await table.insert([]).returning("id").get();
+			const returned = await table.insert([]).runAndReturn("id");
 			expect(returned).toEqual([]);
-			const ids = await table.insert([]).returningId().get();
+			const ids = await table.insert([]).runAndReturnId();
 			expect(ids).toEqual([]);
 
 			expect(db.run).not.toHaveBeenCalled();
@@ -1152,16 +1161,16 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 					{ name: "bob", value: 200 },
 					{ name: "charlie", value: 300 },
 				])
-				.get();
+				.run();
 
 			const result = await table
 				.insert(table.select("name", "value + 50 AS value"), {
 					columns: ["name", "value"],
 				})
-				.get();
-			expectTypeOf(result).toEqualTypeOf<MutationResult>();
+				.run();
+			expectTypeOf(result).toEqualTypeOf<StatementResult>();
 
-			const rows = await table.orderBy("id").get();
+			const rows = await table.orderBy("id").getAll();
 			expect(rows).toEqual([
 				{ id: 1, name: "bob", value: 200 },
 				{ id: 2, name: "charlie", value: 300 },
@@ -1176,9 +1185,9 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 					{ id: 1, name: "bob", value: 200 },
 					{ id: 2, name: "charlie", value: 300 },
 				])
-				.get();
+				.run();
 
-			await table.insert(table.select("id + 100", "name", "value + 50")).get();
+			await table.insert(table.select("id + 100", "name", "value + 50")).run();
 
 			const rows = await table.orderBy("id").getAll();
 			expect(rows).toEqual([
@@ -1189,50 +1198,44 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 			]);
 		});
 
-		test("inserts do not use RETURNING unless returning() is called", () => {
+		test("insert does not include RETURNING unless returning() is called", () => {
 			const insertWithoutReturning = table.insert({ name: "test" });
 			expect(insertWithoutReturning.toHumanReadableSql()).not.toContain("RETURNING");
 
-			const insertWithReturning = db
-				.table("test_mutations")
-				.insert({ name: "test" })
-				.returning("id");
+			const insertWithReturning = table.insert({ name: "test" }).returning("id");
 			expect(insertWithReturning.toHumanReadableSql()).toContain("RETURNING");
 		});
 
-		test("returning() with no args returns all columns (single insert)", async () => {
+		test("runAndReturn() with no args returns all columns (single insert)", async () => {
 			const result = await db
 				.table("test_mutations")
 				.insert({ id: 1, name: "return_all", value: 999 })
-				.returning()
-				.get();
+				.runAndReturn();
 
 			expectTypeOf(result).toEqualTypeOf<Row>();
 
 			expect(result).toEqual({ id: 1, name: "return_all", value: 999 });
 		});
 
-		test("returning() with args returns specified columns (single insert)", async () => {
+		test("runAndReturn() with args returns specified columns (single insert)", async () => {
 			const result = await db
 				.table("test_mutations")
 				.insert({ id: 1, name: "return_test", value: 555 })
-				.returning("id", "name")
-				.get();
+				.runAndReturn("id", "name");
 
 			expectTypeOf(result).toEqualTypeOf<Row>();
 
 			expect(result).toEqual({ id: 1, name: "return_test" });
 		});
 
-		test("returning() with no args returns all columns (array insert)", async () => {
+		test("runAndReturn() with no args returns all columns (array insert)", async () => {
 			const result = await db
 				.table("test_mutations")
 				.insert([
 					{ id: 1, name: "multi_1", value: 1 },
 					{ id: 2, name: "multi_2", value: 2 },
 				])
-				.returning()
-				.get();
+				.runAndReturn();
 
 			expectTypeOf(result).toEqualTypeOf<Row[]>();
 
@@ -1242,15 +1245,14 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 			]);
 		});
 
-		test("returning() with args returns specified columns (array insert)", async () => {
+		test("runAndReturn() with args returns specified columns (array insert)", async () => {
 			const result = await db
 				.table("test_mutations")
 				.insert([
 					{ id: 1, name: "multi_1", value: 1 },
 					{ id: 2, name: "multi_2", value: 2 },
 				])
-				.returning("id", "value")
-				.get();
+				.runAndReturn("id", "value");
 
 			expectTypeOf(result).toEqualTypeOf<Row[]>();
 
@@ -1260,47 +1262,45 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 			]);
 		});
 
-		test("returningId() returns array of IDs (array insert)", async () => {
+		test("runAndReturnId() returns array of IDs (array insert)", async () => {
 			const ids = await db
 				.table("test_mutations")
 				.insert([
 					{ id: 1, name: "id_test_1", value: 1 },
 					{ id: 2, name: "id_test_2", value: 2 },
 				])
-				.returningId()
-				.get();
+				.runAndReturnId();
 
 			expectTypeOf(ids).toEqualTypeOf<any[]>();
 
 			expect(ids).toEqual([1, 2]);
 		});
 
-		test("returningId() returns single ID (single insert)", async () => {
+		test("runAndReturnId() returns single ID (single insert)", async () => {
 			const id = await db
 				.table("test_mutations")
 				.insert({ id: 1, name: "single_id", value: 777 })
-				.returningId()
-				.get();
+				.runAndReturnId();
 
 			expectTypeOf(id).toEqualTypeOf<any>();
 
 			expect(id).toBe(1);
 		});
 
-		test("returningId() can return id of empty object", async () => {
+		test("runAndReturnId() can return id of empty object", async () => {
 			await recreateTestMutationsTable(); // Reset auto-increment
-			expect(await table.insert({}).returningId().get()).toEqual(1);
-			expect(await table.insert([{}, {}]).returningId().get()).toEqual([2, 3]);
+			expect(await table.insert({}).runAndReturnId()).toEqual(1);
+			expect(await table.insert([{}, {}]).runAndReturnId()).toEqual([2, 3]);
 		});
 
 		test("insert with columns option selects subset of properties", async () => {
-			await table.insert({ id: 1, name: "subset", value: 500 }, { columns: ["id", "name"] }).get();
+			await table.insert({ id: 1, name: "subset", value: 500 }, { columns: ["id", "name"] }).run();
 			const row = await table.getByIdOrFail(1);
 			expect(row).toEqual({ id: 1, name: "subset", value: 42 }); // value gets default
 		});
 
 		test("insert single row with sql expression value", async () => {
-			await table.insert({ id: 1, name: sql`'computed_' || 'name'`, value: 100 }).get();
+			await table.insert({ id: 1, name: sql`'computed_' || 'name'`, value: 100 }).run();
 			const row = await table.getByIdOrFail(1);
 			expect(row).toEqual({ id: 1, name: "computed_name", value: 100 });
 		});
@@ -1314,7 +1314,7 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 					{ id: 1, src_value: 111 },
 					{ id: 2, src_value: 222 },
 				])
-				.get();
+				.run();
 
 			await table
 				.insert([
@@ -1329,7 +1329,7 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 						value: db.table("source_table").select("src_value").whereId(2),
 					},
 				])
-				.get();
+				.run();
 
 			const rows = await table.where("id IN ?", [1, 2]).orderBy("id").getAll();
 			expect(rows).toEqual([
@@ -1341,12 +1341,12 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 
 	describe(QueryBuilderImpl.prototype.onConflict, () => {
 		test("ignore conflict", async () => {
-			await table.insert({ id: 1, name: "existing", value: 100 }).get();
+			await table.insert({ id: 1, name: "existing", value: 100 }).run();
 
 			await table
 				.insert({ id: 1, name: "new name", value: 200 })
 				.onConflict({ on: "id", do: "ignore" })
-				.get();
+				.run();
 
 			const result = await table.getByIdOrFail(1);
 			expect(result).toEqual({ id: 1, name: "existing", value: 100 }); // unchanged
@@ -1361,24 +1361,24 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 		});
 
 		test("update on conflict - all columns", async () => {
-			await table.insert({ id: 2, name: "existing", value: 100 }).get();
+			await table.insert({ id: 2, name: "existing", value: 100 }).run();
 
 			await table
 				.insert({ id: 2, name: "updated", value: 200 })
 				.onConflict({ on: "id", do: "update" })
-				.get();
+				.run();
 
 			const result = await table.getByIdOrFail(2);
 			expect(result).toEqual({ id: 2, name: "updated", value: 200 });
 		});
 
 		test("update on conflict - specific columns", async () => {
-			await table.insert({ id: 3, name: "existing", value: 100 }).get();
+			await table.insert({ id: 3, name: "existing", value: 100 }).run();
 
 			await table
 				.insert({ id: 3, name: "updated", value: 200 })
 				.onConflict({ on: "id", do: "update", updateColumns: ["name"] })
-				.get();
+				.run();
 
 			const result = await table.getByIdOrFail(3);
 			expect(result).toEqual({ id: 3, name: "updated", value: 100 }); // value unchanged
@@ -1394,14 +1394,14 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 			)`);
 			const conflictTable = db.table("source_table");
 
-			await conflictTable.insert({ a: 1, b: 1, c: "original" }).get();
+			await conflictTable.insert({ a: 1, b: 1, c: "original" }).run();
 
 			await conflictTable
 				.insert({ a: 1, b: 1, c: "updated" })
 				.onConflict({ on: ["a", "b"], do: "update" })
-				.get();
+				.run();
 
-			const result = await conflictTable.where("a = ? AND b = ?", 1, 1).get();
+			const result = await conflictTable.where("a = ? AND b = ?", 1, 1).getAll();
 			expect(result).toEqual([{ a: 1, b: 1, c: "updated" }]);
 		});
 
@@ -1434,13 +1434,12 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 		});
 
 		test("works with returning", async () => {
-			await table.insert({ id: 4, name: "existing", value: 100 }).get();
+			await table.insert({ id: 4, name: "existing", value: 100 }).run();
 
 			const result = await table
 				.insert({ id: 4, name: "updated", value: 200 })
 				.onConflict({ on: "id", do: "update" })
-				.returning("id", "name")
-				.get();
+				.runAndReturn("id", "name");
 
 			expect(result).toEqual({ id: 4, name: "updated" });
 		});
@@ -1449,10 +1448,10 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 			// The default behaviour is to update all columns that are not
 			// conflict columns, but if all columns are conflict columns, we
 			// need to pick one to update in order to generate a valid SQL
-			await table.insert({ id: 1 }).get();
+			await table.insert({ id: 1 }).run();
 
 			const query = table.insert({ id: 1 }).onConflict({ on: "id", do: "update" }).returning("id");
-			const result = await query.get();
+			const result = await query.getFirstOrFail();
 
 			expect(result).toEqual({ id: 1 });
 
@@ -1476,7 +1475,7 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 				table
 					.insert(db.table("test_mutations").select("id", "name"))
 					.onConflict({ on: "id", do: "update" })
-					.get(),
+					.run(),
 			).rejects.toMatchInlineSnapshot(
 				`[DatabaseError: Using insert(subquery).onConflict({do: 'update'}) requires you to specify the columns. Either set options.columns in insert() or options.updateColumns in onConflict().]`,
 			);
@@ -1485,17 +1484,17 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 		test("INSERT...SELECT with explicit columns works", async () => {
 			await db.run(sql`DROP TABLE IF EXISTS source_table`);
 			await db.run(sql`CREATE TABLE source_table (id INTEGER PRIMARY KEY, name TEXT)`);
-			await db.table("source_table").insert({ id: 100, name: "from_source" }).get();
+			await db.table("source_table").insert({ id: 100, name: "from_source" }).run();
 
 			// First insert to create conflict
-			await table.insert({ id: 100, name: "existing", value: 42 }).get();
+			await table.insert({ id: 100, name: "existing", value: 42 }).run();
 
 			await table
 				.insert(db.table("source_table").select("id", "name"), {
 					columns: ["id", "name"],
 				})
 				.onConflict({ on: "id", do: "update" })
-				.get();
+				.run();
 
 			const result = await table.getByIdOrFail(100);
 			expect(result).toEqual({ id: 100, name: "from_source", value: 42 });
@@ -1510,14 +1509,14 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 					{ id: 101, name: "source_1" },
 					{ id: 102, name: "source_2" },
 				])
-				.get();
+				.run();
 
 			const result = await table
 				.insert(db.table("source_table").select("id", "name"), {
 					columns: ["id", "name"],
 				})
 				.returning()
-				.get();
+				.getAll();
 
 			expectTypeOf(result).toEqualTypeOf<Row[]>();
 
@@ -1531,10 +1530,10 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 	describe(QueryBuilderImpl.prototype.updateAll, () => {
 		test("updates rows matching condition", async () => {
 			// First insert some test data
-			await table.insert({ id: 1, name: "update_test", value: 50 }).get();
+			await table.insert({ id: 1, name: "update_test", value: 50 }).run();
 
-			const result = await table.whereId(1).updateAll({ value: 999 }).get();
-			expectTypeOf(result).toEqualTypeOf<MutationResult>();
+			const result = await table.whereId(1).updateAll({ value: 999 }).run();
+			expectTypeOf(result).toEqualTypeOf<StatementResult>();
 			expect(result.rowsAffected).toBe(1);
 
 			const row = await table.getByIdOrFail(1);
@@ -1548,9 +1547,9 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 					{ id: 2, name: "b", value: 0 },
 					{ id: 3, name: "c", value: 0 },
 				])
-				.get();
+				.run();
 
-			const result = await table.updateAll({ value: 1 }).get();
+			const result = await table.updateAll({ value: 1 }).run();
 			expect(result.rowsAffected).toBe(3);
 
 			const rows = await table.orderBy("id").getAll();
@@ -1558,9 +1557,9 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 		});
 
 		test("updates with sql expression value", async () => {
-			await table.insert({ id: 1, name: "expr_update", value: 100 }).get();
+			await table.insert({ id: 1, name: "expr_update", value: 100 }).run();
 
-			await table.whereId(1).updateAll({ name: sql`'prefix_' || name` }).get();
+			await table.whereId(1).updateAll({ name: sql`'prefix_' || name` }).run();
 
 			const row = await table.getByIdOrFail(1);
 			expect(row).toEqual({ id: 1, name: "prefix_expr_update", value: 100 });
@@ -1569,21 +1568,21 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 		test("updates with subquery value", async () => {
 			await db.run(sql`DROP TABLE IF EXISTS source_table`);
 			await db.run(sql`CREATE TABLE source_table (id INTEGER PRIMARY KEY, src_value INTEGER)`);
-			await db.table("source_table").insert({ id: 1, src_value: 999 }).get();
-			await table.insert({ id: 1, name: "sub_update", value: 0 }).get();
+			await db.table("source_table").insert({ id: 1, src_value: 999 }).run();
+			await table.insert({ id: 1, name: "sub_update", value: 0 }).run();
 
 			await table
 				.whereId(1)
 				.updateAll({
 					value: db.table("source_table").select("src_value").whereId(1),
 				})
-				.get();
+				.run();
 
 			const row = await table.getByIdOrFail(1);
 			expect(row).toEqual({ id: 1, name: "sub_update", value: 999 });
 		});
 
-		test("updates do not use RETURNING unless returning() is called", () => {
+		test("updateAll does not include RETURNING unless returning() is called", () => {
 			const updateWithoutReturning = table.whereId(1).updateAll({ name: "test" });
 			expect(updateWithoutReturning.toHumanReadableSql()).not.toContain("RETURNING");
 
@@ -1591,44 +1590,43 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 			expect(updateWithReturning.toHumanReadableSql()).toContain("RETURNING");
 		});
 
-		test("returning() with no args returns all columns", async () => {
-			await table.insert({ id: 1, name: "return_test", value: 100 }).get();
+		test("runAndReturn() with no args returns all columns", async () => {
+			await table.insert({ id: 1, name: "return_test", value: 100 }).run();
 
-			const result = await table.whereId(1).updateAll({ name: "updated" }).returning().get();
+			const result = await table.whereId(1).updateAll({ name: "updated" }).runAndReturn();
 
 			expectTypeOf(result).toEqualTypeOf<Row[]>();
 			expect(result).toEqual([{ id: 1, name: "updated", value: 100 }]);
 		});
 
-		test("returning() with args returns specified columns", async () => {
-			await table.insert({ id: 1, name: "return_test", value: 100 }).get();
+		test("runAndReturn() with args returns specified columns", async () => {
+			await table.insert({ id: 1, name: "return_test", value: 100 }).run();
 
 			const result = await table
 				.whereId(1)
 				.updateAll({ name: "updated" })
-				.returning("id", "name")
-				.get();
+				.runAndReturn("id", "name");
 
 			expectTypeOf(result).toEqualTypeOf<Row[]>();
 			expect(result).toEqual([{ id: 1, name: "updated" }]);
 		});
 
-		test("returningId() returns array of IDs", async () => {
+		test("runAndReturnId() returns array of IDs", async () => {
 			await table
 				.insert([
 					{ id: 1, name: "a", value: 1 },
 					{ id: 2, name: "b", value: 2 },
 				])
-				.get();
+				.run();
 
-			const ids = await table.where("id IN ?", [1, 2]).updateAll({ value: 99 }).returningId().get();
+			const ids = await table.where("id IN ?", [1, 2]).updateAll({ value: 99 }).runAndReturnId();
 
 			expectTypeOf(ids).toEqualTypeOf<any[]>();
 			expect(ids).toEqual([1, 2]);
 		});
 
-		test("update returning empty result when no rows match", async () => {
-			const result = await table.whereId(999).updateAll({ name: "x" }).returning().get();
+		test("update runAndReturn() empty result when no rows match", async () => {
+			const result = await table.whereId(999).updateAll({ name: "x" }).runAndReturn();
 			expect(result).toEqual([]);
 		});
 	});
@@ -1636,10 +1634,10 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 	describe(QueryBuilderImpl.prototype.deleteAll, () => {
 		test("deletes rows matching condition", async () => {
 			// Insert test data
-			await table.insert({ id: 1, name: "delete_me", value: 0 }).get();
+			await table.insert({ id: 1, name: "delete_me", value: 0 }).run();
 
-			const result = await table.whereId(1).deleteAll().get();
-			expectTypeOf(result).toEqualTypeOf<MutationResult>();
+			const result = await table.whereId(1).deleteAll().run();
+			expectTypeOf(result).toEqualTypeOf<StatementResult>();
 			expect(result.rowsAffected).toBe(1);
 
 			const rows = await table.whereId(1).getAll();
@@ -1647,16 +1645,16 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 		});
 
 		test("deletes all rows without where", async () => {
-			await table.insert([{ id: 1 }, { id: 2 }, { id: 3 }]).get();
+			await table.insert([{ id: 1 }, { id: 2 }, { id: 3 }]).run();
 
-			const result = await table.deleteAll().get();
+			const result = await table.deleteAll().run();
 			expect(result.rowsAffected).toBe(3);
 
 			const rows = await table.getAll();
 			expect(rows).toEqual([]);
 		});
 
-		test("deletes do not use RETURNING unless returning() is called", () => {
+		test("deleteAll does not include RETURNING unless returning() is called", () => {
 			const deleteWithoutReturning = table.whereId(1).deleteAll();
 			expect(deleteWithoutReturning.toHumanReadableSql()).not.toContain("RETURNING");
 
@@ -1664,39 +1662,39 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 			expect(deleteWithReturning.toHumanReadableSql()).toContain("RETURNING");
 		});
 
-		test("returning() with no args returns all columns of deleted rows", async () => {
-			await table.insert({ id: 1, name: "to_delete", value: 100 }).get();
+		test("runAndReturn() with no args returns all columns of deleted rows", async () => {
+			await table.insert({ id: 1, name: "to_delete", value: 100 }).run();
 
-			const result = await table.whereId(1).deleteAll().returning().get();
+			const result = await table.whereId(1).deleteAll().runAndReturn();
 
 			expectTypeOf(result).toEqualTypeOf<Row[]>();
 			expect(result).toEqual([{ id: 1, name: "to_delete", value: 100 }]);
 		});
 
-		test("returning() with args returns specified columns", async () => {
-			await table.insert({ id: 1, name: "to_delete", value: 100 }).get();
+		test("runAndReturn() with args returns specified columns", async () => {
+			await table.insert({ id: 1, name: "to_delete", value: 100 }).run();
 
-			const result = await table.whereId(1).deleteAll().returning("id", "name").get();
+			const result = await table.whereId(1).deleteAll().runAndReturn("id", "name");
 
 			expect(result).toEqual([{ id: 1, name: "to_delete" }]);
 		});
 
-		test("returningId() returns array of IDs", async () => {
+		test("runAndReturnId() returns array of IDs", async () => {
 			await table
 				.insert([
 					{ id: 1, name: "a", value: 1 },
 					{ id: 2, name: "b", value: 2 },
 				])
-				.get();
+				.run();
 
-			const ids = await table.where("id IN ?", [1, 2]).deleteAll().returningId().get();
+			const ids = await table.where("id IN ?", [1, 2]).deleteAll().runAndReturnId();
 
 			expectTypeOf(ids).toEqualTypeOf<any[]>();
 			expect(ids).toEqual([1, 2]);
 		});
 
-		test("delete returning empty result when no rows match", async () => {
-			const result = await table.whereId(999).deleteAll().returning().get();
+		test("delete runAndReturn() empty result when no rows match", async () => {
+			const result = await table.whereId(999).deleteAll().runAndReturn();
 			expect(result).toEqual([]);
 		});
 	});
@@ -1709,16 +1707,16 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 					{ id: 2, name: "bob", value: 200 },
 					{ id: 3, name: "charlie", value: 300 },
 				])
-				.get();
+				.run();
 
 			const result = await table
 				.updateFrom([
 					{ id: 1, name: "alice_updated" },
 					{ id: 2, name: "bob_updated" },
 				])
-				.get();
+				.run();
 
-			expectTypeOf(result).toEqualTypeOf<MutationResult>();
+			expectTypeOf(result).toEqualTypeOf<StatementResult>();
 			expect(result.rowsAffected).toBe(2);
 
 			expect(await table.orderBy("id").getAll()).toEqual([
@@ -1729,9 +1727,9 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 		});
 
 		test("updates single row", async () => {
-			await table.insert({ id: 1, name: "single", value: 100 }).get();
+			await table.insert({ id: 1, name: "single", value: 100 }).run();
 
-			const result = await table.updateFrom({ id: 1, name: "single_updated" }).get();
+			const result = await table.updateFrom({ id: 1, name: "single_updated" }).run();
 
 			expect(result.rowsAffected).toBe(1);
 			expect(await table.getAll()).toEqual([{ id: 1, name: "single_updated", value: 100 }]);
@@ -1743,9 +1741,9 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 					{ id: 1, name: "match_by_name", value: 100 },
 					{ id: 2, name: "other", value: 200 },
 				])
-				.get();
+				.run();
 
-			await table.updateFrom([{ name: "match_by_name", value: 999 }], { on: "name" }).get();
+			await table.updateFrom([{ name: "match_by_name", value: 999 }], { on: "name" }).run();
 
 			expect(await table.orderBy("id").getAll()).toEqual([
 				{ id: 1, name: "match_by_name", value: 999 },
@@ -1754,13 +1752,13 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 		});
 
 		test("uses explicit updateColumns to select subset", async () => {
-			await table.insert({ id: 1, name: "subset", value: 100 }).get();
+			await table.insert({ id: 1, name: "subset", value: 100 }).run();
 
 			await table
 				.updateFrom([{ id: 1, name: "new_name", value: 999, extra: "ignored" }], {
 					updateColumns: ["id", "name"],
 				})
-				.get();
+				.run();
 
 			// value unchanged because it's not in updateColumns
 			expect(await table.getAll()).toEqual([{ id: 1, name: "new_name", value: 100 }]);
@@ -1773,7 +1771,7 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 					{ id: 2, name: "inactive", value: 0 },
 					{ id: 3, name: "active2", value: 1 },
 				])
-				.get();
+				.run();
 
 			await table
 				.where("value = ?", 1)
@@ -1782,7 +1780,7 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 					{ id: 2, name: "updated2" },
 					{ id: 3, name: "updated3" },
 				])
-				.get();
+				.run();
 
 			expect(await table.orderBy("id").getAll()).toEqual([
 				{ id: 1, name: "updated1", value: 1 },
@@ -1792,14 +1790,14 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 		});
 
 		test("handles partial match - only existing rows updated", async () => {
-			await table.insert({ id: 1, name: "exists", value: 100 }).get();
+			await table.insert({ id: 1, name: "exists", value: 100 }).run();
 
 			const result = await table
 				.updateFrom([
 					{ id: 1, name: "updated" },
 					{ id: 999, name: "nonexistent" },
 				])
-				.get();
+				.run();
 
 			expect(result.rowsAffected).toBe(1);
 			expect(await table.getAll()).toEqual([{ id: 1, name: "updated", value: 100 }]);
@@ -1829,21 +1827,20 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 			expect(updateFromWithReturning.toHumanReadableSql()).toContain("RETURNING");
 		});
 
-		test("updateFrom with returning()", async () => {
+		test("updateFrom with runAndReturn()", async () => {
 			await table
 				.insert([
 					{ id: 1, name: "alice", value: 100 },
 					{ id: 2, name: "bob", value: 200 },
 				])
-				.get();
+				.run();
 
 			const result = await table
 				.updateFrom([
 					{ id: 1, name: "alice_updated" },
 					{ id: 2, name: "bob_updated" },
 				])
-				.returning("id", "name")
-				.get();
+				.runAndReturn("id", "name");
 
 			expectTypeOf(result).toEqualTypeOf<Row[]>();
 			expect(result).toEqual([
@@ -1852,18 +1849,15 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 			]);
 		});
 
-		test("updateFrom with returningId()", async () => {
+		test("updateFrom with runAndReturnId()", async () => {
 			await table
 				.insert([
 					{ id: 1, name: "alice", value: 100 },
 					{ id: 2, name: "bob", value: 200 },
 				])
-				.get();
+				.run();
 
-			const ids = await table
-				.updateFrom([{ id: 1, name: "alice_updated" }])
-				.returningId()
-				.get();
+			const ids = await table.updateFrom([{ id: 1, name: "alice_updated" }]).runAndReturnId();
 
 			expectTypeOf(ids).toEqualTypeOf<any[]>();
 			expect(ids).toEqual([1]);
@@ -1872,7 +1866,7 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 
 	describe("query builder execution methods", () => {
 		test("getAll() returns rows directly from builder", async () => {
-			await table.insert({ id: 1, name: "direct_test", value: 42 }).get();
+			await table.insert({ id: 1, name: "direct_test", value: 42 }).run();
 
 			const row = await table.getByIdOrFail(1);
 			expectTypeOf(row).toEqualTypeOf<Row>();
@@ -1886,7 +1880,7 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 		});
 
 		test("getScalar() returns single value", async () => {
-			await table.insert({ id: 1, name: "scalar_test", value: 44 }).get();
+			await table.insert({ id: 1, name: "scalar_test", value: 44 }).run();
 
 			const value = await table.select("value").whereId(1).getScalar();
 			expectTypeOf(value).toEqualTypeOf<any>();
@@ -1899,7 +1893,7 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 					{ id: 1, name: "col1", value: 1 },
 					{ id: 2, name: "col2", value: 2 },
 				])
-				.get();
+				.run();
 
 			const values = await db
 				.table("test_mutations")
@@ -1914,7 +1908,7 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 
 	describe("getByIdOrXxx methods", () => {
 		test("getByIdOrFail() returns row when found", async () => {
-			await table.insert({ id: 1, name: "by_id_test", value: 100 }).get();
+			await table.insert({ id: 1, name: "by_id_test", value: 100 }).run();
 
 			const row = await table.getByIdOrFail(1);
 			expectTypeOf(row).toEqualTypeOf<Row>();
@@ -1934,7 +1928,7 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 		});
 
 		test("getByIdOrNotFound() returns row when found", async () => {
-			await table.insert({ id: 1, name: "by_id_notfound", value: 100 }).get();
+			await table.insert({ id: 1, name: "by_id_notfound", value: 100 }).run();
 
 			const row = await table.getByIdOrNotFound(1);
 			expectTypeOf(row).toEqualTypeOf<Row>();
@@ -1952,7 +1946,7 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 		});
 
 		test("getByIdOrNull() returns row when found", async () => {
-			await table.insert({ id: 1, name: "by_id_null", value: 100 }).get();
+			await table.insert({ id: 1, name: "by_id_null", value: 100 }).run();
 
 			const row = await table.getByIdOrNull(1);
 			expectTypeOf(row).toEqualTypeOf<Row | null>();
@@ -1984,7 +1978,7 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 	});
 
 	describe("deferred execution", () => {
-		test("insert() does not execute until .get() called", async () => {
+		test("insert() does not execute until .run() called", async () => {
 			await db.transaction(async () => {
 				const query = db
 					.table("test_mutations")
@@ -1996,33 +1990,33 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 				// Verify no rows inserted yet
 				expect(await table.whereId(1).getAll()).toEqual([]);
 				// Now execute
-				await query.get();
+				await query.run();
 				expect(await table.whereId(1).getAll()).toHaveLength(1);
 			});
 		});
 
-		test("updateAll() does not execute until .get() called", async () => {
+		test("updateAll() does not execute until .run() called", async () => {
 			await db.transaction(async () => {
-				await table.insert({ id: 1, name: "update_deferred", value: 100 }).get();
+				await table.insert({ id: 1, name: "update_deferred", value: 100 }).run();
 				const query = table.whereId(1).updateAll({ value: 999 });
 				await sleep(0);
 				// Verify not updated yet
 				expect((await table.getByIdOrFail(1)).value).toBe(100);
 				// Now execute
-				await query.get();
+				await query.run();
 				expect((await table.getByIdOrFail(1)).value).toBe(999);
 			});
 		});
 
-		test("deleteAll() does not execute until .get() called", async () => {
+		test("deleteAll() does not execute until .run() called", async () => {
 			await db.transaction(async () => {
-				await table.insert({ id: 1, name: "delete_deferred", value: 1 }).get();
+				await table.insert({ id: 1, name: "delete_deferred", value: 1 }).run();
 				const query = table.whereId(1).deleteAll();
 				await sleep(0);
 				// Verify not deleted yet
 				expect(await table.whereId(1).getAll()).toHaveLength(1);
 				// Now execute
-				await query.get();
+				await query.run();
 				expect(await table.whereId(1).getAll()).toEqual([]);
 			});
 		});
@@ -2050,25 +2044,25 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 	describe("mutation reusability", () => {
 		test("same insert query can be executed multiple times", async () => {
 			const query = table.insert({ name: "repeat" });
-			await query.get();
-			await query.get();
+			await query.run();
+			await query.run();
 			expect(await table.where("name = ?", "repeat").getAll()).toHaveLength(2);
 		});
 
 		test("same delete query can be executed multiple times", async () => {
-			await table.insert([{ id: 1 }, { id: 2 }]).get();
+			await table.insert([{ id: 1 }, { id: 2 }]).run();
 			const query = table.whereId(1).deleteAll();
-			const result1 = await query.get();
-			const result2 = await query.get();
+			const result1 = await query.run();
+			const result2 = await query.run();
 			expect(result1.rowsAffected).toBe(1);
 			expect(result2.rowsAffected).toBe(0); // Already deleted
 		});
 
 		test("same update query can be executed multiple times", async () => {
-			await table.insert({ id: 1, name: "test", value: 0 }).get();
+			await table.insert({ id: 1, name: "test", value: 0 }).run();
 			const query = table.updateAll({ value: 42 });
-			await query.get();
-			await query.get();
+			await query.run();
+			await query.run();
 			expect((await table.getFirstOrFail()).value).toBe(42);
 		});
 	});

@@ -144,18 +144,18 @@ describe("DatabaseImpl", () => {
 			expect(dbName).toBe("default");
 		});
 
-		test("await sql`...`.get() selects from default client", async () => {
-			const result = await sql`SELECT db_name FROM info`.get();
+		test("await sql`...`.getAll() selects from default client", async () => {
+			const result = await sql`SELECT db_name FROM info`.getAll();
 			expect(result[0].db_name).toBe("default");
 		});
 
-		test("await sql`...`.on().get() selects default client", async () => {
-			const result = await sql`SELECT db_name FROM info`.on("default").get();
+		test("await sql`...`.on().getAll() selects default client", async () => {
+			const result = await sql`SELECT db_name FROM info`.on("default").getAll();
 			expect(result[0].db_name).toBe("default");
 		});
 
-		test("await sql`...`.on('name').get() selects named client", async () => {
-			const result = await sql`SELECT db_name FROM info`.on("additional").get();
+		test("await sql`...`.on('name').getAll() selects named client", async () => {
+			const result = await sql`SELECT db_name FROM info`.on("additional").getAll();
 			expect(result[0].db_name).toBe("additional");
 		});
 
