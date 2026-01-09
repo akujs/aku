@@ -1,6 +1,6 @@
-import { ServiceProvider } from "../core/ServiceProvider";
-import { ViewRenderer } from "./contracts/ViewRenderer";
-import { ViewRendererImpl } from "./ViewRendererImpl";
+import { ServiceProvider } from "../core/ServiceProvider.ts";
+import { ViewRenderer } from "./contracts/ViewRenderer.ts";
+import { ViewRendererImpl } from "./ViewRendererImpl.ts";
 
 export class ViewServiceProvider extends ServiceProvider {
 	override register(): void {

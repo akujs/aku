@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { BeynacError } from "../core/core-errors";
+import { BeynacError } from "../core/core-errors.ts";
 import {
 	type AnyConstructor,
 	ArrayMultiMap,
@@ -8,13 +8,13 @@ import {
 	getPrototypeChain,
 	type NoArgConstructor,
 	SetMultiMap,
-} from "../utils";
-import { ContextualBindingBuilder } from "./ContextualBindingBuilder";
-import { getKeyName, type KeyOrClass, type TypeToken } from "./container-key";
-import type { Lifecycle } from "./contracts/Container";
-import { Container } from "./contracts/Container";
-import { _getInjectHandler, _setInjectHandler } from "./inject";
-import { NO_VALUE, type NoValue } from "./no-value";
+} from "../utils.ts";
+import { ContextualBindingBuilder } from "./ContextualBindingBuilder.ts";
+import { getKeyName, type KeyOrClass, type TypeToken } from "./container-key.ts";
+import type { Lifecycle } from "./contracts/Container.ts";
+import { Container } from "./contracts/Container.ts";
+import { _getInjectHandler, _setInjectHandler } from "./inject.ts";
+import { NO_VALUE, type NoValue } from "./no-value.ts";
 
 type ScopeContext = {
 	container: Container;

@@ -1,7 +1,7 @@
 /** @jsxRuntime automatic **/
-/** @jsxImportSource . **/
+/** @jsxImportSource beynac/view **/
 import { describe, expectTypeOf, it } from "bun:test";
-import { createKey, type Key } from "./Key";
+import { createKey, type Key } from "./Key.ts";
 
 describe(createKey, () => {
 	it("createKey() with no arguments infers Key<unknown>", () => {

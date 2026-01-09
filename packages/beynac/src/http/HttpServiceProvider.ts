@@ -1,18 +1,18 @@
-import { Configuration } from "../core/contracts/Configuration";
-import { ServiceProvider } from "../core/ServiceProvider";
-import { DevModeAutoRefreshMiddleware } from "../development/DevModeAutoRefreshMiddleware";
-import { CookiesImpl } from "./CookiesImpl";
-import { Cookies } from "./contracts/Cookies";
-import { Headers } from "./contracts/Headers";
-import { KeepAlive } from "./contracts/KeepAlive";
-import { RequestLocals } from "./contracts/RequestLocals";
-import { HeadersImpl } from "./HeadersImpl";
-import { group } from "./helpers";
-import { KeepAliveImpl } from "./KeepAliveImpl";
-import { RequestHandler } from "./RequestHandler";
-import { RequestLocalsImpl } from "./RequestLocalsImpl";
-import { Router } from "./Router";
-import { RouteUrlGenerator } from "./RouteUrlGenerator";
+import { Configuration } from "../core/contracts/Configuration.ts";
+import { ServiceProvider } from "../core/ServiceProvider.ts";
+import { DevModeAutoRefreshMiddleware } from "../development/DevModeAutoRefreshMiddleware.ts";
+import { CookiesImpl } from "./CookiesImpl.ts";
+import { Cookies } from "./contracts/Cookies.ts";
+import { Headers } from "./contracts/Headers.ts";
+import { KeepAlive } from "./contracts/KeepAlive.ts";
+import { RequestLocals } from "./contracts/RequestLocals.ts";
+import { HeadersImpl } from "./HeadersImpl.ts";
+import { group } from "./helpers.ts";
+import { KeepAliveImpl } from "./KeepAliveImpl.ts";
+import { RequestHandler } from "./RequestHandler.ts";
+import { RequestLocalsImpl } from "./RequestLocalsImpl.ts";
+import { Router } from "./Router.ts";
+import { RouteUrlGenerator } from "./RouteUrlGenerator.ts";
 
 export class HttpServiceProvider extends ServiceProvider {
 	override register(): void {

@@ -12,7 +12,7 @@ import {
 	titleCase,
 	uppercase,
 	uppercaseFirst,
-} from "./case";
+} from "./case.ts";
 
 describe(titleCase, () => {
 	test("converts basic strings", () => {

@@ -1,5 +1,5 @@
-import { BaseClass } from "../utils";
-import type { IClassListenerInstance } from "./contracts/Dispatcher";
+import { BaseClass } from "../utils.ts";
+import type { IClassListenerInstance } from "./contracts/Dispatcher.ts";
 
 /**
  * Base class for event listeners.

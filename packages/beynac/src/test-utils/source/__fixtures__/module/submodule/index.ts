@@ -1,1 +1,1 @@
-export { deepValue } from "./file";
+export { deepValue } from "./file.ts";

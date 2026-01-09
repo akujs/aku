@@ -1,10 +1,11 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as fs from "node:fs";
 import * as fsPromises from "node:fs/promises";
-import { onResetAllMocks } from "../testing/mocks";
+import { onResetAllMocks } from "../testing/mocks.ts";
 
-// Re-export types
-export type { Dir, ReadStream, Stats, WriteStream } from "node:fs";
+export type Dir = fs.Dir;
+export type ReadStream = fs.ReadStream;
+export type Stats = fs.Stats;
+export type WriteStream = fs.WriteStream;
 
 export type FilesystemOps = {
 	stat(this: void, path: string): Promise<fs.Stats>;

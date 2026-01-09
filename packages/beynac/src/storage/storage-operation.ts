@@ -1,11 +1,11 @@
-import type { Dispatcher } from "../core/contracts/Dispatcher";
-import { NotFoundError, StorageError, StorageUnknownError } from "./storage-errors";
-import type { StorageOperationCompletedEvent } from "./storage-events";
+import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
+import { NotFoundError, StorageError, StorageUnknownError } from "./storage-errors.ts";
+import type { StorageOperationCompletedEvent } from "./storage-events.ts";
 import {
 	StorageOperationFailedEvent,
 	type StorageOperationStartingEvent,
 	type StorageOperationType,
-} from "./storage-events";
+} from "./storage-events.ts";
 
 type EventValueForFn<TFn> = TFn extends () => AsyncGenerator<unknown, unknown, unknown>
 	? number

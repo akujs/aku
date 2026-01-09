@@ -1,6 +1,6 @@
-import type { Key } from "../core/Key";
-import { BaseClass } from "../utils";
-import type { RequestLocals } from "./contracts/RequestLocals";
+import type { Key } from "../core/Key.ts";
+import { BaseClass } from "../utils.ts";
+import type { RequestLocals } from "./contracts/RequestLocals.ts";
 
 export class RequestLocalsImpl extends BaseClass implements RequestLocals {
 	#storage = new Map<Key, unknown>();

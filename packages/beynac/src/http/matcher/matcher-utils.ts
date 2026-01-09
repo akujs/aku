@@ -1,4 +1,4 @@
-import type { MatchedRoute, ParamsIndexMap } from "./types";
+import type { MatchedRoute, ParamsIndexMap } from "./types.ts";
 
 export const NullProtoObj = (() => {
 	const e = function () {};

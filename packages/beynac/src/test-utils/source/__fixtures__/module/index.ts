@@ -1,1 +1,1 @@
-export { SourceClass, sourceValue } from "./source";
+export { SourceClass, sourceValue } from "./source.ts";

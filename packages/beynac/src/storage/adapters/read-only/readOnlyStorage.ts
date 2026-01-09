@@ -1,6 +1,6 @@
-import type { StorageAdapter } from "../../contracts/Storage";
-import { ReadOnlyEndpoint } from "./ReadOnlyEndpoint";
-import type { ReadOnlyStorageConfig } from "./ReadOnlyStorageConfig";
+import type { StorageAdapter } from "../../contracts/Storage.ts";
+import { ReadOnlyEndpoint } from "./ReadOnlyEndpoint.ts";
+import type { ReadOnlyStorageConfig } from "./ReadOnlyStorageConfig.ts";
 
 /**
  * Read-only storage adapter that wraps an existing disk and prevents all write operations.

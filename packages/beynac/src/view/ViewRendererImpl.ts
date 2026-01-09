@@ -1,20 +1,25 @@
-import { Container } from "../container/contracts/Container";
-import { inject } from "../container/inject";
-import { BaseClass, withoutUndefinedValues } from "../utils";
-import { type Component, ComponentInstantiator, isClassComponent } from "./Component";
-import { type ClassAttributeValue, classAttribute } from "./class-attribute";
-import { ContextImpl } from "./context";
-import type { RenderResponseOptions, ViewRenderer } from "./contracts/ViewRenderer";
-import { MarkupStream } from "./markup-stream";
-import { isOnceNode, type OnceKey } from "./once";
-import { RawContent } from "./raw";
-import { isSpecialNode } from "./special-node";
-import { isStackOutNode, isStackPushNode } from "./stack";
-import { StreamBuffer } from "./stream-buffer";
-import { styleObjectToString } from "./style-attribute";
-import { type ErrorKind, RenderingError } from "./view-errors";
-import type { Props } from "./view-types";
-import { type Context, type CSSProperties, type JSXNode, type RenderOptions } from "./view-types";
+import { Container } from "../container/contracts/Container.ts";
+import { inject } from "../container/inject.ts";
+import { BaseClass, withoutUndefinedValues } from "../utils.ts";
+import { type Component, ComponentInstantiator, isClassComponent } from "./Component.ts";
+import { type ClassAttributeValue, classAttribute } from "./class-attribute.ts";
+import { ContextImpl } from "./context.ts";
+import type { RenderResponseOptions, ViewRenderer } from "./contracts/ViewRenderer.ts";
+import { MarkupStream } from "./markup-stream.ts";
+import { isOnceNode, type OnceKey } from "./once.ts";
+import { RawContent } from "./raw.ts";
+import { isSpecialNode } from "./special-node.ts";
+import { isStackOutNode, isStackPushNode } from "./stack.ts";
+import { StreamBuffer } from "./stream-buffer.ts";
+import { styleObjectToString } from "./style-attribute.ts";
+import { type ErrorKind, RenderingError } from "./view-errors.ts";
+import type { Props } from "./view-types.ts";
+import {
+	type Context,
+	type CSSProperties,
+	type JSXNode,
+	type RenderOptions,
+} from "./view-types.ts";
 
 type ComponentStack = {
 	name: string;
@@ -103,8 +108,11 @@ function isReactElement(value: unknown): boolean {
 }
 
 export class ViewRendererImpl extends BaseClass implements ViewRenderer {
-	constructor(private container: Container = inject(Container)) {
+	#container: Container;
+
+	constructor(container: Container = inject(Container)) {
 		super();
+		this.#container = container;
 	}
 
 	async render(content: JSXNode, options?: RenderOptions): Promise<string> {
@@ -170,7 +178,7 @@ export class ViewRendererImpl extends BaseClass implements ViewRenderer {
 			rootContext.set(ComponentInstantiator, (tag: Component, props: Props) => {
 				if (isClassComponent(tag)) {
 					// Instantiate using container.withInject() so inject() works in constructor
-					const instance = this.container.withInject(() => new tag(props));
+					const instance = this.#container.withInject(() => new tag(props));
 					return (ctx: Context) => instance.render(ctx);
 				}
 				return (ctx: Context) => tag(props, ctx);

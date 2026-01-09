@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, spyOn, test } from "bun:test";
-import { mockDispatcher } from "../../../test-utils/internal-mocks";
-import type { StorageEndpoint } from "../../contracts/Storage";
-import { StorageImpl } from "../../StorageImpl";
-import { mockEndpointBuilder, type SharedTestConfig } from "../../storage-test-utils";
-import { MemoryEndpoint } from "../memory/MemoryEndpoint";
-import { ScopedEndpoint } from "./ScopedEndpoint";
-import { scopedStorage } from "./scopedStorage";
+import { mockDispatcher } from "../../../test-utils/internal-mocks.bun.ts";
+import type { StorageEndpoint } from "../../contracts/Storage.ts";
+import { StorageImpl } from "../../StorageImpl.ts";
+import { mockEndpointBuilder, type SharedTestConfig } from "../../storage-test-utils.bun.ts";
+import { MemoryEndpoint } from "../memory/MemoryEndpoint.ts";
+import { ScopedEndpoint } from "./ScopedEndpoint.ts";
+import { scopedStorage } from "./scopedStorage.ts";
 
 // Dummy factory for tests - never called since we pass StorageEndpoint directly
 const dummyStorageFactory = () => {
@@ -18,7 +18,7 @@ export const scopedStorageSharedTestConfig: SharedTestConfig[] = [
 		createEndpoint: () =>
 			new ScopedEndpoint(
 				{
-					disk: new MemoryEndpoint({}),
+					disk: new MemoryEndpoint({ fakeUrls: true }),
 					prefix: "/",
 				},
 				dummyStorageFactory,
@@ -29,7 +29,7 @@ export const scopedStorageSharedTestConfig: SharedTestConfig[] = [
 		createEndpoint: () =>
 			new ScopedEndpoint(
 				{
-					disk: new MemoryEndpoint({}),
+					disk: new MemoryEndpoint({ fakeUrls: true }),
 					prefix: "/scoped/",
 				},
 				dummyStorageFactory,
@@ -121,9 +121,12 @@ describe(scopedStorage, () => {
 			mimeType: "text/plain",
 		});
 
-		await scopedDisk.copy("/source.txt", "/dest.txt");
+		await scopedDisk.copy({ source: "/source.txt", destination: "/dest.txt" });
 
-		expect(spy).toHaveBeenCalledWith("/videos/source.txt", "/videos/dest.txt");
+		expect(spy).toHaveBeenCalledWith({
+			source: "/videos/source.txt",
+			destination: "/videos/dest.txt",
+		});
 	});
 
 	test("move() prepends prefix to both source and destination", async () => {
@@ -135,9 +138,12 @@ describe(scopedStorage, () => {
 			mimeType: "text/plain",
 		});
 
-		await scopedDisk.move("/source.txt", "/dest.txt");
+		await scopedDisk.move({ source: "/source.txt", destination: "/dest.txt" });
 
-		expect(spy).toHaveBeenCalledWith("/videos/source.txt", "/videos/dest.txt");
+		expect(spy).toHaveBeenCalledWith({
+			source: "/videos/source.txt",
+			destination: "/videos/dest.txt",
+		});
 	});
 
 	test("deleteSingle() prepends prefix to path", async () => {
@@ -173,29 +179,37 @@ describe(scopedStorage, () => {
 	});
 
 	test("getPublicDownloadUrl() prepends prefix to path", async () => {
-		const spy = spyOn(wrappedDisk, "getPublicDownloadUrl");
+		const spy = spyOn(wrappedDisk, "getPublicDownloadUrl").mockResolvedValue("mocked-url");
 
-		await scopedDisk.getPublicDownloadUrl("/file.txt", "download.txt");
+		const result = await scopedDisk.getPublicDownloadUrl("/file.txt", {
+			downloadAs: "download.txt",
+		});
 
-		expect(spy).toHaveBeenCalledWith("/videos/file.txt", "download.txt");
+		expect(spy).toHaveBeenCalledWith("/videos/file.txt", { downloadAs: "download.txt" });
+		expect(result).toBe("mocked-url");
 	});
 
 	test("getSignedDownloadUrl() prepends prefix to path", async () => {
-		const spy = spyOn(wrappedDisk, "getSignedDownloadUrl");
+		const spy = spyOn(wrappedDisk, "getSignedDownloadUrl").mockResolvedValue("mocked-url");
 		const expires = new Date();
 
-		await scopedDisk.getSignedDownloadUrl("/file.txt", expires, "download.txt");
+		const result = await scopedDisk.getSignedDownloadUrl("/file.txt", {
+			expires,
+			downloadAs: "download.txt",
+		});
 
-		expect(spy).toHaveBeenCalledWith("/videos/file.txt", expires, "download.txt");
+		expect(spy).toHaveBeenCalledWith("/videos/file.txt", { expires, downloadAs: "download.txt" });
+		expect(result).toBe("mocked-url");
 	});
 
 	test("getTemporaryUploadUrl() prepends prefix to path", async () => {
-		const spy = spyOn(wrappedDisk, "getTemporaryUploadUrl");
+		const spy = spyOn(wrappedDisk, "getTemporaryUploadUrl").mockResolvedValue("mocked-url");
 		const expires = new Date();
 
-		await scopedDisk.getTemporaryUploadUrl("/file.txt", expires);
+		const result = await scopedDisk.getTemporaryUploadUrl("/file.txt", expires);
 
 		expect(spy).toHaveBeenCalledWith("/videos/file.txt", expires);
+		expect(result).toBe("mocked-url");
 	});
 
 	test("operations are isolated to the scoped prefix", async () => {

@@ -1,11 +1,11 @@
-import type { TypeToken } from "../container/container-key";
-import { createTypeToken } from "../container/container-key";
-import type { Component } from "../view/Component";
-import type { Controller } from "./Controller";
-import { type ControllerContext } from "./Controller";
-import type { MiddlewareReference } from "./Middleware";
-import type { MiddlewareSet } from "./MiddlewareSet";
-import type { ApiResourceAction, ResourceAction } from "./ResourceController";
+import type { TypeToken } from "../container/container-key.ts";
+import { createTypeToken } from "../container/container-key.ts";
+import type { Component } from "../view/Component.ts";
+import type { Controller } from "./Controller.ts";
+import { type ControllerContext } from "./Controller.ts";
+import type { MiddlewareReference } from "./Middleware.ts";
+import type { MiddlewareSet } from "./MiddlewareSet.ts";
+import type { ApiResourceAction, ResourceAction } from "./ResourceController.ts";
 
 /**
  * A collection of route definitions, returned by route creation functions like

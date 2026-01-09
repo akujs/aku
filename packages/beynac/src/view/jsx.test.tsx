@@ -1,13 +1,13 @@
-/** @jsxImportSource ./ */
+/** @jsxImportSource . */
 import { expect, test } from "bun:test";
-import { ContainerImpl } from "../container/ContainerImpl";
-import { createTypeToken } from "../container/container-key";
-import { createKey } from "../core/Key";
-import { render } from "../test-utils/view-test-utils";
-import type { Component } from "./Component";
-import { BaseComponent } from "./Component";
-import { ViewRendererImpl } from "./ViewRendererImpl";
-import { type Context, isJsxElement, type JSX, type JSXNode, type Props } from "./view-types";
+import { ContainerImpl } from "../container/ContainerImpl.ts";
+import { createTypeToken } from "../container/container-key.ts";
+import { createKey } from "../core/Key.ts";
+import { render } from "../test-utils/view-test-utils.bun.ts";
+import type { Component } from "./Component.ts";
+import { BaseComponent } from "./Component.ts";
+import { ViewRendererImpl } from "./ViewRendererImpl.ts";
+import { type Context, isJsxElement, type JSX, type JSXNode, type Props } from "./view-types.ts";
 
 test("renders single element with attributes and text child", async () => {
 	expect(await render(<span id="foo">hello</span>)).toBe('<span id="foo">hello</span>');

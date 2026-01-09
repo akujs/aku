@@ -1,6 +1,6 @@
 import { STATUS_CODES } from "node:http";
-import { BeynacError } from "../core/core-errors";
-import type { StorageEndpoint } from "./contracts/Storage";
+import { BeynacError } from "../core/core-errors.ts";
+import type { StorageEndpoint } from "./contracts/Storage.ts";
 
 /**
  * Base class for all storage-related errors
@@ -21,8 +21,11 @@ export abstract class StorageError extends BeynacError {
  * Thrown when a requested disk is not found in the storage configuration.
  */
 export class DiskNotFoundError extends StorageError {
-	constructor(public readonly diskName: string) {
+	readonly diskName: string;
+
+	constructor(diskName: string) {
 		super(`Disk "${diskName}" not found`);
+		this.diskName = diskName;
 	}
 }
 
@@ -30,11 +33,13 @@ export class DiskNotFoundError extends StorageError {
  * Thrown when a path has an invalid format
  */
 export class InvalidPathError extends StorageError {
-	constructor(
-		public readonly path: string,
-		public readonly reason: string,
-	) {
+	readonly path: string;
+	readonly reason: string;
+
+	constructor(path: string, reason: string) {
 		super(`Invalid path "${path}": ${reason}`);
+		this.path = path;
+		this.reason = reason;
 	}
 
 	static forInvalidCharacters(path: string, endpoint: StorageEndpoint): InvalidPathError {
@@ -49,8 +54,11 @@ export class InvalidPathError extends StorageError {
  * Thrown when a file is not found
  */
 export class NotFoundError extends StorageError {
-	constructor(public readonly path: string) {
+	readonly path: string;
+
+	constructor(path: string) {
 		super(`File not found: ${path}`);
+		this.path = path;
 	}
 }
 
@@ -58,12 +66,15 @@ export class NotFoundError extends StorageError {
  * Thrown when permission is denied for a filesystem operation
  */
 export class PermissionsError extends StorageError {
-	constructor(
-		public readonly path: string,
-		public readonly code: number,
-		public readonly errorName: string,
-	) {
+	readonly path: string;
+	readonly code: number;
+	readonly errorName: string;
+
+	constructor(path: string, code: number, errorName: string) {
 		super(`Permission denied (${code} ${errorName}): ${path}`);
+		this.path = path;
+		this.code = code;
+		this.errorName = errorName;
 	}
 
 	static forHttpError(path: string, statusCode: number): PermissionsError {
@@ -76,11 +87,11 @@ export class PermissionsError extends StorageError {
  * available on the `cause` property.
  */
 export class StorageUnknownError extends StorageError {
-	constructor(
-		public readonly operation: string,
-		cause: unknown,
-	) {
+	readonly operation: string;
+
+	constructor(operation: string, cause: unknown) {
 		const error = cause instanceof Error ? cause : new Error(String(cause));
 		super(`Unable to ${operation}: ${error.message}`, error);
+		this.operation = operation;
 	}
 }

@@ -1,6 +1,6 @@
-import type { StorageAdapter } from "../../contracts/Storage";
-import { MemoryEndpoint } from "./MemoryEndpoint";
-import type { MemoryStorageConfig } from "./MemoryStorageConfig";
+import type { StorageAdapter } from "../../contracts/Storage.ts";
+import { MemoryEndpoint } from "./MemoryEndpoint.ts";
+import type { MemoryStorageConfig } from "./MemoryStorageConfig.ts";
 
 /**
  * Create memory-backed storage. This can be used in production as a

@@ -1,4 +1,4 @@
-import { BaseClass } from "../../../../utils";
+import { BaseClass } from "../../../../utils.ts";
 
 // These are not re-exported from index.ts, so they're not public API
 // Having doc comments without @internal should be an error

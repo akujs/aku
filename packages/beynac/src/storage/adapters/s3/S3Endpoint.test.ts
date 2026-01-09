@@ -1,9 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { MINIO_ENDPOINT, shouldSkipDockerTests } from "../../../test-utils/docker";
-import { mockCurrentTime, resetMockTime } from "../../../testing/mock-time";
-import { PermissionsError } from "../../storage-errors";
-import { createS3, createS3WithUniqueBucket, createUniqueBucket } from "./S3Endpoint.shared.test";
-import { s3Storage } from "./s3Storage";
+import { MINIO_ENDPOINT, shouldSkipDockerTests } from "../../../test-utils/docker.bun.ts";
+import { mockCurrentTime, resetMockTime } from "../../../testing/mock-time.ts";
+import { PermissionsError } from "../../storage-errors.ts";
+import {
+	createS3,
+	createS3WithUniqueBucket,
+	createUniqueBucket,
+} from "./S3Endpoint.shared.test.ts";
+import { s3Storage } from "./s3Storage.ts";
 
 describe.skipIf(shouldSkipDockerTests())(s3Storage, () => {
 	describe("S3-specific configuration", () => {
@@ -161,7 +165,9 @@ describe.skipIf(shouldSkipDockerTests())(s3Storage, () => {
 				mimeType: "text/plain",
 			});
 
-			const url = await endpoint.getPublicDownloadUrl("/test-file.txt", "custom-name.txt");
+			const url = await endpoint.getPublicDownloadUrl("/test-file.txt", {
+				downloadAs: "custom-name.txt",
+			});
 
 			const response = await fetch(url);
 			expect(response.ok, `Should be able to access ${url}`).toBe(true);
@@ -180,7 +186,7 @@ describe.skipIf(shouldSkipDockerTests())(s3Storage, () => {
 			});
 
 			const expires = new Date(Date.now() + 60 * 60 * 1000);
-			const signedUrl = await endpoint.getSignedDownloadUrl("/signed-test.txt", expires);
+			const signedUrl = await endpoint.getSignedDownloadUrl("/signed-test.txt", { expires });
 
 			expect(signedUrl).toBeDefined();
 			expect(signedUrl).toContain("X-Amz-");
@@ -203,11 +209,10 @@ describe.skipIf(shouldSkipDockerTests())(s3Storage, () => {
 			});
 
 			const expires = new Date(Date.now() + 60 * 60 * 1000);
-			const signedUrl = await endpoint.getSignedDownloadUrl(
-				"/download-test.txt",
+			const signedUrl = await endpoint.getSignedDownloadUrl("/download-test.txt", {
 				expires,
-				"custom-download.txt",
-			);
+				downloadAs: "custom-download.txt",
+			});
 
 			expect(signedUrl).toContain("response-content-disposition");
 			expect(signedUrl).toContain("custom-download.txt");

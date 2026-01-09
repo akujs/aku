@@ -1,28 +1,28 @@
-import type { KeyOrClass } from "../container/container-key";
-import type { Application } from "./contracts/Application";
+import type { KeyOrClass } from "../container/container-key.ts";
+import type { Application } from "./contracts/Application.ts";
 
 type UnknownRecord = Record<string | symbol, unknown>;
 
-let application: Application | null = null;
+let _facadeApplication: Application | null = null;
 
 export const setFacadeApplication = (facadeApplication: Application | null): void => {
-	application = facadeApplication ?? null;
+	_facadeApplication = facadeApplication ?? null;
 };
 
-export const getFacadeApplication = (): Application | null => {
-	return application;
+export const getFacadeApplication = (): Application => {
+	if (!_facadeApplication) {
+		throw new Error(
+			"Global application instance is not available. Ensure createApplication() has been called.",
+		);
+	}
+	return _facadeApplication;
 };
 
-export function createFacade<T extends object>(key: KeyOrClass<T | undefined /*FIXME*/>): T {
+export function createFacade<T extends object>(key: KeyOrClass<T>): T {
 	let lifecycleChecked = false;
 
 	const getInstance = (): UnknownRecord => {
-		if (!application) {
-			throw new Error(
-				"Global application instance is not available. Ensure createApplication() has been called.",
-			);
-		}
-
+		const application = getFacadeApplication();
 		if (!lifecycleChecked) {
 			const lifecycle = application.container.getLifecycle(key);
 			if (lifecycle === "transient") {

@@ -1,14 +1,17 @@
 import { S3Client, S3Errors } from "@bradenmacdonald/s3-lite-client";
-import { md5 } from "../../../helpers/hash/digest";
-import { BaseClass, withoutUndefinedValues } from "../../../utils";
+import { md5 } from "../../../helpers/hash/digest.ts";
+import { BaseClass, withoutUndefinedValues } from "../../../utils.ts";
 import type {
 	StorageEndpoint,
+	StorageEndpointCopyMoveOptions,
 	StorageEndpointFileInfoResult,
 	StorageEndpointFileReadResult,
+	StorageEndpointPublicDownloadUrlOptions,
+	StorageEndpointSignedDownloadUrlOptions,
 	StorageEndpointWriteOptions,
-} from "../../contracts/Storage";
-import { NotFoundError, PermissionsError, StorageUnknownError } from "../../storage-errors";
-import type { S3StorageConfig } from "./S3StorageConfig";
+} from "../../contracts/Storage.ts";
+import { NotFoundError, PermissionsError, StorageUnknownError } from "../../storage-errors.ts";
+import type { S3StorageConfig } from "./S3StorageConfig.ts";
 
 export class S3Endpoint extends BaseClass implements StorageEndpoint {
 	readonly name = "s3" as const;
@@ -130,7 +133,10 @@ export class S3Endpoint extends BaseClass implements StorageEndpoint {
 		});
 	}
 
-	async getPublicDownloadUrl(path: string, downloadFileName?: string): Promise<string> {
+	async getPublicDownloadUrl(
+		path: string,
+		options?: StorageEndpointPublicDownloadUrlOptions,
+	): Promise<string> {
 		return await withS3Errors(path, `generate public URL for ${path}`, async () => {
 			const url = new URL(this.#endpoint);
 			const s3Key = this.#pathToKey(path);
@@ -141,10 +147,10 @@ export class S3Endpoint extends BaseClass implements StorageEndpoint {
 				url.host = `${this.bucket}.${url.host}`;
 			}
 
-			if (downloadFileName) {
+			if (options?.downloadAs) {
 				url.searchParams.set(
 					"response-content-disposition",
-					`attachment; filename="${downloadFileName}"`,
+					`attachment; filename="${options.downloadAs}"`,
 				);
 			}
 
@@ -154,17 +160,16 @@ export class S3Endpoint extends BaseClass implements StorageEndpoint {
 
 	async getSignedDownloadUrl(
 		path: string,
-		expires: Date,
-		downloadFileName?: string,
+		options: StorageEndpointSignedDownloadUrlOptions,
 	): Promise<string> {
 		return await withS3Errors(path, `generate signed URL for ${path}`, async () => {
 			const now = new Date();
-			const seconds = Math.floor((expires.getTime() - now.getTime()) / 1000);
+			const seconds = Math.floor((options.expires.getTime() - now.getTime()) / 1000);
 			// Clamp to valid range: 1 second to 7 days (604800 seconds)
 			// This is an AWS S3/R2 limitation, not arbitrary
 			const expirySeconds = Math.max(1, Math.min(604800, seconds));
 
-			const options: {
+			const presignOptions: {
 				bucketName: string;
 				expirySeconds: number;
 				responseParams?: Record<string, string>;
@@ -173,13 +178,13 @@ export class S3Endpoint extends BaseClass implements StorageEndpoint {
 				expirySeconds,
 			};
 
-			if (downloadFileName) {
-				options.responseParams = {
-					"response-content-disposition": `attachment; filename="${downloadFileName}"`,
+			if (options.downloadAs) {
+				presignOptions.responseParams = {
+					"response-content-disposition": `attachment; filename="${options.downloadAs}"`,
 				};
 			}
 
-			return await this.client.presignedGetObject(this.#pathToKey(path), options);
+			return await this.client.presignedGetObject(this.#pathToKey(path), presignOptions);
 		});
 	}
 
@@ -198,24 +203,28 @@ export class S3Endpoint extends BaseClass implements StorageEndpoint {
 		});
 	}
 
-	async copy(source: string, destination: string): Promise<void> {
-		return await withS3Errors(source, `copy ${source} to ${destination}`, async () => {
-			await this.client.copyObject(
-				{
-					sourceBucketName: this.bucket,
-					sourceKey: this.#pathToKey(source),
-				},
-				this.#pathToKey(destination),
-				{
-					bucketName: this.bucket,
-				},
-			);
-		});
+	async copy(options: StorageEndpointCopyMoveOptions): Promise<void> {
+		return await withS3Errors(
+			options.source,
+			`copy ${options.source} to ${options.destination}`,
+			async () => {
+				await this.client.copyObject(
+					{
+						sourceBucketName: this.bucket,
+						sourceKey: this.#pathToKey(options.source),
+					},
+					this.#pathToKey(options.destination),
+					{
+						bucketName: this.bucket,
+					},
+				);
+			},
+		);
 	}
 
-	async move(source: string, destination: string): Promise<void> {
-		await this.copy(source, destination);
-		await this.deleteSingle(source);
+	async move(options: StorageEndpointCopyMoveOptions): Promise<void> {
+		await this.copy(options);
+		await this.deleteSingle(options.source);
 	}
 
 	async existsSingle(path: string): Promise<boolean> {

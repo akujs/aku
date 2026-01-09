@@ -1,5 +1,5 @@
-import { BeynacEvent } from "../../../../core/core-events";
-import { BaseClass } from "../../../../utils";
+import { BeynacEvent } from "../../../../core/core-events.ts";
+import { BaseClass } from "../../../../utils.ts";
 
 // Good: ends with Event and extends BeynacEvent
 export class GoodEvent extends BeynacEvent {}

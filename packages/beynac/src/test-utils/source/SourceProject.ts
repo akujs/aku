@@ -1,23 +1,25 @@
-import { BaseClass } from "../../utils";
-import { UNRESOLVED_TYPE } from "./parseSource";
-import type { SourceExport } from "./SourceExport";
-import { SourceFile } from "./SourceFile";
-import { SourceFolder } from "./SourceFolder";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { BaseClass } from "../../utils.ts";
+import { UNRESOLVED_TYPE } from "./parseSource.ts";
+import type { SourceExport } from "./SourceExport.ts";
+import { SourceFile } from "./SourceFile.ts";
+import { SourceFolder } from "./SourceFolder.ts";
 
 /**
  * Represents a loaded source code project with metadata about its structure and exports.
  */
 export class SourceProject extends BaseClass {
 	root: SourceFolder;
-	entryPoints: Set<string>;
+	entryPointMode: "discover" | "disable";
 	#valueToExports: Map<unknown, SourceExport[]> = new Map();
 	#filesByPath = new Map<string, SourceFile>();
 	#foldersByPath = new Map<string, SourceFolder>();
 
-	constructor(root: SourceFolder, entryPoints: string[] = []) {
+	constructor(root: SourceFolder, entryPointMode: "discover" | "disable") {
 		super();
 		this.root = root;
-		this.entryPoints = new Set(entryPoints);
+		this.entryPointMode = entryPointMode;
 		this.#buildPathMaps();
 		this.#resolveTypeReexports();
 		this.#buildValueToExportsMap();
@@ -55,25 +57,28 @@ export class SourceProject extends BaseClass {
 
 	/**
 	 * Loads a source project from a directory path.
+	 *
+	 * @param mode - "discover" to recognize *-entry-point.ts files as entry points,
+	 *               or "disable" to treat no files as entry points
 	 */
-	static async load(rootPath: string, entryPoints: string[] = []): Promise<SourceProject> {
+	static async load(rootPath: string, mode: "discover" | "disable"): Promise<SourceProject> {
 		const root = await SourceFolder.load(rootPath, rootPath);
+		return new SourceProject(root, mode);
+	}
 
-		// Normalise entry points by removing "src/" prefix
-		const normalisedEntryPoints = entryPoints.map((ep) =>
-			ep.startsWith("src/") ? ep.slice(4) : ep,
-		);
+	static #beynacProject: SourceProject | null = null;
 
-		const project = new SourceProject(root, normalisedEntryPoints);
-
-		// Validate that all entry points exist
-		for (const entryPoint of normalisedEntryPoints) {
-			if (!project.#filesByPath.has(entryPoint)) {
-				throw new Error(`Entry point not found: ${entryPoint}`);
-			}
+	/**
+	 * Gets the cached beynac SourceProject instance.
+	 * Always uses "discover" mode.
+	 */
+	static async getBeynac(): Promise<SourceProject> {
+		if (!this.#beynacProject) {
+			const __dirname = dirname(fileURLToPath(import.meta.url));
+			const srcDir = join(__dirname, "../..");
+			this.#beynacProject = await SourceProject.load(srcDir, "discover");
 		}
-
-		return project;
+		return this.#beynacProject;
 	}
 
 	/**

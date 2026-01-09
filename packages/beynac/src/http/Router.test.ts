@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, expectTypeOf, test } from "bun:test";
-import { ContainerImpl } from "../container/ContainerImpl";
-import { Configuration } from "../core/contracts/Configuration";
-import { MockController, mockController } from "../test-utils/http-test-utils";
-import { delete_, get, group, isIn, match, options, patch, post, put } from "./helpers";
-import { BaseMiddleware } from "./Middleware";
-import { MiddlewareSet } from "./MiddlewareSet";
-import { Router } from "./Router";
-import { RouteUrlGenerator } from "./RouteUrlGenerator";
-import type { Routes } from "./router-types";
+import { ContainerImpl } from "../container/ContainerImpl.ts";
+import { Configuration } from "../core/contracts/Configuration.ts";
+import { MockController, mockController } from "../test-utils/http-test-utils.bun.ts";
+import { delete_, get, group, isIn, match, options, patch, post, put } from "./helpers.ts";
+import { BaseMiddleware } from "./Middleware.ts";
+import { MiddlewareSet } from "./MiddlewareSet.ts";
+import { Router } from "./Router.ts";
+import { RouteUrlGenerator } from "./RouteUrlGenerator.ts";
+import type { Routes } from "./router-types.ts";
 
 /**
  * Router Unit Tests

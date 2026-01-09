@@ -1,5 +1,5 @@
 import { describe, expectTypeOf, it } from "bun:test";
-import { createTypeToken, type TypeToken } from "./container-key";
+import { createTypeToken, type TypeToken } from "./container-key.ts";
 
 describe("type tokens", () => {
 	it("createTypeToken() with no arguments infers TypeToken<unknown>", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, test } from "bun:test";
-import { get, group } from "./helpers";
-import type { Routes } from "./router-types";
+import { get, group } from "./helpers.ts";
+import type { Routes } from "./router-types.ts";
 
 test("type inference for named routes", () => {
 	// Type inference only works when name is set at creation time
@@ -203,9 +203,9 @@ describe("validation", () => {
 	});
 });
 
-import { MockController } from "../test-utils/http-test-utils";
-import { resource } from "./helpers";
-import { ResourceController } from "./ResourceController";
+import { MockController } from "../test-utils/http-test-utils.bun.ts";
+import { resource } from "./helpers.ts";
+import { ResourceController } from "./ResourceController.ts";
 
 describe("resource routes", () => {
 	test("resource() creates routes that work with RouteUrlGenerator", () => {

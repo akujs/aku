@@ -1,6 +1,6 @@
-import { PARAM_PATTERN, WILDCARD_PARAM_PATTERN } from "../syntax";
-import { domainAndPathToSegments, NullProtoObj, staticCacheKey } from "./matcher-utils";
-import type { MatcherContext, ParamsIndexMap } from "./types";
+import { PARAM_PATTERN, WILDCARD_PARAM_PATTERN } from "../syntax.ts";
+import { domainAndPathToSegments, NullProtoObj, staticCacheKey } from "./matcher-utils.ts";
+import type { MatcherContext, ParamsIndexMap } from "./types.ts";
 
 export function addRoute<T>(
 	ctx: MatcherContext<T>,

@@ -1,6 +1,6 @@
-import { MarkupStream } from "./markup-stream";
-import { RawContent } from "./raw";
-import type { JSXNode } from "./view-types";
+import { MarkupStream } from "./markup-stream.ts";
+import { RawContent } from "./raw.ts";
+import type { JSXNode } from "./view-types.ts";
 
 /**
  * Render static HTML with optional dynamic values. This can be used anywhere

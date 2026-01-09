@@ -1,5 +1,5 @@
-import type { MiddlewareReference } from "./Middleware";
-import { StatusPagesMiddleware } from "./StatusPagesMiddleware";
+import type { MiddlewareReference } from "./Middleware.ts";
+import { StatusPagesMiddleware } from "./StatusPagesMiddleware.ts";
 
 export const DEFAULT_MIDDLEWARE_PRIORITY: MiddlewareReference[] = [
 	// Framework middleware will be added here

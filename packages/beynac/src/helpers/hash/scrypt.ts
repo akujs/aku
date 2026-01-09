@@ -4,8 +4,8 @@ import {
 	randomBytes,
 	timingSafeEqual,
 } from "node:crypto";
-import { mockable } from "../../testing/mocks";
-import { formatPhc, parsePhc } from "./phc";
+import { mockable } from "../../testing/mocks.ts";
+import { formatPhc, parsePhc } from "./phc.ts";
 
 /**
  * Options for scrypt hashing

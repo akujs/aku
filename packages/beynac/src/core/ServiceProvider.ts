@@ -1,13 +1,16 @@
-import type { Container } from "../container/contracts/Container";
-import { BaseClass } from "../utils";
-import type { Application } from "./contracts/Application";
+import type { Container } from "../container/contracts/Container.ts";
+import { BaseClass } from "../utils.ts";
+import type { Application } from "./contracts/Application.ts";
 
 /**
  * Base class for service providers.
  */
 export abstract class ServiceProvider extends BaseClass {
-	constructor(protected app: Application) {
+	protected app: Application;
+
+	constructor(app: Application) {
 		super();
+		this.app = app;
 	}
 
 	/**

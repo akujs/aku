@@ -1,7 +1,7 @@
-/** @jsxImportSource ./ */
+/** @jsxImportSource . */
 import { expect, test } from "bun:test";
-import { render } from "../test-utils/view-test-utils";
-import { Once } from "./once";
+import { render } from "../test-utils/view-test-utils.bun.ts";
+import { Once } from "./once.ts";
 
 test("Once renders content the first time a key is encountered", async () => {
 	const result = await render(

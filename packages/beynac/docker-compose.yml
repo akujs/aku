@@ -9,10 +9,27 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     tmpfs:
-      - /data:size=256M
+      - /data:size=1G
     command: server /data --console-address ":9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: beynac-postgres-test
+    ports:
+      - "22857:5432"
+    environment:
+      POSTGRES_USER: beynac
+      POSTGRES_PASSWORD: beynac
+      POSTGRES_DB: beynac_test
+    tmpfs:
+      - /var/lib/postgresql/data:size=1G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beynac -d beynac_test"]
       interval: 5s
       timeout: 3s
       retries: 3

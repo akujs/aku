@@ -1,14 +1,17 @@
-import { injectFactory } from "../../../container/inject";
+import { injectFactory } from "../../../container/inject.ts";
 import type {
 	Storage,
 	StorageEndpoint,
+	StorageEndpointCopyMoveOptions,
 	StorageEndpointFileInfoResult,
 	StorageEndpointFileReadResult,
+	StorageEndpointPublicDownloadUrlOptions,
+	StorageEndpointSignedDownloadUrlOptions,
 	StorageEndpointWriteOptions,
-} from "../../contracts/Storage";
-import { Storage as StorageKey } from "../../contracts/Storage";
-import { WrappedEndpoint } from "../../storage-utils";
-import type { ScopedStorageConfig } from "./ScopedStorageConfig";
+} from "../../contracts/Storage.ts";
+import { Storage as StorageKey } from "../../contracts/Storage.ts";
+import { WrappedEndpoint } from "../../storage-utils.ts";
+import type { ScopedStorageConfig } from "./ScopedStorageConfig.ts";
 
 export class ScopedEndpoint extends WrappedEndpoint implements StorageEndpoint {
 	readonly name = "scoped" as const;
@@ -43,32 +46,36 @@ export class ScopedEndpoint extends WrappedEndpoint implements StorageEndpoint {
 		return await this.endpoint.getInfoSingle(this.#addPrefix(path));
 	}
 
-	async getPublicDownloadUrl(path: string, downloadFileName?: string): Promise<string> {
-		return await this.endpoint.getPublicDownloadUrl(this.#addPrefix(path), downloadFileName);
+	async getPublicDownloadUrl(
+		path: string,
+		options?: StorageEndpointPublicDownloadUrlOptions,
+	): Promise<string> {
+		return await this.endpoint.getPublicDownloadUrl(this.#addPrefix(path), options);
 	}
 
 	async getSignedDownloadUrl(
 		path: string,
-		expires: Date,
-		downloadFileName?: string,
+		options: StorageEndpointSignedDownloadUrlOptions,
 	): Promise<string> {
-		return await this.endpoint.getSignedDownloadUrl(
-			this.#addPrefix(path),
-			expires,
-			downloadFileName,
-		);
+		return await this.endpoint.getSignedDownloadUrl(this.#addPrefix(path), options);
 	}
 
 	async getTemporaryUploadUrl(path: string, expires: Date): Promise<string> {
 		return await this.endpoint.getTemporaryUploadUrl(this.#addPrefix(path), expires);
 	}
 
-	async copy(source: string, destination: string): Promise<void> {
-		await this.endpoint.copy(this.#addPrefix(source), this.#addPrefix(destination));
+	async copy(options: StorageEndpointCopyMoveOptions): Promise<void> {
+		await this.endpoint.copy({
+			source: this.#addPrefix(options.source),
+			destination: this.#addPrefix(options.destination),
+		});
 	}
 
-	async move(source: string, destination: string): Promise<void> {
-		await this.endpoint.move(this.#addPrefix(source), this.#addPrefix(destination));
+	async move(options: StorageEndpointCopyMoveOptions): Promise<void> {
+		await this.endpoint.move({
+			source: this.#addPrefix(options.source),
+			destination: this.#addPrefix(options.destination),
+		});
 	}
 
 	async existsSingle(path: string): Promise<boolean> {

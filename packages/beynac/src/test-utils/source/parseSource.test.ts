@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { extractStatements, parseExports, parseImports } from "./parseSource";
+import { extractStatements, parseExports, parseImports } from "./parseSource.ts";
 
 describe(extractStatements, () => {
 	test("extracts simple statement", () => {
@@ -46,7 +46,7 @@ describe(extractStatements, () => {
 			extractStatements(
 				`
 			export const foo = 1;
-			import { bar } from "./module";
+			import { bar } from "./module.ts";
 		`,
 				"export",
 			),
@@ -102,14 +102,14 @@ describe(extractStatements, () => {
 	});
 
 	test("extracts import statements with braces", () => {
-		expect(extractStatements(`import { foo } from "./module";`, "import")).toEqual([
-			{ docComment: null, statement: `import { foo } from "./module";` },
+		expect(extractStatements(`import { foo } from "./module.ts";`, "import")).toEqual([
+			{ docComment: null, statement: `import { foo } from "./module.ts";` },
 		]);
 	});
 
 	test("extracts import statements without braces", () => {
-		expect(extractStatements(`import foo from "./module";`, "import")).toEqual([
-			{ docComment: null, statement: `import foo from "./module";` },
+		expect(extractStatements(`import foo from "./module.ts";`, "import")).toEqual([
+			{ docComment: null, statement: `import foo from "./module.ts";` },
 		]);
 	});
 
@@ -270,39 +270,39 @@ describe(parseExports, () => {
 
 	// Re-exports
 	test("parses single re-export", () => {
-		expect(parseExports(`export { foo } from "./module";`)).toEqual([
+		expect(parseExports(`export { foo } from "./module.ts";`)).toEqual([
 			{
 				type: "reexport",
-				source: `export { foo } from "./module";`,
+				source: `export { foo } from "./module.ts";`,
 				exportedName: "foo",
 				originalName: "foo",
-				sourceModule: "./module",
+				sourceModule: "./module.ts",
 				isTypeOnly: false,
 			},
 		]);
 	});
 
 	test("parses renamed re-export", () => {
-		expect(parseExports(`export { foo as bar } from "./module";`)).toEqual([
+		expect(parseExports(`export { foo as bar } from "./module.ts";`)).toEqual([
 			{
 				type: "reexport",
-				source: `export { foo as bar } from "./module";`,
+				source: `export { foo as bar } from "./module.ts";`,
 				exportedName: "bar",
 				originalName: "foo",
-				sourceModule: "./module",
+				sourceModule: "./module.ts",
 				isTypeOnly: false,
 			},
 		]);
 	});
 
 	test("parses type-only re-export", () => {
-		expect(parseExports(`export type { Foo } from "./module";`)).toEqual([
+		expect(parseExports(`export type { Foo } from "./module.ts";`)).toEqual([
 			{
 				type: "reexport",
-				source: `export type { Foo } from "./module";`,
+				source: `export type { Foo } from "./module.ts";`,
 				exportedName: "Foo",
 				originalName: "Foo",
-				sourceModule: "./module",
+				sourceModule: "./module.ts",
 				isTypeOnly: true,
 			},
 		]);
@@ -310,26 +310,26 @@ describe(parseExports, () => {
 
 	// Namespace re-exports
 	test("parses namespace re-export", () => {
-		expect(parseExports(`export * from "./module";`)).toEqual([
+		expect(parseExports(`export * from "./module.ts";`)).toEqual([
 			{
 				type: "reexport",
-				source: `export * from "./module";`,
+				source: `export * from "./module.ts";`,
 				exportedName: "*",
 				originalName: "*",
-				sourceModule: "./module",
+				sourceModule: "./module.ts",
 				isTypeOnly: false,
 			},
 		]);
 	});
 
 	test("parses namespace re-export with alias", () => {
-		expect(parseExports(`export * as utils from "./module";`)).toEqual([
+		expect(parseExports(`export * as utils from "./module.ts";`)).toEqual([
 			{
 				type: "reexport",
-				source: `export * as utils from "./module";`,
+				source: `export * as utils from "./module.ts";`,
 				exportedName: "utils",
 				originalName: "*",
-				sourceModule: "./module",
+				sourceModule: "./module.ts",
 				isTypeOnly: false,
 			},
 		]);
@@ -340,16 +340,16 @@ describe(parseExports, () => {
 		expect(
 			parseExports(`
 			export const foo = 1;
-			export { bar } from "./module";
+			export { bar } from "./module.ts";
 		`),
 		).toEqual([
 			{ type: "direct", source: "export const foo = 1;", name: "foo", kind: "const" },
 			{
 				type: "reexport",
-				source: `export { bar } from "./module";`,
+				source: `export { bar } from "./module.ts";`,
 				exportedName: "bar",
 				originalName: "bar",
-				sourceModule: "./module",
+				sourceModule: "./module.ts",
 				isTypeOnly: false,
 			},
 		]);
@@ -357,29 +357,29 @@ describe(parseExports, () => {
 
 	// Multiple exports
 	test("parses multiple re-exports from same source", () => {
-		expect(parseExports(`export { foo, bar, baz } from "./module";`)).toEqual([
+		expect(parseExports(`export { foo, bar, baz } from "./module.ts";`)).toEqual([
 			{
 				type: "reexport",
-				source: `export { foo, bar, baz } from "./module";`,
+				source: `export { foo, bar, baz } from "./module.ts";`,
 				exportedName: "foo",
 				originalName: "foo",
-				sourceModule: "./module",
+				sourceModule: "./module.ts",
 				isTypeOnly: false,
 			},
 			{
 				type: "reexport",
-				source: `export { foo, bar, baz } from "./module";`,
+				source: `export { foo, bar, baz } from "./module.ts";`,
 				exportedName: "bar",
 				originalName: "bar",
-				sourceModule: "./module",
+				sourceModule: "./module.ts",
 				isTypeOnly: false,
 			},
 			{
 				type: "reexport",
-				source: `export { foo, bar, baz } from "./module";`,
+				source: `export { foo, bar, baz } from "./module.ts";`,
 				exportedName: "baz",
 				originalName: "baz",
-				sourceModule: "./module",
+				sourceModule: "./module.ts",
 				isTypeOnly: false,
 			},
 		]);
@@ -434,85 +434,85 @@ describe(parseExports, () => {
 
 describe(parseImports, () => {
 	test("parses single named import", () => {
-		expect(parseImports(`import { foo } from "./module";`)).toEqual([
-			{ path: "./module", names: ["foo"] },
+		expect(parseImports(`import { foo } from "./module.ts";`)).toEqual([
+			{ path: "./module.ts", names: ["foo"] },
 		]);
 	});
 
 	test("parses multiple named imports", () => {
-		expect(parseImports(`import { foo, bar, baz } from "./module";`)).toEqual([
-			{ path: "./module", names: ["foo", "bar", "baz"] },
+		expect(parseImports(`import { foo, bar, baz } from "./module.ts";`)).toEqual([
+			{ path: "./module.ts", names: ["foo", "bar", "baz"] },
 		]);
 	});
 
 	test("parses renamed imports using original name", () => {
-		expect(parseImports(`import { foo as bar } from "./module";`)).toEqual([
-			{ path: "./module", names: ["foo"] },
+		expect(parseImports(`import { foo as bar } from "./module.ts";`)).toEqual([
+			{ path: "./module.ts", names: ["foo"] },
 		]);
 	});
 
 	test("parses mixed named and renamed imports", () => {
-		expect(parseImports(`import { foo, bar as baz, qux } from "./module";`)).toEqual([
-			{ path: "./module", names: ["foo", "bar", "qux"] },
+		expect(parseImports(`import { foo, bar as baz, qux } from "./module.ts";`)).toEqual([
+			{ path: "./module.ts", names: ["foo", "bar", "qux"] },
 		]);
 	});
 
 	test("parses type imports", () => {
-		expect(parseImports(`import type { Foo } from "./module";`)).toEqual([
-			{ path: "./module", names: ["Foo"] },
+		expect(parseImports(`import type { Foo } from "./module.ts";`)).toEqual([
+			{ path: "./module.ts", names: ["Foo"] },
 		]);
 	});
 
 	test("parses default type imports", () => {
-		expect(parseImports(`import type default from "./module";`)).toEqual([
-			{ path: "./module", names: ["default"] },
+		expect(parseImports(`import type default from "./module.ts";`)).toEqual([
+			{ path: "./module.ts", names: ["default"] },
 		]);
-		expect(parseImports(`import type default, { Foo } from "./module";`)).toEqual([
-			{ path: "./module", names: ["default", "Foo"] },
+		expect(parseImports(`import type default, { Foo } from "./module.ts";`)).toEqual([
+			{ path: "./module.ts", names: ["default", "Foo"] },
 		]);
 	});
 
 	test("parses inline type imports", () => {
-		expect(parseImports(`import { name, type Name2 } from "./module";`)).toEqual([
-			{ path: "./module", names: ["name", "Name2"] },
+		expect(parseImports(`import { name, type Name2 } from "./module.ts";`)).toEqual([
+			{ path: "./module.ts", names: ["name", "Name2"] },
 		]);
 	});
 
 	test("parses inline type imports with alias", () => {
-		expect(parseImports(`import { name, type Name2 as Alias } from "./module";`)).toEqual([
-			{ path: "./module", names: ["name", "Name2"] },
+		expect(parseImports(`import { name, type Name2 as Alias } from "./module.ts";`)).toEqual([
+			{ path: "./module.ts", names: ["name", "Name2"] },
 		]);
 	});
 
 	test("parses default import", () => {
-		expect(parseImports(`import foo from "./module";`)).toEqual([
-			{ path: "./module", names: ["default"] },
+		expect(parseImports(`import foo from "./module.ts";`)).toEqual([
+			{ path: "./module.ts", names: ["default"] },
 		]);
 	});
 
 	test("parses namespace import", () => {
-		expect(parseImports(`import * as utils from "./utils";`)).toEqual([
-			{ path: "./utils", names: ["*"] },
+		expect(parseImports(`import * as utils from "./utils.ts";`)).toEqual([
+			{ path: "./utils.ts", names: ["*"] },
 		]);
 	});
 
 	test("parses combined default and named imports", () => {
-		expect(parseImports(`import baz, { foo, bar as quux } from "./module";`)).toEqual([
-			{ path: "./module", names: ["default", "foo", "bar"] },
+		expect(parseImports(`import baz, { foo, bar as quux } from "./module.ts";`)).toEqual([
+			{ path: "./module.ts", names: ["default", "foo", "bar"] },
 		]);
 	});
 
 	test("parses multiple import statements", () => {
 		expect(
 			parseImports(`
-			import { foo } from "./module1";
-			import { bar } from "./module2";
-			import baz from "./module3";
+			import { foo } from "./module1.ts";
+			import { bar } from "./module2.ts";
+			import baz from "./module3.ts";
 		`),
 		).toEqual([
-			{ path: "./module1", names: ["foo"] },
-			{ path: "./module2", names: ["bar"] },
-			{ path: "./module3", names: ["default"] },
+			{ path: "./module1.ts", names: ["foo"] },
+			{ path: "./module2.ts", names: ["bar"] },
+			{ path: "./module3.ts", names: ["default"] },
 		]);
 	});
 
@@ -534,13 +534,13 @@ describe(parseImports, () => {
 			foo,
 			bar,
 			baz,
-		} from "./module";`),
-		).toEqual([{ path: "./module", names: ["foo", "bar", "baz"] }]);
+		} from "./module.ts";`),
+		).toEqual([{ path: "./module.ts", names: ["foo", "bar", "baz"] }]);
 	});
 
 	test("handles imports from parent directories", () => {
-		expect(parseImports(`import { foo } from "../parent/module";`)).toEqual([
-			{ path: "../parent/module", names: ["foo"] },
+		expect(parseImports(`import { foo } from "../parent/module.ts";`)).toEqual([
+			{ path: "../parent/module.ts", names: ["foo"] },
 		]);
 	});
 
@@ -563,25 +563,25 @@ describe(parseImports, () => {
 	test("ignores export statements", () => {
 		expect(
 			parseImports(`
-			import { foo } from "./module";
-			export { bar } from "./other";
+			import { foo } from "./module.ts";
+			export { bar } from "./other.ts";
 		`),
-		).toEqual([{ path: "./module", names: ["foo"] }]);
+		).toEqual([{ path: "./module.ts", names: ["foo"] }]);
 	});
 
 	test("handles mixed import types in same file", () => {
 		expect(
 			parseImports(`
-			import defaultExport from "./default";
-			import { named } from "./named";
-			import type { TypeOnly } from "./types";
-			import * as namespace from "./namespace";
+			import defaultExport from "./default.ts";
+			import { named } from "./named.ts";
+			import type { TypeOnly } from "./types.ts";
+			import * as namespace from "./namespace.ts";
 		`),
 		).toEqual([
-			{ path: "./default", names: ["default"] },
-			{ path: "./named", names: ["named"] },
-			{ path: "./types", names: ["TypeOnly"] },
-			{ path: "./namespace", names: ["*"] },
+			{ path: "./default.ts", names: ["default"] },
+			{ path: "./named.ts", names: ["named"] },
+			{ path: "./types.ts", names: ["TypeOnly"] },
+			{ path: "./namespace.ts", names: ["*"] },
 		]);
 	});
 
@@ -590,6 +590,8 @@ describe(parseImports, () => {
 	});
 
 	test("throws error for unrecognized import syntax", () => {
-		expect(() => parseImports(`import from "./module";`)).toThrow("Unrecognized import statement");
+		expect(() => parseImports(`import from "./module.ts";`)).toThrow(
+			"Unrecognized import statement",
+		);
 	});
 });

@@ -1,7 +1,7 @@
-import { BaseClass } from "../utils";
-import { SPECIAL_NODE } from "./special-node";
-import type { JSXElement } from "./view-types";
-import { tagAsJsxElement } from "./view-types";
+import { BaseClass } from "../utils.ts";
+import { SPECIAL_NODE } from "./special-node.ts";
+import type { JSXElement } from "./view-types.ts";
+import { tagAsJsxElement } from "./view-types.ts";
 
 export class RawContent extends BaseClass {
 	#content: string;

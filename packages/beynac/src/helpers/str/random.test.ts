@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isUlid, isUuid, password, random, randomHex, ulid, uuid, uuidV4 } from "./random";
+import { isUlid, isUuid, password, random, randomHex, ulid, uuid, uuidV4 } from "./random.ts";
 
 describe(random, () => {
 	test("generates empty string for size 0", () => {

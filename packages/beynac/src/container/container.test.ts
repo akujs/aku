@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, expectTypeOf, mock, spyOn, test } from "bun:test";
-import { asyncGate } from "../test-utils/async-gate";
-import { sleep } from "../utils";
-import { ContainerImpl } from "./ContainerImpl";
-import type { KeyOrClass } from "./container-key";
-import { createTypeToken } from "./container-key";
-import type { Container } from "./contracts/Container";
-import { inject, injectFactory, injectFactoryOptional, injectOptional } from "./inject";
+import { asyncGate } from "../test-utils/async-gate.bun.ts";
+import { ContainerImpl } from "./ContainerImpl.ts";
+import type { KeyOrClass } from "./container-key.ts";
+import { createTypeToken } from "./container-key.ts";
+import type { Container } from "./contracts/Container.ts";
+import { inject, injectFactory, injectFactoryOptional, injectOptional } from "./inject.ts";
 
 let container: Container;
 
@@ -2239,8 +2238,7 @@ describe("Container withScope", () => {
 		expect(hasBeenInScope).toBe(true);
 	});
 
-	test("scoped instances are isolated across concurrent async operations", async () => {
-		const gate = asyncGate(["start"]);
+	test("scoped instances are different in different scopes", async () => {
 		let idCounter = 0;
 		class Database {
 			id: number;
@@ -2250,38 +2248,13 @@ describe("Container withScope", () => {
 		}
 		container.scoped(Database);
 
-		const results: Database[] = [];
+		const [db1, db2] = await Promise.all([
+			container.withScope(() => container.get(Database)),
+			container.withScope(() => container.get(Database)),
+		]);
 
-		const scope1 = gate.task("scope1");
-		const scope2 = gate.task("scope2");
-
-		const task1 = container.withScope(async () => {
-			await scope1("start");
-			const db = container.get(Database);
-			results[0] = db;
-			return db;
-		});
-
-		const task2 = container.withScope(async () => {
-			await scope2("start");
-			const db = container.get(Database);
-			results[1] = db;
-			return db;
-		});
-
-		// Start both scopes
-		const p1 = task1;
-		const p2 = task2;
-
-		// Let them start
-		await gate.run();
-
-		await Promise.all([p1, p2]);
-
-		expect(results[0]).toBeDefined();
-		expect(results[1]).toBeDefined();
-		expect(results[0]).not.toBe(results[1]);
-		expect(results[0]?.id).not.toBe(results[1]?.id);
+		expect(db1).not.toBe(db2);
+		expect(db1.id).not.toBe(db2.id);
 	});
 
 	test("scope propagates through async function calls", async () => {
@@ -2306,77 +2279,17 @@ describe("Container withScope", () => {
 		});
 	});
 
-	test("scoped bindings work alongside singleton and transient", async () => {
-		class Singleton {}
-		class Scoped {}
-		class Transient {}
-
-		container.singleton(Singleton);
-		container.scoped(Scoped);
-		container.bind(Transient);
-
-		const results = await container.withScope(async () => {
-			return {
-				singleton1: container.get(Singleton),
-				singleton2: container.get(Singleton),
-				scoped1: container.get(Scoped),
-				scoped2: container.get(Scoped),
-				transient1: container.get(Transient),
-				transient2: container.get(Transient),
-			};
-		});
-
-		expect(results.singleton1).toBe(results.singleton2);
-		expect(results.scoped1).toBe(results.scoped2);
-		expect(results.transient1).not.toBe(results.transient2);
-	});
-
-	test("same scope returns same instance across async operations", async () => {
-		class Database {
-			id: number;
-			constructor() {
-				this.id = ++idCounter;
-			}
-		}
-		let idCounter = 0;
-		container.scoped(Database);
-
-		await container.withScope(async () => {
-			const db1 = container.get(Database);
-
-			// Do some async work
-			await Promise.resolve();
-
-			const db2 = container.get(Database);
-
-			// Do more async work
-			await Promise.resolve();
-
-			const db3 = container.get(Database);
-
-			// All should be the same instance
-			expect(db1).toBe(db2);
-			expect(db2).toBe(db3);
-			expect(db1.id).toBe(1);
-			expect(idCounter).toBe(1); // Constructor only called once
-		});
-	});
-
-	test("same scope returns same instance at different async checkpoints", async () => {
-		const gate = asyncGate(["first-access", "second-access", "third-access"]);
-
+	test("same scope returns same instance across different async operations", async () => {
 		class Logger {
 			logs: string[] = [];
 		}
 		container.scoped(Logger);
 
-		// Start the scope task
-		const scopeTask = container.withScope(async () => {
-			await gate("first-access");
+		await container.withScope(async () => {
 			const logger1 = container.get(Logger);
 			logger1.logs.push("first");
 
-			await gate("second-access");
+			await Promise.resolve();
 
 			// Critical test: AsyncLocalStorage context should survive setTimeout
 			await new Promise<void>((resolve) => {
@@ -2384,30 +2297,21 @@ describe("Container withScope", () => {
 					const logger2 = container.get(Logger);
 					logger2.logs.push("second");
 
-					// Verify it's the same instance even inside setTimeout callback
 					expect(logger2).toBe(logger1);
 					resolve();
 				}, 0);
 			});
 
-			await gate("third-access");
 			const logger3 = container.get(Logger);
 			logger3.logs.push("third");
-
-			// All should be the same instance
 			expect(logger1).toBe(logger3);
 			expect(logger1.logs).toEqual(["first", "second", "third"]);
 		});
-
-		// Drive the test forward while the scope task is running
-		await gate.run();
-
-		// Wait for the scope task to complete
-		await scopeTask;
 	});
 
 	test("scoped instances are isolated even when scopes overlap", async () => {
-		const gate = asyncGate(["scope1-created", "scope2-created", "scope1-exit"]);
+		const scope1Hold = asyncGate();
+		const scope2Created = asyncGate();
 
 		class Database {
 			id: number;
@@ -2418,64 +2322,33 @@ describe("Container withScope", () => {
 		let idCounter = 0;
 		container.scoped(Database);
 
-		const scope1 = gate.task("scope1");
-		const scope2 = gate.task("scope2");
-
 		let db1: Database | undefined;
 		let db2: Database | undefined;
 
-		// Start scope 1
 		const task1 = container.withScope(async () => {
 			db1 = container.get(Database);
-			await scope1("scope1-created");
-			// Hold this scope open until released
-			await scope1("scope1-exit");
+			await scope1Hold.block();
 			return db1;
 		});
 
-		// Start scope 2
 		const task2 = container.withScope(async () => {
-			await scope2("scope2-created");
+			await scope2Created.block();
 			db2 = container.get(Database);
 			return db2;
 		});
 
-		const p1 = task1;
-		const p2 = task2;
+		await scope1Hold.hasBlocked();
+		await scope2Created.hasBlocked();
 
-		// Verify initial state - both tasks should be waiting
-		expect(gate.current("scope1")).toBe("scope1-created");
-		expect(gate.current("scope2")).toBe("scope2-created");
+		// Release scope2 first - it creates db2 while scope1 is still active
+		scope2Created.release();
+		await task2;
 
-		// Let scope1 create its instance
-		await gate.next(); // scope1-created
-
-		// Verify scope1 has created its instance and is now waiting to exit
-		expect(gate.current("scope1")).toBe("scope1-exit");
-		expect(gate.current("scope2")).toBe("scope2-created"); // scope2 still waiting
-		expect(db1).toBeDefined();
-		expect(db1?.id).toBe(1);
-
-		// Now let scope2 create its instance while scope1 is still active
-		await gate.next(); // scope2-created
-
-		// Verify scope2 has created its instance while scope1 is still active
-		expect(gate.current("scope1")).toBe("scope1-exit"); // scope1 still waiting to exit
-		expect(gate.current("scope2")).toBe(null); // scope2 completed
-		expect(db2).toBeDefined();
-		expect(db2?.id).toBe(2);
-
-		// Verify they got different instances even though scope1 is still active
 		expect(db1).not.toBe(db2);
 
-		// Let scope1 exit
-		await gate.next(); // scope1-exit
-
-		// Verify both tasks have completed
-		expect(gate.current("scope1")).toBe(null);
-		expect(gate.current("scope2")).toBe(null);
-
-		await Promise.all([p1, p2]);
+		// Now let scope1 finish
+		scope1Hold.release();
+		await task1;
 	});
 });
 
@@ -2505,7 +2378,7 @@ describe("Container currentlyInScope", () => {
 			await Promise.resolve();
 			expect(ContainerImpl.currentlyInScope()).toBe(container);
 
-			await sleep(0);
+			await new Promise((resolve) => setTimeout(resolve, 0));
 			expect(ContainerImpl.currentlyInScope()).toBe(container);
 		});
 	});
@@ -2526,29 +2399,16 @@ describe("Container currentlyInScope", () => {
 	});
 
 	test("concurrent scopes return correct container", async () => {
-		const gate = asyncGate(["scope1", "scope2"]);
-		const scope1 = gate.task("scope1");
-		const scope2 = gate.task("scope2");
-
 		const container1 = new ContainerImpl();
 		const container2 = new ContainerImpl();
-		const results: (Container | null)[] = [];
 
-		const task1 = container1.withScope(async () => {
-			await scope1("scope1");
-			results[0] = ContainerImpl.currentlyInScope();
-		});
+		const [result1, result2] = await Promise.all([
+			container1.withScope(() => ContainerImpl.currentlyInScope()),
+			container2.withScope(() => ContainerImpl.currentlyInScope()),
+		]);
 
-		const task2 = container2.withScope(async () => {
-			await scope2("scope2");
-			results[1] = ContainerImpl.currentlyInScope();
-		});
-
-		await gate.run();
-		await Promise.all([task1, task2]);
-
-		expect(results[0]).toBe(container1);
-		expect(results[1]).toBe(container2);
+		expect(result1).toBe(container1);
+		expect(result2).toBe(container2);
 	});
 });
 

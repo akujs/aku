@@ -1,4 +1,4 @@
-import type { StorageAdapter, StorageDisk, StorageEndpoint } from "../../contracts/Storage";
+import type { StorageAdapter, StorageDisk, StorageEndpoint } from "../../contracts/Storage.ts";
 
 /***/
 export interface ScopedStorageConfig {

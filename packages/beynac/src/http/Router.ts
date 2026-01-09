@@ -1,20 +1,20 @@
-import { inject } from "../container/inject";
-import { Configuration } from "../core/contracts/Configuration";
-import { BaseClass } from "../utils";
-import { DEFAULT_MIDDLEWARE_PRIORITY } from "./default-middleware-priority";
-import type { MiddlewareReference } from "./Middleware";
-import { MiddlewarePriorityBuilder } from "./MiddlewarePriorityBuilder";
-import { addRoute } from "./matcher/add-route";
-import { createMatcher } from "./matcher/create-matcher";
-import { findRoute } from "./matcher/find-route";
-import type { MatcherContext } from "./matcher/types";
+import { inject } from "../container/inject.ts";
+import { Configuration } from "../core/contracts/Configuration.ts";
+import { BaseClass } from "../utils.ts";
+import { DEFAULT_MIDDLEWARE_PRIORITY } from "./default-middleware-priority.ts";
+import type { MiddlewareReference } from "./Middleware.ts";
+import { MiddlewarePriorityBuilder } from "./MiddlewarePriorityBuilder.ts";
+import { addRoute } from "./matcher/add-route.ts";
+import { createMatcher } from "./matcher/create-matcher.ts";
+import { findRoute } from "./matcher/find-route.ts";
+import type { MatcherContext } from "./matcher/types.ts";
 import type {
 	BuiltInRouteConstraint,
 	ParamConstraint,
 	RouteDefinition,
 	Routes,
 	RouteWithParams,
-} from "./router-types";
+} from "./router-types.ts";
 
 export class Router extends BaseClass {
 	#matcher: MatcherContext<{ route: RouteDefinition }>;

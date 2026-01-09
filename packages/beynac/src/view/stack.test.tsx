@@ -1,12 +1,12 @@
-/** @jsxImportSource ./ */
+/** @jsxImportSource . */
 import { expect, test } from "bun:test";
-import { createKey } from "../core/Key";
-import { asyncGate, nextTick } from "../test-utils/async-gate";
-import { render, renderStream } from "../test-utils/view-test-utils";
-import type { Component } from "./Component";
-import { Once } from "./once";
-import { createStack } from "./stack";
-import type { Context } from "./view-types";
+import { createKey } from "../core/Key.ts";
+import { asyncGate } from "../test-utils/async-gate.bun.ts";
+import { render, renderStream } from "../test-utils/view-test-utils.bun.ts";
+import type { Component } from "./Component.ts";
+import { Once } from "./once.ts";
+import { createStack } from "./stack.ts";
+import type { Context } from "./view-types.ts";
 
 test("basic Stack push and out functionality", async () => {
 	const MyStack = createStack();
@@ -249,7 +249,7 @@ test("Stack works with Once using number and symbol keys", async () => {
 	expect(result).toBe("<div>Number 1SymbolNumber 2</div>");
 });
 
-test.skip("Stack push works inside Once", async () => {
+test("Stack push works inside Once", async () => {
 	const MyStack = createStack();
 
 	const result = await render(
@@ -581,26 +581,29 @@ test("first Stack.Out streams immediately without buffering", async () => {
 	const HeadStack = createStack();
 	const FooterStack = createStack();
 
-	// Use asyncGate to control when content is produced
-	const gate = asyncGate(["pushHead1", "pushHead2", "pushFooter1", "pushFooter2"]);
+	// Create checkpoints to control when content is produced
+	const cpHead1 = asyncGate();
+	const cpHead2 = asyncGate();
+	const cpFooter1 = asyncGate();
+	const cpFooter2 = asyncGate();
 
 	const AsyncHeadProducer = async () => {
-		await gate("pushHead1");
+		await cpHead1.block();
 		return <HeadStack.Push>Head1</HeadStack.Push>;
 	};
 
 	const AsyncHeadProducer2 = async () => {
-		await gate("pushHead2");
+		await cpHead2.block();
 		return <HeadStack.Push>Head2</HeadStack.Push>;
 	};
 
 	const AsyncFooterProducer = async () => {
-		await gate("pushFooter1");
+		await cpFooter1.block();
 		return <FooterStack.Push>Footer1</FooterStack.Push>;
 	};
 
 	const AsyncFooterProducer2 = async () => {
-		await gate("pushFooter2");
+		await cpFooter2.block();
 		return <FooterStack.Push>Footer2</FooterStack.Push>;
 	};
 
@@ -631,30 +634,35 @@ test("first Stack.Out streams immediately without buffering", async () => {
 		}
 	})();
 
-	// Wait for initial chunk
-	await nextTick();
-	expect(chunks.length).toBe(3);
-	expect(chunks[0]).toBe("<html>");
-	expect(chunks[1]).toBe("<head>");
-	// When HeadStack.Out is encountered, PreHead content is immediately flushed
-	expect(chunks[2]).toBe("PreHead");
+	// Wait for all async producers to reach their checkpoints
+	await cpHead1.hasBlocked();
+	await cpHead2.hasBlocked();
+	await cpFooter1.hasBlocked();
+	await cpFooter2.hasBlocked();
 
-	// Resolve pushHead1 - Head1 should stream immediately (first Stack.Out optimization)
-	await gate.next(); // pushHead1
+	expect(chunks).toEqual([
+		"<html>",
+		"<head>",
+		// When HeadStack.Out is encountered, PreHead content is immediately flushed
+		"PreHead",
+	]);
+
+	// Release pushHead1 - Head1 should stream immediately (first Stack.Out optimization)
+	await cpHead1.releaseAndWaitTick();
 	expect(chunks.length).toBe(4);
 	expect(chunks[3]).toBe("Head1");
 
-	// Resolve pushHead2 - Head2 should also stream immediately
-	await gate.next(); // pushHead2
+	// Release pushHead2 - Head2 should also stream immediately
+	await cpHead2.releaseAndWaitTick();
 	expect(chunks.length).toBe(5);
 	expect(chunks[4]).toBe("Head2");
 
 	const chunksBeforeFooter = chunks.length;
-	await gate.next(); // pushFooter1
+	await cpFooter1.releaseAndWaitTick();
 	// Because the footer stack is not the first stack, its chunks should not be
 	// streamed. We are buffering them until the end of a document.
 	expect(chunks.length).toBe(chunksBeforeFooter);
-	await gate.next(); // pushFooter2
+	await cpFooter2.releaseAndWaitTick();
 
 	await collectingPromise;
 

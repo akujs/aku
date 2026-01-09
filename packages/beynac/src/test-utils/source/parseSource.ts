@@ -100,6 +100,17 @@ export function extractStatements(content: string, keyword: string): ExtractedSt
 			continue;
 		}
 
+		// Skip import.meta and dynamic import() (not import statements)
+		if (keyword === "import") {
+			const nextNonWhitespace = tokens.slice(i + 1).find((t) => t.type !== "whitespace");
+			if (
+				nextNonWhitespace?.type === "other" &&
+				(nextNonWhitespace.value === "." || nextNonWhitespace.value === "(")
+			) {
+				continue;
+			}
+		}
+
 		// Look backwards for preceding doc comment
 		let docComment: string | null = null;
 		for (let j = i - 1; j >= 0; j--) {
@@ -202,9 +213,9 @@ export function parseExports(content: string): ParsedExport[] {
 	const results: ParsedExport[] = [];
 	const extracted = extractStatements(content, "export");
 
-	// Pattern for direct exports: export [abstract] const/function/class/interface/type/namespace name
+	// Pattern for direct exports: export [abstract] [async] const/function/class/interface/type/namespace name
 	const directPattern =
-		/\bexport\s+(?:abstract\s+)?(const|function|class|interface|type|namespace)\s+(\w+)/;
+		/\bexport\s+(?:abstract\s+)?(?:async\s+)?(const|function|class|interface|type|namespace)\s+(\w+)/;
 
 	// Pattern for destructuring exports: export const { a, b, c } = expression
 	const destructuringPattern = /^export\s+const\s+\{([^}]+)\}\s*=/;
@@ -358,10 +369,10 @@ export function parseExports(content: string): ParsedExport[] {
 
 /**
  * Parse import statements from source code.
- * Handles: import { A, B } from "./module"
- * Handles: import type { A } from "./module"
- * Handles: import defaultExport from "./module"
- * Handles: import * as name from "./module"
+ * Handles: import { A, B } from "./module.ts"
+ * Handles: import type { A } from "./module.ts"
+ * Handles: import defaultExport from "./module.ts"
+ * Handles: import * as name from "./module.ts"
  * Handles: import "./module" (side-effect)
  * Throws error for unrecognized import syntax.
  */

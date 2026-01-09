@@ -1,10 +1,11 @@
 import { readFile } from "node:fs/promises";
-import path, { relative } from "node:path";
-import { BaseClass } from "../../utils";
-import { type Import, parseImports } from "./parseSource";
-import { SourceExport } from "./SourceExport";
-import type { SourceFolder } from "./SourceFolder";
-import type { SourceProject } from "./SourceProject";
+import { basename, relative } from "node:path";
+import { BaseClass } from "../../utils.ts";
+import { getEntryPointName, isEntryPointFile } from "./discoverEntryPoints.ts";
+import { type Import, parseImports } from "./parseSource.ts";
+import { SourceExport } from "./SourceExport.ts";
+import type { SourceFolder } from "./SourceFolder.ts";
+import type { SourceProject } from "./SourceProject.ts";
 
 /**
  * Represents a source file with its exports.
@@ -16,6 +17,7 @@ export class SourceFile extends BaseClass {
 	imports: Import[];
 	isBarrel: boolean;
 	isTestFile: boolean;
+	isGenerated: boolean;
 	project!: SourceProject;
 	folder: SourceFolder;
 
@@ -26,6 +28,7 @@ export class SourceFile extends BaseClass {
 		imports: Import[],
 		isBarrel: boolean,
 		isTestFile: boolean,
+		isGenerated: boolean,
 		folder: SourceFolder,
 	) {
 		super();
@@ -35,6 +38,7 @@ export class SourceFile extends BaseClass {
 		this.imports = imports;
 		this.isBarrel = isBarrel;
 		this.isTestFile = isTestFile;
+		this.isGenerated = isGenerated;
 		this.folder = folder;
 		// Set file reference on all exports
 		for (const exp of exports) {
@@ -43,22 +47,18 @@ export class SourceFile extends BaseClass {
 	}
 
 	/**
-	 * The path used for importing this file (no extension, barrel files use folder path).
+	 * The path used for importing this file (includes extension for ESM compatibility).
 	 */
 	get importPath(): string {
-		if (this.isBarrel) {
-			const lastSlash = this.path.lastIndexOf("/");
-			return lastSlash === -1 ? "." : this.path.substring(0, lastSlash);
-		}
-		return this.path.replace(/\.tsx?$/, "");
+		return this.path;
 	}
 
 	get basename(): string {
-		return path.basename(this.path);
+		return basename(this.path);
 	}
 
 	get basenameWithoutExt(): string {
-		return path.basename(this.path).replace(/\.\w+?$/, "");
+		return basename(this.path).replace(/\.\w+?$/, "");
 	}
 
 	protected override getToStringExtra(): string | undefined {
@@ -66,21 +66,62 @@ export class SourceFile extends BaseClass {
 	}
 
 	/**
-	 * Gets an export by name. Throws if not found.
+	 * Gets an export by name, optionally filtered by kind. Returns null if not found.
 	 */
-	getExport(name: string): SourceExport {
-		const exp = this.exports.find((e) => e.name === name);
+	getExportOrNull(name: string, kind?: SourceExport["kind"]): SourceExport | null {
+		return (
+			this.exports.find((e) => e.name === name && (kind === undefined || e.kind === kind)) ?? null
+		);
+	}
+
+	/**
+	 * Gets an export by name, optionally filtered by kind. Throws if not found.
+	 */
+	getExport(name: string, kind?: SourceExport["kind"]): SourceExport {
+		const exp = this.getExportOrNull(name, kind);
 		if (!exp) {
-			throw new Error(`Export '${name}' not found in ${this.path}`);
+			const kindStr = kind ? ` of kind '${kind}'` : "";
+			throw new Error(`Export '${name}'${kindStr} not found in ${this.path}`);
 		}
 		return exp;
 	}
 
 	/**
-	 * Returns true if this file is a public API entry point.
+	 * Returns true if this file is an entry point.
+	 * Entry points are files matching *-entry-point.ts when mode is "discover".
 	 */
 	isEntryPoint(): boolean {
-		return this.project.entryPoints.has(this.path);
+		if (this.project.entryPointMode === "disable") return false;
+		return isEntryPointFile(this.basename);
+	}
+
+	/**
+	 * Returns true if this file is an entry point.
+	 * Entry points are files matching *-entry-point.ts when mode is "discover".
+	 */
+	isIndexFile(): boolean {
+		return this.basename === "index.ts" || this.basename === "index.tsx";
+	}
+
+	/**
+	 * Returns true if this file is an entry point.
+	 * Entry points are files matching *-entry-point.ts when mode is "discover".
+	 */
+	isJsxRuntimeIndexFile(): boolean {
+		return (
+			this.isIndexFile() &&
+			(this.folder.basename === "jsx-runtime" || this.folder.basename === "jsx-dev-runtime")
+		);
+	}
+
+	/**
+	 * Returns the entry point name derived from the file path.
+	 * - Root level: foo-entry-point.ts → "foo"
+	 * - Nested: a/b/b-entry-point.ts → "a/b"
+	 */
+	get entryPointName(): string | null {
+		if (!this.isEntryPoint()) return null;
+		return getEntryPointName(this.path);
 	}
 
 	/**
@@ -94,27 +135,19 @@ export class SourceFile extends BaseClass {
 		const path = relative(projectRoot, filePath);
 		const content = await readFile(filePath, "utf-8");
 		const isBarrel = path.endsWith("/index.ts") || path.endsWith("/index.tsx");
-		const isTestFile = content.includes("bun:test");
+		const isTestFile = content.includes("bun:test") || content.includes("node:test");
+		const isGenerated = content.startsWith("// GENERATED CODE");
 
 		if (isTestFile) {
-			return new SourceFile(path, content, [], [], isBarrel, true, folder);
+			return new SourceFile(path, content, [], [], isBarrel, true, isGenerated, folder);
 		}
 
 		// Load runtime module and extract exports
 		const runtimeModule = await import(filePath);
 
-		// Compute importPath for type symbols
-		let importPath: string;
-		if (isBarrel) {
-			const lastSlash = path.lastIndexOf("/");
-			importPath = lastSlash === -1 ? "." : path.substring(0, lastSlash);
-		} else {
-			importPath = path.replace(/\.tsx?$/, "");
-		}
-
-		const exports = SourceExport.extractFromSource(content, runtimeModule, importPath);
+		const exports = SourceExport.extractFromSource(content, runtimeModule, path);
 		const imports = parseImports(content);
 
-		return new SourceFile(path, content, exports, imports, isBarrel, false, folder);
+		return new SourceFile(path, content, exports, imports, isBarrel, false, isGenerated, folder);
 	}
 }

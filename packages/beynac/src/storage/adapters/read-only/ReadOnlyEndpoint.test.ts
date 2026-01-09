@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, spyOn, test } from "bun:test";
-import type { StorageEndpoint } from "../../contracts/Storage";
-import { PermissionsError } from "../../storage-errors";
-import { type SharedTestConfig } from "../../storage-test-utils";
-import { MemoryEndpoint } from "../memory/MemoryEndpoint";
-import { ReadOnlyEndpoint } from "./ReadOnlyEndpoint";
-import { readOnlyStorage } from "./readOnlyStorage";
+import type { StorageEndpoint } from "../../contracts/Storage.ts";
+import { PermissionsError } from "../../storage-errors.ts";
+import { type SharedTestConfig } from "../../storage-test-utils.bun.ts";
+import { MemoryEndpoint } from "../memory/MemoryEndpoint.ts";
+import { ReadOnlyEndpoint } from "./ReadOnlyEndpoint.ts";
+import { readOnlyStorage } from "./readOnlyStorage.ts";
 
 // Dummy factory for tests - never called since we pass StorageEndpoint directly
 const dummyStorageFactory = () => {
@@ -99,29 +99,37 @@ describe(readOnlyStorage, () => {
 	});
 
 	test("getPublicDownloadUrl() delegates to wrapped disk", async () => {
-		const spy = spyOn(wrappedDisk, "getPublicDownloadUrl");
+		const spy = spyOn(wrappedDisk, "getPublicDownloadUrl").mockResolvedValue("mocked-url");
 
-		await readOnlyDisk.getPublicDownloadUrl("/file.txt", "download.txt");
+		const result = await readOnlyDisk.getPublicDownloadUrl("/file.txt", {
+			downloadAs: "download.txt",
+		});
 
-		expect(spy).toHaveBeenCalledWith("/file.txt", "download.txt");
+		expect(spy).toHaveBeenCalledWith("/file.txt", { downloadAs: "download.txt" });
+		expect(result).toBe("mocked-url");
 	});
 
 	test("getSignedDownloadUrl() delegates to wrapped disk", async () => {
-		const spy = spyOn(wrappedDisk, "getSignedDownloadUrl");
+		const spy = spyOn(wrappedDisk, "getSignedDownloadUrl").mockResolvedValue("mocked-url");
 		const expires = new Date();
 
-		await readOnlyDisk.getSignedDownloadUrl("/file.txt", expires, "download.txt");
+		const result = await readOnlyDisk.getSignedDownloadUrl("/file.txt", {
+			expires,
+			downloadAs: "download.txt",
+		});
 
-		expect(spy).toHaveBeenCalledWith("/file.txt", expires, "download.txt");
+		expect(spy).toHaveBeenCalledWith("/file.txt", { expires, downloadAs: "download.txt" });
+		expect(result).toBe("mocked-url");
 	});
 
 	test("getTemporaryUploadUrl() delegates to wrapped disk", async () => {
-		const spy = spyOn(wrappedDisk, "getTemporaryUploadUrl");
+		const spy = spyOn(wrappedDisk, "getTemporaryUploadUrl").mockResolvedValue("mocked-url");
 		const expires = new Date();
 
-		await readOnlyDisk.getTemporaryUploadUrl("/file.txt", expires);
+		const result = await readOnlyDisk.getTemporaryUploadUrl("/file.txt", expires);
 
 		expect(spy).toHaveBeenCalledWith("/file.txt", expires);
+		expect(result).toBe("mocked-url");
 	});
 
 	test("writeSingle() throws PermissionsError", async () => {
@@ -135,11 +143,15 @@ describe(readOnlyStorage, () => {
 	});
 
 	test("copy() throws PermissionsError", async () => {
-		expect(readOnlyDisk.copy("/source.txt", "/dest.txt")).rejects.toThrow(PermissionsError);
+		expect(readOnlyDisk.copy({ source: "/source.txt", destination: "/dest.txt" })).rejects.toThrow(
+			PermissionsError,
+		);
 	});
 
 	test("move() throws PermissionsError", async () => {
-		expect(readOnlyDisk.move("/source.txt", "/dest.txt")).rejects.toThrow(PermissionsError);
+		expect(readOnlyDisk.move({ source: "/source.txt", destination: "/dest.txt" })).rejects.toThrow(
+			PermissionsError,
+		);
 	});
 
 	test("deleteSingle() throws PermissionsError", async () => {

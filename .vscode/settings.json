@@ -2,7 +2,6 @@
   "editor.defaultFormatter": "biomejs.biome",
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit",
     "source.fixAll.oxc": "explicit",
     "source.fixAll.biome": "explicit"
   },
@@ -13,17 +12,23 @@
     "bitmask",
     "bouche",
     "bunfig",
+    "codegen",
     "crockford",
     "dualstack",
     "jsxs",
     "laravel",
     "lexicographically",
+    "miniflare",
     "mockable",
     "nanoid",
     "oxlint",
+    "pglite",
     "phc",
+    "pipelining",
     "reexport",
     "replacer",
+    "savepoint",
+    "savepoints",
     "shouty",
     "sortable",
     "ulid",
@@ -32,5 +37,7 @@
     "uuid",
     "vendored"
   ],
-  "typescript.tsdk": "node_modules/typescript/lib"
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "oxc.typeAware": true,
+  "oxc.path.tsgolint": "packages/beynac/node_modules/.bin/tsgolint"
 }

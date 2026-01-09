@@ -1,6 +1,6 @@
-import { type Key } from "../core/Key";
-import { BaseClass } from "../utils";
-import type { Context } from "./view-types";
+import { type Key } from "../core/Key.ts";
+import { BaseClass } from "../utils.ts";
+import type { Context } from "./view-types.ts";
 
 export class ContextImpl extends BaseClass implements Context {
 	private localValues: Map<Key, unknown> = new Map();

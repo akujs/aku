@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { styleObjectToString } from "./style-attribute";
+import { styleObjectToString } from "./style-attribute.ts";
 
 describe("styleObjectToString", () => {
 	test("converts camelCase to kebab-case", () => {

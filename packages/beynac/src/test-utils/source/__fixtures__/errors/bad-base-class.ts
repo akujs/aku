@@ -1,4 +1,4 @@
-import { BaseClass } from "../../../../utils";
+import { BaseClass } from "../../../../utils.ts";
 
 // Good: extends BaseClass
 export class GoodClass extends BaseClass {}

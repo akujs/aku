@@ -42,4 +42,12 @@ export interface MemoryStorageConfig {
 	 * invalidNameChars: '<>:"/\\|?*' // Windows-style restrictions
 	 */
 	invalidNameChars?: string | undefined;
+
+	/**
+	 * By default, url methods on a memoryStorage disk will throw. Pass true to
+	 * return fake `memory://` URLs for testing.
+	 *
+	 * @default false
+	 */
+	fakeUrls?: boolean | undefined;
 }

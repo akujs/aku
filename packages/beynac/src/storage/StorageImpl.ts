@@ -1,20 +1,20 @@
-import { inject } from "../container/inject";
-import { Configuration } from "../core/contracts/Configuration";
-import type { Dispatcher } from "../core/contracts/Dispatcher";
-import { Dispatcher as DispatcherKey } from "../core/contracts/Dispatcher";
-import { onResetAllMocks } from "../testing/mocks";
-import { MemoryEndpoint } from "./adapters/memory/MemoryEndpoint";
+import { inject } from "../container/inject.ts";
+import { Configuration } from "../core/contracts/Configuration.ts";
+import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
+import { Dispatcher as DispatcherKey } from "../core/contracts/Dispatcher.ts";
+import { onResetAllMocks } from "../testing/mocks.ts";
+import { MemoryEndpoint } from "./adapters/memory/MemoryEndpoint.ts";
 import type {
 	Storage,
 	StorageAdapter,
 	StorageDirectoryOperations,
 	StorageDisk,
 	StorageEndpoint,
-} from "./contracts/Storage";
-import { DelegatesToDirectory } from "./DelegatesToDirectory";
-import { StorageDiskImpl } from "./StorageDiskImpl";
-import { StorageEndpointBuilder } from "./StorageEndpointBuilder";
-import { DiskNotFoundError } from "./storage-errors";
+} from "./contracts/Storage.ts";
+import { DelegatesToDirectory } from "./DelegatesToDirectory.ts";
+import { StorageDiskImpl } from "./StorageDiskImpl.ts";
+import { StorageEndpointBuilder } from "./StorageEndpointBuilder.ts";
+import { DiskNotFoundError } from "./storage-errors.ts";
 
 type StorageConfig = Pick<Configuration, "disks" | "defaultDisk">;
 

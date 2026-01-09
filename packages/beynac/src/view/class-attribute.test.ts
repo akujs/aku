@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { classAttribute } from "./class-attribute";
+import { classAttribute } from "./class-attribute.ts";
 
 describe("classAttribute", () => {
 	test("returns a string", () => {

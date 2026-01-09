@@ -1,6 +1,6 @@
-import type { TypeToken } from "../../container/container-key";
-import { createTypeToken } from "../../container/container-key";
-import type { JSXNode, RenderOptions } from "../view-types";
+import type { TypeToken } from "../../container/container-key.ts";
+import { createTypeToken } from "../../container/container-key.ts";
+import type { JSXNode, RenderOptions } from "../view-types.ts";
 
 export type RenderResponseOptions = {
 	readonly status?: number | undefined;

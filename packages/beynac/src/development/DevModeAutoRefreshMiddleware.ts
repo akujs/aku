@@ -1,24 +1,26 @@
-import { inject } from "../container/inject";
-import { Configuration } from "../core/contracts/Configuration";
-import type { ControllerContext } from "../http/Controller";
-import { BaseMiddleware, type MiddlewareNext } from "../http/Middleware";
+import { inject } from "../container/inject.ts";
+import { Configuration } from "../core/contracts/Configuration.ts";
+import type { ControllerContext } from "../http/Controller.ts";
+import { BaseMiddleware, type MiddlewareNext } from "../http/Middleware.ts";
 
 export class DevModeAutoRefreshMiddleware extends BaseMiddleware {
-	private reloadListeners = new Set<(reload: boolean) => void>();
+	#reloadListeners = new Set<(reload: boolean) => void>();
+	#config: Configuration;
 
-	constructor(private config: Configuration = inject(Configuration)) {
+	constructor(config: Configuration = inject(Configuration)) {
 		super();
+		this.#config = config;
 	}
 
 	triggerReload(): void {
-		for (const listener of this.reloadListeners) {
+		for (const listener of this.#reloadListeners) {
 			listener(true);
 		}
-		this.reloadListeners.clear();
+		this.#reloadListeners.clear();
 	}
 
 	destroy(): void {
-		this.reloadListeners.clear();
+		this.#reloadListeners.clear();
 	}
 
 	async handle(ctx: ControllerContext, next: MiddlewareNext): Promise<Response> {
@@ -41,8 +43,8 @@ export class DevModeAutoRefreshMiddleware extends BaseMiddleware {
 		let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 		let sendReload: ((reload: boolean) => void) | null = null;
 
-		const heartbeatMs = this.config.devMode?.autoRefreshHeartbeatMs ?? 15000;
-		const reloadListeners = this.reloadListeners;
+		const heartbeatMs = this.#config.devMode?.autoRefreshHeartbeatMs ?? 15000;
+		const reloadListeners = this.#reloadListeners;
 
 		const stream = new ReadableStream({
 			start(controller) {

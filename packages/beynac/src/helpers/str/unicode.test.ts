@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { slug, transliterate, withoutComplexChars, withoutMarks } from "./unicode";
+import { slug, transliterate, withoutComplexChars, withoutMarks } from "./unicode.ts";
 
 describe(withoutMarks, () => {
 	test("removes accents from French text", () => {

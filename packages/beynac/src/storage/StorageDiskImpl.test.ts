@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { mockDispatcher } from "../test-utils/internal-mocks";
-import { spyOnAll } from "../test-utils/spy-on-all";
-import { MemoryEndpoint } from "./adapters/memory/MemoryEndpoint";
-import type { StorageDirectoryOperations, StorageDisk, StorageEndpoint } from "./contracts/Storage";
-import { StorageDirectoryImpl } from "./StorageDirectoryImpl";
-import { StorageDiskImpl } from "./StorageDiskImpl";
+import { mockDispatcher } from "../test-utils/internal-mocks.bun.ts";
+import { spyOnAll } from "../test-utils/spy-on-all.bun.ts";
+import { MemoryEndpoint } from "./adapters/memory/MemoryEndpoint.ts";
+import type {
+	StorageDirectoryOperations,
+	StorageDisk,
+	StorageEndpoint,
+} from "./contracts/Storage.ts";
+import { StorageDirectoryImpl } from "./StorageDirectoryImpl.ts";
+import { StorageDiskImpl } from "./StorageDiskImpl.ts";
 
 describe(StorageDiskImpl, () => {
 	const create = (name: string, ep: StorageEndpoint): StorageDisk => {

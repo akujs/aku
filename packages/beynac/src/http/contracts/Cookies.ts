@@ -1,6 +1,6 @@
-import type { TypeToken } from "../../container/container-key";
-import { createTypeToken } from "../../container/container-key";
-import type { CookieAttributes } from "../../integrations/IntegrationContext";
+import type { TypeToken } from "../../container/container-key.ts";
+import { createTypeToken } from "../../container/container-key.ts";
+import type { CookieAttributes } from "../../integrations/IntegrationContext.ts";
 
 /***/
 export interface Cookies {

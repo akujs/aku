@@ -9,6 +9,20 @@ function jsonResponse(data: unknown, status = 200): Response {
 }
 
 export class StorageController extends ResourceController {
+	async index() {
+		try {
+			const files = await app.storage.directory("/uploads").listFiles();
+			const fileData = files.map((f) => ({
+				name: f.path.split("/").pop(),
+				url: `/storage${f.path}`,
+			}));
+			return jsonResponse({ files: fileData });
+		} catch (error) {
+			console.error("Storage list error:", error);
+			return jsonResponse({ error: String(error) }, 500);
+		}
+	}
+
 	async store({ request }: ControllerContext) {
 		try {
 			const formData = await request.formData();

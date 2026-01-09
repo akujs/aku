@@ -1,5 +1,5 @@
-import type { TypeToken } from "../../container/container-key";
-import { createTypeToken } from "../../container/container-key";
+import type { TypeToken } from "../../container/container-key.ts";
+import { createTypeToken } from "../../container/container-key.ts";
 
 /**
  * Provides the ability to keep the environment alive until async tasks complete

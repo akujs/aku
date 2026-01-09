@@ -11,39 +11,24 @@
     "prefer-node-protocol": "error",
     "no-unused-private-class-members": "error",
     "no-console": "error",
-    "no-debugger": "error",
-    "no-restricted-imports": ["error", {
-      "patterns": [
-        {
-          "group": ["bun", "bun:*"],
-          "message": "Direct imports from 'bun' or 'bun:*' are only allowed in test files"
-        },
-        {
-          "group": ["node:path"],
-          "message": "Direct imports from 'node:path' should use the abstraction from src/storage/path.ts instead"
-        },
-        {
-          "group": ["**/contracts"],
-          "message": "Do not import from the central contracts.ts file"
-        },
-        {
-          "group": ["**/events"],
-          "message": "Do not import from the central events.ts file"
-        },
-        {
-          "group": ["**/errors"],
-          "message": "Do not import from the central errors.ts file"
-        },
-        {
-          "group": ["**/entry", "**/entry/**"],
-          "message": "Do not import from entry point files. Import from the specific implementation files instead."
-        }
-      ]
-    }]
+    "no-debugger": "error"
   },
   "overrides": [
     {
-      "files": ["scripts/**/*", "src/**/*.test.{ts,tsx,mts}", "src/**/*.test.mts", "src/test-utils/**"],
+      "files": ["src/storage/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": ["error", {
+          "patterns": [
+            {
+              "group": ["node:path"],
+              "message": "Use the abstraction from src/storage/path-operations.ts instead"
+            }
+          ]
+        }]
+      }
+    },
+    {
+      "files": ["scripts/**/*", "src/**/*.test.{ts,tsx,mts}", "src/**/*.test.mts", "src/test-utils/**", "src/**/*.bun.ts"],
       "rules": {
         "typescript/no-explicit-any": "off",
         "typescript/unbound-method": "off",

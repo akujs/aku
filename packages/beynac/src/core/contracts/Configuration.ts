@@ -1,8 +1,8 @@
-import type { TypeToken } from "../../container/container-key";
-import { createTypeToken } from "../../container/container-key";
-import type { MiddlewareReference } from "../../http/Middleware";
-import type { MiddlewarePriorityBuilder } from "../../http/MiddlewarePriorityBuilder";
-import type { ServiceProviderReference } from "./Application";
+import type { TypeToken } from "../../container/container-key.ts";
+import { createTypeToken } from "../../container/container-key.ts";
+import type { MiddlewareReference } from "../../http/Middleware.ts";
+import type { MiddlewarePriorityBuilder } from "../../http/MiddlewarePriorityBuilder.ts";
+import type { ServiceProviderReference } from "./Application.ts";
 
 /**
  * The configuration supplied to createApplication().
@@ -191,6 +191,28 @@ export interface Configuration<RouteParams extends Record<string, string> = {}> 
 	 * @default 'local'
 	 */
 	defaultDisk?: string | undefined;
+
+	/**
+	 * Database adapter(s) for the application.
+	 *
+	 * @example
+	 * // Single database
+	 * {
+	 *   database: sqliteDatabase({ path: './data/app.db', transactionRetry: true }),
+	 * }
+	 *
+	 * @example
+	 * // Multiple databases
+	 * {
+	 *   database: {
+	 *     default: sqliteDatabase({ path: './data/app.db', transactionRetry: true }),
+	 *     additional: {
+	 *       analytics: postgresDatabase({ sql: postgres(...), transactionRetry: true }),
+	 *     }
+	 *   }
+	 * }
+	 */
+	database?: DatabaseAdapter | DatabaseConfig | undefined;
 }
 
 export const Configuration: TypeToken<Configuration> =
@@ -217,5 +239,6 @@ export function resolveEnvironmentChoice(
 }
 
 // Re-imported types to avoid circular dependencies
-import type { Routes } from "../../http/router-types";
-import type { StorageAdapter, StorageEndpoint } from "../../storage/contracts/Storage";
+import type { DatabaseAdapter, DatabaseConfig } from "../../database/DatabaseAdapter.ts";
+import type { Routes } from "../../http/router-types.ts";
+import type { StorageAdapter, StorageEndpoint } from "../../storage/contracts/Storage.ts";

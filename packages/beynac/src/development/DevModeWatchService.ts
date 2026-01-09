@@ -1,8 +1,8 @@
 import { type FSWatcher, watch } from "node:fs";
-import { inject } from "../container/inject";
-import { Configuration } from "../core/contracts/Configuration";
-import { BaseClass, pluralCount } from "../utils";
-import { DevModeAutoRefreshMiddleware } from "./DevModeAutoRefreshMiddleware";
+import { inject } from "../container/inject.ts";
+import { Configuration } from "../core/contracts/Configuration.ts";
+import { BaseClass, pluralCount } from "../utils.ts";
+import { DevModeAutoRefreshMiddleware } from "./DevModeAutoRefreshMiddleware.ts";
 
 declare global {
 	// oxlint-disable-next-line no-var -- var declaration required for mutable global variable
@@ -13,14 +13,18 @@ export class DevModeWatchService extends BaseClass {
 	#started = false;
 	#destroyed = false;
 	#filesChanged: string[] = [];
-	private watchers: FSWatcher[] = [];
-	private debounceTimer: NodeJS.Timeout | null = null;
+	#watchers: FSWatcher[] = [];
+	#debounceTimer: NodeJS.Timeout | null = null;
+	#config: Configuration;
+	#middleware: DevModeAutoRefreshMiddleware;
 
 	constructor(
-		private config: Configuration = inject(Configuration),
-		private middleware: DevModeAutoRefreshMiddleware = inject(DevModeAutoRefreshMiddleware),
+		config: Configuration = inject(Configuration),
+		middleware: DevModeAutoRefreshMiddleware = inject(DevModeAutoRefreshMiddleware),
 	) {
 		super();
+		this.#config = config;
+		this.#middleware = middleware;
 	}
 
 	start(): void {
@@ -32,7 +36,7 @@ export class DevModeWatchService extends BaseClass {
 		}
 		globalThis.__beynacWatchService = this;
 
-		const paths = this.config.devMode?.autoRefreshPaths ?? [process.cwd()];
+		const paths = this.#config.devMode?.autoRefreshPaths ?? [process.cwd()];
 
 		if (paths.length === 0) {
 			// TODO: Connect to logging mechanism when available
@@ -48,22 +52,22 @@ export class DevModeWatchService extends BaseClass {
 			const watcher = watch(path, { recursive: true }, (eventType, filename) => {
 				this.#handleFileChange(eventType, filename);
 			});
-			this.watchers.push(watcher);
+			this.#watchers.push(watcher);
 		}
 	}
 
 	destroy(): void {
-		if (this.debounceTimer) {
-			clearTimeout(this.debounceTimer);
-			this.debounceTimer = null;
+		if (this.#debounceTimer) {
+			clearTimeout(this.#debounceTimer);
+			this.#debounceTimer = null;
 		}
 
-		for (const watcher of this.watchers) {
+		for (const watcher of this.#watchers) {
 			watcher.close();
 		}
-		this.watchers = [];
+		this.#watchers = [];
 
-		this.middleware.destroy();
+		this.#middleware.destroy();
 
 		if (globalThis.__beynacWatchService === this) {
 			globalThis.__beynacWatchService = undefined;
@@ -74,18 +78,18 @@ export class DevModeWatchService extends BaseClass {
 		if (!filename) {
 			return;
 		}
-		const pattern = this.config.devMode?.autoRefreshPathPattern ?? /\bbeynac\b/i;
+		const pattern = this.#config.devMode?.autoRefreshPathPattern ?? /\bbeynac\b/i;
 		if (!pattern.test(filename)) {
 			return;
 		}
 		this.#filesChanged.push(filename);
 
-		if (this.debounceTimer) {
-			clearTimeout(this.debounceTimer);
+		if (this.#debounceTimer) {
+			clearTimeout(this.#debounceTimer);
 		}
 
-		const debounceMs = this.config.devMode?.autoRefreshDebounceMs ?? 300;
-		this.debounceTimer = setTimeout(() => {
+		const debounceMs = this.#config.devMode?.autoRefreshDebounceMs ?? 300;
+		this.#debounceTimer = setTimeout(() => {
 			const [first, ...rest] = this.#filesChanged;
 			this.#filesChanged = [];
 			if (!first) return;
@@ -96,8 +100,8 @@ export class DevModeWatchService extends BaseClass {
 			// TODO: Connect to logging mechanism when available
 			// eslint-disable-next-line no-console
 			console.log(`${DevModeWatchService.name} ${message} changed, reloading`);
-			this.middleware.triggerReload();
-			this.debounceTimer = null;
+			this.#middleware.triggerReload();
+			this.#debounceTimer = null;
 		}, debounceMs);
 	}
 }

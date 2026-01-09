@@ -5,8 +5,8 @@
 // That code was based on React. https://github.com/facebook/react MIT License
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-import type { ClassAttributeValue } from "./class-attribute";
-import type { CSSProperties } from "./view-types";
+import type { ClassAttributeValue } from "./class-attribute.ts";
+import type { CSSProperties } from "./view-types.ts";
 
 type BaseMime =
 	| "audio/aac"

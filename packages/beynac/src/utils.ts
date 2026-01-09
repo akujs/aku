@@ -5,6 +5,14 @@ export const arrayWrap = <T>(value: T | T[]): T[] => {
 export const arrayWrapOptional = <T>(value: T | T[] | null | undefined): T[] =>
 	value == null ? [] : arrayWrap(value);
 
+export async function arrayFromAsync<T>(iterable: AsyncIterable<T>): Promise<T[]> {
+	const result: T[] = [];
+	for await (const item of iterable) {
+		result.push(item);
+	}
+	return result;
+}
+
 export const describeType = (value: unknown): string =>
 	value == null ? String(value) : typeof value;
 
@@ -34,13 +42,11 @@ abstract class MultiMap<K, V> extends BaseClass {
 	}
 }
 
-type WithoutUndefinedValues<T extends Record<string, unknown>> = {
+type WithoutUndefinedValues<T extends object> = {
 	[K in keyof T]: Exclude<T[K], undefined>;
 };
 
-export const withoutUndefinedValues = <T extends Record<string, unknown>>(
-	input: T,
-): WithoutUndefinedValues<T> =>
+export const withoutUndefinedValues = <T extends object>(input: T): WithoutUndefinedValues<T> =>
 	Object.fromEntries(
 		Object.entries(input).filter((e) => e[1] !== undefined),
 	) as WithoutUndefinedValues<T>;
@@ -179,5 +185,58 @@ export const mapObjectValues = <K extends string | number | symbol, V, R>(
 	) as Record<K, R>;
 };
 
-export const sleep = (ms: number): Promise<void> =>
-	new Promise((resolve) => setTimeout(resolve, ms));
+export interface FifoLock<T> {
+	acquire(): Promise<T>;
+	release(): void;
+}
+
+export function fifoLock<T>(resource: T): FifoLock<T> {
+	let inUse = false;
+	const waiting: Array<() => void> = [];
+
+	return {
+		acquire(): Promise<T> {
+			if (!inUse) {
+				inUse = true;
+				return Promise.resolve(resource);
+			}
+			return new Promise((resolve) => {
+				waiting.push(() => resolve(resource));
+			});
+		},
+		release(): void {
+			const next = waiting.shift();
+			if (next) {
+				next();
+			} else {
+				inUse = false;
+			}
+		},
+	};
+}
+
+export class StringKeyWeakMap<T extends object> extends BaseClass {
+	#cache = new Map<string, WeakRef<T>>();
+	#registry = new FinalizationRegistry<string>((key) => {
+		this.#cache.delete(key);
+	});
+
+	get(key: string): T | undefined {
+		const ref = this.#cache.get(key);
+		return ref?.deref();
+	}
+
+	set(key: string, value: T): void {
+		this.#cache.set(key, new WeakRef(value));
+		this.#registry.register(value, key);
+	}
+
+	has(key: string): boolean {
+		const ref = this.#cache.get(key);
+		return ref?.deref() !== undefined;
+	}
+
+	delete(key: string): boolean {
+		return this.#cache.delete(key);
+	}
+}

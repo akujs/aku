@@ -1,9 +1,9 @@
-import { createTypeToken, type TypeToken } from "../container/container-key";
-import { Container } from "../container/contracts/Container";
-import { inject } from "../container/inject";
-import { BaseClass } from "../utils";
-import type { StorageAdapter, StorageEndpoint } from "./contracts/Storage";
-import { isConfiguredStorageDriver } from "./storage-utils";
+import { createTypeToken, type TypeToken } from "../container/container-key.ts";
+import { Container } from "../container/contracts/Container.ts";
+import { inject } from "../container/inject.ts";
+import { BaseClass } from "../utils.ts";
+import type { StorageAdapter, StorageEndpoint } from "./contracts/Storage.ts";
+import { isConfiguredStorageDriver } from "./storage-utils.ts";
 
 export interface StorageEndpointBuilder {
 	build(adapter: StorageAdapter | StorageEndpoint): StorageEndpoint;

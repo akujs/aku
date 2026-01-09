@@ -1,11 +1,11 @@
-import { BaseClass } from "../../../../utils";
+import { BaseClass } from "../../../../utils.ts";
 
 // Value exports for re-export testing
 export class OriginalClass extends BaseClass {}
 
 export const originalValue = "original";
 
-export function originalFunc() {}
+export function originalFunc(): void {}
 
 // Type exports for re-export testing
 export interface OriginalInterface {

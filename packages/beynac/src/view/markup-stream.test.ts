@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { createKey } from "../core/Key";
-import { asyncGate } from "../test-utils/async-gate";
-import { render, renderResponse, renderStream } from "../test-utils/view-test-utils";
-import { MarkupStream } from "./markup-stream";
-import { RenderingError } from "./view-errors";
-import type { Context, JSXNode } from "./view-types";
+import { createKey } from "../core/Key.ts";
+import { asyncGate } from "../test-utils/async-gate.bun.ts";
+import { render, renderResponse, renderStream } from "../test-utils/view-test-utils.bun.ts";
+import { MarkupStream } from "./markup-stream.ts";
+import { RenderingError } from "./view-errors.ts";
+import type { Context, JSXNode } from "./view-types.ts";
 
 describe("basic functionality", () => {
 	test("renders empty content", async () => {
@@ -270,20 +270,19 @@ describe("async functionality", () => {
 
 describe("concurrent promise resolution", () => {
 	test("renders promises in correct order when second resolves first", async () => {
-		const gate = asyncGate(["resolve2", "resolve1"]);
-		const checkpoint1 = gate.task("promise1");
-		const checkpoint2 = gate.task("promise2");
+		const cp1 = asyncGate();
+		const cp2 = asyncGate();
 
 		const order: string[] = [];
 
 		const promise1 = (async () => {
-			await checkpoint1("resolve1");
+			await cp1.block();
 			order.push("first");
 			return "first";
 		})();
 
 		const promise2 = (async () => {
-			await checkpoint2("resolve2");
+			await cp2.block();
 			order.push("second");
 			return "second";
 		})();
@@ -305,28 +304,31 @@ describe("concurrent promise resolution", () => {
 			return chunks;
 		})();
 
-		await gate.next(); // resolve second
-		await gate.next(); // resolve first
+		await cp1.hasBlocked();
+		await cp2.hasBlocked();
 
-		expect(order).toEqual(["second", "first"]);
+		// Release second first to test out-of-order resolution
+		await cp2.releaseAndWaitTick();
+		await cp1.releaseAndWaitTick();
 
 		// Get the final result
 		const chunks = await chunksPromise;
+
+		expect(order).toEqual(["second", "first"]);
 		expect(chunks.join("")).toBe("<div>start first middle second end</div>");
 	});
 
 	test("handles nested streams with out-of-order resolution", async () => {
-		const gate = asyncGate(["resolveInner", "resolveOuter"]);
-		const checkpointInner = gate.task("inner");
-		const checkpointOuter = gate.task("outer");
+		const cpInner = asyncGate();
+		const cpOuter = asyncGate();
 
 		const innerPromise = (async () => {
-			await checkpointInner("resolveInner");
+			await cpInner.block();
 			return "inner content";
 		})();
 
 		const outerPromise = (async () => {
-			await checkpointOuter("resolveOuter");
+			await cpOuter.block();
 			return new MarkupStream("span", { class: "nested" }, [innerPromise]);
 		})();
 
@@ -341,13 +343,14 @@ describe("concurrent promise resolution", () => {
 			return chunks;
 		})();
 
+		await cpInner.hasBlocked();
+		await cpOuter.hasBlocked();
+
 		// Resolve inner first (but it's inside outer which isn't resolved yet)
-		await gate.next(); // resolveInner
-		await Promise.resolve();
+		await cpInner.releaseAndWaitTick();
 
 		// Now resolve outer
-		await gate.next(); // resolveOuter
-		await Promise.resolve();
+		await cpOuter.releaseAndWaitTick();
 
 		// Get the final result
 		const chunks = await chunksPromise;
@@ -696,7 +699,7 @@ describe("context handling", () => {
 		expect(result).toBe("<div>start level1-level2 end</div>");
 	});
 
-	test.skip("context isolation between parallel siblings", async () => {
+	test("context isolation between parallel siblings", async () => {
 		const key1 = createKey<string>({ displayName: "key1" });
 		const key2 = createKey<string>({ displayName: "key2" });
 
@@ -743,36 +746,34 @@ describe("context handling", () => {
 		expect(await render(stream)).toBe("<div>1-011-10</div>");
 	});
 
-	test.skip("async siblings can not pollute each other's context when running concurrently", async () => {
-		const gate = asyncGate(["sibling1_start", "sibling2_start", "read"]);
-		const sibling1 = gate.task("sibling1");
-		const sibling2 = gate.task("sibling2");
-
+	test("async siblings have isolated contexts", async () => {
+		const gate1 = asyncGate();
+		const gate2 = asyncGate();
 		const token = createKey<string>();
 
 		const stream = new MarkupStream(null, null, [
 			[
 				async (ctx) => {
-					await sibling1("sibling1_start");
 					ctx.set(token, "value1");
-					await sibling1("read");
+					await gate1.block();
 					return `s1=${ctx.get(token)};`;
 				},
 				async (ctx) => {
-					await sibling2("sibling2_start");
-					ctx.set(token, "value2");
-					await sibling2("read");
+					await gate2.block();
+					ctx.set(token, "value2"); // would pollute sibling1 if contexts were shared
 					return `s2=${ctx.get(token)};`;
 				},
 			],
 		]);
 		const renderPromise = render(stream);
 
-		await gate.run();
+		await gate1.hasBlocked(); // sibling1 has set value1 and is waiting
+		await gate2.releaseAndWaitTick(); // let sibling2 set value2
+		await gate1.releaseAndWaitTick(); // let sibling1 read - should still see value1
 
 		const result = await renderPromise;
 
-		expect(result).toMatchInlineSnapshot(`"s1=value1;s2=value2;"`);
+		expect(result).toBe("s1=value1;s2=value2;");
 	});
 });
 
@@ -1123,13 +1124,12 @@ describe("renderResponse", () => {
 	});
 
 	test("streams content with delayed async rendering", async () => {
-		const gate = asyncGate(["release"]);
-		const checkpoint = gate.task("render");
+		const checkpoint = asyncGate();
 
 		const stream = new MarkupStream("div", null, [
 			"before ",
 			(async () => {
-				await checkpoint("release");
+				await checkpoint.block();
 				return "delayed";
 			})(),
 			" after",
@@ -1145,7 +1145,7 @@ describe("renderResponse", () => {
 		const decoder = new TextDecoder();
 		const chunks: string[] = [];
 
-		// Read first chunk (should be available before gate release)
+		// Read first chunk (should be available before checkpoint release)
 		const firstChunk = await reader.read();
 		expect(firstChunk.done).toBe(false);
 		if (firstChunk.value) {
@@ -1155,8 +1155,9 @@ describe("renderResponse", () => {
 		// Verify we got the content before the promise
 		expect(chunks[0]).toBe("<div>before ");
 
-		// Now release the gate
-		await gate.next();
+		// Now release the checkpoint
+		await checkpoint.hasBlocked();
+		checkpoint.release();
 
 		// Read remaining chunks
 		let result = await reader.read();

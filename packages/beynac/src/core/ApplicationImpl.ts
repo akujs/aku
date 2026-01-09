@@ -1,33 +1,35 @@
-import { ContainerImpl } from "../container/ContainerImpl";
-import type { Container } from "../container/contracts/Container";
-import { DevelopmentServiceProvider } from "../development/DevelopmentServiceProvider";
-import { HttpServiceProvider } from "../http/HttpServiceProvider";
-import { RequestHandler } from "../http/RequestHandler";
-import { Router } from "../http/Router";
-import { RouteUrlGenerator } from "../http/RouteUrlGenerator";
-import { IntegrationContext } from "../integrations/IntegrationContext";
-import { Storage } from "../storage/contracts/Storage";
-import { StorageServiceProvider } from "../storage/StorageServiceProvider";
-import { BaseClass } from "../utils";
-import { ViewServiceProvider } from "../view/ViewServiceProvider";
-import { CoreServiceProvider } from "./CoreServiceProvider";
+import { ContainerImpl } from "../container/ContainerImpl.ts";
+import type { Container } from "../container/contracts/Container.ts";
+import { Database } from "../database/contracts/Database.ts";
+import { DatabaseServiceProvider } from "../database/DatabaseServiceProvider.ts";
+import { DevelopmentServiceProvider } from "../development/DevelopmentServiceProvider.ts";
+import { HttpServiceProvider } from "../http/HttpServiceProvider.ts";
+import { RequestHandler } from "../http/RequestHandler.ts";
+import { Router } from "../http/Router.ts";
+import { RouteUrlGenerator } from "../http/RouteUrlGenerator.ts";
+import { IntegrationContext } from "../integrations/IntegrationContext.ts";
+import { Storage } from "../storage/contracts/Storage.ts";
+import { StorageServiceProvider } from "../storage/StorageServiceProvider.ts";
+import { BaseClass } from "../utils.ts";
+import { ViewServiceProvider } from "../view/ViewServiceProvider.ts";
+import { CoreServiceProvider } from "./CoreServiceProvider.ts";
 import type {
 	ServiceProviderReference,
 	UrlOptionsNoParams,
 	UrlOptionsWithParams,
-} from "./contracts/Application";
-import { Application } from "./contracts/Application";
-import { Configuration } from "./contracts/Configuration";
-import type { Dispatcher } from "./contracts/Dispatcher";
-import { Dispatcher as DispatcherKey } from "./contracts/Dispatcher";
-import { BeynacError } from "./core-errors";
-import type { ServiceProvider } from "./ServiceProvider";
+} from "./contracts/Application.ts";
+import { Application } from "./contracts/Application.ts";
+import { Configuration } from "./contracts/Configuration.ts";
+import { Dispatcher } from "./contracts/Dispatcher.ts";
+import { BeynacError } from "./core-errors.ts";
+import type { ServiceProvider } from "./ServiceProvider.ts";
 
 const DEFAULT_PROVIDERS = [
 	CoreServiceProvider,
 	HttpServiceProvider,
 	ViewServiceProvider,
 	StorageServiceProvider,
+	DatabaseServiceProvider,
 	DevelopmentServiceProvider,
 ];
 
@@ -69,12 +71,17 @@ export class ApplicationImpl<RouteParams extends Record<string, string> = {}>
 
 	get events(): Dispatcher {
 		this.#requireBooted("events");
-		return this.container.get(DispatcherKey);
+		return this.container.get(Dispatcher);
 	}
 
 	get storage(): Storage {
 		this.#requireBooted("storage");
 		return this.container.get(Storage);
+	}
+
+	get database(): Database {
+		this.#requireBooted("storage");
+		return this.container.get(Database);
 	}
 
 	url<N extends keyof RouteParams & string>(

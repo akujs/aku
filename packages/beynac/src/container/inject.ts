@@ -1,6 +1,6 @@
-import { BeynacError } from "../core/core-errors";
-import { getKeyName, type KeyOrClass } from "./container-key";
-import { NO_VALUE, type NoValue } from "./no-value";
+import { BeynacError } from "../core/core-errors.ts";
+import { getKeyName, type KeyOrClass } from "./container-key.ts";
+import { NO_VALUE, type NoValue } from "./no-value.ts";
 
 const invalidInjectMessage = `Dependencies that use inject() must be created by the container`;
 

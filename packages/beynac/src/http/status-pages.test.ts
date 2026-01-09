@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { get, group } from "./helpers";
-import type { StatusPageComponent } from "./router-types";
+import { get, group } from "./helpers.ts";
+import type { StatusPageComponent } from "./router-types.ts";
 
 const TestErrorPage: StatusPageComponent = () => null;
 const Test404Page: StatusPageComponent = () => null;

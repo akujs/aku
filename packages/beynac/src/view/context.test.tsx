@@ -1,12 +1,12 @@
-/** @jsxImportSource ./ */
+/** @jsxImportSource . */
 import { describe, expect, expectTypeOf, test } from "bun:test";
-import { createKey } from "../core/Key";
-import { render } from "../test-utils/view-test-utils";
-import { type Component } from "./Component";
-import { ContextImpl } from "./context";
-import { MarkupStream } from "./markup-stream";
-import { Once } from "./once";
-import type { Context, PropsWithChildren } from "./view-types";
+import { createKey } from "../core/Key.ts";
+import { render } from "../test-utils/view-test-utils.bun.ts";
+import { type Component } from "./Component.ts";
+import { ContextImpl } from "./context.ts";
+import { MarkupStream } from "./markup-stream.ts";
+import { Once } from "./once.ts";
+import type { Context, PropsWithChildren } from "./view-types.ts";
 
 describe("basic operations", () => {
 	test("get returns null for non-existent key", () => {

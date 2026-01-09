@@ -1,5 +1,5 @@
-import { createTypeToken, type TypeToken } from "../../container/container-key";
-import type { Container } from "../../container/contracts/Container";
+import { createTypeToken, type TypeToken } from "../../container/container-key.ts";
+import type { Container } from "../../container/contracts/Container.ts";
 
 /**
  * A manager for storage disks
@@ -134,6 +134,20 @@ export type StorageFileSignedUrlOptions = SignUrlOptions & DownloadUrlOptions;
 /***/
 export type StorageFileUploadUrlOptions = SignUrlOptions;
 
+export interface StorageEndpointSignedDownloadUrlOptions {
+	expires: Date;
+	downloadAs?: string | undefined;
+}
+
+export interface StorageEndpointPublicDownloadUrlOptions {
+	downloadAs?: string | undefined;
+}
+
+export interface StorageEndpointCopyMoveOptions {
+	source: string;
+	destination: string;
+}
+
 /***/
 export interface StorageFile {
 	readonly type: "file";
@@ -147,6 +161,16 @@ export interface StorageFile {
 	 * The path of this file inside `disk`, beginning with a slash "/"
 	 */
 	readonly path: string;
+
+	/**
+	 * The name of this file, e.g. "file.txt" for "/path/to/file.txt"
+	 */
+	readonly name: string;
+
+	/**
+	 * The directory containing this file
+	 */
+	readonly parent: StorageDirectory;
 
 	/**
 	 * Delete the file, if it exists.
@@ -204,7 +228,7 @@ export interface StorageFile {
 	 *
 	 * This will be a regular unsigned URL and so relies on the file being publicly accessible.
 	 *
-	 * @param [options.downloadAs] - The suggested filename for the file, for s3. Storage adapters that do not support suggested download names will ignore this option.
+	 * @param options.downloadAs - The suggested filename for the file, for s3. Storage adapters that do not support suggested download names will ignore this option.
 	 */
 	url(options?: DownloadUrlOptions): Promise<string>;
 
@@ -214,8 +238,8 @@ export interface StorageFile {
 	 * Storage adapters may clamp the expiry range to an acceptable limit, for example s3
 	 * supports at most 7 days.
 	 *
-	 * @param [options.downloadAs] - The suggested filename for the file, for s3. Storage adapters that do not support suggested download names will ignore this option.
-	 * @param [options.expires] - A Date defining expiry time, or string in the format "1h" or "5d4h" representing a duration into the future
+	 * @param options.downloadAs - The suggested filename for the file, for s3. Storage adapters that do not support suggested download names will ignore this option.
+	 * @param options.expires - A Date defining expiry time, or string in the format "1h" or "5d4h" representing a duration into the future
 	 */
 	signedUrl(options?: DownloadUrlOptions & SignUrlOptions): Promise<string>;
 
@@ -225,7 +249,7 @@ export interface StorageFile {
 	 * Storage adapters may clamp the expiry range to an acceptable limit, for example s3
 	 * supports at most 7 days.
 	 *
-	 * @param [options.expires] - A Date defining expiry time, or string in the format "1h" or "5d4h" representing a duration into the future
+	 * @param options.expires - A Date defining expiry time, or string in the format "1h" or "5d4h" representing a duration into the future
 	 */
 	uploadUrl(options?: SignUrlOptions): Promise<string>;
 
@@ -316,6 +340,16 @@ export interface StorageDirectory extends StorageDirectoryOperations {
 	 * The path of this directory inside `disk`, beginning and ending with a slash "/"
 	 */
 	readonly path: string;
+
+	/**
+	 * The name of this directory, e.g. "foo" for "/path/to/foo/". "" for the root directory.
+	 */
+	readonly name: string;
+
+	/**
+	 * The parent directory, or null for the root directory "/"
+	 */
+	readonly parent: StorageDirectory | null;
 }
 
 type FileSanitiseOptions = {
@@ -359,7 +393,7 @@ export interface StorageDirectoryOperations {
 	/**
 	 * List child files in alphabetical order. By default, only direct children are returned.
 	 *
-	 * @param [options.recursive] - if true, include files in subdirectories in the results
+	 * @param options.recursive - if true, include files in subdirectories in the results
 	 */
 	listFiles(options?: { recursive?: boolean }): Promise<Array<StorageFile>>;
 
@@ -368,7 +402,7 @@ export interface StorageDirectoryOperations {
 	 *
 	 * Stream results to avoid buffering the whole list in memory.
 	 *
-	 * @param [options.recursive] - if true, include files in subdirectories in the results
+	 * @param options.recursive - if true, include files in subdirectories in the results
 	 */
 	listFilesStreaming(options?: { recursive?: boolean }): AsyncGenerator<StorageFile, void>;
 
@@ -410,8 +444,8 @@ export interface StorageDirectoryOperations {
 	 * support colons, the file will be saved as "test_file-3c5b0673" (3c5b0673
 	 * is a hash of the original name).
 	 *
-	 * @param [options.onInvalid] - "convert" to generate valid file names (the
-	 *                              default), or "error" to throw an error
+	 * @param options.onInvalid - "convert" to generate valid file names (the
+	 *                            default), or "error" to throw an error
 	 *
 	 * @param path - a directory name e.g. "pokemon" or path e.g.
 	 *               "pokemon/pikachu/images"
@@ -435,7 +469,7 @@ export interface StorageDirectoryOperations {
 	 * doesn't support colons, the file will be saved as
 	 * "test_file-3c5b0673" (3c5b0673 is a hash of the original name).
 	 *
-	 * @param [options.onInvalid] - "convert" to generate valid file names (the default), or "error" to throw an error
+	 * @param options.onInvalid - "convert" to generate valid file names (the default), or "error" to throw an error
 	 *
 	 * @path a filename e.g. "image.png"
 	 */
@@ -538,13 +572,26 @@ export interface StorageEndpoint {
 
 	/**
 	 * Get an unsigned URL that will work to download this file if it is public.
+	 *
+	 * @param path - the file path
+	 * @param options.downloadAs - suggested filename for download
 	 */
-	getPublicDownloadUrl(path: string, downloadFileName?: string): Promise<string>;
+	getPublicDownloadUrl(
+		path: string,
+		options?: StorageEndpointPublicDownloadUrlOptions,
+	): Promise<string>;
 
 	/**
 	 * Get a temporary download URL for a path.
+	 *
+	 * @param path - the file path
+	 * @param options.expires - expiration date for the URL
+	 * @param options.downloadAs - suggested filename for download
 	 */
-	getSignedDownloadUrl(path: string, expires: Date, downloadFileName?: string): Promise<string>;
+	getSignedDownloadUrl(
+		path: string,
+		options: StorageEndpointSignedDownloadUrlOptions,
+	): Promise<string>;
 
 	/**
 	 * Get a temporary upload URL for a path.
@@ -553,13 +600,19 @@ export interface StorageEndpoint {
 
 	/**
 	 * Copy a file internally within this endpoint. Should throw NotFoundError if the source file does not exist.
+	 *
+	 * @param options.source - source file path
+	 * @param options.destination - destination file path
 	 */
-	copy(source: string, destination: string): Promise<void>;
+	copy(options: StorageEndpointCopyMoveOptions): Promise<void>;
 
 	/**
-	 * Copy a file internally within this endpoint. Should throw NotFoundError if the source file does not exist.
+	 * Move a file internally within this endpoint. Should throw NotFoundError if the source file does not exist.
+	 *
+	 * @param options.source - source file path
+	 * @param options.destination - destination file path
 	 */
-	move(source: string, destination: string): Promise<void>;
+	move(options: StorageEndpointCopyMoveOptions): Promise<void>;
 
 	/**
 	 * Check if a file exists at the given path.

@@ -1,4 +1,4 @@
-import { BaseClass } from "../../../../utils";
+import { BaseClass } from "../../../../utils.ts";
 
 /**
  * A documented class that should pass validation.

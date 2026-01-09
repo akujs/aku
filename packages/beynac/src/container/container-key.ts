@@ -1,4 +1,4 @@
-import type { AnyConstructor } from "../utils";
+import type { AnyConstructor } from "../utils.ts";
 
 export type KeyOrClass<T = unknown> = AnyConstructor<T> | TypeToken<T>;
 

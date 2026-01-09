@@ -1,6 +1,6 @@
-import { arrayWrap, BaseClass } from "../utils";
-import type { JSXElement } from "./view-types";
-import { type JSXNode, tagAsJsxElement } from "./view-types";
+import { arrayWrap, BaseClass } from "../utils.ts";
+import type { JSXElement } from "./view-types.ts";
+import { type JSXNode, tagAsJsxElement } from "./view-types.ts";
 
 export class MarkupStream extends BaseClass {
 	readonly tag: string | null;

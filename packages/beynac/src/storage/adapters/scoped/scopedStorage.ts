@@ -1,6 +1,6 @@
-import type { StorageAdapter } from "../../contracts/Storage";
-import { ScopedEndpoint } from "./ScopedEndpoint";
-import type { ScopedStorageConfig } from "./ScopedStorageConfig";
+import type { StorageAdapter } from "../../contracts/Storage.ts";
+import { ScopedEndpoint } from "./ScopedEndpoint.ts";
+import type { ScopedStorageConfig } from "./ScopedStorageConfig.ts";
 
 /**
  * Scoped storage adapter that wraps an existing disk and automatically applies

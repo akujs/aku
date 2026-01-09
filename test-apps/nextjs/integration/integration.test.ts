@@ -192,6 +192,57 @@ describe("Param API", () => {
 });
 
 describe("Storage API", () => {
+  test("list endpoint returns seeded files with URLs", async () => {
+    const response = await fetch(`${BASE_URL}/beynac/api/storage`);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.files).toBeInstanceOf(Array);
+    // Should have seeded images
+    expect(data.files.length).toBeGreaterThanOrEqual(4);
+
+    const fileNames = data.files.map((f: { name: string }) => f.name);
+    expect(fileNames).toContain("moon-1.jpg");
+    expect(fileNames).toContain("moon-2.jpg");
+    expect(fileNames).toContain("pigeon.jpg");
+    expect(fileNames).toContain("rain.jpg");
+
+    // Verify URLs are present and correct format
+    const moonFile = data.files.find((f: { name: string }) => f.name === "moon-1.jpg");
+    expect(moonFile.url).toBe("/storage/uploads/moon-1.jpg");
+  });
+
+  test("upload adds file to list, delete removes it", async () => {
+    // Upload a new file
+    const formData = new FormData();
+    const blob = new Blob(["test content"], { type: "text/plain" });
+    formData.append("file", blob, "test-list-file.txt");
+
+    let response = await fetch(`${BASE_URL}/beynac/api/storage`, {
+      method: "POST",
+      body: formData,
+    });
+    expect(response.status).toBe(200);
+
+    // Verify it appears in the list
+    response = await fetch(`${BASE_URL}/beynac/api/storage`);
+    let data = await response.json();
+    let fileNames = data.files.map((f: { name: string }) => f.name);
+    expect(fileNames).toContain("test-list-file.txt");
+
+    // Delete the file
+    response = await fetch(`${BASE_URL}/beynac/api/storage/test-list-file.txt`, {
+      method: "DELETE",
+    });
+    expect(response.status).toBe(200);
+
+    // Verify it's removed from the list
+    response = await fetch(`${BASE_URL}/beynac/api/storage`);
+    data = await response.json();
+    fileNames = data.files.map((f: { name: string }) => f.name);
+    expect(fileNames).not.toContain("test-list-file.txt");
+  });
+
   test("complete file lifecycle: upload, download, delete, verify deleted", async () => {
     // Load the test image
     const imagePath = resolve(import.meta.dir, "../../../packages/website/public/img/bruno-logo-medium.png");

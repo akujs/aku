@@ -1,6 +1,6 @@
-import type { StorageAdapter } from "../../contracts/Storage";
-import { S3Endpoint } from "./S3Endpoint";
-import type { S3StorageConfig } from "./S3StorageConfig";
+import type { StorageAdapter } from "../../contracts/Storage.ts";
+import { S3Endpoint } from "./S3Endpoint.ts";
+import type { S3StorageConfig } from "./S3StorageConfig.ts";
 
 /**
  * Create an S3-compatible storage adapter

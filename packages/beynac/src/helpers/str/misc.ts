@@ -1,4 +1,4 @@
-import { regExpEscape } from "../../utils";
+import { regExpEscape } from "../../utils.ts";
 
 export type Replacer = (input: string) => string;
 

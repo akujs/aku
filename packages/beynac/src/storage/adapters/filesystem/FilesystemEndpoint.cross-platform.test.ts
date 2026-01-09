@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { mockDispatcher } from "../../../test-utils/internal-mocks";
-import { fsOps, mockFilesystemOperations } from "../../filesystem-operations";
-import { mockPlatformPaths } from "../../path-operations";
-import { StorageImpl } from "../../StorageImpl";
-import { MockFilesystemOperations, mockEndpointBuilder } from "../../storage-test-utils";
-import { FilesystemEndpoint } from "./FilesystemEndpoint";
+import { mockDispatcher } from "../../../test-utils/internal-mocks.bun.ts";
+import { fsOps, mockFilesystemOperations } from "../../filesystem-operations.ts";
+import { mockPlatformPaths } from "../../path-operations.ts";
+import { StorageImpl } from "../../StorageImpl.ts";
+import { MockFilesystemOperations, mockEndpointBuilder } from "../../storage-test-utils.bun.ts";
+import { FilesystemEndpoint } from "./FilesystemEndpoint.ts";
 
 describe(FilesystemEndpoint, () => {
 	beforeEach(() => {

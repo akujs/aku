@@ -1,13 +1,16 @@
-import { sha256 } from "../../../helpers/hash/digest";
-import { BaseClass, describeType } from "../../../utils";
+import { sha256 } from "../../../helpers/hash/digest.ts";
+import { BaseClass, describeType } from "../../../utils.ts";
 import type {
 	StorageEndpoint,
+	StorageEndpointCopyMoveOptions,
 	StorageEndpointFileInfoResult,
 	StorageEndpointFileReadResult,
+	StorageEndpointPublicDownloadUrlOptions,
+	StorageEndpointSignedDownloadUrlOptions,
 	StorageEndpointWriteOptions,
-} from "../../contracts/Storage";
-import { NotFoundError } from "../../storage-errors";
-import type { MemoryStorageConfig } from "./MemoryStorageConfig";
+} from "../../contracts/Storage.ts";
+import { NotFoundError } from "../../storage-errors.ts";
+import type { MemoryStorageConfig } from "./MemoryStorageConfig.ts";
 
 interface MemoryFile {
 	data: Uint8Array;
@@ -20,12 +23,14 @@ export class MemoryEndpoint extends BaseClass implements StorageEndpoint {
 	readonly #files: Map<string, MemoryFile> = new Map();
 	readonly supportsMimeTypes: boolean;
 	readonly invalidNameChars: string;
+	readonly #fakeUrls: boolean;
 
 	constructor(config: MemoryStorageConfig) {
 		super();
 		const supportsMimeTypes = config.supportsMimeTypes ?? true;
 		this.supportsMimeTypes = supportsMimeTypes;
 		this.invalidNameChars = config.invalidNameChars ?? "";
+		this.#fakeUrls = config.fakeUrls ?? false;
 
 		if (config.initialFiles) {
 			for (const [path, fileData] of Object.entries(config.initialFiles)) {
@@ -95,52 +100,66 @@ export class MemoryEndpoint extends BaseClass implements StorageEndpoint {
 		};
 	}
 
-	async getPublicDownloadUrl(path: string, downloadFileName?: string): Promise<string> {
-		return fakeUrl(path, { download: downloadFileName });
+	async getPublicDownloadUrl(
+		path: string,
+		options?: StorageEndpointPublicDownloadUrlOptions,
+	): Promise<string> {
+		validatePath(path);
+		this.#requireFakeUrls();
+		return fakeUrl(path, { download: options?.downloadAs });
 	}
 
 	async getSignedDownloadUrl(
 		path: string,
-		expires: Date,
-		downloadFileName?: string,
+		options: StorageEndpointSignedDownloadUrlOptions,
 	): Promise<string> {
 		validatePath(path);
+		this.#requireFakeUrls();
 		return fakeUrl(path, {
-			download: downloadFileName,
-			expires,
+			download: options.downloadAs,
+			expires: options.expires,
 		});
 	}
 
 	async getTemporaryUploadUrl(path: string, expires: Date): Promise<string> {
 		validatePath(path);
+		this.#requireFakeUrls();
 		return fakeUrl(path, { upload: "true", expires });
 	}
 
-	async copy(source: string, destination: string): Promise<void> {
-		validatePath(source);
-		validatePath(destination);
-		const file = this.#files.get(source);
+	#requireFakeUrls(): void {
+		if (!this.#fakeUrls) {
+			throw new Error(
+				"memoryStorage does not support URLs, pass fakeUrls:true to generate mock URLs for tests.",
+			);
+		}
+	}
+
+	async copy(options: StorageEndpointCopyMoveOptions): Promise<void> {
+		validatePath(options.source);
+		validatePath(options.destination);
+		const file = this.#files.get(options.source);
 		if (!file) {
-			throw new NotFoundError(source);
+			throw new NotFoundError(options.source);
 		}
 
-		this.#files.set(destination, {
+		this.#files.set(options.destination, {
 			data: file.data,
 			mimeType: file.mimeType,
 			etag: file.etag,
 		});
 	}
 
-	async move(source: string, destination: string): Promise<void> {
-		validatePath(source);
-		validatePath(destination);
-		const file = this.#files.get(source);
+	async move(options: StorageEndpointCopyMoveOptions): Promise<void> {
+		validatePath(options.source);
+		validatePath(options.destination);
+		const file = this.#files.get(options.source);
 		if (!file) {
-			throw new NotFoundError(source);
+			throw new NotFoundError(options.source);
 		}
 
-		this.#files.set(destination, file);
-		this.#files.delete(source);
+		this.#files.set(options.destination, file);
+		this.#files.delete(options.source);
 	}
 
 	async existsSingle(path: string): Promise<boolean> {

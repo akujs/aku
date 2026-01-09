@@ -1,17 +1,21 @@
 import { afterEach, describe, expect, expectTypeOf, test } from "bun:test";
-import { Cookies, Headers } from "../facades";
-import type { ControllerContext } from "../http/Controller";
-import { BaseController } from "../http/Controller";
-import { get, group } from "../http/helpers";
-import type { Routes } from "../http/router-types";
-import { integrationContext, MockController, mockMiddleware } from "../test-utils/http-test-utils";
-import { ApplicationImpl } from "./ApplicationImpl";
-import type { Application, ServiceProviderReference } from "./contracts/Application";
-import { Dispatcher } from "./contracts/Dispatcher";
-import { createApplication } from "./createApplication";
-import { DispatcherImpl } from "./DispatcherImpl";
-import { setFacadeApplication } from "./facade";
-import { ServiceProvider } from "./ServiceProvider";
+import { Cookies, Headers } from "../facades-entry-point.ts";
+import type { ControllerContext } from "../http/Controller.ts";
+import { BaseController } from "../http/Controller.ts";
+import { get, group } from "../http/helpers.ts";
+import type { Routes } from "../http/router-types.ts";
+import {
+	MockController,
+	mockIntegrationContext,
+	mockMiddleware,
+} from "../test-utils/http-test-utils.bun.ts";
+import { ApplicationImpl } from "./ApplicationImpl.ts";
+import type { Application, ServiceProviderReference } from "./contracts/Application.ts";
+import { Dispatcher } from "./contracts/Dispatcher.ts";
+import { createApplication } from "./createApplication.ts";
+import { DispatcherImpl } from "./DispatcherImpl.ts";
+import { setFacadeApplication } from "./facade.ts";
+import { ServiceProvider } from "./ServiceProvider.ts";
 
 afterEach(() => {
 	setFacadeApplication(null);
@@ -137,7 +141,7 @@ describe("ApplicationImpl", () => {
 		const app = createApplication({ routes });
 
 		const request = new Request("http://example.com/hello");
-		const context = integrationContext({
+		const context = mockIntegrationContext({
 			cookies: { c: "cookie" },
 			headers: { h: "header" },
 		});
@@ -159,7 +163,7 @@ describe("ApplicationImpl", () => {
 			app.bootstrap();
 			mockMiddleware.reset();
 
-			await app.handleRequest(new Request("http://example.com/test"), integrationContext());
+			await app.handleRequest(new Request("http://example.com/test"), mockIntegrationContext());
 
 			expect(mockMiddleware.log).toEqual(["M2", "M1"]);
 		});
@@ -183,7 +187,10 @@ describe("ApplicationImpl", () => {
 
 			app.bootstrap();
 			expect(async () => {
-				await app.handleRequest(new Request("http://example.com/user/123"), integrationContext());
+				await app.handleRequest(
+					new Request("http://example.com/user/123"),
+					mockIntegrationContext(),
+				);
 			}).toThrow('Route parameter "nonExistent" does not exist');
 		});
 
@@ -197,7 +204,7 @@ describe("ApplicationImpl", () => {
 			app.bootstrap();
 			const response = await app.handleRequest(
 				new Request("http://example.com/user/123"),
-				integrationContext(),
+				mockIntegrationContext(),
 			);
 
 			expect(response.status).toBe(200);
@@ -345,7 +352,7 @@ describe("ApplicationImpl", () => {
 			});
 
 			const request = new Request("http://localhost/test");
-			const response = await app.handleRequest(request, integrationContext());
+			const response = await app.handleRequest(request, mockIntegrationContext());
 			expect(await response.text()).toBe("https://config.example.com:9000/test");
 		});
 
@@ -360,7 +367,7 @@ describe("ApplicationImpl", () => {
 			const app = createApplication({ routes });
 
 			const request = new Request("http://localhost/test");
-			const context = integrationContext({
+			const context = mockIntegrationContext({
 				headers: {
 					"x-forwarded-proto": "https",
 					"x-forwarded-host": "proxy.example.com:8443",

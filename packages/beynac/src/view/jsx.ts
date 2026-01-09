@@ -1,12 +1,13 @@
-import { BeynacError } from "../core/core-errors";
-import { arrayWrap, describeType } from "../utils";
-import { type Component, ComponentInstantiator } from "./Component";
-import { MarkupStream, newMarkupStreamAsElement } from "./markup-stream";
-import type { Context, JSX, JSXNode } from "./view-types";
-import { tagAsJsxElement } from "./view-types";
+import { BeynacError } from "../core/core-errors.ts";
+import { arrayWrap, describeType } from "../utils.ts";
+import { type Component, ComponentInstantiator } from "./Component.ts";
+import { MarkupStream, newMarkupStreamAsElement } from "./markup-stream.ts";
+import type { Context, JSX, JSXNode } from "./view-types.ts";
+import { tagAsJsxElement } from "./view-types.ts";
 
 type JSXFactory = (
-	tag: string | Component,
+	// oxlint-disable-next-line no-explicit-any -- deliberate public API choice
+	tag: string | Component<any>,
 	props: Record<string, unknown> | null,
 	key?: unknown,
 ) => JSX.Element;
@@ -14,11 +15,7 @@ type JSXFactory = (
 const notProvided = Symbol();
 
 /***/
-export const jsx: JSXFactory = (
-	tag: string | Component,
-	props: Record<string, unknown> | null,
-	key: unknown = notProvided,
-): JSX.Element => {
+export const jsx: JSXFactory = (tag, props, key = notProvided): JSX.Element => {
 	if (key !== notProvided) {
 		props ??= {};
 		props.key = key;

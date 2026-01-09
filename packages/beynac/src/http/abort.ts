@@ -1,10 +1,10 @@
-import { ContainerImpl } from "../container/ContainerImpl";
-import type { Key } from "../core/Key";
-import { createKey } from "../core/Key";
-import { BaseClass } from "../utils";
-import { RequestLocals } from "./contracts/RequestLocals";
-import type { RedirectOptions } from "./redirect";
-import { redirectStatus } from "./redirect";
+import { ContainerImpl } from "../container/ContainerImpl.ts";
+import type { Key } from "../core/Key.ts";
+import { createKey } from "../core/Key.ts";
+import { BaseClass } from "../utils.ts";
+import { RequestLocals } from "./contracts/RequestLocals.ts";
+import type { RedirectOptions } from "./redirect.ts";
+import { redirectStatus } from "./redirect.ts";
 
 /**
  * Exception thrown to abort request handling and return an HTTP response.

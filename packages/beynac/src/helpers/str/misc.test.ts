@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { compileMultiReplace } from "./misc";
+import { compileMultiReplace } from "./misc.ts";
 
 describe(compileMultiReplace, () => {
 	test("replaces single characters", () => {

@@ -1,10 +1,11 @@
-import type { TypeToken } from "../../container/container-key";
-import { createTypeToken } from "../../container/container-key";
-import type { Container } from "../../container/contracts/Container";
-import type { IntegrationContext } from "../../integrations/IntegrationContext";
-import type { Storage } from "../../storage/contracts/Storage";
-import type { ServiceProvider } from "../ServiceProvider";
-import type { Dispatcher } from "./Dispatcher";
+import type { TypeToken } from "../../container/container-key.ts";
+import { createTypeToken } from "../../container/container-key.ts";
+import type { Container } from "../../container/contracts/Container.ts";
+import type { Database } from "../../database/contracts/Database.ts";
+import type { IntegrationContext } from "../../integrations/IntegrationContext.ts";
+import type { Storage } from "../../storage/contracts/Storage.ts";
+import type { ServiceProvider } from "../ServiceProvider.ts";
+import type { Dispatcher } from "./Dispatcher.ts";
 
 export type QueryParams =
 	| Record<string, string | number | undefined | null | Array<string | number | undefined | null>>
@@ -55,14 +56,19 @@ export interface Application<RouteParams extends Record<string, string> = {}> {
 	registerServiceProvider(provider: ServiceProvider | ServiceProviderReference): void;
 
 	/**
-	 * Accessor for the event dispatcher
+	 * Shorthand for container.get(Dispatcher)
 	 */
 	readonly events: Dispatcher;
 
 	/**
-	 * Accessor for the storage manager
+	 * Shorthand for container.get(Storage)
 	 */
 	readonly storage: Storage;
+
+	/**
+	 * Shorthand for container.get(Database)
+	 */
+	readonly database: Database;
 
 	/**
 	 * Generate a URL for a named route with type-safe parameters and optional query string

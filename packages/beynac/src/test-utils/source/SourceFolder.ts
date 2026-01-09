@@ -1,8 +1,9 @@
 import { readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { BaseClass } from "../../utils";
-import { SourceFile } from "./SourceFile";
-import type { SourceProject } from "./SourceProject";
+import { BaseClass } from "../../utils.ts";
+import { shouldSkipDirectory } from "./discoverEntryPoints.ts";
+import { SourceFile } from "./SourceFile.ts";
+import type { SourceProject } from "./SourceProject.ts";
 
 /**
  * Represents a folder in the source tree.
@@ -77,8 +78,7 @@ export class SourceFolder extends BaseClass {
 			const stat = statSync(fullPath);
 
 			if (stat.isDirectory()) {
-				// Skip test-utils directory
-				if (entry === "test-utils") {
+				if (shouldSkipDirectory(entry)) {
 					continue;
 				}
 				children.push(await SourceFolder.load(fullPath, projectRoot, folder));
@@ -94,7 +94,8 @@ export class SourceFolder extends BaseClass {
 		return (
 			(filename.endsWith(".ts") || filename.endsWith(".tsx")) &&
 			!filename.endsWith(".d.ts") &&
-			!filename.includes(".test.")
+			!filename.includes(".test.") &&
+			!filename.includes(".node.")
 		);
 	}
 }

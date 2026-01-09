@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { createTestDirectory } from "../../../testing/test-directories";
-import { sleep } from "../../../utils";
-import type { StorageEndpoint } from "../../contracts/Storage";
-import { mockPlatformPaths } from "../../path-operations";
-import { StorageUnknownError } from "../../storage-errors";
-import type { SharedTestConfig } from "../../storage-test-utils";
-import { FilesystemEndpoint } from "./FilesystemEndpoint";
-import { filesystemStorage } from "./filesystemStorage";
+import { sleep } from "bun";
+import { createTestDirectory } from "../../../testing/test-directories.ts";
+import type { StorageEndpoint } from "../../contracts/Storage.ts";
+import { mockPlatformPaths } from "../../path-operations.ts";
+import { StorageUnknownError } from "../../storage-errors.ts";
+import type { SharedTestConfig } from "../../storage-test-utils.bun.ts";
+import { FilesystemEndpoint } from "./FilesystemEndpoint.ts";
+import { filesystemStorage } from "./filesystemStorage.ts";
 
 beforeEach(() => {
 	mockPlatformPaths("posix");
@@ -81,7 +81,9 @@ describe(filesystemStorage, () => {
 				"makePublicUrlWith is required",
 			);
 			expect(
-				storageWithoutPrefix.getSignedDownloadUrl("/test.txt", new Date(Date.now() + 3600000)),
+				storageWithoutPrefix.getSignedDownloadUrl("/test.txt", {
+					expires: new Date(Date.now() + 3600000),
+				}),
 			).rejects.toThrow("makeSignedDownloadUrlWith is required");
 			expect(
 				storageWithoutPrefix.getTemporaryUploadUrl("/test.txt", new Date(Date.now() + 3600000)),
@@ -94,10 +96,14 @@ describe(filesystemStorage, () => {
 			const publicUrl = await storage.getPublicDownloadUrl("/test.txt");
 			expect(publicUrl).toBe("https://example.com/files/test.txt");
 
-			const publicUrlWithDownload = await storage.getPublicDownloadUrl("/test.txt", "custom.txt");
+			const publicUrlWithDownload = await storage.getPublicDownloadUrl("/test.txt", {
+				downloadAs: "custom.txt",
+			});
 			expect(publicUrlWithDownload).toBe("https://example.com/files/test.txt?download=custom.txt");
 
-			const signedUrl = await storage.getSignedDownloadUrl("/test.txt", new Date("2025-11-14"));
+			const signedUrl = await storage.getSignedDownloadUrl("/test.txt", {
+				expires: new Date("2025-11-14"),
+			});
 			expect(signedUrl).toStartWith("mock-url://download/test.txt?expires=2025-11-14");
 
 			const uploadUrl = await storage.getTemporaryUploadUrl("/test.txt", new Date("2025-11-14"));
@@ -115,10 +121,9 @@ describe(filesystemStorage, () => {
 			const publicUrl = await storageWithCallback.getPublicDownloadUrl("/test.txt");
 			expect(publicUrl).toBe("https://custom-cdn.example.com/v2/test.txt");
 
-			const publicUrlWithDownload = await storageWithCallback.getPublicDownloadUrl(
-				"/test.txt",
-				"custom.txt",
-			);
+			const publicUrlWithDownload = await storageWithCallback.getPublicDownloadUrl("/test.txt", {
+				downloadAs: "custom.txt",
+			});
 			expect(publicUrlWithDownload).toBe(
 				"https://custom-cdn.example.com/v2/test.txt?download=custom.txt",
 			);
@@ -141,7 +146,7 @@ describe(filesystemStorage, () => {
 			const info1 = await storage.getInfoSingle("/test.txt");
 
 			// Wait a bit to ensure mtime changes
-			await sleep(10);
+			await sleep(2);
 
 			await storage.writeSingle({ path: "/test.txt", data: "content2", mimeType: null });
 			const info2 = await storage.getInfoSingle("/test.txt");
@@ -165,7 +170,7 @@ describe(filesystemStorage, () => {
 
 		test("copy creates destination directories", async () => {
 			await writeTestFile(storage, "/source.txt");
-			await storage.copy("/source.txt", "/deep/nested/dest.txt");
+			await storage.copy({ source: "/source.txt", destination: "/deep/nested/dest.txt" });
 
 			const exists = await storage.existsSingle("/deep/nested/dest.txt");
 			expect(exists).toBe(true);
@@ -173,7 +178,7 @@ describe(filesystemStorage, () => {
 
 		test("move creates destination directories", async () => {
 			await writeTestFile(storage, "/source.txt");
-			await storage.move("/source.txt", "/deep/nested/dest.txt");
+			await storage.move({ source: "/source.txt", destination: "/deep/nested/dest.txt" });
 
 			const sourceExists = await storage.existsSingle("/source.txt");
 			const destExists = await storage.existsSingle("/deep/nested/dest.txt");

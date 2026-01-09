@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { ContainerImpl } from "../container/ContainerImpl";
-import type { Container } from "../container/contracts/Container";
-import { Configuration } from "../core/contracts/Configuration";
-import { IntegrationContext } from "../integrations/IntegrationContext";
-import { integrationContext, MockController } from "../test-utils/http-test-utils";
-import { get, group, resource } from "./helpers";
-import { ResourceController } from "./ResourceController";
-import { RouteUrlGenerator } from "./RouteUrlGenerator";
+import { ContainerImpl } from "../container/ContainerImpl.ts";
+import type { Container } from "../container/contracts/Container.ts";
+import { Configuration } from "../core/contracts/Configuration.ts";
+import { IntegrationContext } from "../integrations/IntegrationContext.ts";
+import { MockController, mockIntegrationContext } from "../test-utils/http-test-utils.bun.ts";
+import { get, group, resource } from "./helpers.ts";
+import { ResourceController } from "./ResourceController.ts";
+import { RouteUrlGenerator } from "./RouteUrlGenerator.ts";
 
 describe(RouteUrlGenerator, () => {
 	let config: Configuration;
@@ -291,7 +291,7 @@ describe(RouteUrlGenerator, () => {
 				overrideProtocol: "http",
 			};
 
-			const context = integrationContext({
+			const context = mockIntegrationContext({
 				headers: {
 					"x-forwarded-proto": "https", // Should be overridden
 					"x-forwarded-host": "example.com",
@@ -310,7 +310,7 @@ describe(RouteUrlGenerator, () => {
 				defaultProtocol: "http", // Default to http
 			};
 
-			const context = integrationContext({
+			const context = mockIntegrationContext({
 				headers: {
 					"x-forwarded-proto": "https", // Should override default
 					"x-forwarded-host": "example.com",
@@ -329,7 +329,7 @@ describe(RouteUrlGenerator, () => {
 				defaultProtocol: "https",
 			};
 
-			const context = integrationContext({
+			const context = mockIntegrationContext({
 				requestUrl: "http://example.com/test", // Should be overridden
 			});
 
@@ -341,7 +341,7 @@ describe(RouteUrlGenerator, () => {
 		});
 
 		test("protocol precedence: requestUrl used as fallback", () => {
-			const context = integrationContext({
+			const context = mockIntegrationContext({
 				requestUrl: "https://example.com:8443/test",
 			});
 
@@ -357,7 +357,7 @@ describe(RouteUrlGenerator, () => {
 				overrideHost: "config.example.com",
 			};
 
-			const context = integrationContext({
+			const context = mockIntegrationContext({
 				headers: {
 					"x-forwarded-host": "proxy.example.com",
 				},
@@ -382,7 +382,7 @@ describe(RouteUrlGenerator, () => {
 				overrideProtocol: "https",
 			};
 
-			const context = integrationContext({
+			const context = mockIntegrationContext({
 				headers: {
 					"x-forwarded-host": "proxy.example.com", // Should be overridden
 				},
@@ -401,7 +401,7 @@ describe(RouteUrlGenerator, () => {
 				overrideProtocol: "https",
 			};
 
-			const context = integrationContext({
+			const context = mockIntegrationContext({
 				headers: {
 					"x-forwarded-host": "proxy.example.com", // Should override default
 				},
@@ -420,7 +420,7 @@ describe(RouteUrlGenerator, () => {
 				defaultProtocol: "https",
 			};
 
-			const context = integrationContext({
+			const context = mockIntegrationContext({
 				requestUrl: "http://request.example.com/test", // Should be overridden
 			});
 
@@ -432,7 +432,7 @@ describe(RouteUrlGenerator, () => {
 		});
 
 		test("host precedence: requestUrl used as fallback", () => {
-			const context = integrationContext({
+			const context = mockIntegrationContext({
 				requestUrl: "https://request.example.com:9000/test",
 			});
 
@@ -444,7 +444,7 @@ describe(RouteUrlGenerator, () => {
 		});
 
 		test("port stripping: removes :80 from http URLs", () => {
-			const context = integrationContext({
+			const context = mockIntegrationContext({
 				headers: {
 					"x-forwarded-proto": "http",
 					"x-forwarded-host": "example.com",
@@ -460,7 +460,7 @@ describe(RouteUrlGenerator, () => {
 		});
 
 		test("port stripping: removes :443 from https URLs", () => {
-			const context = integrationContext({
+			const context = mockIntegrationContext({
 				headers: {
 					"x-forwarded-proto": "https",
 					"x-forwarded-host": "example.com",
@@ -476,7 +476,7 @@ describe(RouteUrlGenerator, () => {
 		});
 
 		test("port stripping: preserves non-default ports", () => {
-			const context = integrationContext({
+			const context = mockIntegrationContext({
 				headers: {
 					"x-forwarded-proto": "https",
 					"x-forwarded-host": "example.com:8443",

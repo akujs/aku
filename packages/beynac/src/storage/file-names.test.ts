@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { sha256 } from "../helpers/hash/digest";
-import * as str from "../helpers/str/random";
-import { mock } from "../testing/mocks";
-import { createFileName, mimeTypeFromFileName, sanitiseName } from "./file-names";
+import { sha256 } from "../helpers/hash/digest.ts";
+import * as str from "../helpers/str/random.ts";
+import { mock } from "../testing/mocks.ts";
+import { createFileName, mimeTypeFromFileName, sanitiseName } from "./file-names.ts";
 
 describe(mimeTypeFromFileName, () => {
 	test("returns correct MIME type for extensions", () => {

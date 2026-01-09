@@ -1,6 +1,6 @@
-import { BeynacError } from "../core/core-errors";
-import { BaseClass } from "../utils";
-import type { MiddlewareReference } from "./Middleware";
+import { BeynacError } from "../core/core-errors.ts";
+import { BaseClass } from "../utils.ts";
+import type { MiddlewareReference } from "./Middleware.ts";
 
 export class MiddlewarePriorityBuilder extends BaseClass {
 	#list: MiddlewareReference[];

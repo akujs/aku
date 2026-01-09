@@ -1,18 +1,17 @@
-import type { Dispatcher } from "../core/contracts/Dispatcher";
-import { parseAttributeHeader } from "../helpers/headers";
-import { BaseClass } from "../utils";
+import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
+import { parseAttributeHeader } from "../helpers/headers/attributes.ts";
+import { arrayFromAsync, BaseClass } from "../utils.ts";
 import type {
 	StorageData,
 	StorageDirectory,
-	StorageDisk,
 	StorageEndpoint,
 	StorageFile,
 	StorageFilePutPayload,
-} from "./contracts/Storage";
-import { createFileName, mimeTypeFromFileName, sanitiseName } from "./file-names";
-import { posix } from "./path-operations";
-import { StorageFileImpl } from "./StorageFileImpl";
-import { InvalidPathError } from "./storage-errors";
+} from "./contracts/Storage.ts";
+import { createFileName, mimeTypeFromFileName, sanitiseName } from "./file-names.ts";
+import { posix } from "./path-operations.ts";
+import type { StorageDiskImpl } from "./StorageDiskImpl.ts";
+import { InvalidPathError } from "./storage-errors.ts";
 import {
 	DirectoryDeletedEvent,
 	DirectoryDeletingEvent,
@@ -20,25 +19,40 @@ import {
 	DirectoryExistenceCheckingEvent,
 	DirectoryListedEvent,
 	DirectoryListingEvent,
-} from "./storage-events";
-import { storageOperation } from "./storage-operation";
+} from "./storage-events.ts";
+import { storageOperation } from "./storage-operation.ts";
 
 export class StorageDirectoryImpl extends BaseClass implements StorageDirectory {
 	readonly type = "directory" as const;
-	readonly disk: StorageDisk;
+	readonly disk: StorageDiskImpl;
 	readonly path: string;
+	readonly name: string;
 	readonly #endpoint: StorageEndpoint;
 	readonly #dispatcher: Dispatcher;
 
-	constructor(disk: StorageDisk, endpoint: StorageEndpoint, path: string, dispatcher: Dispatcher) {
+	constructor(
+		disk: StorageDiskImpl,
+		endpoint: StorageEndpoint,
+		path: string,
+		dispatcher: Dispatcher,
+	) {
 		super();
-		this.disk = disk;
-		this.#endpoint = endpoint;
-		this.#dispatcher = dispatcher;
 		if (!path.startsWith("/") || !path.endsWith("/")) {
 			throw new InvalidPathError(path, "directory paths must start and end with a slash");
 		}
+		this.disk = disk;
+		this.#endpoint = endpoint;
+		this.#dispatcher = dispatcher;
 		this.path = path;
+		const withoutTrailingSlash = path.slice(0, -1);
+		this.name = withoutTrailingSlash.substring(withoutTrailingSlash.lastIndexOf("/") + 1);
+	}
+
+	get parent(): StorageDirectory | null {
+		if (this.path === "/") {
+			return null;
+		}
+		return this.directory("..");
 	}
 
 	async exists(): Promise<boolean> {
@@ -53,7 +67,7 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 	}
 
 	async list(): Promise<Array<StorageFile | StorageDirectory>> {
-		return Array.fromAsync(this.listStreaming());
+		return arrayFromAsync(this.listStreaming());
 	}
 
 	listStreaming(): AsyncGenerator<StorageFile | StorageDirectory, void> {
@@ -77,13 +91,13 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 		// Convert relative path to absolute path
 		const absolutePath = `${this.path}${relativePath}`;
 		if (relativePath.endsWith("/")) {
-			return new StorageDirectoryImpl(this.disk, this.#endpoint, absolutePath, this.#dispatcher);
+			return this.disk.getOrCreateDirectory(absolutePath);
 		}
-		return new StorageFileImpl(this.disk, this.#endpoint, absolutePath, this.#dispatcher);
+		return this.disk.getOrCreateFile(absolutePath);
 	}
 
 	async listFiles(options?: { recursive?: boolean }): Promise<Array<StorageFile>> {
-		return Array.fromAsync(this.listFilesStreaming(options));
+		return arrayFromAsync(this.listFilesStreaming(options));
 	}
 
 	listFilesStreaming(options?: { recursive?: boolean }): AsyncGenerator<StorageFile, void> {
@@ -103,7 +117,7 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 			// Use recursive listing
 			for await (const path of this.#endpoint.listFilesRecursive(this.path)) {
 				const entry = this.#createEntry(path);
-				if (entry instanceof StorageFileImpl) {
+				if (entry.type === "file") {
 					yield entry;
 				}
 			}
@@ -111,7 +125,7 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 			// Use immediate listing, filter to files only
 			for await (const path of this.#endpoint.listEntries(this.path)) {
 				const entry = this.#createEntry(path);
-				if (entry instanceof StorageFileImpl) {
+				if (entry.type === "file") {
 					yield entry;
 				}
 			}
@@ -119,7 +133,7 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 	}
 
 	async listDirectories(): Promise<Array<StorageDirectory>> {
-		return Array.fromAsync(this.listDirectoriesStreaming());
+		return arrayFromAsync(this.listDirectoriesStreaming());
 	}
 
 	listDirectoriesStreaming(): AsyncGenerator<StorageDirectory, void> {
@@ -136,7 +150,7 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 	async *#directoriesStreamingGenerator(): AsyncGenerator<StorageDirectory, void> {
 		for await (const path of this.#endpoint.listEntries(this.path)) {
 			const entry = this.#createEntry(path);
-			if (entry instanceof StorageDirectoryImpl) {
+			if (entry.type === "directory") {
 				yield entry;
 			}
 		}
@@ -154,8 +168,11 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 	}
 
 	directory(path: string, options?: { onInvalid?: "convert" | "throw" }): StorageDirectory {
+		if (path === "") {
+			throw new InvalidPathError(path, "directory name cannot be empty");
+		}
 		const parts = this.#splitAndSanitisePath(path, options?.onInvalid);
-		// Return self if path is empty or only contains empty segments
+		// Return self if path resolves to current directory (e.g. "/" or ".")
 		if (parts.every((p) => p === "")) {
 			return this;
 		}
@@ -166,7 +183,7 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 			fullPath += "/";
 		}
 
-		return new StorageDirectoryImpl(this.disk, this.#endpoint, fullPath, this.#dispatcher);
+		return this.disk.getOrCreateDirectory(fullPath);
 	}
 
 	file(path: string, options?: { onInvalid?: "convert" | "throw" }): StorageFile {
@@ -178,7 +195,7 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 
 		const fullPath = posix.normalize(posix.join(this.path, parts.join("/")));
 
-		return new StorageFileImpl(this.disk, this.#endpoint, fullPath, this.#dispatcher);
+		return this.disk.getOrCreateFile(fullPath);
 	}
 
 	#splitAndSanitisePath(path: string, onInvalid: "convert" | "throw" = "convert"): string[] {

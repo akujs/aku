@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { formatPhc, parsePhc } from "./phc";
-import { testVectors } from "./phc-test-vectors";
+import { formatPhc, parsePhc } from "./phc.ts";
+import { testVectors } from "./phc-test-vectors.ts";
 
 describe(parsePhc, () => {
 	test.each(Object.entries(testVectors))("parses: %s", (phcString, expected) => {

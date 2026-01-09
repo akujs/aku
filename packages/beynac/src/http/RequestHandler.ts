@@ -1,39 +1,46 @@
-import { Container } from "../container/contracts/Container";
-import { inject } from "../container/inject";
-import { Configuration, resolveEnvironmentChoice } from "../core/contracts/Configuration";
-import { Dispatcher } from "../core/contracts/Dispatcher";
-import { BaseClass } from "../utils";
-import { ViewRenderer } from "../view/contracts/ViewRenderer";
-import { isJsxElement, type JSX } from "../view/view-types";
-import { AbortException, abortExceptionKey } from "./abort";
-import type { BaseController } from "./Controller";
+import { Container } from "../container/contracts/Container.ts";
+import { inject } from "../container/inject.ts";
+import { Configuration, resolveEnvironmentChoice } from "../core/contracts/Configuration.ts";
+import { Dispatcher } from "../core/contracts/Dispatcher.ts";
+import { BaseClass } from "../utils.ts";
+import { ViewRenderer } from "../view/contracts/ViewRenderer.ts";
+import { isJsxElement } from "../view/view-types.ts";
+import { AbortException, abortExceptionKey } from "./abort.ts";
+import type { BaseController } from "./Controller.ts";
 import {
 	type Controller,
 	type ControllerContext,
 	type ControllerReturn,
+	convertsToResponse,
 	isClassController,
-} from "./Controller";
-import { RequestLocals } from "./contracts/RequestLocals";
-import { RequestHandledEvent } from "./http-events";
-import { throwOnMissingPropertyAccess } from "./params-access-checker";
+} from "./Controller.ts";
+import { RequestLocals } from "./contracts/RequestLocals.ts";
+import { RequestHandledEvent } from "./http-events.ts";
+import { throwOnMissingPropertyAccess } from "./params-access-checker.ts";
 import {
 	CurrentControllerContext,
 	CurrentRouteDefinition,
 	type RouteDefinition,
 	type RouteWithParams,
-} from "./router-types";
+} from "./router-types.ts";
 
 export class RequestHandler extends BaseClass {
 	#throwOnInvalidParam: boolean;
 	#streamResponses: boolean;
+	#container: Container;
+	#viewRenderer: ViewRenderer;
+	#dispatcher: Dispatcher;
 
 	constructor(
-		private container: Container = inject(Container),
-		private viewRenderer: ViewRenderer = inject(ViewRenderer),
-		private dispatcher: Dispatcher = inject(Dispatcher),
+		container: Container = inject(Container),
+		viewRenderer: ViewRenderer = inject(ViewRenderer),
+		dispatcher: Dispatcher = inject(Dispatcher),
 		config: Configuration = inject(Configuration),
 	) {
 		super();
+		this.#container = container;
+		this.#viewRenderer = viewRenderer;
+		this.#dispatcher = dispatcher;
 		const isDevelopment = !!config.development;
 		this.#throwOnInvalidParam = resolveEnvironmentChoice(
 			config.throwOnInvalidParamAccess,
@@ -48,10 +55,10 @@ export class RequestHandler extends BaseClass {
 	}
 
 	async handle(match: RouteWithParams): Promise<Response> {
-		const locals = this.container.get(RequestLocals);
+		const locals = this.#container.get(RequestLocals);
 
 		// Store the route definition as a scoped instance for middleware access
-		this.container.scopedInstance(CurrentRouteDefinition, match.route);
+		this.#container.scopedInstance(CurrentRouteDefinition, match.route);
 
 		try {
 			const decodedParams: Record<string, string> = {};
@@ -75,12 +82,12 @@ export class RequestHandler extends BaseClass {
 				url: match.url,
 				meta: match.route.meta || {},
 			};
-			this.container.scopedInstance(CurrentControllerContext, ctx);
+			this.#container.scopedInstance(CurrentControllerContext, ctx);
 
 			const finalHandler = async (ctx: ControllerContext): Promise<Response> => {
 				let result: ControllerReturn;
 				if (isClassController(match.route.controller)) {
-					const controller = this.container.get(match.route.controller);
+					const controller = this.#container.get(match.route.controller);
 					result = controller.handle(ctx);
 				} else {
 					if (isNativeClassConstructor(match.route.controller)) {
@@ -92,16 +99,16 @@ export class RequestHandler extends BaseClass {
 					result = match.route.controller(ctx);
 				}
 
-				return this.#convertToResponse(match.route, await result);
+				return this.#convertToResponse(match.route, result);
 			};
 
 			const pipeline = match.route.middleware
-				? match.route.middleware.buildPipeline(this.container, finalHandler)
+				? match.route.middleware.buildPipeline(this.#container, finalHandler)
 				: finalHandler;
 
 			const response = await pipeline(ctx);
 
-			this.dispatcher.dispatchIfHasListeners(
+			this.#dispatcher.dispatchIfHasListeners(
 				RequestHandledEvent,
 				() => new RequestHandledEvent(ctx, response),
 			);
@@ -126,10 +133,7 @@ export class RequestHandler extends BaseClass {
 		}
 	}
 
-	async #convertToResponse(
-		route: RouteDefinition,
-		result: Response | JSX.Element | null,
-	): Promise<Response> {
+	async #convertToResponse(route: RouteDefinition, result: ControllerReturn): Promise<Response> {
 		result = await result;
 		if (result instanceof Response) {
 			return result;
@@ -139,8 +143,12 @@ export class RequestHandler extends BaseClass {
 			return new Response();
 		}
 
+		if (convertsToResponse(result)) {
+			return this.#convertToResponse(route, result.toResponse());
+		}
+
 		if (isJsxElement(result)) {
-			return this.viewRenderer.renderResponse(result, { streaming: this.#streamResponses });
+			return this.#viewRenderer.renderResponse(result, { streaming: this.#streamResponses });
 		}
 
 		const hasHandleMethod = typeof (result as BaseController)?.handle !== "function";
@@ -151,8 +159,7 @@ export class RequestHandler extends BaseClass {
 		}
 
 		throw new Error(
-			`${controllerDescription(route.controller)} for ${route.path} returned an invalid value. Expected Response, JSX element, or null, ` +
-				`but got: ${Object.prototype.toString.call(result)}`,
+			`${controllerDescription(route.controller)} for ${route.path} returned an invalid value. Expected Response, JSX element, ConvertsToResponse, or null, but got: ${String(result)}`,
 		);
 	}
 }
