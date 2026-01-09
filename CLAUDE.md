@@ -66,15 +66,6 @@ These guidelines must be followed when writing code for the Beynac project. Afte
     - ❌ WRONG: `function processPath(path: string): import("node:path").ParsedPath` -- inline import in type annotation
     - If at any point it looks like using one of these patterns is the only way to implement a feature, stop and explain the issue. There is ALWAYS a better way.
 
-- **Do not rename exports in barrel files**
-    - ✅ CORRECT: `export { foo } from "./foo";`
-    - ❌ WRONG: `export { foo as bar } from "./foo";`
-    - If you discover a renamed export, consider the imported name to be correct, remove the renaming then update any dependent code to the correct name.
-
-- **Do not export files from outside the folder in barrel files**
-    - ❌ WRONG: `export { foo } from "../foo";`
-    - This cannot be fixed automatically if you discover a violation, leave it in the code and ask what to do.
-
 - **Avoid British/American ambiguity in public API**: avoid exporting values and public members that are spelled differently in British and American English
     - ✅ CORRECT: `export const cleanString = () => ...`
     - ❌ WRONG: `export const sanitiseString = () => ...` OR `const sanitizeString = () => ...`

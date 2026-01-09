@@ -113,6 +113,9 @@ export abstract class DatabaseGrammar extends BaseClass {
 		if (state.unionMembers) {
 			return this.compileUnion(state.unionMembers, state);
 		}
+		if (state.exists) {
+			return this.compileExists(state);
+		}
 		if (state.deleteAll) {
 			return this.compileDelete(state);
 		}
@@ -278,6 +281,12 @@ export abstract class DatabaseGrammar extends BaseClass {
 			andClause("WHERE", state.where),
 			this.compileReturning(state.returningColumns),
 		]);
+	}
+
+	compileExists(state: QueryParts): SqlFragments {
+		const innerState: QueryParts = { ...state, exists: false };
+		const innerQuery = this.compileSelect(innerState);
+		return this.mergeAndQuote(["SELECT EXISTS(", innerQuery, ")"]);
 	}
 
 	protected mergeAndQuote(parts: Array<Mergeable | Mergeable[]>): SqlFragments {

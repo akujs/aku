@@ -9,6 +9,7 @@ const stubClient = {
 	column: () => Promise.resolve([]),
 	firstOrNull: () => Promise.resolve(null),
 	firstOrFail: () => Promise.resolve({}),
+	firstOrNotFound: () => Promise.resolve({}),
 	scalar: () => Promise.resolve(null),
 };
 
@@ -763,5 +764,73 @@ describe("union() and unionAll()", () => {
 			.unionAll(table(""))
 			// @ts-expect-error
 			.select("");
+	});
+});
+
+describe("aggregate methods", () => {
+	test("aggregate methods available on root query builder", () => {
+		void table("").count();
+		void table("").count("col");
+		void table("").min("col");
+		void table("").max("col");
+		// @ts-expect-error
+		void table("").sum();
+		void table("").exists();
+	});
+
+	test("available on select queries", () => {
+		void table("").where("").count();
+		void table("").select("").count();
+	});
+
+	test("not available after insert or mutations", () => {
+		table("")
+			.insert({})
+			// @ts-expect-error
+			.count();
+		table("")
+			.deleteAll()
+			// @ts-expect-error
+			.count();
+		table("")
+			.union(table(""))
+			// @ts-expect-error
+			.count();
+	});
+
+	test("aggregates are terminal - cannot chain query methods", () => {
+		table("")
+			.count()
+			// @ts-expect-error
+			.where("");
+		table("")
+			.count()
+			// @ts-expect-error
+			.select("");
+		table("")
+			.count()
+			// @ts-expect-error
+			.insert({});
+		table("")
+			.count()
+			// @ts-expect-error
+			.min("age");
+	});
+
+	test("can use scalar() and run() after aggregates", async () => {
+		await table("").count().scalar();
+		await table("").count().run();
+		void table("").count().withPrepare();
+	});
+
+	test("cannot use all() or firstOrXXX() after aggregates", () => {
+		void table("")
+			.count()
+			// @ts-expect-error
+			.all();
+		void table("")
+			.count()
+			// @ts-expect-error
+			.firstOrFail();
 	});
 });

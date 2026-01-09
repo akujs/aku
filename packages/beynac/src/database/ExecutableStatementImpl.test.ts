@@ -117,9 +117,7 @@ describe("client routing", () => {
 			database: { default: defaultAdapter, additional: { additional: additionalAdapter } },
 		});
 
-		const result = await sql`SELECT db_name FROM info`
-			.on("additional")
-			.firstOrFail<{ db_name: string }>();
+		const result = await sql`SELECT db_name FROM info`.on("additional").firstOrFail();
 
 		expect(result.db_name).toBe("additional");
 	});
@@ -129,7 +127,7 @@ describe("client routing", () => {
 			database: { default: defaultAdapter, additional: { additional: additionalAdapter } },
 		});
 
-		const result = await sql`SELECT db_name FROM info`.firstOrFail<{ db_name: string }>();
+		const result = await sql`SELECT db_name FROM info`.firstOrFail();
 
 		expect(result.db_name).toBe("default");
 	});

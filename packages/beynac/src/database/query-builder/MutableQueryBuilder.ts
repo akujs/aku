@@ -14,7 +14,7 @@ import type {
 } from "../query-types.ts";
 
 export class MutableQueryBuilder extends BaseClass implements QueryParts {
-	readonly table: string;
+	table = "";
 	joins: JoinEntry[] = [];
 	select: string[] = [];
 	where: SqlFragments[] = [];
@@ -33,10 +33,10 @@ export class MutableQueryBuilder extends BaseClass implements QueryParts {
 	returningColumns: string[] | null = null;
 	thenExecutor: ThenExecutor | null = null;
 	prepare: boolean | null = null;
+	exists: boolean = false;
 	unionMembers: UnionEntry[] | null = null;
 
-	constructor(table: string) {
-		super();
+	setTable(table: string): void {
 		this.table = table;
 	}
 
@@ -118,6 +118,10 @@ export class MutableQueryBuilder extends BaseClass implements QueryParts {
 
 	setPrepare(value: boolean): void {
 		this.prepare = value;
+	}
+
+	setExists(): void {
+		this.exists = true;
 	}
 
 	pushUnionMember(type: "UNION" | "UNION ALL" | null, statement: SqlFragments): void {

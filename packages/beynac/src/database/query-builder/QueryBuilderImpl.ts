@@ -5,10 +5,8 @@ import type { DatabaseGrammar } from "../grammar/DatabaseGrammar.ts";
 import type {
 	AnyQueryBuilder,
 	ConflictOptions,
-	ExecutableStatement,
 	InsertOptions,
 	QueryBuilder,
-	QueryBuilderWithById,
 	QueryParts,
 	Row,
 	RowLockOptions,
@@ -23,7 +21,6 @@ import { toHumanReadableSql } from "./statement-render.ts";
 import { isSqlFragments, splitSqlToFragments } from "./statement-utils.ts";
 
 export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQueryBuilder {
-	readonly #from: string;
 	readonly #grammar: DatabaseGrammar;
 	readonly #client: DatabaseClient;
 	readonly #commands: Command[];
@@ -31,9 +28,8 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 	#cachedParts: QueryParts | null = null;
 	#cachedBuild: SqlFragments | null = null;
 
-	constructor(from: string, grammar: DatabaseGrammar, client: DatabaseClient, commands: Command[]) {
+	constructor(grammar: DatabaseGrammar, client: DatabaseClient, commands: Command[]) {
 		super([]); // We override sqlFragments getter, so this is unused
-		this.#from = from;
 		this.#grammar = grammar;
 		this.#client = client;
 		this.#commands = commands;
@@ -159,7 +155,13 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		return this.#derive("setPrepare", [value]);
 	}
 
-	insert(values: Row | Row[] | Statement, options?: InsertOptions): QueryBuilderImpl {
+	insert<V extends Row | Row[] | Statement>(
+		values: V,
+		options?: InsertOptions,
+	): V extends unknown[]
+		? // oddly, this is necessary to get the type checker to allow this as an impl of AnyQueryBuilder
+			QueryBuilderImpl
+		: QueryBuilderImpl {
 		assertNoUndefinedValues(values, "insert");
 		return this.#derive("setInsert", [{ data: values, columns: options?.columns ?? null }], "run");
 	}
@@ -200,29 +202,53 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		return this.#derive("setUpdateFrom", [{ data: rows, on, updateColumns }], "run");
 	}
 
-	returning(...columns: string[]): ExecutableStatement<unknown> {
+	returning(...columns: string[]): QueryBuilderImpl {
 		const executor = this.#isSingleRowInsert() ? "firstOrFail" : "all";
-		return this.#derive("setReturning", [columns], executor) as ExecutableStatement<unknown>;
+		return this.#derive("setReturning", [columns], executor);
 	}
 
-	returningId(): ExecutableStatement<unknown> {
+	returningId(): QueryBuilderImpl {
 		const executor = this.#isSingleRowInsert() ? "scalar" : "column";
-		return this.#derive("setReturning", [["id"]], executor) as ExecutableStatement<unknown>;
+		return this.#derive("setReturning", [["id"]], executor);
 	}
 
-	byIdOrFail(id: unknown): QueryBuilderWithById<Row> {
+	byIdOrFail(id: unknown): QueryBuilderImpl {
 		const stmt = splitSqlToFragments("id = ?", [id]);
-		return this.#derive("pushWhere", [stmt], "firstOrFail") as QueryBuilderWithById<Row>;
+		return this.#derive("pushWhere", [stmt], "firstOrFail");
 	}
 
-	byIdOrNotFound(id: unknown): QueryBuilderWithById<Row> {
+	byIdOrNotFound(id: unknown): QueryBuilderImpl {
 		const stmt = splitSqlToFragments("id = ?", [id]);
-		return this.#derive("pushWhere", [stmt], "firstOrNotFound") as QueryBuilderWithById<Row>;
+		return this.#derive("pushWhere", [stmt], "firstOrNotFound");
 	}
 
-	byIdOrNull(id: unknown): QueryBuilderWithById<Row | null> {
+	byIdOrNull(id: unknown): QueryBuilderImpl {
 		const stmt = splitSqlToFragments("id = ?", [id]);
-		return this.#derive("pushWhere", [stmt], "firstOrNull") as QueryBuilderWithById<Row | null>;
+		return this.#derive("pushWhere", [stmt], "firstOrNull");
+	}
+
+	count(column = "*"): QueryBuilderImpl {
+		return this.select(`COUNT(${column})`).#derive("setThenExecutor", ["scalar"]);
+	}
+
+	min(column: string): QueryBuilderImpl {
+		return this.select(`MIN(${column})`).#derive("setThenExecutor", ["scalar"]);
+	}
+
+	max(column: string): QueryBuilderImpl {
+		return this.select(`MAX(${column})`).#derive("setThenExecutor", ["scalar"]);
+	}
+
+	avg(column: string): QueryBuilderImpl {
+		return this.select(`AVG(${column})`).#derive("setThenExecutor", ["scalar"]);
+	}
+
+	sum(column: string): QueryBuilderImpl {
+		return this.select(`SUM(${column})`).#derive("setThenExecutor", ["scalar"]);
+	}
+
+	exists(): QueryBuilderImpl {
+		return this.#derive("setExists", [], "boolean");
 	}
 
 	union(other: Statement): QueryBuilderImpl {
@@ -233,7 +259,7 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 			["pushUnionMember", [null, this]],
 			["pushUnionMember", ["UNION", other]],
 		];
-		return new QueryBuilderImpl("", this.#grammar, this.#client, commands);
+		return new QueryBuilderImpl(this.#grammar, this.#client, commands);
 	}
 
 	unionAll(other: Statement): QueryBuilderImpl {
@@ -244,21 +270,24 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 			["pushUnionMember", [null, this]],
 			["pushUnionMember", ["UNION ALL", other]],
 		];
-		return new QueryBuilderImpl("", this.#grammar, this.#client, commands);
+		return new QueryBuilderImpl(this.#grammar, this.#client, commands);
 	}
 
 	// oxlint-disable-next-line unicorn/no-thenable -- intentionally awaitable API
-	then: Promise<unknown>["then"] = (onfulfilled, onrejected) => {
+	then: AnyQueryBuilder["then"] = (onfulfilled, onrejected) => {
 		const executor = this.#getParts().thenExecutor ?? "all";
 		if (this.#isEmptyArrayInsert()) {
 			const emptyResult = executor === "run" ? { rowsAffected: 0 } : [];
 			return Promise.resolve(emptyResult).then(onfulfilled, onrejected);
 		}
+		if (executor === "boolean") {
+			return this.scalar().then(Boolean).then(onfulfilled, onrejected);
+		}
 		return this[executor]().then(onfulfilled, onrejected);
 	};
 
 	static table(table: string, grammar: DatabaseGrammar, client: DatabaseClient): QueryBuilder {
-		return new QueryBuilderImpl(table, grammar, client, []) as QueryBuilder;
+		return new QueryBuilderImpl(grammar, client, [["setTable", [table]]]) as QueryBuilder;
 	}
 
 	#isEmptyArrayInsert(): boolean {
@@ -287,12 +316,12 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		if (thenExecutor) {
 			commands.push(["setThenExecutor", [thenExecutor]]);
 		}
-		return new QueryBuilderImpl(this.#from, this.#grammar, this.#client, commands);
+		return new QueryBuilderImpl(this.#grammar, this.#client, commands);
 	}
 
 	#getParts(): QueryParts {
 		if (!this.#cachedParts) {
-			const builder = new MutableQueryBuilder(this.#from);
+			const builder = new MutableQueryBuilder();
 			for (let i = 0; i < this.#length; i++) {
 				const [method, args] = this.#commands[i];
 				(builder[method] as (...a: unknown[]) => void)(...args);

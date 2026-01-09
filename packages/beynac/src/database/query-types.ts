@@ -46,6 +46,7 @@ export type ThenExecutor =
 	| "all"
 	| "column"
 	| "scalar"
+	| "boolean"
 	| "firstOrFail"
 	| "firstOrNotFound"
 	| "firstOrNull";
@@ -113,6 +114,7 @@ export interface QueryParts {
 	readonly returningColumns: readonly string[] | null;
 	readonly thenExecutor: ThenExecutor | null;
 	readonly prepare: boolean | null;
+	readonly exists: boolean;
 	readonly unionMembers: readonly UnionEntry[] | null;
 }
 
@@ -128,12 +130,17 @@ export interface Statement extends SqlFragments {
 	readonly prepare?: boolean | undefined;
 }
 
+export interface MutationResult {
+	rowsAffected: number;
+}
+
 export interface StatementResult {
 	rows: Row[];
 	rowsAffected: number;
 }
 
-export type Row = Record<string, unknown>;
+// oxlint-disable-next-line no-explicit-any -- deliberate public API choice
+export type Row = Record<string, any>;
 
 /**
  * A SQL statement with an associated database client that can be executed
@@ -165,36 +172,38 @@ interface StatementExecutionMethods<TThen = Row[]> {
 	/**
 	 * Execute the statement on the default client and return all rows.
 	 */
-	all<T = Row>(): Promise<T[]>;
+	all(): Promise<Row[]>;
 
 	/**
 	 * Execute the statement on the default client and return the first row, or
 	 * null if no rows returned.
 	 */
-	firstOrNull<T = Row>(): Promise<T | null>;
+	firstOrNull(): Promise<Row | null>;
 
 	/**
 	 * Execute the statement on the default client and return the first row.
 	 * Throws AssertionError if no rows returned.
 	 */
-	firstOrFail<T = Row>(): Promise<T>;
+	firstOrFail(): Promise<Row>;
 
 	/**
 	 * Execute the statement on the default client and return the first row.
 	 * Throws NotFoundError if no rows returned.
 	 */
-	firstOrNotFound<T = Row>(): Promise<T>;
+	firstOrNotFound(): Promise<Row>;
 
 	/**
 	 * Execute the statement on the default client and return the first column
 	 * of the first row.
 	 */
-	scalar<T = unknown>(): Promise<T>;
+	// oxlint-disable-next-line no-explicit-any -- deliberate public API choice
+	scalar(): Promise<any>;
 
 	/**
 	 * Execute the statement on the default client and return the first column of all rows.
 	 */
-	column<T = unknown>(): Promise<T[]>;
+	// oxlint-disable-next-line no-explicit-any -- deliberate public API choice
+	column(): Promise<any[]>;
 
 	/**
 	 * This `then` method allows awaiting the statement directly.
@@ -215,13 +224,13 @@ interface StatementExecutionMethods<TThen = Row[]> {
 	withPrepare(value?: boolean): ExecutableStatement<TThen>;
 }
 
-type ByIdExecutionMethods<T> = Pick<
+type SingleResultExecutionMethods<T> = Pick<
 	StatementExecutionMethods<T>,
 	"run" | "scalar" | "then" | "withPrepare"
 >;
 
 type MutationExecutionMethods = Pick<
-	StatementExecutionMethods<StatementResult>,
+	StatementExecutionMethods<MutationResult>,
 	"run" | "then" | "withPrepare"
 >;
 
@@ -237,15 +246,18 @@ type MutationExecutionMethods = Pick<
  */
 export interface AnyQueryBuilder
 	extends Statement,
-		StatementExecutionMethods<unknown>,
+		// oxlint-disable-next-line no-explicit-any -- deliberate public API choice
+		StatementExecutionMethods<any>,
 		BulkMutationMethods<AnyQueryBuilder>,
 		InsertMethod<AnyQueryBuilder, AnyQueryBuilder>,
-		ReturningMethods<unknown, unknown>,
+		// oxlint-disable-next-line no-explicit-any -- deliberate public API choice
+		ReturningMethods<any, any>,
 		WhereMethods<AnyQueryBuilder>,
 		UnionMethods<AnyQueryBuilder>,
 		SelectSetInitialColumns<AnyQueryBuilder>,
 		OrderBySetInitial<AnyQueryBuilder>,
-		SelectClauseMethods<AnyQueryBuilder> {}
+		SelectClauseMethods<AnyQueryBuilder>,
+		AggregateMethods {}
 
 /**
  * A query builder in its initial state, as returned by db.table()
@@ -260,7 +272,8 @@ export interface QueryBuilder
 		UnionMethods<QueryBuilderWithUnion<false>>,
 		SelectSetInitialColumns<SelectQueryBuilder<true, false>>,
 		OrderBySetInitial<SelectQueryBuilder<false, true>>,
-		SelectClauseMethods<SelectQueryBuilder<false, false>> {}
+		SelectClauseMethods<SelectQueryBuilder<false, false>>,
+		AggregateMethods {}
 
 /**
  * Query builder after where() has been called. Permits bulk updates / deletes
@@ -274,7 +287,8 @@ export interface QueryBuilderWithCondition
 		UnionMethods<QueryBuilderWithUnion<false>>,
 		SelectSetInitialColumns<SelectQueryBuilder<true, false>>,
 		OrderBySetInitial<SelectQueryBuilder<false, true>>,
-		SelectClauseMethods<SelectQueryBuilder<false, false>> {}
+		SelectClauseMethods<SelectQueryBuilder<false, false>>,
+		AggregateMethods {}
 
 export type SelectQueryBuilder<
 	TSelect extends boolean = false,
@@ -284,6 +298,7 @@ export type SelectQueryBuilder<
 	WhereMethods<SelectQueryBuilder<TSelect, TOrderBy>> &
 	UnionMethods<QueryBuilderWithUnion<false>> &
 	SelectClauseMethods<SelectQueryBuilder<TSelect, TOrderBy>> &
+	AggregateMethods &
 	(TSelect extends true
 		? SelectModifyColumns<SelectQueryBuilder<true, TOrderBy>>
 		: SelectSetInitialColumns<SelectQueryBuilder<true, TOrderBy>>) &
@@ -325,12 +340,20 @@ export interface QueryBuilderWithInsert<TReturning, TReturningId>
 /**
  * A query builder after calling insert({...}) to add a single row
  */
-export type QueryBuilderWithInsertSingle = QueryBuilderWithInsert<Row, unknown>;
+export type QueryBuilderWithInsertSingle = QueryBuilderWithInsert<
+	Row,
+	// oxlint-disable-next-line no-explicit-any -- deliberate public API choice
+	any
+>;
 
 /**
  * A query builder after calling insert([{...}, {...}]) to add a multiple rows
  */
-export type QueryBuilderWithInsertArray = QueryBuilderWithInsert<Row[], unknown[]>;
+export type QueryBuilderWithInsertArray = QueryBuilderWithInsert<
+	Row[],
+	// oxlint-disable-next-line no-explicit-any -- deliberate public API choice
+	any[]
+>;
 
 /**
  * Query builder for UPDATE and DELETE statements. Supports RETURNING.
@@ -338,13 +361,14 @@ export type QueryBuilderWithInsertArray = QueryBuilderWithInsert<Row[], unknown[
 export interface QueryBuilderWithBulkMutation
 	extends Statement,
 		MutationExecutionMethods,
-		ReturningMethods<Row[], unknown[]> {}
+		// oxlint-disable-next-line no-explicit-any -- deliberate public API choice
+		ReturningMethods<Row[], any[]> {}
 
 /**
  * A query builder after calling a byIdOrXXX(id) method to fetch a single row by id
  */
 export type QueryBuilderWithById<T = Row, TSelect extends boolean = false> = Statement &
-	ByIdExecutionMethods<T> &
+	SingleResultExecutionMethods<T> &
 	(TSelect extends true
 		? SelectModifyColumns<QueryBuilderWithById<T, true>>
 		: SelectSetInitialColumns<QueryBuilderWithById<T, true>>);
@@ -552,6 +576,69 @@ interface SelectClauseMethods<TReturn> {
 	withRowLock: (options?: RowLockOptions) => TReturn;
 }
 
+interface AggregateMethods {
+	/**
+	 * Count matching rows.
+	 *
+	 * @param column - count rows with non-null values in this column. Defaults to `*` meaning all rows.
+	 *
+	 * @example
+	 * // Count all rows
+	 * await table("users").count()
+	 *
+	 * @example
+	 * // Count active users with a non-null age
+	 * await table("users").where("active").count("age")
+	 */
+	count(column?: string): QueryBuilderWithAggregate<number>;
+
+	/**
+	 * Get the minimum value of a column.
+	 *
+	 * @example
+	 * // Get the price of the cheapest active product
+	 * await table("products").where("active").min("price")
+	 */
+	min(column: string): QueryBuilderWithAggregate<number | null>;
+
+	/**
+	 * Get the maximum value of a column.
+	 *
+	 * @example
+	 * // Get the price of the most expensive product
+	 * await table("products").where("active").max("price")
+	 */
+	max(column: string): QueryBuilderWithAggregate<number | null>;
+
+	/**
+	 * Get the average value of a column.
+	 *
+	 * @example
+	 * // Get the average price of active products
+	 * await table("products").where("active").avg("price")
+	 */
+	avg(column: string): QueryBuilderWithAggregate<number | null>;
+
+	/**
+	 * Get the sum of a column.
+	 *
+	 * @example
+	 * // Get the total revenue of active orders
+	 * await table("orders").where("active").sum("total")
+	 */
+	sum(column: string): QueryBuilderWithAggregate<number | null>;
+
+	/**
+	 * Check if any matching rows exist.
+	 *
+	 * Uses the efficient `SELECT EXISTS(...)` SQL construct.
+	 *
+	 * @example
+	 * const hasActiveUsers = await table("users").where("active").exists()
+	 */
+	exists(): QueryBuilderWithAggregate<boolean>;
+}
+
 interface ByIdMethods {
 	/**
 	 * Fetch a row by its id column, throwing QueryError if not found.
@@ -626,6 +713,9 @@ interface UnionMethods<TReturn> {
 	unionAll(other: Statement): TReturn;
 }
 
+/**
+ * Query builder after calling union() or unionAll() on a query builder
+ */
 export type QueryBuilderWithUnion<TOrderBy extends boolean = false> = Statement &
 	StatementExecutionMethods &
 	UnionMethods<QueryBuilderWithUnion<TOrderBy>> &
@@ -665,13 +755,21 @@ interface InsertMethod<TSingle, TArray> {
 	 *   team_id: table("teams").select("id").where("name = ?", "Default")
 	 * })
 	 */
-	insert(values: Row, options?: InsertOptions): TSingle;
-	insert(values: Row[], options?: InsertOptions): TArray;
-	insert(statement: Statement, options?: InsertOptions): TArray;
+	insert<V extends Row | Row[] | Statement>(
+		values: V,
+		options?: InsertOptions,
+	): V extends unknown[] ? TArray : V extends Statement ? TArray : TSingle;
 }
 
-// Query builder after calling returning() or returningId() on an insert
+/**
+ * Query builder after calling returning() or returningId() on an insert/update/delete query
+ */
 export type QueryBuilderWithReturning<T> = Statement & StatementExecutionMethods<T>;
+
+/**
+ * Query builder after calling an aggregate method like count(), min(), max(), avg(), sum() or exists() on a query builder
+ */
+export type QueryBuilderWithAggregate<T> = Statement & SingleResultExecutionMethods<T>;
 
 interface ReturningMethods<TReturning, TReturningId> {
 	/**
