@@ -40,50 +40,50 @@ describe("DatabaseImpl", () => {
 		});
 
 		test("all() returns rows", async () => {
-			const rows = await db.all(sql`SELECT name FROM test ORDER BY id`);
+			const rows = await db.getAll(sql`SELECT name FROM test ORDER BY id`);
 			expect(rows).toEqual([{ name: "Alice" }, { name: "Bob" }]);
 		});
 
 		test("all() returns empty array when no rows", async () => {
-			const rows = await db.all(sql`SELECT name FROM test WHERE 0`);
+			const rows = await db.getAll(sql`SELECT name FROM test WHERE 0`);
 			expect(rows).toEqual([]);
 		});
 
 		test("firstOrNull() returns first row when exists", async () => {
-			const row = await db.firstOrNull(sql`SELECT * FROM test`);
+			const row = await db.getFirstOrNull(sql`SELECT * FROM test`);
 			expect(row?.name).toBe("Alice");
 		});
 
 		test("firstOrNull() returns null when no rows", async () => {
-			const row = await db.firstOrNull(sql`SELECT * FROM test WHERE 0`);
+			const row = await db.getFirstOrNull(sql`SELECT * FROM test WHERE 0`);
 			expect(row).toBeNull();
 		});
 
 		test("firstOrFail() returns first row when exists", async () => {
-			const row = await db.firstOrFail(sql`SELECT * FROM test`);
+			const row = await db.getFirstOrFail(sql`SELECT * FROM test`);
 			expect(row.name).toBe("Alice");
 		});
 
 		test("firstOrFail() throws QueryError when no rows", async () => {
-			expect(db.firstOrFail(sql`SELECT * FROM test WHERE 0`)).rejects.toBeInstanceOf(QueryError);
+			expect(db.getFirstOrFail(sql`SELECT * FROM test WHERE 0`)).rejects.toBeInstanceOf(QueryError);
 		});
 
 		test("scalar() returns first column of first row", async () => {
-			const name = await db.scalar(sql`SELECT name FROM test`);
+			const name = await db.getScalar(sql`SELECT name FROM test`);
 			expect(name).toBe("Alice");
 		});
 
 		test("scalar() throws QueryError when no rows", async () => {
-			expect(db.scalar(sql`SELECT name FROM test WHERE 0`)).rejects.toBeInstanceOf(QueryError);
+			expect(db.getScalar(sql`SELECT name FROM test WHERE 0`)).rejects.toBeInstanceOf(QueryError);
 		});
 
 		test("column() returns first column of each row", async () => {
-			const names = await db.column(sql`SELECT name FROM test ORDER BY id`);
+			const names = await db.getColumn(sql`SELECT name FROM test ORDER BY id`);
 			expect(names).toEqual(["Alice", "Bob"]);
 		});
 
 		test("column() returns empty array when no rows", async () => {
-			const names = await db.column(sql`SELECT name FROM test WHERE 0`);
+			const names = await db.getColumn(sql`SELECT name FROM test WHERE 0`);
 			expect(names).toEqual([]);
 		});
 
@@ -91,7 +91,7 @@ describe("DatabaseImpl", () => {
 			const { app } = createTestApplication({ database: adapter });
 
 			const row = await app.withIntegration(mockIntegrationContext(), () =>
-				db.firstOrNotFound(sql`SELECT * FROM test`),
+				db.getFirstOrNotFound(sql`SELECT * FROM test`),
 			);
 
 			expect(row.name).toBe("Alice");
@@ -102,7 +102,7 @@ describe("DatabaseImpl", () => {
 
 			expect(
 				app.withIntegration(mockIntegrationContext(), () =>
-					db.firstOrNotFound(sql`SELECT * FROM test WHERE 0`),
+					db.getFirstOrNotFound(sql`SELECT * FROM test WHERE 0`),
 				),
 			).rejects.toBeInstanceOf(AbortException);
 		});
@@ -140,22 +140,22 @@ describe("DatabaseImpl", () => {
 				mockDispatcher(),
 			);
 
-			const dbName = await db.client().scalar(sql`SELECT db_name FROM info`);
+			const dbName = await db.client().getScalar(sql`SELECT db_name FROM info`);
 			expect(dbName).toBe("default");
 		});
 
-		test("await sql`...` selects from default client", async () => {
-			const result = await sql`SELECT db_name FROM info`;
+		test("await sql`...`.get() selects from default client", async () => {
+			const result = await sql`SELECT db_name FROM info`.get();
 			expect(result[0].db_name).toBe("default");
 		});
 
-		test("await sql`...`.on() selects default client", async () => {
-			const result = await sql`SELECT db_name FROM info`.on("default");
+		test("await sql`...`.on().get() selects default client", async () => {
+			const result = await sql`SELECT db_name FROM info`.on("default").get();
 			expect(result[0].db_name).toBe("default");
 		});
 
-		test("await sql`...`.on('name') selects named client", async () => {
-			const result = await sql`SELECT db_name FROM info`.on("additional");
+		test("await sql`...`.on('name').get() selects named client", async () => {
+			const result = await sql`SELECT db_name FROM info`.on("additional").get();
 			expect(result[0].db_name).toBe("additional");
 		});
 
@@ -165,7 +165,7 @@ describe("DatabaseImpl", () => {
 				mockDispatcher(),
 			);
 
-			const dbName = await db.client("additional").scalar(sql`SELECT db_name FROM info`);
+			const dbName = await db.client("additional").getScalar(sql`SELECT db_name FROM info`);
 			expect(dbName).toBe("additional");
 		});
 
@@ -209,11 +209,11 @@ describe("DatabaseImpl", () => {
 			}
 
 			// Client A's insert should be rolled back
-			const rowsA = await clientA.all(sql`SELECT value FROM tracking`);
+			const rowsA = await clientA.getAll(sql`SELECT value FROM tracking`);
 			expect(rowsA).toEqual([]);
 
 			// Client B's insert should be committed (independent transaction)
-			const rowsB = await clientB.all(sql`SELECT value FROM tracking`);
+			const rowsB = await clientB.getAll(sql`SELECT value FROM tracking`);
 			expect(rowsB).toEqual([{ value: "from-client-b" }]);
 		});
 	});

@@ -228,7 +228,7 @@ describe("SqliteDatabase", () => {
 		expect(retryEvents).toHaveLength(1);
 		expect(retryEvents[0].error?.toString()).toInclude("SQLITE_BUSY: The database file is locked");
 
-		const result = await db.scalar<string>(sql`SELECT value FROM test`);
+		const result = await db.getScalar<string>(sql`SELECT value FROM test`);
 		expect(result).toBe("tx1+tx2");
 	});
 
@@ -289,7 +289,7 @@ describe("SqliteDatabase", () => {
 		expect(retryEvents[0].error?.toString()).toInclude("SQLITE_BUSY: The database file is locked");
 
 		// TX1 committed first (set value to 'tx1'), then TX2 retry appended '+tx2'
-		const result = await db.scalar<string>(sql`SELECT value FROM test`);
+		const result = await db.getScalar<string>(sql`SELECT value FROM test`);
 		expect(result).toBe("tx1+tx2");
 	});
 

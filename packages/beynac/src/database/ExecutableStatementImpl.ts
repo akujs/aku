@@ -4,6 +4,7 @@ import { ExecutableStatementBase } from "./ExecutableStatementBase.ts";
 import type {
 	ExecutableStatement,
 	ExecutableStatementWithoutClient,
+	Row,
 	StringOrFragment,
 } from "./query-types.ts";
 
@@ -37,8 +38,7 @@ export class ExecutableStatementImpl
 		return app.database.client(this.#clientName);
 	}
 
-	// oxlint-disable-next-line unicorn/no-thenable -- intentionally awaitable API
-	then: ExecutableStatementWithoutClient["then"] = (onfulfilled, onrejected) => {
-		return this.all().then(onfulfilled, onrejected);
-	};
+	get(): Promise<Row[]> {
+		return this.getAll();
+	}
 }

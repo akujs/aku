@@ -91,7 +91,7 @@ describe(PostgresDatabaseAdapter, () => {
 		expect(retryEvents).toHaveLength(1);
 		expect(retryEvents[0].error?.toString()).toInclude("55P03: could not obtain lock");
 
-		const result = await db.scalar<string>(sql`SELECT value FROM test`);
+		const result = await db.getScalar<string>(sql`SELECT value FROM test`);
 		expect(result).toBe("tx1+tx2");
 	});
 
@@ -103,7 +103,7 @@ describe(PostgresDatabaseAdapter, () => {
 		// TX1: Reads then writes
 		const tx1Promise = db.transaction(
 			async () => {
-				const row = await db.firstOrFail<{ value: string }>(sql`SELECT value FROM test`);
+				const row = await db.getFirstOrFail<{ value: string }>(sql`SELECT value FROM test`);
 				await gate?.block();
 				gate = null;
 				await db.run(sql`UPDATE test SET value = ${row.value + "+tx1"}`);
@@ -116,7 +116,7 @@ describe(PostgresDatabaseAdapter, () => {
 		// TX2: Also reads and writes, will conflict
 		const tx2Promise = db.transaction(
 			async () => {
-				const row = await db.firstOrFail<{ value: string }>(sql`SELECT value FROM test`);
+				const row = await db.getFirstOrFail<{ value: string }>(sql`SELECT value FROM test`);
 				await db.run(sql`UPDATE test SET value = ${row.value + "+tx2"}`);
 			},
 			{
@@ -133,7 +133,7 @@ describe(PostgresDatabaseAdapter, () => {
 		expect(retryEvents).toHaveLength(1);
 		expect(retryEvents[0].error?.toString()).toInclude("40001: could not serialize access");
 
-		const result = await db.scalar<string>(sql`SELECT value FROM test`);
+		const result = await db.getScalar<string>(sql`SELECT value FROM test`);
 		expect(result).toBe("0+tx1+tx2");
 	});
 
@@ -211,7 +211,7 @@ describe(PostgresDatabaseAdapter, () => {
 			]);
 
 		test("uses adapter default prepare: true", async () => {
-			await db.all(sql`SELECT 1`);
+			await db.getAll(sql`SELECT 1`);
 			expect(getSqlAndPrepare()).toEqual([["SELECT 1", true]]);
 		});
 
@@ -223,17 +223,17 @@ describe(PostgresDatabaseAdapter, () => {
 			});
 			const client = new DatabaseClientImpl(customAdapter, mockDispatcher());
 
-			await client.all(sql`SELECT 1`);
+			await client.getAll(sql`SELECT 1`);
 			expect(getSqlAndPrepare()).toEqual([["SELECT 1", false]]);
 		});
 
 		test("withPrepare(false) on sql tag overrides adapter default", async () => {
-			await db.all(sql`SELECT 1`.withPrepare(false));
+			await db.getAll(sql`SELECT 1`.withPrepare(false));
 			expect(getSqlAndPrepare()).toEqual([["SELECT 1", false]]);
 		});
 
 		test("withPrepare(false) on query builder overrides adapter default", async () => {
-			await db.table("test").select("1").withPrepare(false);
+			await db.table("test").select("1").withPrepare(false).get();
 			expect(getSqlAndPrepare()).toEqual([['SELECT 1 FROM "test"', false]]);
 		});
 

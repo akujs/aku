@@ -5,12 +5,12 @@ import { QueryBuilderImpl } from "./QueryBuilderImpl.ts";
 
 const stubClient = {
 	run: () => Promise.resolve({ rows: [], rowsAffected: 0 }),
-	all: () => Promise.resolve([]),
-	column: () => Promise.resolve([]),
-	firstOrNull: () => Promise.resolve(null),
-	firstOrFail: () => Promise.resolve({}),
-	firstOrNotFound: () => Promise.resolve({}),
-	scalar: () => Promise.resolve(null),
+	getAll: () => Promise.resolve([]),
+	getColumn: () => Promise.resolve([]),
+	getFirstOrNull: () => Promise.resolve(null),
+	getFirstOrFail: () => Promise.resolve({}),
+	getFirstOrNotFound: () => Promise.resolve({}),
+	getScalar: () => Promise.resolve(null),
 };
 
 function table(name: string): QueryBuilder {
@@ -461,117 +461,28 @@ describe("placeholder arity", () => {
 	});
 });
 
-describe("byIdOrXXX()", () => {
-	test("available on QueryBuilder", () => {
-		void table("").byIdOrFail(1);
-		void table("").byIdOrNotFound(1);
-		void table("").byIdOrNull(1);
+describe("getByIdOrXXX()", () => {
+	test("available on QueryBuilder and return Promises", () => {
+		void table("").getByIdOrFail(1);
+		void table("").getByIdOrNotFound(1);
+		void table("").getByIdOrNull(1);
 	});
 
-	test("can chain to select()", () => {
-		table("").byIdOrFail(1).select("");
+	test("available after where()", () => {
+		void table("").where("").getByIdOrFail(1);
+		void table("").where("").getByIdOrNotFound(1);
+		void table("").where("").getByIdOrNull(1);
 	});
 
-	test("can chain to addSelect() and replaceSelect()", () => {
-		table("").byIdOrFail(1).addSelect("");
-		table("").byIdOrFail(1).replaceSelect("");
+	test("available after select()", () => {
+		void table("").select("").getByIdOrFail(1);
+		void table("").select("").getByIdOrNotFound(1);
+		void table("").select("").getByIdOrNull(1);
 	});
 
-	test("cannot chain to where()", () => {
-		table("")
-			.byIdOrFail(1)
-			// @ts-expect-error
-			.where("");
-		table("")
-			.byIdOrNotFound(1)
-			// @ts-expect-error
-			.where("");
-		table("")
-			.byIdOrNull(1)
-			// @ts-expect-error
-			.where("");
-	});
-
-	test("cannot chain to orderBy()", () => {
-		table("")
-			.byIdOrFail(1)
-			// @ts-expect-error
-			.orderBy("");
-	});
-
-	test("cannot chain to insert()", () => {
-		table("")
-			.byIdOrFail(1)
-			// @ts-expect-error
-			.insert({});
-	});
-
-	test("not available after where()", () => {
-		table("")
-			.where("")
-			// @ts-expect-error
-			.byIdOrFail(1);
-	});
-
-	test("not available after select()", () => {
-		table("")
-			.select("")
-			// @ts-expect-error
-			.byIdOrFail(1);
-	});
-
-	test("select-once pattern: select() cannot be called twice", () => {
-		table("")
-			.byIdOrFail(1)
-			.select("id")
-			// @ts-expect-error
-			.select("name");
-	});
-
-	test("select-once pattern: addSelect() available after select()", () => {
-		void table("").byIdOrFail(1).select("id").addSelect("name");
-	});
-
-	test("cannot chain to all()", () => {
-		void table("")
-			.byIdOrFail(1)
-			// @ts-expect-error
-			.all();
-	});
-
-	test("cannot chain to firstOrNull()", () => {
-		void table("")
-			.byIdOrFail(1)
-			// @ts-expect-error
-			.firstOrNull();
-	});
-
-	test("cannot chain to firstOrFail()", () => {
-		void table("")
-			.byIdOrFail(1)
-			// @ts-expect-error
-			.firstOrFail();
-	});
-
-	test("cannot chain to column()", () => {
-		void table("")
-			.byIdOrFail(1)
-			// @ts-expect-error
-			.column();
-	});
-
-	test("can chain to run()", () => {
-		const _run: () => Promise<unknown> = table("").byIdOrFail(1).run;
-		void _run;
-	});
-
-	test("can chain to scalar()", () => {
-		const _scalar: () => Promise<unknown> = table("").byIdOrFail(1).scalar;
-		void _scalar;
-	});
-
-	test("can chain to withPrepare()", () => {
-		void table("").byIdOrFail(1).withPrepare;
+	test("available after orderBy() and limit()", () => {
+		void table("").orderBy("").getByIdOrFail(1);
+		void table("").limit(10).getByIdOrFail(1);
 	});
 });
 
@@ -581,18 +492,18 @@ describe("terminal method restrictions", () => {
 		void _run;
 	});
 
-	test("deleteAll() cannot use all()", () => {
+	test("deleteAll() cannot use getAll()", () => {
 		void table("")
 			.deleteAll()
 			// @ts-expect-error
-			.all();
+			.getAll();
 	});
 
-	test("deleteAll() cannot use scalar()", () => {
+	test("deleteAll() cannot use getScalar()", () => {
 		void table("")
 			.deleteAll()
 			// @ts-expect-error
-			.scalar();
+			.getScalar();
 	});
 
 	test("insert() can use run()", () => {
@@ -600,41 +511,38 @@ describe("terminal method restrictions", () => {
 		void _run;
 	});
 
-	test("insert() cannot use all()", () => {
+	test("insert() cannot use getAll()", () => {
 		void table("")
 			.insert({})
 			// @ts-expect-error
-			.all();
+			.getAll();
 	});
 
-	test("insert() cannot use firstOrFail()", () => {
+	test("insert() cannot use getFirstOrFail()", () => {
 		void table("")
 			.insert({})
 			// @ts-expect-error
-			.firstOrFail();
+			.getFirstOrFail();
 	});
 
-	test("returning() can use all()", () => {
-		const _all: () => Promise<unknown> = table("").insert({}).returning("id").all;
-		void _all;
+	test("returning() can use getAll()", () => {
+		void table("").insert({}).returning("id").getAll();
 	});
 
-	test("returning() can use scalar()", () => {
-		const _scalar: () => Promise<unknown> = table("").insert({}).returning("id").scalar;
-		void _scalar;
+	test("returning() can use getScalar()", () => {
+		void table("").insert({}).returning("id").getScalar();
 	});
 
-	test("returning() can use column()", () => {
-		const _column: () => Promise<unknown> = table("").insert({}).returning("id").column;
-		void _column;
+	test("returning() can use getColumn()", () => {
+		void table("").insert({}).returning("id").getColumn();
 	});
 
-	test("returning() can use firstOrFail()", () => {
-		void table("").insert({}).returning("id").firstOrFail();
+	test("returning() can use getFirstOrFail()", () => {
+		void table("").insert({}).returning("id").getFirstOrFail();
 	});
 
-	test("returning() can use firstOrNull()", () => {
-		void table("").insert({}).returning("id").firstOrNull();
+	test("returning() can use getFirstOrNull()", () => {
+		void table("").insert({}).returning("id").getFirstOrNull();
 	});
 });
 
@@ -768,69 +676,34 @@ describe("union() and unionAll()", () => {
 });
 
 describe("aggregate methods", () => {
-	test("aggregate methods available on root query builder", () => {
-		void table("").count();
-		void table("").count("col");
-		void table("").min("col");
-		void table("").max("col");
-		// @ts-expect-error
-		void table("").sum();
-		void table("").exists();
+	test("aggregate methods available on root query builder and return Promises", () => {
+		void table("").getCount();
+		void table("").getCount("col");
+		void table("").getMin("col");
+		void table("").getMax("col");
+		// @ts-expect-error - getSum requires a column argument
+		void table("").getSum();
 	});
 
 	test("available on select queries", () => {
-		void table("").where("").count();
-		void table("").select("").count();
+		const p1: Promise<number> = table("").where("").getCount();
+		const p2: Promise<number> = table("").select("").getCount();
+		void p1;
+		void p2;
 	});
 
 	test("not available after insert or mutations", () => {
 		table("")
 			.insert({})
 			// @ts-expect-error
-			.count();
+			.getCount();
 		table("")
 			.deleteAll()
 			// @ts-expect-error
-			.count();
+			.getCount();
 		table("")
 			.union(table(""))
 			// @ts-expect-error
-			.count();
-	});
-
-	test("aggregates are terminal - cannot chain query methods", () => {
-		table("")
-			.count()
-			// @ts-expect-error
-			.where("");
-		table("")
-			.count()
-			// @ts-expect-error
-			.select("");
-		table("")
-			.count()
-			// @ts-expect-error
-			.insert({});
-		table("")
-			.count()
-			// @ts-expect-error
-			.min("age");
-	});
-
-	test("can use scalar() and run() after aggregates", async () => {
-		await table("").count().scalar();
-		await table("").count().run();
-		void table("").count().withPrepare();
-	});
-
-	test("cannot use all() or firstOrXXX() after aggregates", () => {
-		void table("")
-			.count()
-			// @ts-expect-error
-			.all();
-		void table("")
-			.count()
-			// @ts-expect-error
-			.firstOrFail();
+			.getCount();
 	});
 });

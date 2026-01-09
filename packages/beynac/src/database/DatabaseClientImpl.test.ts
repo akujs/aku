@@ -56,7 +56,7 @@ describe(DatabaseClientImpl, () => {
 			await db.transaction(callback, { retry: true });
 
 			expect(callback).toHaveBeenCalledTimes(3);
-			const result = await db.scalar(sql`SELECT value FROM test`);
+			const result = await db.getScalar(sql`SELECT value FROM test`);
 			expect(result).toBe("success");
 		});
 
@@ -97,7 +97,7 @@ describe(DatabaseClientImpl, () => {
 			await db.transaction(callback, { retry: { shouldRetry: () => true } });
 
 			expect(callback).toHaveBeenCalledTimes(3);
-			const result = await db.scalar(sql`SELECT value FROM test`);
+			const result = await db.getScalar(sql`SELECT value FROM test`);
 			expect(result).toBe("success");
 		});
 
@@ -136,7 +136,7 @@ describe(DatabaseClientImpl, () => {
 
 			// Only the final successful attempt should be committed
 			expect(callback).toHaveBeenCalledTimes(2);
-			const rows = await db.all(sql`SELECT value FROM test ORDER BY id`);
+			const rows = await db.getAll(sql`SELECT value FROM test ORDER BY id`);
 			expect(rows).toEqual([{ value: "attempt-2" }]);
 		});
 	});
@@ -192,7 +192,7 @@ describe(DatabaseClientImpl, () => {
 		expect(delayedQueryError?.message).toInclude("the transaction has already been committed");
 
 		// Only the first insert should be present
-		const rows = await db.all(sql`SELECT value FROM test`);
+		const rows = await db.getAll(sql`SELECT value FROM test`);
 		expect(rows).toEqual([{ value: "before" }]);
 	});
 
@@ -255,7 +255,7 @@ describe(DatabaseClientImpl, () => {
 			});
 		});
 
-		const rows = await db.all(sql`SELECT value FROM test`);
+		const rows = await db.getAll(sql`SELECT value FROM test`);
 		expect(rows).toEqual([{ value: "escaped" }]);
 	});
 
@@ -318,7 +318,7 @@ describe("escapeTransaction with Postgres", () => {
 			}
 
 			// Outer transaction rolled back, escaped transaction committed
-			const rows = await db.all(sql`SELECT value FROM test ORDER BY id`);
+			const rows = await db.getAll(sql`SELECT value FROM test ORDER BY id`);
 			expect(rows).toEqual([{ value: "escaped" }]);
 		});
 
@@ -351,7 +351,7 @@ describe("escapeTransaction with Postgres", () => {
 			await escapedPromise;
 
 			// Outer transaction rolled back, escaped transaction committed
-			const rows = await db.all(sql`SELECT value FROM test ORDER BY id`);
+			const rows = await db.getAll(sql`SELECT value FROM test ORDER BY id`);
 			expect(rows).toEqual([{ value: "escaped" }]);
 		});
 	});

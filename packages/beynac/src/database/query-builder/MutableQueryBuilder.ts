@@ -1,6 +1,7 @@
 import { BaseClass } from "../../utils.ts";
 import type {
 	ConflictOptions,
+	Executor,
 	InsertPart,
 	JoinEntry,
 	JoinType,
@@ -8,7 +9,6 @@ import type {
 	QueryParts,
 	Row,
 	SqlFragments,
-	ThenExecutor,
 	UnionEntry,
 	UpdateFromPart,
 } from "../query-types.ts";
@@ -31,7 +31,7 @@ export class MutableQueryBuilder extends BaseClass implements QueryParts {
 	updateFrom: UpdateFromPart | null = null;
 	deleteAll: boolean = false;
 	returningColumns: string[] | null = null;
-	thenExecutor: ThenExecutor | null = null;
+	executor: Executor | null = null;
 	prepare: boolean | null = null;
 	exists: boolean = false;
 	unionMembers: UnionEntry[] | null = null;
@@ -112,8 +112,8 @@ export class MutableQueryBuilder extends BaseClass implements QueryParts {
 		this.returningColumns = columns;
 	}
 
-	setThenExecutor(executor: ThenExecutor): void {
-		this.thenExecutor = executor;
+	setExecutor(executor: Executor): void {
+		this.executor = executor;
 	}
 
 	setPrepare(value: boolean): void {

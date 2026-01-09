@@ -201,7 +201,7 @@ describe.each(adapterConfigs)("$name", ({ createDatabase, supportsTransactions }
 					});
 				});
 
-				const result = await db.column(sql`SELECT name FROM users ORDER BY age`);
+				const result = await db.getColumn(sql`SELECT name FROM users ORDER BY age`);
 				expect(result).toEqual(["Level0", "Level1", "Level2"]);
 			});
 
@@ -218,7 +218,7 @@ describe.each(adapterConfigs)("$name", ({ createDatabase, supportsTransactions }
 					} catch {}
 				});
 
-				const result = await db.column(sql`SELECT name FROM users ORDER BY name`);
+				const result = await db.getColumn(sql`SELECT name FROM users ORDER BY name`);
 				expect(result).toEqual(["Alice"]);
 			});
 
@@ -234,7 +234,7 @@ describe.each(adapterConfigs)("$name", ({ createDatabase, supportsTransactions }
 					} catch {}
 				});
 
-				const result = await db.column(sql`SELECT name FROM users ORDER BY name`);
+				const result = await db.getColumn(sql`SELECT name FROM users ORDER BY name`);
 				expect(result).toEqual(["Alice", "Bob", "Charlie"]);
 			});
 

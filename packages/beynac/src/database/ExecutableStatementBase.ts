@@ -5,8 +5,7 @@ import { StatementImpl } from "./StatementImpl.ts";
 export abstract class ExecutableStatementBase extends StatementImpl {
 	protected abstract getClient(): DatabaseClient;
 
-	// oxlint-disable-next-line unicorn/no-thenable -- intentionally awaitable API
-	abstract then: Promise<unknown>["then"];
+	abstract get(): Promise<unknown>;
 
 	abstract withPrepare(value?: boolean): ExecutableStatementBase;
 
@@ -14,27 +13,27 @@ export abstract class ExecutableStatementBase extends StatementImpl {
 		return this.getClient().run(this);
 	}
 
-	all<T = Row>(): Promise<T[]> {
-		return this.getClient().all<T>(this);
+	getAll<T = Row>(): Promise<T[]> {
+		return this.getClient().getAll<T>(this);
 	}
 
-	firstOrNull<T = Row>(): Promise<T | null> {
-		return this.getClient().firstOrNull<T>(this);
+	getFirstOrNull<T = Row>(): Promise<T | null> {
+		return this.getClient().getFirstOrNull<T>(this);
 	}
 
-	firstOrFail<T = Row>(): Promise<T> {
-		return this.getClient().firstOrFail<T>(this);
+	getFirstOrFail<T = Row>(): Promise<T> {
+		return this.getClient().getFirstOrFail<T>(this);
 	}
 
-	firstOrNotFound<T = Row>(): Promise<T> {
-		return this.getClient().firstOrNotFound<T>(this);
+	getFirstOrNotFound<T = Row>(): Promise<T> {
+		return this.getClient().getFirstOrNotFound<T>(this);
 	}
 
-	scalar<T = unknown>(): Promise<T> {
-		return this.getClient().scalar<T>(this);
+	getScalar<T = unknown>(): Promise<T> {
+		return this.getClient().getScalar<T>(this);
 	}
 
-	column<T = unknown>(): Promise<T[]> {
-		return this.getClient().column<T>(this);
+	getColumn<T = unknown>(): Promise<T[]> {
+		return this.getClient().getColumn<T>(this);
 	}
 }

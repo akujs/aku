@@ -41,15 +41,14 @@ export interface LockPart {
 	onLocked: "wait" | "fail" | "skip";
 }
 
-export type ThenExecutor =
+export type Executor =
 	| "run"
-	| "all"
-	| "column"
-	| "scalar"
-	| "boolean"
-	| "firstOrFail"
-	| "firstOrNotFound"
-	| "firstOrNull";
+	| "getAll"
+	| "getColumn"
+	| "getScalar"
+	| "getFirstOrFail"
+	| "getFirstOrNotFound"
+	| "getFirstOrNull";
 
 export interface ConflictOptions {
 	/**
@@ -112,7 +111,7 @@ export interface QueryParts {
 	readonly updateFrom: UpdateFromPart | null;
 	readonly deleteAll: boolean;
 	readonly returningColumns: readonly string[] | null;
-	readonly thenExecutor: ThenExecutor | null;
+	readonly executor: Executor | null;
 	readonly prepare: boolean | null;
 	readonly exists: boolean;
 	readonly unionMembers: readonly UnionEntry[] | null;
@@ -162,7 +161,7 @@ export interface ExecutableStatementWithoutClient extends Statement, StatementEx
 	on(clientName: string): ExecutableStatement;
 }
 
-interface StatementExecutionMethods<TThen = Row[]> {
+interface StatementExecutionMethods<TGet = Row[]> {
 	/**
 	 * Execute the statement on the default client and return the raw result
 	 * with rows and rowsAffected.
@@ -172,46 +171,46 @@ interface StatementExecutionMethods<TThen = Row[]> {
 	/**
 	 * Execute the statement on the default client and return all rows.
 	 */
-	all(): Promise<Row[]>;
+	getAll(): Promise<Row[]>;
 
 	/**
 	 * Execute the statement on the default client and return the first row, or
 	 * null if no rows returned.
 	 */
-	firstOrNull(): Promise<Row | null>;
+	getFirstOrNull(): Promise<Row | null>;
 
 	/**
 	 * Execute the statement on the default client and return the first row.
 	 * Throws AssertionError if no rows returned.
 	 */
-	firstOrFail(): Promise<Row>;
+	getFirstOrFail(): Promise<Row>;
 
 	/**
 	 * Execute the statement on the default client and return the first row.
 	 * Throws NotFoundError if no rows returned.
 	 */
-	firstOrNotFound(): Promise<Row>;
+	getFirstOrNotFound(): Promise<Row>;
 
 	/**
 	 * Execute the statement on the default client and return the first column
 	 * of the first row.
 	 */
 	// oxlint-disable-next-line no-explicit-any -- deliberate public API choice
-	scalar(): Promise<any>;
+	getScalar(): Promise<any>;
 
 	/**
 	 * Execute the statement on the default client and return the first column of all rows.
 	 */
 	// oxlint-disable-next-line no-explicit-any -- deliberate public API choice
-	column(): Promise<any[]>;
+	getColumn(): Promise<any[]>;
 
 	/**
-	 * This `then` method allows awaiting the statement directly.
+	 * Execute the statement and return the result.
 	 *
 	 * @example
-	 * const allRows = await sql`SELECT * FROM users`;
+	 * const allRows = await sql`SELECT * FROM users`.get();
 	 */
-	then: Promise<TThen>["then"];
+	get(): Promise<TGet>;
 
 	/**
 	 * Override the default behavior of whether to use prepared statements.
@@ -221,17 +220,12 @@ interface StatementExecutionMethods<TThen = Row[]> {
 	 *
 	 * @param value - Whether to use prepared statements. Defaults to `true`.
 	 */
-	withPrepare(value?: boolean): ExecutableStatement<TThen>;
+	withPrepare(value?: boolean): ExecutableStatement<TGet>;
 }
-
-type SingleResultExecutionMethods<T> = Pick<
-	StatementExecutionMethods<T>,
-	"run" | "scalar" | "then" | "withPrepare"
->;
 
 type MutationExecutionMethods = Pick<
 	StatementExecutionMethods<MutationResult>,
-	"run" | "then" | "withPrepare"
+	"run" | "get" | "withPrepare"
 >;
 
 /**
@@ -282,6 +276,7 @@ export interface QueryBuilder
 export interface QueryBuilderWithCondition
 	extends Statement,
 		StatementExecutionMethods,
+		ByIdMethods,
 		BulkMutationMethods,
 		WhereMethods<QueryBuilderWithCondition>,
 		UnionMethods<QueryBuilderWithUnion<false>>,
@@ -290,11 +285,16 @@ export interface QueryBuilderWithCondition
 		SelectClauseMethods<SelectQueryBuilder<false, false>>,
 		AggregateMethods {}
 
+/**
+ * Select query builder after calling select() or a method like limit() that is
+ * only valid on select queries.
+ */
 export type SelectQueryBuilder<
 	TSelect extends boolean = false,
 	TOrderBy extends boolean = false,
 > = Statement &
 	StatementExecutionMethods &
+	ByIdMethods &
 	WhereMethods<SelectQueryBuilder<TSelect, TOrderBy>> &
 	UnionMethods<QueryBuilderWithUnion<false>> &
 	SelectClauseMethods<SelectQueryBuilder<TSelect, TOrderBy>> &
@@ -363,15 +363,6 @@ export interface QueryBuilderWithBulkMutation
 		MutationExecutionMethods,
 		// oxlint-disable-next-line no-explicit-any -- deliberate public API choice
 		ReturningMethods<Row[], any[]> {}
-
-/**
- * A query builder after calling a byIdOrXXX(id) method to fetch a single row by id
- */
-export type QueryBuilderWithById<T = Row, TSelect extends boolean = false> = Statement &
-	SingleResultExecutionMethods<T> &
-	(TSelect extends true
-		? SelectModifyColumns<QueryBuilderWithById<T, true>>
-		: SelectSetInitialColumns<QueryBuilderWithById<T, true>>);
 
 interface SelectSetInitialColumns<TReturn> extends SelectModifyColumns<TReturn> {
 	/**
@@ -578,82 +569,87 @@ interface SelectClauseMethods<TReturn> {
 
 interface AggregateMethods {
 	/**
-	 * Count matching rows.
+	 * Execute the query returning a count of matching rows. This uses efficient
+	 * COUNT() SQL syntax.
 	 *
 	 * @param column - count rows with non-null values in this column. Defaults to `*` meaning all rows.
 	 *
 	 * @example
-	 * // Count all rows
-	 * await table("users").count()
+	 * const count = await table("users").getCount();
 	 *
 	 * @example
 	 * // Count active users with a non-null age
-	 * await table("users").where("active").count("age")
+	 * const count = await table("users").where("active").getCount("age");
 	 */
-	count(column?: string): QueryBuilderWithAggregate<number>;
+	getCount(column?: string): Promise<number>;
 
 	/**
-	 * Get the minimum value of a column.
+	 * Execute the query returning the minimum value of a column. This uses
+	 * efficient MIN() SQL syntax.
 	 *
 	 * @example
-	 * // Get the price of the cheapest active product
-	 * await table("products").where("active").min("price")
+	 * const cheapest = await table("products").where("active").getMin("price");
 	 */
-	min(column: string): QueryBuilderWithAggregate<number | null>;
+	getMin(column: string): Promise<number | null>;
 
 	/**
-	 * Get the maximum value of a column.
+	 * Execute the query returning the maximum value of a column. This uses
+	 * efficient MAX() SQL syntax.
 	 *
 	 * @example
-	 * // Get the price of the most expensive product
-	 * await table("products").where("active").max("price")
+	 * const mostExpensive = await table("products").where("active").getMax("price");
 	 */
-	max(column: string): QueryBuilderWithAggregate<number | null>;
+	getMax(column: string): Promise<number | null>;
 
 	/**
-	 * Get the average value of a column.
+	 * Execute the query returning the average value of a column. This uses
+	 * efficient AVG() SQL syntax.
 	 *
 	 * @example
-	 * // Get the average price of active products
-	 * await table("products").where("active").avg("price")
+	 * const avgPrice = await table("products").where("active").getAvg("price");
 	 */
-	avg(column: string): QueryBuilderWithAggregate<number | null>;
+	getAvg(column: string): Promise<number | null>;
 
 	/**
-	 * Get the sum of a column.
+	 * Execute the query returning the sum of a column. This uses efficient SUM()
+	 * SQL syntax.
 	 *
 	 * @example
-	 * // Get the total revenue of active orders
-	 * await table("orders").where("active").sum("total")
+	 * const totalRevenue = await table("orders").where("active").getSum("total");
 	 */
-	sum(column: string): QueryBuilderWithAggregate<number | null>;
+	getSum(column: string): Promise<number | null>;
 
 	/**
-	 * Check if any matching rows exist.
-	 *
-	 * Uses the efficient `SELECT EXISTS(...)` SQL construct.
+	 * Execute the query and return true if has rows. This uses efficient
+	 * `SELECT EXISTS(...)` SQL syntax.
 	 *
 	 * @example
-	 * const hasActiveUsers = await table("users").where("active").exists()
+	 * const hasActiveUsers = await table("users").where("active").getExists();
 	 */
-	exists(): QueryBuilderWithAggregate<boolean>;
+	getExists(): Promise<boolean>;
 }
 
 interface ByIdMethods {
 	/**
 	 * Fetch a row by its id column, throwing QueryError if not found.
+	 *
+	 * Shorthand for `table.whereId(id).getFirstOrFail()`.
 	 */
-	byIdOrFail(id: unknown): QueryBuilderWithById<Row, false>;
+	getByIdOrFail(id: unknown): Promise<Row>;
 
 	/**
 	 * Fetch a row by its id column, throwing NotFoundError if not found.
+	 *
+	 * Shorthand for `table.whereId(id).getFirstOrNotFound()`.
 	 */
-	byIdOrNotFound(id: unknown): QueryBuilderWithById<Row, false>;
+	getByIdOrNotFound(id: unknown): Promise<Row>;
 
 	/**
 	 * Fetch a row by its id column, returning null if not found.
+	 *
+	 * Shorthand for `table.whereId(id).getFirstOrNull()`.
 	 */
-	byIdOrNull(id: unknown): QueryBuilderWithById<Row | null, false>;
+	getByIdOrNull(id: unknown): Promise<Row | null>;
 }
 
 interface WhereMethods<TReturn> {
@@ -765,11 +761,6 @@ interface InsertMethod<TSingle, TArray> {
  * Query builder after calling returning() or returningId() on an insert/update/delete query
  */
 export type QueryBuilderWithReturning<T> = Statement & StatementExecutionMethods<T>;
-
-/**
- * Query builder after calling an aggregate method like count(), min(), max(), avg(), sum() or exists() on a query builder
- */
-export type QueryBuilderWithAggregate<T> = Statement & SingleResultExecutionMethods<T>;
 
 interface ReturningMethods<TReturning, TReturningId> {
 	/**

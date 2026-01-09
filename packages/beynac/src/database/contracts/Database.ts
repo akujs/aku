@@ -4,7 +4,7 @@ import type { DatabaseClient } from "../DatabaseClient.ts";
 /**
  * A manager for database clients.
  *
- * Query methods like all() can be used directly on this object and will be
+ * Query methods like getAll() can be used directly on this object and will be
  * executed on the default client.
  */
 export interface Database extends DatabaseClient {

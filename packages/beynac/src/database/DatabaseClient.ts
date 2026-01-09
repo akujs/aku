@@ -167,35 +167,35 @@ export interface DatabaseClient {
 	/**
 	 * Execute a statement and return all rows.
 	 */
-	all<T = Row>(statement: Statement): Promise<T[]>;
+	getAll<T = Row>(statement: Statement): Promise<T[]>;
 
 	/**
 	 * Execute a statement and return the first row, or null if no rows.
 	 */
-	firstOrNull<T = Row>(statement: Statement): Promise<T | null>;
+	getFirstOrNull<T = Row>(statement: Statement): Promise<T | null>;
 
 	/**
 	 * Execute a statement and return the first row.
 	 * Throws QueryError if no rows are returned.
 	 */
-	firstOrFail<T = Row>(statement: Statement): Promise<T>;
+	getFirstOrFail<T = Row>(statement: Statement): Promise<T>;
 
 	/**
 	 * Execute a statement and return the first row.
 	 * Throws via abort.notFound() if no rows are returned.
 	 */
-	firstOrNotFound<T = Row>(statement: Statement): Promise<T>;
+	getFirstOrNotFound<T = Row>(statement: Statement): Promise<T>;
 
 	/**
 	 * Execute a statement and return the first column of the first row.
 	 * Throws QueryError if no rows are returned.
 	 */
-	scalar<T = unknown>(statement: Statement): Promise<T>;
+	getScalar<T = unknown>(statement: Statement): Promise<T>;
 
 	/**
 	 * Execute a statement and return the first column of each row as an array.
 	 */
-	column<T = unknown>(statement: Statement): Promise<T[]>;
+	getColumn<T = unknown>(statement: Statement): Promise<T[]>;
 
 	/**
 	 * Create a query builder for the specified table.

@@ -446,7 +446,7 @@ describe("database events", () => {
 			).rejects.toThrow(listenerError);
 
 			// Verify the insert was rolled back
-			const rows = await db.all(sql`SELECT * FROM test`);
+			const rows = await db.getAll(sql`SELECT * FROM test`);
 			expect(rows).toEqual([]);
 
 			// Verify failed event was dispatched

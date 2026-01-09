@@ -32,39 +32,39 @@ describe("Sql execution methods", () => {
 		expect(result.rowsAffected).toBe(1);
 	});
 
-	test("all() returns rows", async () => {
-		const rows = await sql`SELECT name FROM test ORDER BY id`.all();
+	test("getAll() returns rows", async () => {
+		const rows = await sql`SELECT name FROM test ORDER BY id`.getAll();
 		expect(rows).toEqual([{ name: "Alice" }, { name: "Bob" }]);
 	});
 
-	test("firstOrNull() returns null when no rows", async () => {
-		const row = await sql`SELECT * FROM test WHERE name = 'Unknown'`.firstOrNull();
+	test("getFirstOrNull() returns null when no rows", async () => {
+		const row = await sql`SELECT * FROM test WHERE name = 'Unknown'`.getFirstOrNull();
 		expect(row).toBeNull();
 	});
 
-	test("firstOrFail() throws QueryError when no rows", async () => {
-		expect(sql`SELECT * FROM test WHERE name = 'Unknown'`.firstOrFail()).rejects.toBeInstanceOf(
+	test("getFirstOrFail() throws QueryError when no rows", async () => {
+		expect(sql`SELECT * FROM test WHERE name = 'Unknown'`.getFirstOrFail()).rejects.toBeInstanceOf(
 			QueryError,
 		);
 	});
 
-	test("scalar() returns first column value", async () => {
-		const name = await sql`SELECT name FROM test ORDER BY id`.scalar();
+	test("getScalar() returns first column value", async () => {
+		const name = await sql`SELECT name FROM test ORDER BY id`.getScalar();
 		expect(name).toBe("Alice");
 	});
 
-	test("column() returns first column array", async () => {
-		const names = await sql`SELECT name FROM test ORDER BY id`.column();
+	test("getColumn() returns first column array", async () => {
+		const names = await sql`SELECT name FROM test ORDER BY id`.getColumn();
 		expect(names).toEqual(["Alice", "Bob"]);
 	});
 
-	test("is thenable and returns all rows", async () => {
-		const rows = await sql`SELECT name FROM test ORDER BY id`;
+	test("get() returns all rows", async () => {
+		const rows = await sql`SELECT name FROM test ORDER BY id`.get();
 		expect(rows).toEqual([{ name: "Alice" }, { name: "Bob" }]);
 	});
 });
 
-describe(ExecutableStatementImpl.prototype.firstOrNotFound, () => {
+describe(ExecutableStatementImpl.prototype.getFirstOrNotFound, () => {
 	let adapter: DatabaseAdapter;
 
 	beforeEach(async () => {
@@ -83,7 +83,7 @@ describe(ExecutableStatementImpl.prototype.firstOrNotFound, () => {
 
 		expect(
 			app.withIntegration(mockIntegrationContext(), () =>
-				sql`SELECT * FROM test`.firstOrNotFound(),
+				sql`SELECT * FROM test`.getFirstOrNotFound(),
 			),
 		).rejects.toBeInstanceOf(AbortException);
 	});
@@ -117,7 +117,7 @@ describe("client routing", () => {
 			database: { default: defaultAdapter, additional: { additional: additionalAdapter } },
 		});
 
-		const result = await sql`SELECT db_name FROM info`.on("additional").firstOrFail();
+		const result = await sql`SELECT db_name FROM info`.on("additional").getFirstOrFail();
 
 		expect(result.db_name).toBe("additional");
 	});
@@ -127,17 +127,17 @@ describe("client routing", () => {
 			database: { default: defaultAdapter, additional: { additional: additionalAdapter } },
 		});
 
-		const result = await sql`SELECT db_name FROM info`.firstOrFail();
+		const result = await sql`SELECT db_name FROM info`.getFirstOrFail();
 
 		expect(result.db_name).toBe("default");
 	});
 
-	test("await sql`...`.on() runs all() on named client", async () => {
+	test("get() on sql`...`.on() runs getAll() on named client", async () => {
 		createTestApplication({
 			database: { default: defaultAdapter, additional: { additional: additionalAdapter } },
 		});
 
-		const rows = await sql`SELECT db_name FROM info`.on("additional");
+		const rows = await sql`SELECT db_name FROM info`.on("additional").get();
 
 		expect(rows).toEqual([{ db_name: "additional" }]);
 	});

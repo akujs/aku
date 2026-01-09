@@ -329,17 +329,17 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 		this.#adapter.dispose();
 	}
 
-	async all<T = Row>(statement: Statement): Promise<T[]> {
+	async getAll<T = Row>(statement: Statement): Promise<T[]> {
 		const result = await this.run(statement);
 		return result.rows as T[];
 	}
 
-	async firstOrNull<T = Row>(statement: Statement): Promise<T | null> {
+	async getFirstOrNull<T = Row>(statement: Statement): Promise<T | null> {
 		const result = await this.run(statement);
 		return (result.rows[0] as T) ?? null;
 	}
 
-	async firstOrFail<T = Row>(statement: Statement): Promise<T> {
+	async getFirstOrFail<T = Row>(statement: Statement): Promise<T> {
 		const result = await this.run(statement);
 		if (result.rows.length === 0) {
 			throw new QueryError(statement.toHumanReadableSql(), "Query returned no rows", undefined);
@@ -347,7 +347,7 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 		return result.rows[0] as T;
 	}
 
-	async firstOrNotFound<T = Row>(statement: Statement): Promise<T> {
+	async getFirstOrNotFound<T = Row>(statement: Statement): Promise<T> {
 		const result = await this.run(statement);
 		if (result.rows.length === 0) {
 			abort.notFound();
@@ -355,13 +355,13 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 		return result.rows[0] as T;
 	}
 
-	async scalar<T = unknown>(statement: Statement): Promise<T> {
-		const firstRow = await this.firstOrFail(statement);
+	async getScalar<T = unknown>(statement: Statement): Promise<T> {
+		const firstRow = await this.getFirstOrFail(statement);
 		return Object.values(firstRow)[0] as T;
 	}
 
-	async column<T = unknown>(statement: Statement): Promise<T[]> {
-		const rows = await this.all(statement);
+	async getColumn<T = unknown>(statement: Statement): Promise<T[]> {
+		const rows = await this.getAll(statement);
 		return rows.map((row) => Object.values(row)[0]) as T[];
 	}
 

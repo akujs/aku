@@ -75,28 +75,28 @@ export class DatabaseImpl extends BaseClass implements Database {
 		}
 	}
 
-	all<T = Row>(statement: Statement): Promise<T[]> {
-		return this.#defaultClient.all<T>(statement);
+	getAll<T = Row>(statement: Statement): Promise<T[]> {
+		return this.#defaultClient.getAll<T>(statement);
 	}
 
-	firstOrNull<T = Row>(statement: Statement): Promise<T | null> {
-		return this.#defaultClient.firstOrNull<T>(statement);
+	getFirstOrNull<T = Row>(statement: Statement): Promise<T | null> {
+		return this.#defaultClient.getFirstOrNull<T>(statement);
 	}
 
-	firstOrFail<T = Row>(statement: Statement): Promise<T> {
-		return this.#defaultClient.firstOrFail<T>(statement);
+	getFirstOrFail<T = Row>(statement: Statement): Promise<T> {
+		return this.#defaultClient.getFirstOrFail<T>(statement);
 	}
 
-	firstOrNotFound<T = Row>(statement: Statement): Promise<T> {
-		return this.#defaultClient.firstOrNotFound<T>(statement);
+	getFirstOrNotFound<T = Row>(statement: Statement): Promise<T> {
+		return this.#defaultClient.getFirstOrNotFound<T>(statement);
 	}
 
-	scalar<T = unknown>(statement: Statement): Promise<T> {
-		return this.#defaultClient.scalar<T>(statement);
+	getScalar<T = unknown>(statement: Statement): Promise<T> {
+		return this.#defaultClient.getScalar<T>(statement);
 	}
 
-	column<T = unknown>(statement: Statement): Promise<T[]> {
-		return this.#defaultClient.column<T>(statement);
+	getColumn<T = unknown>(statement: Statement): Promise<T[]> {
+		return this.#defaultClient.getColumn<T>(statement);
 	}
 
 	table(table: string): QueryBuilder {
