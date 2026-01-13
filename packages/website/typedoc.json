@@ -1,9 +1,9 @@
 {
-  "entryPoints": ["../beynac/src/index.ts"],
+  "entryPoints": ["../aku/src/index.ts"],
   "out": "public/api",
-  "name": "Beynac API Reference",
+  "name": "Aku API Reference",
   "includeVersion": true,
-  "tsconfig": "../beynac/tsconfig.json",
+  "tsconfig": "../aku/tsconfig.json",
   "excludePrivate": true,
   "excludeInternal": true,
   "excludeNotDocumented": false,

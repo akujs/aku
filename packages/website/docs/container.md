@@ -13,7 +13,7 @@ Let's look at a simple example:
 <!-- source: PodcastController intro -->
 
 ```ts
-import { inject } from "beynac";
+import { inject } from "aku";
 
 class PodcastController extends Controller {
   constructor(private apple = inject(AppleMusic)) {
@@ -39,7 +39,7 @@ You declare a dependency using default parameter syntax, which means that:
 1. The type of the parameter is correctly inferred if you're using TypeScript
 2. In your tests you can pass a mock implementation by providing an explicit value: `new PodcastController(new MockAppleMusic())`.
 
-A deep understanding of the Beynac service container is essential to building a powerful, large application, as well as for contributing to the Beynac core itself.
+A deep understanding of the Aku service container is essential to building a powerful, large application, as well as for contributing to the Aku core itself.
 
 ### Zero Configuration Resolution
 
@@ -61,9 +61,9 @@ Route.get("/api/service", (service = inject(Service)) => {
 
 In this example, hitting your application's `/api/service` route will automatically create an instance of the `Service` class and inject it into your route's handler function. This means you can develop your application and take advantage of dependency injection without worrying about bloated configuration files.
 
-TODO ensure these claims are true for Beynac
+TODO ensure these claims are true for Aku
 
-Thankfully, many of the classes you will be writing when building an application with Beynac automatically receive their dependencies via the container, including [controllers](./controllers), [event listeners](./events), [middleware](./middleware), and more. Additionally, you may use `inject(...)` arguments in the `handle` method of [queued jobs](./queues). Once you taste the power of zero configuration dependency injection it feels impossible to develop without it.
+Thankfully, many of the classes you will be writing when building an application with Aku automatically receive their dependencies via the container, including [controllers](./controllers), [event listeners](./events), [middleware](./middleware), and more. Additionally, you may use `inject(...)` arguments in the `handle` method of [queued jobs](./queues). Once you taste the power of zero configuration dependency injection it feels impossible to develop without it.
 
 ### When to Use the Container
 
@@ -79,7 +79,7 @@ Route::get('/', function (req = inject(Request)) {
 });
 ```
 
-In many cases, thanks to automatic dependency injection and [facades](./facades), you can build Beynac applications without **ever** manually binding or resolving anything from the container. **So, when would you ever manually interact with the container?** Let's examine two situations.
+In many cases, thanks to automatic dependency injection and [facades](./facades), you can build Aku applications without **ever** manually binding or resolving anything from the container. **So, when would you ever manually interact with the container?** Let's examine two situations.
 
 First, in large applications you often want to decouple components from each other using typescript interfaces. For example, your `PodcastController` would declare a dependency as `inject(MusicService)`, and at runtime an instance of `AppleMusic` (which implements the MusicService interface) will be injected. In this case you must [tell the container how to resolve that interface](#binding-interfaces-to-implementations).
 

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { Container, inject } from "beynac";
+import { Container, inject } from "aku";
 
 test("PodcastController intro", () => {
   class Controller {}

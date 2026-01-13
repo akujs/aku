@@ -335,12 +335,12 @@ code
 	}).toThrow("missing BEGIN/END markers");
 });
 
-test("generates beynac imports automatically", () => {
+test("generates aku imports automatically", () => {
 	const testContent = `
 import { test } from "bun:test";
-import { Container, inject } from "beynac";
+import { Container, inject } from "aku";
 
-test("use beynac", () => {
+test("use aku", () => {
   // BEGIN
   console.log(Container);
   // END
@@ -349,7 +349,7 @@ test("use beynac", () => {
 
 	const markdownContent = `# Test
 
-<!-- source: use beynac -->
+<!-- source: use aku -->
 \`\`\`ts
 old code
 \`\`\`
@@ -357,9 +357,9 @@ old code
 
 	const expected = `# Test
 
-<!-- source: use beynac -->
+<!-- source: use aku -->
 \`\`\`ts
-import { Container } from "beynac";
+import { Container } from "aku";
 
 console.log(Container);
 \`\`\`
@@ -369,12 +369,12 @@ console.log(Container);
 	expect(result).toBe(expected);
 });
 
-test("skips beynac imports with no-imports token", () => {
+test("skips aku imports with no-imports token", () => {
 	const testContent = `
 import { test } from "bun:test";
-import { Container, inject } from "beynac";
+import { Container, inject } from "aku";
 
-test("use beynac", () => {
+test("use aku", () => {
   // BEGIN
   console.log(Container);
   console.log(inject);
@@ -384,7 +384,7 @@ test("use beynac", () => {
 
 	const markdownContent = `# Test
 
-<!-- source: use beynac; no-imports -->
+<!-- source: use aku; no-imports -->
 \`\`\`ts
 old code
 \`\`\`
@@ -392,7 +392,7 @@ old code
 
 	const expected = `# Test
 
-<!-- source: use beynac; no-imports -->
+<!-- source: use aku; no-imports -->
 \`\`\`ts
 console.log(Container);
 console.log(inject);

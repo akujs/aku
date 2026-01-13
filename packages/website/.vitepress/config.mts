@@ -3,7 +3,7 @@ import { defineConfig } from "vitepress";
 
 // https://vitepress.dev/reference/site-config
 const config = defineConfig({
-  title: "Beynac",
+  title: "Aku",
 
   description: "The missing batteries for your favourite framework",
 
@@ -33,7 +33,7 @@ const config = defineConfig({
 
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
-    siteTitle: "Beynac", // This replaces "VitePress" in the top left
+    siteTitle: "Aku", // This replaces "VitePress" in the top left
 
     outline: {
       level: [2, 3], // This will show h2 and h3 headings
@@ -189,7 +189,7 @@ const config = defineConfig({
       ],
     },
 
-    socialLinks: [{ icon: "github", link: "https://github.com/beynacjs/beynac" }],
+    socialLinks: [{ icon: "github", link: "https://github.com/akujs/aku" }],
   },
 });
 

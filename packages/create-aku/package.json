@@ -1,0 +1,20 @@
+{
+  "name": "create-aku",
+  "version": "0.0.1",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/akujs/aku.git"
+  },
+  "bugs": {
+    "url": "https://github.com/akujs/aku/issues"
+  },
+  "homepage": "https://github.com/akujs/aku#readme",
+  "keywords": [
+    "aku"
+  ],
+  "author": "Bernie Sumption",
+  "license": "MIT"
+}

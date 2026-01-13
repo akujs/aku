@@ -1,6 +1,6 @@
-# Contributing to Beynac
+# Contributing to Aku
 
-Thank you for your interest in contributing to Beynac!
+Thank you for your interest in contributing to Aku!
 
 ## Current Development Status
 

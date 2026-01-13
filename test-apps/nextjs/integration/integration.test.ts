@@ -50,12 +50,12 @@ afterAll(() => {
 describe("Cookie API", () => {
   test("basic cookie flow: get empty, set, get, delete, get empty", async () => {
     // Get cookies - should be empty
-    let response = await fetch(`${BASE_URL}/beynac/api/cookies`);
+    let response = await fetch(`${BASE_URL}/aku/api/cookies`);
     let data = await response.json();
     expect(data.cookies).toEqual({});
 
     // Set a cookie
-    response = await fetch(`${BASE_URL}/beynac/api/cookies`, {
+    response = await fetch(`${BASE_URL}/aku/api/cookies`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: "testCookie", value: "testValue" }),
@@ -66,14 +66,14 @@ describe("Cookie API", () => {
     expect(data.cookie.value).toBe("testValue");
 
     // Verify cookie is set by sending it back
-    response = await fetch(`${BASE_URL}/beynac/api/cookies`, {
+    response = await fetch(`${BASE_URL}/aku/api/cookies`, {
       headers: { Cookie: "testCookie=testValue" },
     });
     data = await response.json();
     expect(data.cookies.testCookie).toBe("testValue");
 
     // Delete the cookie
-    response = await fetch(`${BASE_URL}/beynac/api/cookies/testCookie`, {
+    response = await fetch(`${BASE_URL}/aku/api/cookies/testCookie`, {
       method: "DELETE",
     });
     data = await response.json();
@@ -81,7 +81,7 @@ describe("Cookie API", () => {
     expect(data.deleted).toBe("testCookie");
 
     // Verify cookie is deleted (no cookie header sent)
-    response = await fetch(`${BASE_URL}/beynac/api/cookies`);
+    response = await fetch(`${BASE_URL}/aku/api/cookies`);
     data = await response.json();
     expect(data.cookies).toEqual({});
   });
@@ -90,14 +90,14 @@ describe("Cookie API", () => {
     const expiresDate = new Date("2026-01-01T00:00:00.000Z");
 
     // Set multiple cookies with different options in one request
-    const response = await fetch(`${BASE_URL}/beynac/api/cookies`, {
+    const response = await fetch(`${BASE_URL}/aku/api/cookies`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: "optionsCookie",
         value: "testValue",
         options: {
-          path: "/beynac",
+          path: "/aku",
           domain: "localhost",
           secure: true,
           httpOnly: true,
@@ -113,7 +113,7 @@ describe("Cookie API", () => {
 
     // Verify all options are present in the Set-Cookie header
     expect(setCookieHeader).toContain("optionsCookie=testValue");
-    expect(setCookieHeader).toContain("Path=/beynac");
+    expect(setCookieHeader).toContain("Path=/aku");
     expect(setCookieHeader).toContain("Domain=localhost");
     expect(setCookieHeader).toContain("Secure");
     expect(setCookieHeader).toContain("HttpOnly");
@@ -122,7 +122,7 @@ describe("Cookie API", () => {
   });
 
   test("sameSite strict option", async () => {
-    const response = await fetch(`${BASE_URL}/beynac/api/cookies`, {
+    const response = await fetch(`${BASE_URL}/aku/api/cookies`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -137,7 +137,7 @@ describe("Cookie API", () => {
   });
 
   test("sameSite none option with secure", async () => {
-    const response = await fetch(`${BASE_URL}/beynac/api/cookies`, {
+    const response = await fetch(`${BASE_URL}/aku/api/cookies`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -153,7 +153,7 @@ describe("Cookie API", () => {
   });
 
   test("partitioned option with secure", async () => {
-    const response = await fetch(`${BASE_URL}/beynac/api/cookies`, {
+    const response = await fetch(`${BASE_URL}/aku/api/cookies`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -171,20 +171,20 @@ describe("Cookie API", () => {
 
 describe("Param API", () => {
   test("param decoding works with URL-encoded slashes", async () => {
-    const response = await fetch(`${BASE_URL}/beynac/api/param/either%2For/test`);
+    const response = await fetch(`${BASE_URL}/aku/api/param/either%2For/test`);
     const data = await response.json();
     expect(data.param).toBe("either/or");
   });
 
   test("param decoding works with multiple encoded characters", async () => {
-    const response = await fetch(`${BASE_URL}/beynac/api/param/hello%20world%2Ftest/test`);
+    const response = await fetch(`${BASE_URL}/aku/api/param/hello%20world%2Ftest/test`);
     const data = await response.json();
     expect(data.param).toBe("hello world/test");
   });
 
   test("param decoding works with special characters", async () => {
     const response = await fetch(
-      `${BASE_URL}/beynac/api/param/${encodeURIComponent("foo?bar&baz=qux")}/test`,
+      `${BASE_URL}/aku/api/param/${encodeURIComponent("foo?bar&baz=qux")}/test`,
     );
     const data = await response.json();
     expect(data.param).toBe("foo?bar&baz=qux");
@@ -193,7 +193,7 @@ describe("Param API", () => {
 
 describe("Storage API", () => {
   test("list endpoint returns seeded files with URLs", async () => {
-    const response = await fetch(`${BASE_URL}/beynac/api/storage`);
+    const response = await fetch(`${BASE_URL}/aku/api/storage`);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -218,26 +218,26 @@ describe("Storage API", () => {
     const blob = new Blob(["test content"], { type: "text/plain" });
     formData.append("file", blob, "test-list-file.txt");
 
-    let response = await fetch(`${BASE_URL}/beynac/api/storage`, {
+    let response = await fetch(`${BASE_URL}/aku/api/storage`, {
       method: "POST",
       body: formData,
     });
     expect(response.status).toBe(200);
 
     // Verify it appears in the list
-    response = await fetch(`${BASE_URL}/beynac/api/storage`);
+    response = await fetch(`${BASE_URL}/aku/api/storage`);
     let data = await response.json();
     let fileNames = data.files.map((f: { name: string }) => f.name);
     expect(fileNames).toContain("test-list-file.txt");
 
     // Delete the file
-    response = await fetch(`${BASE_URL}/beynac/api/storage/test-list-file.txt`, {
+    response = await fetch(`${BASE_URL}/aku/api/storage/test-list-file.txt`, {
       method: "DELETE",
     });
     expect(response.status).toBe(200);
 
     // Verify it's removed from the list
-    response = await fetch(`${BASE_URL}/beynac/api/storage`);
+    response = await fetch(`${BASE_URL}/aku/api/storage`);
     data = await response.json();
     fileNames = data.files.map((f: { name: string }) => f.name);
     expect(fileNames).not.toContain("test-list-file.txt");
@@ -255,7 +255,7 @@ describe("Storage API", () => {
     const blob = new Blob([originalBytes], { type: "image/png" });
     formData.append("file", blob, "bruno-logo-medium.png");
 
-    let response = await fetch(`${BASE_URL}/beynac/api/storage`, {
+    let response = await fetch(`${BASE_URL}/aku/api/storage`, {
       method: "POST",
       body: formData,
     });
@@ -275,7 +275,7 @@ describe("Storage API", () => {
     expect(data.size).toBe(originalSize);
 
     // 2. Download and verify content matches
-    response = await fetch(`${BASE_URL}/beynac/api/storage/bruno-logo-medium.png`);
+    response = await fetch(`${BASE_URL}/aku/api/storage/bruno-logo-medium.png`);
 
     if (response.status !== 200) {
       const errorText = await response.text();
@@ -289,7 +289,7 @@ describe("Storage API", () => {
     expect(new Uint8Array(downloadedBytes)).toEqual(new Uint8Array(originalBytes));
 
     // 3. Delete the file
-    response = await fetch(`${BASE_URL}/beynac/api/storage/bruno-logo-medium.png`, {
+    response = await fetch(`${BASE_URL}/aku/api/storage/bruno-logo-medium.png`, {
       method: "DELETE",
     });
     data = await response.json();
@@ -298,7 +298,7 @@ describe("Storage API", () => {
     expect(data.success).toBe(true);
 
     // 4. Verify file is deleted (should return 404)
-    response = await fetch(`${BASE_URL}/beynac/api/storage/bruno-logo-medium.png`);
+    response = await fetch(`${BASE_URL}/aku/api/storage/bruno-logo-medium.png`);
     expect(response.status).toBe(404);
   });
 });

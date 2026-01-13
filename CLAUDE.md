@@ -1,4 +1,4 @@
-# Agent Instructions for Beynac
+# Agent Instructions for Aku
 
 ## General instructions for tasks
 
@@ -20,7 +20,7 @@ Before working on a task, we will agree a plan. Follow this plan closely. If the
 
 # Coding guidelines
 
-These guidelines must be followed when writing code for the Beynac project. After implementing any feature, review all code against these guidelines.
+These guidelines must be followed when writing code for the Aku project. After implementing any feature, review all code against these guidelines.
 
 ## Test Structure
 

@@ -1,5 +1,5 @@
 {
-  "name": "@beynac/website",
+  "name": "@aku/website",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,7 +10,7 @@
     "preview": "vitepress preview"
   },
   "devDependencies": {
-    "beynac": "workspace:",
+    "aku": "workspace:",
     "typedoc": "^0.28.9",
     "vitepress": "^1.5.0",
     "vue": "^3.5.13"

@@ -9,11 +9,11 @@
 		"includes": [
 			"packages/*/src/**",
 			"packages/*/scripts/**",
-			"test-apps/nextjs/{app,beynac}/**",
-			"!!**/packages/beynac/src/contracts-entry-point.ts",
-			"!!**/packages/beynac/src/errors-entry-point.ts",
-			"!!**/packages/beynac/src/events-entry-point.ts",
-			"!!**/packages/beynac/src/facades-entry-point.ts"
+			"test-apps/nextjs/{app,aku}/**",
+			"!!**/packages/aku/src/contracts-entry-point.ts",
+			"!!**/packages/aku/src/errors-entry-point.ts",
+			"!!**/packages/aku/src/events-entry-point.ts",
+			"!!**/packages/aku/src/facades-entry-point.ts"
 		]
 	},
 	"formatter": {

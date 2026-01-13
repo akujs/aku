@@ -2,9 +2,9 @@
 laravelDocs: true
 ---
 
-# Beynac Documentation
+# Aku Documentation
 
-Welcome to the Beynac documentation!
+Welcome to the Aku documentation!
 
 TODO
 

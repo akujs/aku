@@ -7,8 +7,8 @@
   },
   "cSpell.words": [
     "apa",
-    "beynac",
-    "Beynac",
+    "aku",
+    "Aku",
     "bitmask",
     "bouche",
     "bunfig",
@@ -39,5 +39,5 @@
   ],
   "typescript.tsdk": "node_modules/typescript/lib",
   "oxc.typeAware": true,
-  "oxc.path.tsgolint": "packages/beynac/node_modules/.bin/tsgolint"
+  "oxc.path.tsgolint": "packages/aku/node_modules/.bin/tsgolint"
 }

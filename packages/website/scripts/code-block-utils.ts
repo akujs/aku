@@ -116,13 +116,13 @@ export function parseSourceComment(source: string): {
 }
 
 /**
- * Extract beynac imports from test file
+ * Extract aku imports from test file
  */
-function extractBeynacImports(testFileContent: string): Map<string, string> {
+function extractAkuImports(testFileContent: string): Map<string, string> {
 	const imports = new Map<string, string>();
 
-	// Match import statements from beynac
-	const importRegex = /import\s*\{([^}]+)\}\s*from\s*["']beynac["']/g;
+	// Match import statements from aku
+	const importRegex = /import\s*\{([^}]+)\}\s*from\s*["']aku["']/g;
 	let match: RegExpExecArray | null;
 
 	while ((match = importRegex.exec(testFileContent)) !== null) {
@@ -134,7 +134,7 @@ function extractBeynacImports(testFileContent: string): Map<string, string> {
 		for (const item of importedItems) {
 			// Handle renamed imports (e.g., "Container as MyContainer")
 			const [originalName] = item.split(/\s+as\s+/);
-			imports.set(originalName.trim(), "beynac");
+			imports.set(originalName.trim(), "aku");
 		}
 	}
 
@@ -160,15 +160,15 @@ function findUsedIdentifiers(code: string, availableImports: Map<string, string>
 }
 
 /**
- * Generate import statement for used beynac identifiers
+ * Generate import statement for used aku identifiers
  */
-function generateBeynacImport(usedIdentifiers: Set<string>): string {
+function generateAkuImport(usedIdentifiers: Set<string>): string {
 	if (usedIdentifiers.size === 0) {
 		return "";
 	}
 
 	const identifiers = Array.from(usedIdentifiers).sort();
-	return `import { ${identifiers.join(", ")} } from "beynac";\n\n`;
+	return `import { ${identifiers.join(", ")} } from "aku";\n\n`;
 }
 
 /**
@@ -244,16 +244,16 @@ export function getExpectedCodeForBlockFromContent(testContent: string, source: 
 	// Extract the code from the test
 	let newCode = extractTestCodeFromContent(testContent, testName);
 
-	// If no-imports token is not present, add beynac imports
+	// If no-imports token is not present, add aku imports
 	if (!tokens.includes("no-imports")) {
-		// Extract beynac imports from the test content
-		const beynacImports = extractBeynacImports(testContent);
+		// Extract aku imports from the test content
+		const akuImports = extractAkuImports(testContent);
 
-		// Find which beynac identifiers are used in the extracted code
-		const usedIdentifiers = findUsedIdentifiers(newCode, beynacImports);
+		// Find which aku identifiers are used in the extracted code
+		const usedIdentifiers = findUsedIdentifiers(newCode, akuImports);
 
 		// Generate and prepend import statement if needed
-		const importStatement = generateBeynacImport(usedIdentifiers);
+		const importStatement = generateAkuImport(usedIdentifiers);
 		if (importStatement) {
 			newCode = importStatement + newCode;
 		}

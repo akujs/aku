@@ -26,7 +26,7 @@ Link or code sample to reproduce issue
 
 ## Environment
 
-- Beynac version:
+- Aku version:
 - Node/Bun version:
 - Operating System:
 
