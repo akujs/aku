@@ -1,6 +1,6 @@
 /** @jsxImportSource aku/view **/
-import type { Controller } from "aku/http";
-import { raw } from "aku/view";
+import type { Controller } from "@akujs/aku/http";
+import { raw } from "@akujs/aku/view";
 import { readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";

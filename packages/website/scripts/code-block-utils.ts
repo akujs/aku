@@ -134,7 +134,7 @@ function extractAkuImports(testFileContent: string): Map<string, string> {
 		for (const item of importedItems) {
 			// Handle renamed imports (e.g., "Container as MyContainer")
 			const [originalName] = item.split(/\s+as\s+/);
-			imports.set(originalName.trim(), "aku");
+			imports.set(originalName.trim(), "@akujs/aku");
 		}
 	}
 
@@ -168,7 +168,7 @@ function generateAkuImport(usedIdentifiers: Set<string>): string {
 	}
 
 	const identifiers = Array.from(usedIdentifiers).sort();
-	return `import { ${identifiers.join(", ")} } from "aku";\n\n`;
+	return `import { ${identifiers.join(", ")} } from "@akujs/aku";\n\n`;
 }
 
 /**

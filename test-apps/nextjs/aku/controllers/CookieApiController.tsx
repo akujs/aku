@@ -1,5 +1,5 @@
-import { Cookies } from "aku/facades";
-import type { Controller } from "aku/http";
+import { Cookies } from "@akujs/aku/facades";
+import type { Controller } from "@akujs/aku/http";
 
 function jsonResponse(data: unknown, status = 200): Response {
 	return new Response(JSON.stringify(data), {

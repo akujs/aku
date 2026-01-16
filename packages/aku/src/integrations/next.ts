@@ -14,7 +14,7 @@ type Verb = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS";
  *
  * @example
  * import { app } from "@/aku/app";
- * import { makeRouteHandler } from "aku/integrations/next";
+ * import { makeRouteHandler } from "@akujs/aku/integrations/next";
  *
  * // Only handle GET requests
  * export const GET = makeRouteHandler(app);
@@ -33,7 +33,7 @@ export const makeRouteHandler = (app: Application): AppRouterHandler => {
  *
  * @example
  * import { app } from "@/aku/app";
- * import { makeRouteHandlers } from "aku/integrations/next";
+ * import { makeRouteHandlers } from "@akujs/aku/integrations/next";
  *
  * // Handle all HTTP verbs
  * export const { GET, POST, PUT, DELETE, PATCH, OPTIONS } = makeRouteHandlers(app);

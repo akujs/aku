@@ -1,4 +1,4 @@
-import { abort, type ControllerContext, ResourceController } from "aku/http";
+import { abort, type ControllerContext, ResourceController } from "@akujs/aku/http";
 import { app } from "../app";
 
 function jsonResponse(data: unknown, status = 200): Response {

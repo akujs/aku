@@ -13,7 +13,7 @@ Let's look at a simple example:
 <!-- source: PodcastController intro -->
 
 ```ts
-import { inject } from "aku";
+import { inject } from "@akujs/aku";
 
 class PodcastController extends Controller {
   constructor(private apple = inject(AppleMusic)) {

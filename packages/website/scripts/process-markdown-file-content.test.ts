@@ -338,7 +338,7 @@ code
 test("generates aku imports automatically", () => {
 	const testContent = `
 import { test } from "bun:test";
-import { Container, inject } from "aku";
+import { Container, inject } from "@akujs/aku";
 
 test("use aku", () => {
   // BEGIN
@@ -359,7 +359,7 @@ old code
 
 <!-- source: use aku -->
 \`\`\`ts
-import { Container } from "aku";
+import { Container } from "@akujs/aku";
 
 console.log(Container);
 \`\`\`
@@ -372,7 +372,7 @@ console.log(Container);
 test("skips aku imports with no-imports token", () => {
 	const testContent = `
 import { test } from "bun:test";
-import { Container, inject } from "aku";
+import { Container, inject } from "@akujs/aku";
 
 test("use aku", () => {
   // BEGIN

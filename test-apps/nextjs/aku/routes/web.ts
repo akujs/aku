@@ -1,4 +1,4 @@
-import { apiResource, delete as delete_, get, group, post, redirect } from "aku/http";
+import { apiResource, delete as delete_, get, group, post, redirect } from "@akujs/aku/http";
 import {
 	DeleteCookieController,
 	EchoParamController,
