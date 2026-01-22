@@ -9,21 +9,29 @@ export interface FilesystemStorageConfig {
 	rootPath: string;
 
 	/**
-	 * Configuration for generating public download URLs.
-	 *
-	 * Can be either a string prefix or a function that generates URLs.
-	 *
-	 * If not provided, getPublicDownloadUrl() will throw an error.
+	 * Base URL or path prefix for public files.
 	 *
 	 * @example
-	 * // String prefix
-	 * makePublicUrlWith: "https://cdn.example.com/files"
+	 * // Absolute URL (CDN)
+	 * publicUrlPrefix: "https://cdn.example.com/files"
 	 *
 	 * @example
-	 * // Custom URL generation function
-	 * makePublicUrlWith: (path) => `https://cdn.example.com${path}?v=${Date.now()}`
+	 * // Relative path
+	 * publicUrlPrefix: "/storage"
 	 */
-	makePublicUrlWith?: string | ((path: string) => string) | undefined;
+	publicUrlPrefix?: string | undefined;
+
+	/**
+	 * Optional transformer function for public URLs.
+	 *
+	 * When provided, this function receives the URL (after prefix is applied)
+	 * and can transform it. Useful for adding query parameters, versioning, etc.
+	 *
+	 * @example
+	 * // Add cache-busting query parameter
+	 * makePublicUrlWith: (url) => `${url}?v=${Date.now()}`
+	 */
+	makePublicUrlWith?: ((url: string) => string) | undefined;
 
 	/**
 	 * Function to generate signed download URLs.

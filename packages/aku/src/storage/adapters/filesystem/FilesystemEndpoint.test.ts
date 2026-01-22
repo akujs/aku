@@ -18,7 +18,7 @@ function filesystemStorageWithTmpDir(): StorageEndpoint {
 	const tempDir = createTestDirectory();
 	return new FilesystemEndpoint({
 		rootPath: tempDir,
-		makePublicUrlWith: "https://example.com/files",
+		publicUrlPrefix: "https://example.com/files",
 		makeSignedDownloadUrlWith: ({ path, expires, downloadFileName }) => {
 			const params = new URLSearchParams();
 			params.set("expires", expires.toISOString());
@@ -55,7 +55,7 @@ describe(filesystemStorage, () => {
 			tempDir = createTestDirectory();
 			storage = new FilesystemEndpoint({
 				rootPath: tempDir,
-				makePublicUrlWith: "https://example.com/files",
+				publicUrlPrefix: "https://example.com/files",
 				makeSignedDownloadUrlWith: ({ path, expires, downloadFileName }) => {
 					const params = new URLSearchParams();
 					params.set("expires", expires.toISOString());
@@ -72,13 +72,13 @@ describe(filesystemStorage, () => {
 			});
 		});
 
-		test("makePublicUrlWith configuration - throws when not configured", async () => {
+		test("publicUrlPrefix configuration - throws when not configured", async () => {
 			const storageWithoutPrefix = new FilesystemEndpoint({ rootPath: tempDir });
 
 			await writeTestFile(storageWithoutPrefix, "/test.txt");
 
 			expect(storageWithoutPrefix.getPublicDownloadUrl("/test.txt")).rejects.toThrow(
-				"makePublicUrlWith is required",
+				"publicUrlPrefix or makePublicUrlWith is required",
 			);
 			expect(
 				storageWithoutPrefix.getSignedDownloadUrl("/test.txt", {
@@ -90,7 +90,7 @@ describe(filesystemStorage, () => {
 			).rejects.toThrow("makeSignedUploadUrlWith is required");
 		});
 
-		test("makePublicUrlWith configuration - uses configured string prefix", async () => {
+		test("publicUrlPrefix configuration - uses configured absolute URL prefix", async () => {
 			await writeTestFile(storage, "/test.txt");
 
 			const publicUrl = await storage.getPublicDownloadUrl("/test.txt");
@@ -110,7 +110,7 @@ describe(filesystemStorage, () => {
 			expect(uploadUrl).toStartWith("mock-url://upload/test.txt?expires=2025-11-14");
 		});
 
-		test("makePublicUrlWith configuration - uses callback function", async () => {
+		test("makePublicUrlWith configuration - uses callback function alone", async () => {
 			const storageWithCallback = new FilesystemEndpoint({
 				rootPath: tempDir,
 				makePublicUrlWith: (path) => `https://custom-cdn.example.com/v2${path}`,
@@ -129,16 +129,56 @@ describe(filesystemStorage, () => {
 			);
 		});
 
-		test("makePublicUrlWith with trailing slash", async () => {
+		test("publicUrlPrefix with trailing slash", async () => {
 			const storageWithTrailingSlash = new FilesystemEndpoint({
 				rootPath: tempDir,
-				makePublicUrlWith: "https://cdn.example.com/files/",
+				publicUrlPrefix: "https://cdn.example.com/files/",
 			});
 
 			await writeTestFile(storageWithTrailingSlash, "/test.txt");
 
 			const url = await storageWithTrailingSlash.getPublicDownloadUrl("/test.txt");
 			expect(url).toBe("https://cdn.example.com/files/test.txt");
+		});
+
+		test("publicUrlPrefix with relative path", async () => {
+			const storageWithRelativePath = new FilesystemEndpoint({
+				rootPath: tempDir,
+				publicUrlPrefix: "/storage",
+			});
+
+			await writeTestFile(storageWithRelativePath, "/test.txt");
+
+			const url = await storageWithRelativePath.getPublicDownloadUrl("/test.txt");
+			expect(url).toBe("/storage/test.txt");
+		});
+
+		test("publicUrlPrefix with makePublicUrlWith - prefix applied first, then transformer", async () => {
+			const storageWithBoth = new FilesystemEndpoint({
+				rootPath: tempDir,
+				publicUrlPrefix: "https://cdn.example.com/files",
+				makePublicUrlWith: (url) => `${url}?v=123`,
+			});
+
+			await writeTestFile(storageWithBoth, "/test.txt");
+
+			const url = await storageWithBoth.getPublicDownloadUrl("/test.txt");
+			expect(url).toBe("https://cdn.example.com/files/test.txt?v=123");
+		});
+
+		test("publicUrlPrefix with makePublicUrlWith and downloadAs - query params appended correctly", async () => {
+			const storageWithBoth = new FilesystemEndpoint({
+				rootPath: tempDir,
+				publicUrlPrefix: "https://cdn.example.com/files",
+				makePublicUrlWith: (url) => `${url}?v=123`,
+			});
+
+			await writeTestFile(storageWithBoth, "/test.txt");
+
+			const url = await storageWithBoth.getPublicDownloadUrl("/test.txt", {
+				downloadAs: "custom.txt",
+			});
+			expect(url).toBe("https://cdn.example.com/files/test.txt?v=123&download=custom.txt");
 		});
 
 		test("ETag changes when file is modified", async () => {
