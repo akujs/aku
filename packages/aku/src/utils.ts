@@ -173,7 +173,7 @@ export const pluralCount = (count: number, word: string): string =>
 	count + " " + (count === 1 ? word : plural(word));
 
 export const regExpEscape = (str: string): string =>
-	// @ts-expect-error - Bun runtime supports RegExp.escape but TypeScript types don't include it yet
+	// @ts-ignore - RegExp.escape is ES2025, waiting for TypeScript to add types (issue #61321)
 	RegExp.escape(str);
 
 export const mapObjectValues = <K extends string | number | symbol, V, R>(

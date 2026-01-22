@@ -42,6 +42,27 @@ Lightweight package for global installation:
 - Allows `bun aku` / `npm run aku` in package scripts without global install
 - Points to same entry point as global CLI
 
+### 1.4 Terminal Colours
+
+Support for coloured output in the terminal.
+
+**Library choice:** [picocolors](https://github.com/alexeyraspopov/picocolors)
+- Tiny (~2KB), no dependencies
+- 10x faster than chalk
+- Supports NO_COLOR environment variable
+
+**Colour detection:**
+- Respect `NO_COLOR` environment variable (de facto standard)
+- Detect TTY capability via `process.stdout.isTTY`
+- Provide `--no-color` flag to force disable
+
+**API additions to TerminalUI:**
+- `success(text)` - Green text for success messages
+- `warning(text)` - Yellow text for warnings
+- `error(text)` - Red text for errors
+- `info(text)` - Cyan text for informational messages
+- `dim(text)` - Dimmed text for secondary information
+
 ---
 
 ## Phase 2: Command System
@@ -459,7 +480,8 @@ Auto-generated or manually written reference for all built-in commands:
 Phase 1: Core Infrastructure
 ├── 1.1 CLI Application Core
 ├── 1.2 Global CLI Package
-└── 1.3 Local aku Binary
+├── 1.3 Local aku Binary
+└── 1.4 Terminal Colours
 
 Phase 2: Command System
 ├── 2.1 Command Interface Design  ← Major design work, unlocks everything

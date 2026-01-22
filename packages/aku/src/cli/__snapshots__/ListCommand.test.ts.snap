@@ -1,0 +1,65 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`ListCommand displays title and command list 1`] = `
+[
+  {
+    "title": "Available commands",
+  },
+  {
+    "definitionList": [
+      {
+        "definition": "Do bar things",
+        "label": "bar",
+      },
+      {
+        "definition": "Do foo things",
+        "label": "foo",
+      },
+      {
+        "definition": "List all available commands",
+        "label": "list",
+      },
+    ],
+  },
+]
+`;
+
+exports[`ListCommand is the default command when no args provided 1`] = `
+[
+  {
+    "title": "Available commands",
+  },
+  {
+    "definitionList": [
+      {
+        "definition": "List all available commands",
+        "label": "list",
+      },
+    ],
+  },
+]
+`;
+
+exports[`ListCommand commands are listed in alphabetical order 1`] = `
+[
+  {
+    "title": "Available commands",
+  },
+  {
+    "definitionList": [
+      {
+        "definition": "A command",
+        "label": "alpha",
+      },
+      {
+        "definition": "List all available commands",
+        "label": "list",
+      },
+      {
+        "definition": "Z command",
+        "label": "zebra",
+      },
+    ],
+  },
+]
+`;

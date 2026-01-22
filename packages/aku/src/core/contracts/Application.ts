@@ -1,3 +1,4 @@
+import type { TerminalUi } from "../../cli/TerminalUi.ts";
 import type { TypeToken } from "../../container/container-key.ts";
 import { createTypeToken } from "../../container/container-key.ts";
 import type { Container } from "../../container/contracts/Container.ts";
@@ -35,6 +36,15 @@ export interface Application<RouteParams extends Record<string, string> = {}> {
 	 * appropriate handler and will go through the middleware pipeline.
 	 */
 	handleRequest(request: Request, context: IntegrationContext): Promise<Response>;
+
+	/**
+	 * Handle a CLI command. The command will be looked up in the registry
+	 * and executed.
+	 *
+	 * @param args - Command-line arguments, e.g. ["db:test", "--connection=default"]
+	 * @param terminal - Terminal interface for I/O
+	 */
+	handleCommand(args: string[], terminal: TerminalUi): Promise<void>;
 
 	/**
 	 * Execute a callback in a context where request data is available.

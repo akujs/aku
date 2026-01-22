@@ -1,3 +1,4 @@
+import type { CommandDefinition } from "../cli/CommandRegistry.ts";
 import type { Container } from "../container/contracts/Container.ts";
 import { BaseClass } from "../utils.ts";
 import type { Application } from "./contracts/Application.ts";
@@ -34,5 +35,13 @@ export abstract class ServiceProvider extends BaseClass {
 	 */
 	protected get container(): Container {
 		return this.app.container;
+	}
+
+	/**
+	 * CLI commands provided by this service provider.
+	 * Override this getter to register commands with the framework.
+	 */
+	get commands(): CommandDefinition[] {
+		return [];
 	}
 }

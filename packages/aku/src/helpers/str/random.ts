@@ -8,7 +8,7 @@ function toHex(bytes: Uint8Array): string {
 const DEFAULT_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
 const POOL_SIZE = 2048;
-let pool: Buffer | undefined;
+let pool: Uint8Array<ArrayBuffer> | undefined;
 let poolOffset = 0;
 
 /**
@@ -31,7 +31,7 @@ export const random: (length: number, alphabet?: string) => string = mockable(fu
 	const mask = (2 << (31 - Math.clz32((alphabet.length - 1) | 1))) - 1;
 
 	if (!pool) {
-		pool = Buffer.allocUnsafe(POOL_SIZE);
+		pool = new Uint8Array(new ArrayBuffer(POOL_SIZE));
 		crypto.getRandomValues(pool);
 	}
 	let id = "";

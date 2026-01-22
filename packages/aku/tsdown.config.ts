@@ -20,7 +20,7 @@ export default defineConfig({
     build: true,
     sourcemap: true,
   },
-  clean: true,
+  clean: false,
   external: (dep) => {
     // local source files are bundled
     if (dep.startsWith(".") || dep.startsWith("/") || dep.startsWith("src/")) return false;

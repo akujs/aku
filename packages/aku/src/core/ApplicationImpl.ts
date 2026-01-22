@@ -1,3 +1,6 @@
+import { CommandRegistry } from "../cli/CommandRegistry.ts";
+import { CliExitError } from "../cli/cli-errors.ts";
+import type { TerminalUi } from "../cli/TerminalUi.ts";
 import { ContainerImpl } from "../container/ContainerImpl.ts";
 import type { Container } from "../container/contracts/Container.ts";
 import { Database } from "../database/contracts/Database.ts";
@@ -118,6 +121,28 @@ export class ApplicationImpl<RouteParams extends Record<string, string> = {}>
 		});
 	}
 
+	async handleCommand(args: string[], terminal: TerminalUi): Promise<void> {
+		try {
+			this.#requireBooted(this.handleCommand.name);
+
+			const commandName = args[0] ?? "list";
+			const commandArgs = args.slice(1);
+
+			const registry = this.container.get(CommandRegistry);
+			const command = registry.resolve(commandName);
+
+			if (!command) {
+				throw new CliExitError(
+					`Command "${commandName}" not found. Run "aku list" to see available commands.`,
+				);
+			}
+
+			await command.execute(commandArgs, terminal);
+		} catch (error) {
+			terminal.fatalError(error);
+		}
+	}
+
 	withIntegration<R>(context: IntegrationContext, callback: () => R): R {
 		this.#requireBooted(this.withIntegration.name);
 		if (this.container.hasScope) {
@@ -151,9 +176,14 @@ export class ApplicationImpl<RouteParams extends Record<string, string> = {}>
 
 	#bootServiceProviders(): void {
 		try {
+			const registry = this.container.get(CommandRegistry);
 			// Iterate by index to allow providers to register new providers during boot
 			for (let i = 0; i < this.#serviceProvidersToBoot.length; i++) {
-				this.#serviceProvidersToBoot[i].boot();
+				const provider = this.#serviceProvidersToBoot[i];
+				provider.boot();
+				for (const commandClass of provider.commands) {
+					registry.register(commandClass);
+				}
 			}
 		} finally {
 			this.#hasBooted = true;
