@@ -1,5 +1,3 @@
-import { regExpEscape } from "../../utils.ts";
-
 export type Replacer = (input: string) => string;
 
 /**
@@ -15,7 +13,7 @@ export const compileMultiReplace = (replacements: Record<string, string>): Repla
 	const keys = Object.keys(replacements);
 	// Sort by length descending to match longer keys first
 	keys.sort((a, b) => b.length - a.length);
-	const escapedKeys = keys.map((key) => regExpEscape(key));
+	const escapedKeys = keys.map((key) => RegExp.escape(key));
 	const keyRegex = new RegExp(escapedKeys.join("|"), "g");
 	return (str: string) => str.replace(keyRegex, (match) => replacements[match] ?? "");
 };

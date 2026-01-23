@@ -172,10 +172,6 @@ export const plural = (word: string): string => word + "s";
 export const pluralCount = (count: number, word: string): string =>
 	count + " " + (count === 1 ? word : plural(word));
 
-export const regExpEscape = (str: string): string =>
-	// @ts-ignore - RegExp.escape is ES2025, waiting for TypeScript to add types (issue #61321)
-	RegExp.escape(str);
-
 export const mapObjectValues = <K extends string | number | symbol, V, R>(
 	obj: Record<K, V>,
 	callback: (value: V) => R,
