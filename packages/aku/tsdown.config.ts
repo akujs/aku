@@ -18,6 +18,7 @@ export default defineConfig({
   dts: {
     resolve: true,
     build: true,
+    sourcemap: true,
   },
   clean: true,
   external: (dep) => {

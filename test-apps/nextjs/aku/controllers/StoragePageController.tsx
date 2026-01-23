@@ -1,7 +1,7 @@
 /** @jsxImportSource aku/view **/
-import { type Controller, redirect } from "aku/http";
-import { StorageFile } from "aku/storage";
-import type { Component } from "aku/view";
+import { type Controller, redirect } from "@akujs/aku/http";
+import { StorageFile } from "@akujs/aku/storage";
+import type { Component } from "@akujs/aku/view";
 import { app } from "../app";
 import { Layout } from "../components/Layout";
 

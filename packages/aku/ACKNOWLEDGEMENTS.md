@@ -33,7 +33,3 @@ Aku's routing engine is a fork of Rou3, adapted for our specific requirements. T
 **Copyright:** Douglas Christopher Wilson
 
 Aku's RFC 5987 value/attribute header implementation is a fork of the content-disposition package with modifications for our use case.
-
----
-
-All incorporated code is used in compliance with the MIT License terms, which require preservation of copyright notices and license text in distributed copies.

@@ -110,7 +110,7 @@ function generateFacadesFileContent(project: SourceProject): string {
 	return lines.join("\n") + "\n";
 }
 
-type ExportEntry = { source: string; default: string };
+type ExportEntry = { types: string; default: string };
 
 export function getPackageExports(
 	entryPoints: Record<string, string>,
@@ -121,9 +121,10 @@ export function getPackageExports(
 		const exportKey = entryKey === "index" ? "." : `./${entryKey}`;
 
 		const jsPath = `./dist/${entryKey}.mjs`;
+		const dtsPath = `./dist/${entryKey}.d.ts`;
 
 		exports[exportKey] = {
-			source: `./src/${sourcePath}`,
+			types: dtsPath,
 			default: jsPath,
 		};
 	}

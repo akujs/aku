@@ -1,5 +1,5 @@
-import { createApplication } from "aku";
-import { filesystemStorage } from "aku/storage";
+import { createApplication } from "@akujs/aku";
+import { filesystemStorage } from "@akujs/aku/storage";
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";

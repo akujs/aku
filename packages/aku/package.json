@@ -1,88 +1,87 @@
 {
-  "name": "aku",
+  "name": "@akujs/aku",
   "version": "0.0.1",
   "description": "A batteries-included full-stack framework for TypeScript",
   "type": "module",
-  "main": "./dist/index.mjs",
   "exports": {
     "./container": {
-      "source": "./src/container/container-entry-point.ts",
+      "types": "./dist/container.d.ts",
       "default": "./dist/container.mjs"
     },
     "./contracts": {
-      "source": "./src/contracts-entry-point.ts",
+      "types": "./dist/contracts.d.ts",
       "default": "./dist/contracts.mjs"
     },
     "./database": {
-      "source": "./src/database/database-entry-point.ts",
+      "types": "./dist/database.d.ts",
       "default": "./dist/database.mjs"
     },
     "./errors": {
-      "source": "./src/errors-entry-point.ts",
+      "types": "./dist/errors.d.ts",
       "default": "./dist/errors.mjs"
     },
     "./events": {
-      "source": "./src/events-entry-point.ts",
+      "types": "./dist/events.d.ts",
       "default": "./dist/events.mjs"
     },
     "./facades": {
-      "source": "./src/facades-entry-point.ts",
+      "types": "./dist/facades.d.ts",
       "default": "./dist/facades.mjs"
     },
     "./helpers/async": {
-      "source": "./src/helpers/async/async-entry-point.ts",
+      "types": "./dist/helpers/async.d.ts",
       "default": "./dist/helpers/async.mjs"
     },
     "./helpers/hash": {
-      "source": "./src/helpers/hash/hash-entry-point.ts",
+      "types": "./dist/helpers/hash.d.ts",
       "default": "./dist/helpers/hash.mjs"
     },
     "./helpers/headers": {
-      "source": "./src/helpers/headers/headers-entry-point.ts",
+      "types": "./dist/helpers/headers.d.ts",
       "default": "./dist/helpers/headers.mjs"
     },
     "./helpers/str": {
-      "source": "./src/helpers/str/str-entry-point.ts",
+      "types": "./dist/helpers/str.d.ts",
       "default": "./dist/helpers/str.mjs"
     },
     "./helpers/time": {
-      "source": "./src/helpers/time/time-entry-point.ts",
+      "types": "./dist/helpers/time.d.ts",
       "default": "./dist/helpers/time.mjs"
     },
     "./http": {
-      "source": "./src/http/http-entry-point.ts",
+      "types": "./dist/http.d.ts",
       "default": "./dist/http.mjs"
     },
     ".": {
-      "source": "./src/index-entry-point.ts",
+      "types": "./dist/index.d.ts",
       "default": "./dist/index.mjs"
     },
     "./integrations": {
-      "source": "./src/integrations/integrations-entry-point.ts",
+      "types": "./dist/integrations.d.ts",
       "default": "./dist/integrations.mjs"
     },
     "./integrations/next": {
-      "source": "./src/integrations/next/next-entry-point.ts",
+      "types": "./dist/integrations/next.d.ts",
       "default": "./dist/integrations/next.mjs"
     },
     "./storage": {
-      "source": "./src/storage/storage-entry-point.ts",
+      "types": "./dist/storage.d.ts",
       "default": "./dist/storage.mjs"
     },
     "./testing": {
-      "source": "./src/testing/testing-entry-point.ts",
+      "types": "./dist/testing.d.ts",
       "default": "./dist/testing.mjs"
     },
     "./view/jsx-dev-runtime": {
-      "source": "./src/view/jsx-dev-runtime/jsx-dev-runtime-entry-point.ts",
+      "types": "./dist/view/jsx-dev-runtime.d.ts",
       "default": "./dist/view/jsx-dev-runtime.mjs"
     },
     "./view/jsx-runtime": {
-      "source": "./src/view/jsx-runtime/jsx-runtime-entry-point.ts",
+      "types": "./dist/view/jsx-runtime.d.ts",
       "default": "./dist/view/jsx-runtime.mjs"
     },
     "./view": {
-      "source": "./src/view/view-entry-point.ts",
+      "types": "./dist/view.d.ts",
       "default": "./dist/view.mjs"
     }
   },
@@ -105,7 +104,10 @@
   },
   "files": [
     "README.md",
-    "dist"
+    "LICENSE.md",
+    "ACKNOWLEDGEMENTS.md",
+    "dist",
+    "src"
   ],
   "repository": {
     "type": "git",
@@ -155,5 +157,9 @@
       "optional": true
     }
   },
-  "module": "./dist/index.mjs"
+  "types": "./dist/index.d.ts",
+  "source": "./src/index-entry-point.ts",
+  "publishConfig": {
+    "access": "public"
+  }
 }
