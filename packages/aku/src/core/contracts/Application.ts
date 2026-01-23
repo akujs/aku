@@ -1,4 +1,4 @@
-import type { TerminalUi } from "../../cli/TerminalUi.ts";
+import type { Terminal } from "../../cli/contracts/Terminal.ts";
 import type { TypeToken } from "../../container/container-key.ts";
 import { createTypeToken } from "../../container/container-key.ts";
 import type { Container } from "../../container/contracts/Container.ts";
@@ -44,7 +44,7 @@ export interface Application<RouteParams extends Record<string, string> = {}> {
 	 * @param args - Command-line arguments, e.g. ["db:test", "--connection=default"]
 	 * @param terminal - Terminal interface for I/O
 	 */
-	handleCommand(args: string[], terminal: TerminalUi): Promise<void>;
+	handleCommand(args: string[], terminal: Terminal): Promise<void>;
 
 	/**
 	 * Execute a callback in a context where request data is available.

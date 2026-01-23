@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, spyOn, test } from "bun:test";
-import { ProcessTerminalUi } from "./ProcessTerminalUi.ts";
+import { TerminalImpl } from "./TerminalImpl.ts";
 
-describe(ProcessTerminalUi, () => {
+describe(TerminalImpl, () => {
 	let output: string;
-	let terminal: ProcessTerminalUi;
+	let terminal: TerminalImpl;
 
 	beforeEach(() => {
 		output = "";
@@ -11,11 +11,11 @@ describe(ProcessTerminalUi, () => {
 			output += str;
 			return true;
 		});
-		terminal = new ProcessTerminalUi();
+		terminal = new TerminalImpl();
 	});
 
 	test("paragraph", () => {
-		terminal.paragraph("Hello world");
+		terminal.p("Hello world");
 
 		expect(output).toMatchSnapshot();
 	});
@@ -33,7 +33,7 @@ describe(ProcessTerminalUi, () => {
 	});
 
 	test("definitionList formats as aligned table", () => {
-		terminal.definitionList([
+		terminal.dl([
 			{ label: "short", definition: "First item" },
 			{ label: "much-longer", definition: "Second item" },
 			{ label: "mid", definition: "Third item" },
@@ -43,14 +43,14 @@ describe(ProcessTerminalUi, () => {
 	});
 
 	test("definitionList with empty array outputs nothing", () => {
-		terminal.definitionList([]);
+		terminal.dl([]);
 
 		expect(output).toBe("");
 	});
 
 	test("combined output", () => {
 		terminal.title("Available commands");
-		terminal.definitionList([
+		terminal.dl([
 			{ label: "list", definition: "List all commands" },
 			{ label: "db:migrate", definition: "Run database migrations" },
 		]);

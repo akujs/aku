@@ -1,10 +1,10 @@
 import { Container } from "../container/contracts/Container.ts";
 import { inject } from "../container/inject.ts";
 import { BaseClass } from "../utils.ts";
-import type { TerminalUi } from "./TerminalUi.ts";
+import type { Terminal } from "./contracts/Terminal.ts";
 
 export interface Command {
-	execute(args: string[], terminal: TerminalUi): Promise<void>;
+	execute(args: string[], terminal: Terminal): Promise<void>;
 }
 
 // Represents a command class. Commands are registered as class references,

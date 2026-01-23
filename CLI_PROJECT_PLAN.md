@@ -56,7 +56,7 @@ Support for coloured output in the terminal.
 - Detect TTY capability via `process.stdout.isTTY`
 - Provide `--no-color` flag to force disable
 
-**API additions to TerminalUI:**
+**API additions to Terminal interface:**
 - `success(text)` - Green text for success messages
 - `warning(text)` - Yellow text for warnings
 - `error(text)` - Red text for errors

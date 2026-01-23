@@ -2,16 +2,16 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { BaseClass } from "../utils.ts";
 import { CliExitError } from "./cli-errors.ts";
-import type { DefinitionListItem, TerminalUi } from "./TerminalUi.ts";
+import type { Terminal, TerminalDefinitionListItem } from "./contracts/Terminal.ts";
 
-export class ProcessTerminalUi extends BaseClass implements TerminalUi {
+export class TerminalImpl extends BaseClass implements Terminal {
 	#exitCode = 0;
 
 	get exitCode(): number {
 		return this.#exitCode;
 	}
 
-	paragraph(text: string): void {
+	p(text: string): void {
 		process.stdout.write(text + "\n");
 	}
 
@@ -25,7 +25,7 @@ export class ProcessTerminalUi extends BaseClass implements TerminalUi {
 		process.stdout.write(`\x1b[4m${text}\x1b[0m\n`);
 	}
 
-	definitionList(items: DefinitionListItem[]): void {
+	dl(items: TerminalDefinitionListItem[]): void {
 		if (items.length === 0) return;
 
 		const maxLabelWidth = Math.max(...items.map((item) => item.label.length));

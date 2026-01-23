@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { ServiceProvider } from "../core/ServiceProvider.ts";
 import { createTestApplication } from "../test-utils/http-test-utils.bun.ts";
-import { BufferTerminalUi } from "./BufferTerminalUi.ts";
 import { ListCommand } from "./ListCommand.ts";
+import { MemoryTerminal } from "./MemoryTerminal.ts";
 
 class FooCommand {
 	static readonly name = "foo";
@@ -27,7 +27,7 @@ describe(ListCommand, () => {
 		const { app } = createTestApplication({
 			providers: [TestCommandProvider],
 		});
-		const terminal = new BufferTerminalUi();
+		const terminal = new MemoryTerminal();
 
 		await app.handleCommand(["list"], terminal);
 
@@ -37,7 +37,7 @@ describe(ListCommand, () => {
 
 	test("is the default command when no args provided", async () => {
 		const { app } = createTestApplication();
-		const terminal = new BufferTerminalUi();
+		const terminal = new MemoryTerminal();
 
 		await app.handleCommand([], terminal);
 
@@ -66,7 +66,7 @@ describe(ListCommand, () => {
 		const { app } = createTestApplication({
 			providers: [OrderTestProvider],
 		});
-		const terminal = new BufferTerminalUi();
+		const terminal = new MemoryTerminal();
 
 		await app.handleCommand(["list"], terminal);
 

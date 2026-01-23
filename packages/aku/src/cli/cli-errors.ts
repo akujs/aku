@@ -8,7 +8,10 @@ import { AkuError } from "../core/core-errors.ts";
  * a crash report.
  */
 export class CliExitError extends AkuError {
-	constructor(message: string) {
+	readonly exitCode: number;
+
+	constructor(message: string, exitCode = 1) {
 		super(message);
+		this.exitCode = exitCode;
 	}
 }

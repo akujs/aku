@@ -1,0 +1,30 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`TerminalImpl paragraph 1`] = `
+"Hello world
+"
+`;
+
+exports[`TerminalImpl title renders bold 1`] = `
+"\x1B[1mMy Title\x1B[0m
+"
+`;
+
+exports[`TerminalImpl subtitle renders underlined 1`] = `
+"\x1B[4mMy Subtitle\x1B[0m
+"
+`;
+
+exports[`TerminalImpl definitionList formats as aligned table 1`] = `
+"  short        First item
+  much-longer  Second item
+  mid          Third item
+"
+`;
+
+exports[`TerminalImpl combined output 1`] = `
+"\x1B[1mAvailable commands\x1B[0m
+  list        List all commands
+  db:migrate  Run database migrations
+"
+`;

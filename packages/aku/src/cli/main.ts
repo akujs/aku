@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { ApplicationImpl } from "../core/ApplicationImpl.ts";
 import { CliExitError } from "./cli-errors.ts";
-import { ProcessTerminalUi } from "./ProcessTerminalUi.ts";
+import { TerminalImpl } from "./TerminalImpl.ts";
 
 /**
  * Entry point for CLI execution. Called by @akujs/cli global package.
@@ -11,7 +11,7 @@ import { ProcessTerminalUi } from "./ProcessTerminalUi.ts";
 export async function runCli(): Promise<never> {
 	const args = process.argv.slice(2);
 	const cwd = process.cwd();
-	const terminal = new ProcessTerminalUi();
+	const terminal = new TerminalImpl();
 
 	try {
 		const { appPath, remainingArgs } = extractAppOption(args);

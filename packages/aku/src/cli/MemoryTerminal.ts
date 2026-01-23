@@ -1,15 +1,15 @@
 import { BaseClass } from "../utils.ts";
 import { CliExitError } from "./cli-errors.ts";
-import type { DefinitionListItem, TerminalUi } from "./TerminalUi.ts";
+import type { Terminal, TerminalDefinitionListItem } from "./contracts/Terminal.ts";
 
 export type TerminalOutput =
 	| { paragraph: string }
 	| { title: string }
 	| { subtitle: string }
-	| { definitionList: DefinitionListItem[] }
+	| { definitionList: TerminalDefinitionListItem[] }
 	| { fatalError: { error: unknown; crashDump: boolean } };
 
-export class BufferTerminalUi extends BaseClass implements TerminalUi {
+export class MemoryTerminal extends BaseClass implements Terminal {
 	#exitCode = 0;
 	output: TerminalOutput[] = [];
 	crashDump: object | null = null;
@@ -18,7 +18,7 @@ export class BufferTerminalUi extends BaseClass implements TerminalUi {
 		return this.#exitCode;
 	}
 
-	paragraph(text: string): void {
+	p(text: string): void {
 		this.output.push({ paragraph: text });
 	}
 
@@ -30,7 +30,7 @@ export class BufferTerminalUi extends BaseClass implements TerminalUi {
 		this.output.push({ subtitle: text });
 	}
 
-	definitionList(items: DefinitionListItem[]): void {
+	dl(items: TerminalDefinitionListItem[]): void {
 		this.output.push({ definitionList: items });
 	}
 

@@ -1,6 +1,6 @@
 import { CommandRegistry } from "../cli/CommandRegistry.ts";
 import { CliExitError } from "../cli/cli-errors.ts";
-import type { TerminalUi } from "../cli/TerminalUi.ts";
+import type { Terminal } from "../cli/contracts/Terminal.ts";
 import { ContainerImpl } from "../container/ContainerImpl.ts";
 import type { Container } from "../container/contracts/Container.ts";
 import { Database } from "../database/contracts/Database.ts";
@@ -121,7 +121,7 @@ export class ApplicationImpl<RouteParams extends Record<string, string> = {}>
 		});
 	}
 
-	async handleCommand(args: string[], terminal: TerminalUi): Promise<void> {
+	async handleCommand(args: string[], terminal: Terminal): Promise<void> {
 		try {
 			this.#requireBooted(this.handleCommand.name);
 

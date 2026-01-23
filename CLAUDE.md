@@ -71,8 +71,8 @@ These guidelines must be followed when writing code for the Aku project. After i
     - ❌ WRONG: `export const sanitiseString = () => ...` OR `const sanitizeString = () => ...`
 
 - **Acronyms in identifiers**: Use Initial-Cap casing for acronyms (first letter uppercase, rest lowercase), regardless of position in the identifier
-    - ✅ CORRECT: `HttpClient`, `parseUrl`, `SqlApi`, `TerminalUi`, `getJson`
-    - ❌ WRONG: `HTTPClient`, `parseURL`, `SQLAPI`, `TerminalUI`, `getJSON`
+    - ✅ CORRECT: `HttpClient`, `parseUrl`, `SqlApi`, `getJson`
+    - ❌ WRONG: `HTTPClient`, `parseURL`, `SQLAPI`, `getJSON`
     - This applies to all identifiers: classes, interfaces, types, functions, variables, and methods
     - File names use lowercase with hyphens: `http-client.ts`, `terminal-ui.ts`
 

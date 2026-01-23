@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, expectTypeOf, test } from "bun:test";
-import { BufferTerminalUi } from "../cli/BufferTerminalUi.ts";
 import { CliExitError } from "../cli/cli-errors.ts";
+import { MemoryTerminal } from "../cli/MemoryTerminal.ts";
 import { Cookies, Headers } from "../facades-entry-point.ts";
 import type { ControllerContext } from "../http/Controller.ts";
 import { BaseController } from "../http/Controller.ts";
@@ -567,13 +567,13 @@ describe("ApplicationImpl", () => {
 	describe("handleCommand", () => {
 		test("executes registered command", async () => {
 			const app = new ApplicationImpl();
-			const terminal = new BufferTerminalUi();
+			const terminal = new MemoryTerminal();
 
 			class GreetCommand {
 				static readonly name = "greet";
 				static readonly description = "Greet someone";
-				async execute(args: string[], t: BufferTerminalUi): Promise<void> {
-					t.paragraph(`Hello, ${args[0] ?? "world"}!`);
+				async execute(args: string[], t: MemoryTerminal): Promise<void> {
+					t.p(`Hello, ${args[0] ?? "world"}!`);
 				}
 			}
 
@@ -595,7 +595,7 @@ describe("ApplicationImpl", () => {
 
 		test("calls fatalError for unknown command", async () => {
 			const app = new ApplicationImpl();
-			const terminal = new BufferTerminalUi();
+			const terminal = new MemoryTerminal();
 			app.bootstrap();
 
 			await app.handleCommand(["nonexistent"], terminal);
@@ -612,7 +612,7 @@ describe("ApplicationImpl", () => {
 
 		test("defaults to 'list' command when no command specified", async () => {
 			const app = new ApplicationImpl();
-			const terminal = new BufferTerminalUi();
+			const terminal = new MemoryTerminal();
 			app.bootstrap();
 
 			// ListCommand is provided by CoreServiceProvider, so the default should work
@@ -624,7 +624,7 @@ describe("ApplicationImpl", () => {
 
 		test("calls fatalError with CliExitError for expected errors", async () => {
 			const app = new ApplicationImpl();
-			const terminal = new BufferTerminalUi();
+			const terminal = new MemoryTerminal();
 
 			class FailCommand {
 				static readonly name = "fail";
@@ -656,7 +656,7 @@ describe("ApplicationImpl", () => {
 
 		test("calls fatalError with crash dump for unexpected errors", async () => {
 			const app = new ApplicationImpl();
-			const terminal = new BufferTerminalUi();
+			const terminal = new MemoryTerminal();
 
 			class CrashCommand {
 				static readonly name = "crash";
@@ -688,7 +688,7 @@ describe("ApplicationImpl", () => {
 
 		test("requires app to be bootstrapped", async () => {
 			const app = new ApplicationImpl();
-			const terminal = new BufferTerminalUi();
+			const terminal = new MemoryTerminal();
 
 			await app.handleCommand(["test"], terminal);
 
