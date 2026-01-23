@@ -117,7 +117,7 @@ export function getPackageExports(
 ): Record<string, string | ExportEntry> {
 	const exports: Record<string, string | ExportEntry> = {};
 
-	for (const [entryKey, sourcePath] of Object.entries(entryPoints)) {
+	for (const [entryKey] of Object.entries(entryPoints)) {
 		const exportKey = entryKey === "index" ? "." : `./${entryKey}`;
 
 		const jsPath = `./dist/${entryKey}.mjs`;
