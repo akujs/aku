@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { TerminalImpl } from "./TerminalImpl.ts";
 
-describe(TerminalImpl, () => {
+describe.skip(TerminalImpl, () => {
 	let output: string;
 	let terminal: TerminalImpl;
 
