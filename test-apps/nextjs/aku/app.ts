@@ -40,13 +40,11 @@ export const app = createApplication({
 	routes,
 	development: true,
 	appUrl: {},
-	// We need to tell the framework where to look for the files - in this case it is the next public directory that is acting as
-	// 1. Start making it have the same capacbii
 	disks: {
 		local: filesystemStorage({
 			rootPath: storageRoot,
 			publicUrlPrefix: "https://localhost/storage",
-			// makePublicUrlWith: (url) => `${url}/storage`,
+			makePublicUrlWith: (url) => `${url}?v=123`,
 		}),
 	},
 });
