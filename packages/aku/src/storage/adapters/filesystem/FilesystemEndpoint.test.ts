@@ -137,8 +137,23 @@ describe(filesystemStorage, () => {
 
 			await writeTestFile(storageWithTrailingSlash, "/test.txt");
 
-			const url = await storageWithTrailingSlash.getPublicDownloadUrl("/test.txt");
-			expect(url).toBe("https://cdn.example.com/files/test.txt");
+			// Path starting with /
+			const url1 = await storageWithTrailingSlash.getPublicDownloadUrl("/test.txt");
+			expect(url1).toBe("https://cdn.example.com/files/test.txt");
+
+			// Path not starting with /
+			const url2 = await storageWithTrailingSlash.getPublicDownloadUrl("test.txt");
+			expect(url2).toBe("https://cdn.example.com/files/test.txt");
+
+			// Nested path
+			const url3 = await storageWithTrailingSlash.getPublicDownloadUrl("/nested/path/file.txt");
+			expect(url3).toBe("https://cdn.example.com/files/nested/path/file.txt");
+
+			// With downloadAs option
+			const url4 = await storageWithTrailingSlash.getPublicDownloadUrl("/test.txt", {
+				downloadAs: "custom.txt",
+			});
+			expect(url4).toBe("https://cdn.example.com/files/test.txt?download=custom.txt");
 		});
 
 		test("publicUrlPrefix with relative path", async () => {

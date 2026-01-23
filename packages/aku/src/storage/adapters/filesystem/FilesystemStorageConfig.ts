@@ -11,8 +11,8 @@ export interface FilesystemStorageConfig {
 	/**
 	 * Absolute or relative URL prefix for generating public file URLs.
 	 * When generating a public URL for a file, this prefix is concatenated with the file's storage path.
-	 * 
-	 * For example, if the prefix is "https://cdn.example.com/files" and the path is "/foo/bar.txt", 
+	 *
+	 * For example, if the prefix is "https://cdn.example.com/files" and the path is "/foo/bar.txt",
 	 * the result will be "https://cdn.example.com/files/foo/bar.txt".
 	 *
 	 * @example
