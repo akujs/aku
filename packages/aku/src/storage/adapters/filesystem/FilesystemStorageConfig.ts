@@ -9,15 +9,15 @@ export interface FilesystemStorageConfig {
 	rootPath: string;
 
 	/**
-	 * Base URL or path prefix for public files.
+	 * Absolute or relative URL prefix for generating public file URLs.
+	 * When generating a public URL for a file, this prefix is concatenated with the file's storage path.
+	 * 
+	 * For example, if the prefix is "https://cdn.example.com/files" and the path is "/foo/bar.txt", 
+	 * the result will be "https://cdn.example.com/files/foo/bar.txt".
 	 *
 	 * @example
 	 * // Absolute URL (CDN)
 	 * publicUrlPrefix: "https://cdn.example.com/files"
-	 *
-	 * @example
-	 * // Relative path
-	 * publicUrlPrefix: "/storage"
 	 */
 	publicUrlPrefix?: string | undefined;
 
