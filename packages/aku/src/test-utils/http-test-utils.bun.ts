@@ -6,7 +6,7 @@ import type { Configuration } from "../core/contracts/Configuration.ts";
 import { createApplication } from "../core/createApplication.ts";
 import type { BaseController, ControllerContext, FunctionController } from "../http/Controller.ts";
 import { type ControllerReturn } from "../http/Controller.ts";
-import { type ClassMiddleware } from "../http/Middleware.ts";
+import { BaseMiddleware, type ClassMiddleware } from "../http/Middleware.ts";
 import { ResourceController } from "../http/ResourceController.ts";
 import { Router } from "../http/Router.ts";
 import type { IntegrationContext } from "../integrations/IntegrationContext.ts";
@@ -170,17 +170,15 @@ export const mockMiddleware: MockMiddlewareFunction = Object.assign(
 			throw new Error(`mockMiddleware name must be a valid JavaScript identifier, got: ${name}`);
 		}
 
-		// Create a function that returns a class with the dynamic name.
+		// Create a function that returns a class with the dynamic name extending BaseMiddleware.
 		// oxlint-disable-next-line no-implied-eval -- Function constructor needed for dynamic class names
-		const createClass = new Function(`
-      return class ${name} {}
-    `);
+		const createClass = new Function(
+			"BaseMiddleware",
+			`return class ${name} extends BaseMiddleware {}`,
+		);
 
 		// Call the function to get the class
-		const ClassConstructor = createClass();
-
-		// Add the static property to mark it as a class middleware
-		ClassConstructor.isClassMiddleware = true;
+		const ClassConstructor = createClass(BaseMiddleware);
 
 		// Add the handle method to the prototype
 		ClassConstructor.prototype.handle = async function (

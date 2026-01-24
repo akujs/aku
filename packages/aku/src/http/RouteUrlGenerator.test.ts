@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { ContainerImpl } from "../container/ContainerImpl.ts";
 import type { Container } from "../container/contracts/Container.ts";
-import { Configuration } from "../core/contracts/Configuration.ts";
+import type { Configuration } from "../core/contracts/Configuration.ts";
 import { IntegrationContext } from "../integrations/IntegrationContext.ts";
 import { MockController, mockIntegrationContext } from "../test-utils/http-test-utils.bun.ts";
 import { get, group, resource } from "./helpers.ts";
@@ -18,8 +18,7 @@ describe(RouteUrlGenerator, () => {
 	beforeEach(() => {
 		config = {};
 		container = new ContainerImpl();
-		container.singletonInstance(Configuration, config);
-		generator = container.get(RouteUrlGenerator);
+		generator = new RouteUrlGenerator(container, config);
 	});
 
 	test("generates URL for named route without parameters", () => {

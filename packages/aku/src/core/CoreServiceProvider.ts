@@ -1,3 +1,4 @@
+import { CommandHandler } from "../cli/CommandHandler.ts";
 import { type CommandDefinition, CommandRegistry } from "../cli/CommandRegistry.ts";
 import { CliErrorHandler } from "../cli/contracts/CliErrorHandler.ts";
 import { DefaultCliErrorHandler } from "../cli/DefaultCliErrorHandler.ts";
@@ -10,6 +11,7 @@ export class CoreServiceProvider extends ServiceProvider {
 	override register(): void {
 		this.container.singleton(Dispatcher, DispatcherImpl);
 		this.container.singleton(CommandRegistry);
+		this.container.singleton(CommandHandler);
 		this.container.singleton(CliErrorHandler, DefaultCliErrorHandler);
 	}
 

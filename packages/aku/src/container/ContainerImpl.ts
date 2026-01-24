@@ -327,6 +327,13 @@ export class ContainerImpl extends BaseClass implements Container {
 
 			if (!factory && typeof type === "function") {
 				// allow implicitly bound keys to be resolved if they're class references
+				if (!isDefaultBindingAllowed(type)) {
+					return this.#containerError(
+						`${getKeyName(type)} has not been bound to the container. ` +
+							`Implicit binding is disabled via ${whitelistDefaultBindings.name}().`,
+						{ omitTopOfBuildStack: true },
+					);
+				}
 				// Runtime check: ensure no required constructor arguments
 				if (type.length > 0) {
 					return this.#containerError(
@@ -755,3 +762,21 @@ const getPropertiesThatSurviveRebinding = (
 	}
 	return common;
 };
+
+let defaultBindingWhitelist: AnyConstructor[] | null = null;
+
+export function whitelistDefaultBindings(...classes: AnyConstructor[]): void {
+	defaultBindingWhitelist ??= [];
+	defaultBindingWhitelist.push(...classes);
+}
+
+export function allowDefaultBindings(): void {
+	defaultBindingWhitelist = null;
+}
+
+function isDefaultBindingAllowed(type: AnyConstructor): boolean {
+	return (
+		defaultBindingWhitelist === null ||
+		defaultBindingWhitelist.some((cls) => type === cls || type.prototype instanceof cls)
+	);
+}
