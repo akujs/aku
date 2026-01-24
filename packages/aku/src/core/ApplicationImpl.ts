@@ -1,6 +1,7 @@
+import { CommandHandler } from "../cli/CommandHandler.ts";
 import { CommandRegistry } from "../cli/CommandRegistry.ts";
-import { CliExitError } from "../cli/cli-errors.ts";
 import type { Terminal } from "../cli/contracts/Terminal.ts";
+import { Terminal as TerminalToken } from "../cli/contracts/Terminal.ts";
 import { ContainerImpl } from "../container/ContainerImpl.ts";
 import type { Container } from "../container/contracts/Container.ts";
 import { Database } from "../database/contracts/Database.ts";
@@ -121,26 +122,14 @@ export class ApplicationImpl<RouteParams extends Record<string, string> = {}>
 		});
 	}
 
-	async handleCommand(args: string[], terminal: Terminal): Promise<void> {
-		try {
-			this.#requireBooted(this.handleCommand.name);
+	async handleCommand(args: string[], terminal: Terminal): Promise<number> {
+		this.#requireBooted(this.handleCommand.name);
 
-			const commandName = args[0] ?? "list";
-			const commandArgs = args.slice(1);
-
-			const registry = this.container.get(CommandRegistry);
-			const command = registry.resolve(commandName);
-
-			if (!command) {
-				throw new CliExitError(
-					`Command "${commandName}" not found. Run "aku list" to see available commands.`,
-				);
-			}
-
-			await command.execute(commandArgs, terminal);
-		} catch (error) {
-			terminal.fatalError(error);
-		}
+		return this.container.withScope(async () => {
+			this.container.scopedInstance(TerminalToken, terminal);
+			const commandHandler = this.container.get(CommandHandler);
+			return commandHandler.handle(args, terminal);
+		});
 	}
 
 	withIntegration<R>(context: IntegrationContext, callback: () => R): R {

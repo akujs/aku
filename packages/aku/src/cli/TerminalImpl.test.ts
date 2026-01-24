@@ -20,40 +20,44 @@ describe.skip(TerminalImpl, () => {
 		expect(output).toMatchSnapshot();
 	});
 
-	test("title renders bold", () => {
-		terminal.title("My Title");
+	test("h1 renders bold", () => {
+		terminal.h1("My Title");
 
 		expect(output).toMatchSnapshot();
 	});
 
-	test("subtitle renders underlined", () => {
-		terminal.subtitle("My Subtitle");
+	test("h2 renders underlined", () => {
+		terminal.h2("My Subtitle");
 
 		expect(output).toMatchSnapshot();
 	});
 
 	test("definitionList formats as aligned table", () => {
-		terminal.dl([
-			{ label: "short", definition: "First item" },
-			{ label: "much-longer", definition: "Second item" },
-			{ label: "mid", definition: "Third item" },
-		]);
+		terminal.dl({
+			items: [
+				{ label: "short", definition: "First item" },
+				{ label: "much-longer", definition: "Second item" },
+				{ label: "mid", definition: "Third item" },
+			],
+		});
 
 		expect(output).toMatchSnapshot();
 	});
 
 	test("definitionList with empty array outputs nothing", () => {
-		terminal.dl([]);
+		terminal.dl({ items: [] });
 
 		expect(output).toBe("");
 	});
 
 	test("combined output", () => {
-		terminal.title("Available commands");
-		terminal.dl([
-			{ label: "list", definition: "List all commands" },
-			{ label: "db:migrate", definition: "Run database migrations" },
-		]);
+		terminal.h1("Available commands");
+		terminal.dl({
+			items: [
+				{ label: "list", definition: "List all commands" },
+				{ label: "db:migrate", definition: "Run database migrations" },
+			],
+		});
 
 		expect(output).toMatchSnapshot();
 	});

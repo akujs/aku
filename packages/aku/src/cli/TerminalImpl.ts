@@ -1,69 +1,78 @@
-import { writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { BaseClass } from "../utils.ts";
-import { CliExitError } from "./cli-errors.ts";
-import type { Terminal, TerminalDefinitionListItem } from "./contracts/Terminal.ts";
+import type {
+	Terminal,
+	TerminalConfirmOptions,
+	TerminalDefinitionListItem,
+	TerminalDlOptions,
+	TerminalInputOptions,
+	TerminalOlOptions,
+	TerminalPromptResponse,
+	TerminalSelectOptions,
+	TerminalUlOptions,
+} from "./contracts/Terminal.ts";
 
 export class TerminalImpl extends BaseClass implements Terminal {
-	#exitCode = 0;
-
-	get exitCode(): number {
-		return this.#exitCode;
-	}
-
 	p(text: string): void {
 		process.stdout.write(text + "\n");
 	}
 
-	title(text: string): void {
+	br(): void {
+		throw new Error("Not implemented");
+	}
+
+	h1(text: string): void {
 		// Bold: \x1b[1m ... \x1b[0m
 		process.stdout.write(`\x1b[1m${text}\x1b[0m\n`);
 	}
 
-	subtitle(text: string): void {
+	h2(text: string): void {
 		// Underline: \x1b[4m ... \x1b[0m
 		process.stdout.write(`\x1b[4m${text}\x1b[0m\n`);
 	}
 
-	dl(items: TerminalDefinitionListItem[]): void {
+	dl(options: TerminalDlOptions): void {
+		const { items } = options;
 		if (items.length === 0) return;
 
-		const maxLabelWidth = Math.max(...items.map((item) => item.label.length));
+		const normalised = items.map(normaliseDefinitionListItem);
+		const maxLabelWidth = Math.max(...normalised.map((item) => item.label.length));
 		const indent = "  ";
 
-		for (const item of items) {
+		for (const item of normalised) {
 			const paddedLabel = item.label.padEnd(maxLabelWidth);
 			process.stdout.write(`${indent}${paddedLabel}  ${item.definition}\n`);
 		}
 	}
 
-	fatalError(error: unknown): void {
-		this.#exitCode = 1;
-
-		if (error instanceof CliExitError) {
-			process.stderr.write(`Error: ${error.message}\n`);
-		} else {
-			const dumpPath = this.#writeCrashDump(error);
-			process.stderr.write(`Unexpected error. Crash dump saved to: ${dumpPath}\n`);
-			process.stderr.write("Please report this issue at: https://github.com/akujs/aku/issues\n");
-		}
+	ul(_options: TerminalUlOptions): void {
+		throw new Error("Not implemented");
 	}
 
-	#writeCrashDump(error: unknown): string {
-		const dump = {
-			timestamp: new Date().toISOString(),
-			error:
-				error instanceof Error
-					? { name: error.name, message: error.message, stack: error.stack }
-					: String(error),
-			nodeVersion: process.version,
-			platform: process.platform,
-			cwd: process.cwd(),
-		};
+	ol(_options: TerminalOlOptions): void {
+		throw new Error("Not implemented");
+	}
 
-		const filename = `aku-crash-${Date.now()}.log`;
-		const filepath = join(process.cwd(), filename);
-		writeFileSync(filepath, JSON.stringify(dump, null, 2));
-		return filepath;
+	select<V>(_options: TerminalSelectOptions<V>): Promise<TerminalPromptResponse<V>> {
+		throw new Error("Not implemented");
+	}
+
+	input<T = string>(_options: TerminalInputOptions<T>): Promise<TerminalPromptResponse<T>> {
+		throw new Error("Not implemented");
+	}
+
+	confirm(_options: TerminalConfirmOptions): Promise<TerminalPromptResponse<boolean>> {
+		throw new Error("Not implemented");
 	}
 }
+
+const normaliseDefinitionListItem = (
+	item: TerminalDefinitionListItem,
+): { label: string; definition: string } => {
+	if (Array.isArray(item)) {
+		return { label: item[0], definition: item[1] };
+	}
+	if (typeof item === "string") {
+		return { label: item, definition: "" };
+	}
+	return item;
+};

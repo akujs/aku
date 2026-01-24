@@ -18,7 +18,9 @@ export class ListCommand extends BaseClass implements Command {
 	async execute(_args: string[], terminal: Terminal): Promise<void> {
 		const commands = this.#registry.getCommandDefinitions();
 
-		terminal.title("Available commands");
-		terminal.dl(commands.map((cmd) => ({ label: cmd.name, definition: cmd.description })));
+		terminal.h1("Available commands");
+		terminal.dl({
+			items: commands.map((cmd) => ({ label: cmd.name, definition: cmd.description })),
+		});
 	}
 }

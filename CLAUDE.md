@@ -90,6 +90,7 @@ TSDoc comments, markdown files and test names are all "documentation"
         - ❌ WRONG: `@param input - Input string` - stating the obvious
     - **@return tags in TSDoc**: Do not include these. The first sentence of the description should make the return value clear.
         - ❌ WRONG: `@return the input converted to lowercase` - instead, comment should start "Convert a string to lowercase"
+- Do not use // line comments for documentation of classes and exports, only for explaining unusual lines of code. If the linter complains about a doc comment on a non-public class, remove the comment entirely rather than converting to line comments.
 
 ## Linting
 

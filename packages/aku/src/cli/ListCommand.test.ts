@@ -29,9 +29,9 @@ describe(ListCommand, () => {
 		});
 		const terminal = new MemoryTerminal();
 
-		await app.handleCommand(["list"], terminal);
+		const exitCode = await app.handleCommand(["list"], terminal);
 
-		expect(terminal.exitCode).toBe(0);
+		expect(exitCode).toBe(0);
 		expect(terminal.output).toMatchSnapshot();
 	});
 
@@ -39,9 +39,9 @@ describe(ListCommand, () => {
 		const { app } = createTestApplication();
 		const terminal = new MemoryTerminal();
 
-		await app.handleCommand([], terminal);
+		const exitCode = await app.handleCommand([], terminal);
 
-		expect(terminal.exitCode).toBe(0);
+		expect(exitCode).toBe(0);
 		expect(terminal.output).toMatchSnapshot();
 	});
 
@@ -68,9 +68,9 @@ describe(ListCommand, () => {
 		});
 		const terminal = new MemoryTerminal();
 
-		await app.handleCommand(["list"], terminal);
+		const exitCode = await app.handleCommand(["list"], terminal);
 
-		// Verify order via snapshot - alpha should come before list before zebra
+		expect(exitCode).toBe(0);
 		expect(terminal.output).toMatchSnapshot();
 	});
 });

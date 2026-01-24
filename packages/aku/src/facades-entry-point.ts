@@ -1,6 +1,7 @@
 // GENERATED CODE DO NOT EDIT!
 // Run `bun codegen` to regenerate this file
 import { createFacade } from "./core/facade.ts";
+import { CliErrorHandler as CliErrorHandlerContract } from "./cli/contracts/CliErrorHandler.ts";
 import { Terminal as TerminalContract } from "./cli/contracts/Terminal.ts";
 import { Container as ContainerContract } from "./container/contracts/Container.ts";
 import { Application as ApplicationContract } from "./core/contracts/Application.ts";
@@ -13,6 +14,11 @@ import { KeepAlive as KeepAliveContract } from "./http/contracts/KeepAlive.ts";
 import { RequestLocals as RequestLocalsContract } from "./http/contracts/RequestLocals.ts";
 import { Storage as StorageContract } from "./storage/contracts/Storage.ts";
 import { ViewRenderer as ViewRendererContract } from "./view/contracts/ViewRenderer.ts";
+
+/**
+ * Facade for CliErrorHandler
+ */
+export const CliErrorHandler: CliErrorHandlerContract = createFacade(CliErrorHandlerContract);
 
 /**
  * Facade for Terminal

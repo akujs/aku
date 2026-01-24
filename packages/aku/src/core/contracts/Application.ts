@@ -38,13 +38,13 @@ export interface Application<RouteParams extends Record<string, string> = {}> {
 	handleRequest(request: Request, context: IntegrationContext): Promise<Response>;
 
 	/**
-	 * Handle a CLI command. The command will be looked up in the registry
-	 * and executed.
+	 * Handle a CLI command and return the exit code. The command will be
+	 * looked up in the registry and executed.
 	 *
-	 * @param args - Command-line arguments, e.g. ["db:test", "--connection=default"]
-	 * @param terminal - Terminal interface for I/O
+	 * @param args Command-line arguments, e.g. ["db:test", "--connection=default"]
+	 * @param terminal Terminal interface for I/O
 	 */
-	handleCommand(args: string[], terminal: Terminal): Promise<void>;
+	handleCommand(args: string[], terminal: Terminal): Promise<number>;
 
 	/**
 	 * Execute a callback in a context where request data is available.

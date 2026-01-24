@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, expectTypeOf, test } from "bun:test";
-import { CliExitError } from "../cli/cli-errors.ts";
 import { MemoryTerminal } from "../cli/MemoryTerminal.ts";
 import { Cookies, Headers } from "../facades-entry-point.ts";
 import type { ControllerContext } from "../http/Controller.ts";
@@ -130,7 +129,7 @@ describe("ApplicationImpl", () => {
 		app.url("users.show", { params: { incorrect: 123 }, query: { tab: "profile" } });
 	});
 
-	test("handles HTTP request through RouterV2", async () => {
+	test("handles HTTP request", async () => {
 		class TestController extends BaseController {
 			handle() {
 				const testCookie = Cookies.get("c");
@@ -564,138 +563,15 @@ describe("ApplicationImpl", () => {
 		});
 	});
 
-	describe("handleCommand", () => {
-		test("executes registered command", async () => {
-			const app = new ApplicationImpl();
-			const terminal = new MemoryTerminal();
-
-			class GreetCommand {
-				static readonly name = "greet";
-				static readonly description = "Greet someone";
-				async execute(args: string[], t: MemoryTerminal): Promise<void> {
-					t.p(`Hello, ${args[0] ?? "world"}!`);
-				}
-			}
-
-			// Register a test command via the commands getter
-			app.registerServiceProvider(
-				class extends ServiceProvider {
-					override get commands() {
-						return [GreetCommand];
-					}
-				},
-			);
-			app.bootstrap();
-
-			await app.handleCommand(["greet", "Alice"], terminal);
-
-			expect(terminal.exitCode).toBe(0);
-			expect(terminal.output).toContainEqual({ paragraph: "Hello, Alice!" });
-		});
-
-		test("calls fatalError for unknown command", async () => {
+	describe(ApplicationImpl.prototype.handleCommand, () => {
+		test("delegates to CommandHandler", async () => {
 			const app = new ApplicationImpl();
 			const terminal = new MemoryTerminal();
 			app.bootstrap();
 
-			await app.handleCommand(["nonexistent"], terminal);
-
-			expect(terminal.exitCode).toBe(1);
-			const fatalOutput = terminal.output.find(
-				(o): o is { fatalError: { error: unknown; crashDump: boolean } } => "fatalError" in o,
-			);
-			expect(fatalOutput).toBeDefined();
-			expect((fatalOutput!.fatalError.error as Error).message).toContain(
-				'Command "nonexistent" not found',
-			);
-		});
-
-		test("defaults to 'list' command when no command specified", async () => {
-			const app = new ApplicationImpl();
-			const terminal = new MemoryTerminal();
-			app.bootstrap();
-
-			// ListCommand is provided by CoreServiceProvider, so the default should work
-			await app.handleCommand([], terminal);
-
-			expect(terminal.exitCode).toBe(0);
-			expect(terminal.output).toContainEqual({ title: "Available commands" });
-		});
-
-		test("calls fatalError with CliExitError for expected errors", async () => {
-			const app = new ApplicationImpl();
-			const terminal = new MemoryTerminal();
-
-			class FailCommand {
-				static readonly name = "fail";
-				static readonly description = "A command that fails";
-				async execute(): Promise<void> {
-					throw new CliExitError("Something went wrong");
-				}
-			}
-
-			app.registerServiceProvider(
-				class extends ServiceProvider {
-					override get commands() {
-						return [FailCommand];
-					}
-				},
-			);
-			app.bootstrap();
-
-			await app.handleCommand(["fail"], terminal);
-
-			expect(terminal.exitCode).toBe(1);
-			const fatalOutput = terminal.output.find(
-				(o): o is { fatalError: { error: unknown; crashDump: boolean } } => "fatalError" in o,
-			);
-			expect(fatalOutput).toBeDefined();
-			expect((fatalOutput!.fatalError.error as Error).message).toBe("Something went wrong");
-			expect(fatalOutput!.fatalError.crashDump).toBe(false);
-		});
-
-		test("calls fatalError with crash dump for unexpected errors", async () => {
-			const app = new ApplicationImpl();
-			const terminal = new MemoryTerminal();
-
-			class CrashCommand {
-				static readonly name = "crash";
-				static readonly description = "A command that crashes";
-				async execute(): Promise<void> {
-					throw new Error("Unexpected boom");
-				}
-			}
-
-			app.registerServiceProvider(
-				class extends ServiceProvider {
-					override get commands() {
-						return [CrashCommand];
-					}
-				},
-			);
-			app.bootstrap();
-
-			await app.handleCommand(["crash"], terminal);
-
-			expect(terminal.exitCode).toBe(1);
-			const fatalOutput = terminal.output.find(
-				(o): o is { fatalError: { error: unknown; crashDump: boolean } } => "fatalError" in o,
-			);
-			expect(fatalOutput).toBeDefined();
-			expect(fatalOutput!.fatalError.crashDump).toBe(true);
-			expect(terminal.crashDump).not.toBeNull();
-		});
-
-		test("requires app to be bootstrapped", async () => {
-			const app = new ApplicationImpl();
-			const terminal = new MemoryTerminal();
-
-			await app.handleCommand(["test"], terminal);
-
-			expect(terminal.exitCode).toBe(1);
-			expect(terminal.crashDump).not.toBeNull();
-			const crashError = (terminal.crashDump as { error: Error }).error;
-			expect(crashError.message).toContain("Application must be bootstrapped");
+			// Default "list" command should succeed
+			const exitCode = await app.handleCommand([], terminal);
+			expect(exitCode).toBe(0);
 		});
 	});
 });

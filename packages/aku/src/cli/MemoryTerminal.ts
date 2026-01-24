@@ -1,47 +1,64 @@
 import { BaseClass } from "../utils.ts";
-import { CliExitError } from "./cli-errors.ts";
-import type { Terminal, TerminalDefinitionListItem } from "./contracts/Terminal.ts";
+import type {
+	Terminal,
+	TerminalConfirmOptions,
+	TerminalDlOptions,
+	TerminalInputOptions,
+	TerminalOlOptions,
+	TerminalPromptResponse,
+	TerminalSelectOptions,
+	TerminalUlOptions,
+} from "./contracts/Terminal.ts";
 
 export type TerminalOutput =
 	| { paragraph: string }
-	| { title: string }
-	| { subtitle: string }
-	| { definitionList: TerminalDefinitionListItem[] }
-	| { fatalError: { error: unknown; crashDump: boolean } };
+	| { h1: string }
+	| { h2: string }
+	| { br: true }
+	| { dl: TerminalDlOptions }
+	| { ul: TerminalUlOptions }
+	| { ol: TerminalOlOptions };
 
 export class MemoryTerminal extends BaseClass implements Terminal {
-	#exitCode = 0;
 	output: TerminalOutput[] = [];
-	crashDump: object | null = null;
-
-	get exitCode(): number {
-		return this.#exitCode;
-	}
 
 	p(text: string): void {
 		this.output.push({ paragraph: text });
 	}
 
-	title(text: string): void {
-		this.output.push({ title: text });
+	br(): void {
+		this.output.push({ br: true });
 	}
 
-	subtitle(text: string): void {
-		this.output.push({ subtitle: text });
+	h1(text: string): void {
+		this.output.push({ h1: text });
 	}
 
-	dl(items: TerminalDefinitionListItem[]): void {
-		this.output.push({ definitionList: items });
+	h2(text: string): void {
+		this.output.push({ h2: text });
 	}
 
-	fatalError(error: unknown): void {
-		this.#exitCode = 1;
+	dl(options: TerminalDlOptions): void {
+		this.output.push({ dl: options });
+	}
 
-		if (error instanceof CliExitError) {
-			this.output.push({ fatalError: { error, crashDump: false } });
-		} else {
-			this.crashDump = { error };
-			this.output.push({ fatalError: { error, crashDump: true } });
-		}
+	ul(options: TerminalUlOptions): void {
+		this.output.push({ ul: options });
+	}
+
+	ol(options: TerminalOlOptions): void {
+		this.output.push({ ol: options });
+	}
+
+	select<V>(_options: TerminalSelectOptions<V>): Promise<TerminalPromptResponse<V>> {
+		throw new Error("Not implemented");
+	}
+
+	input<T = string>(_options: TerminalInputOptions<T>): Promise<TerminalPromptResponse<T>> {
+		throw new Error("Not implemented");
+	}
+
+	confirm(_options: TerminalConfirmOptions): Promise<TerminalPromptResponse<boolean>> {
+		throw new Error("Not implemented");
 	}
 }

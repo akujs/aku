@@ -13,6 +13,8 @@ export async function runCli(): Promise<never> {
 	const cwd = process.cwd();
 	const terminal = new TerminalImpl();
 
+	let exitCode: number;
+
 	try {
 		const { appPath, remainingArgs } = extractAppOption(args);
 		const entryFile = findAppFile(cwd, appPath);
@@ -27,12 +29,16 @@ export async function runCli(): Promise<never> {
 			throw new CliExitError('Exported "app" is not an Application instance');
 		}
 
-		await module.app.handleCommand(remainingArgs, terminal);
+		exitCode = await module.app.handleCommand(remainingArgs, terminal);
 	} catch (error) {
-		terminal.fatalError(error);
+		// Errors here are configuration errors (app not found, not exported, etc.)
+		// These don't need crash dumps - just a simple error message
+		const message = error instanceof CliExitError ? error.message : String(error);
+		process.stderr.write(`Error: ${message}\n`);
+		exitCode = 1;
 	}
 
-	process.exit(terminal.exitCode);
+	process.exit(exitCode);
 }
 
 function findAppFile(cwd: string, appPath?: string): string {
