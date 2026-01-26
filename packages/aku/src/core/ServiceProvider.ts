@@ -1,4 +1,4 @@
-import type { CommandDefinition } from "../cli/CommandRegistry.ts";
+import type { CommandDefinition } from "../cli/cli-types.ts";
 import type { Container } from "../container/contracts/Container.ts";
 import { BaseClass } from "../utils.ts";
 import type { Application } from "./contracts/Application.ts";

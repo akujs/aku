@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { ServiceProvider } from "../core/ServiceProvider.ts";
 import { createTestApplication } from "../test-utils/http-test-utils.bun.ts";
 import { ListCommand } from "./ListCommand.ts";
-import { MemoryTerminal } from "./MemoryTerminal.ts";
+import { MemoryCliApi } from "./MemoryCliApi.ts";
 
 class FooCommand {
 	static readonly name = "foo";
@@ -27,22 +27,22 @@ describe(ListCommand, () => {
 		const { app } = createTestApplication({
 			providers: [TestCommandProvider],
 		});
-		const terminal = new MemoryTerminal();
+		const cli = new MemoryCliApi();
 
-		const exitCode = await app.handleCommand(["list"], terminal);
+		const exitCode = await app.handleCommand(["list"], cli);
 
 		expect(exitCode).toBe(0);
-		expect(terminal.output).toMatchSnapshot();
+		expect(cli.output).toMatchSnapshot();
 	});
 
 	test("is the default command when no args provided", async () => {
 		const { app } = createTestApplication();
-		const terminal = new MemoryTerminal();
+		const cli = new MemoryCliApi();
 
-		const exitCode = await app.handleCommand([], terminal);
+		const exitCode = await app.handleCommand([], cli);
 
 		expect(exitCode).toBe(0);
-		expect(terminal.output).toMatchSnapshot();
+		expect(cli.output).toMatchSnapshot();
 	});
 
 	test("commands are listed in alphabetical order", async () => {
@@ -66,11 +66,11 @@ describe(ListCommand, () => {
 		const { app } = createTestApplication({
 			providers: [OrderTestProvider],
 		});
-		const terminal = new MemoryTerminal();
+		const cli = new MemoryCliApi();
 
-		const exitCode = await app.handleCommand(["list"], terminal);
+		const exitCode = await app.handleCommand(["list"], cli);
 
 		expect(exitCode).toBe(0);
-		expect(terminal.output).toMatchSnapshot();
+		expect(cli.output).toMatchSnapshot();
 	});
 });

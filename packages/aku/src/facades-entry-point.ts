@@ -1,8 +1,8 @@
 // GENERATED CODE DO NOT EDIT!
 // Run `bun codegen` to regenerate this file
 import { createFacade } from "./core/facade.ts";
+import { CliApi as CliApiContract } from "./cli/contracts/CliApi.ts";
 import { CliErrorHandler as CliErrorHandlerContract } from "./cli/contracts/CliErrorHandler.ts";
-import { Terminal as TerminalContract } from "./cli/contracts/Terminal.ts";
 import { Container as ContainerContract } from "./container/contracts/Container.ts";
 import { Application as ApplicationContract } from "./core/contracts/Application.ts";
 import { Configuration as ConfigurationContract } from "./core/contracts/Configuration.ts";
@@ -16,14 +16,14 @@ import { Storage as StorageContract } from "./storage/contracts/Storage.ts";
 import { ViewRenderer as ViewRendererContract } from "./view/contracts/ViewRenderer.ts";
 
 /**
+ * Facade for CliApi
+ */
+export const CliApi: CliApiContract = createFacade(CliApiContract);
+
+/**
  * Facade for CliErrorHandler
  */
 export const CliErrorHandler: CliErrorHandlerContract = createFacade(CliErrorHandlerContract);
-
-/**
- * Facade for Terminal
- */
-export const Terminal: TerminalContract = createFacade(TerminalContract);
 
 /**
  * Facade for Container

@@ -1,19 +1,7 @@
 import { Container } from "../container/contracts/Container.ts";
 import { inject } from "../container/inject.ts";
 import { BaseClass } from "../utils.ts";
-import type { Terminal } from "./contracts/Terminal.ts";
-
-export interface Command {
-	execute(args: string[], terminal: Terminal): Promise<void>;
-}
-
-// Represents a command class. Commands are registered as class references,
-// allowing listing of available commands without instantiating them.
-export interface CommandDefinition<T extends Command = Command> {
-	readonly name: string;
-	readonly description: string;
-	new (): T;
-}
+import type { Command, CommandDefinition } from "./cli-types.ts";
 
 export class CommandRegistry extends BaseClass {
 	#commands = new Map<string, CommandDefinition>();

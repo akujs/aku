@@ -2,11 +2,11 @@ import type { TypeToken } from "../../container/container-key.ts";
 import { createTypeToken } from "../../container/container-key.ts";
 
 /**
- * TUI
+ * CLI API - text user interface for command-line applications
  */
-export interface Terminal {
+export interface CliApi {
 	/**
-	 * Write a paragraph of text to the terminal
+	 * Write a paragraph of text
 	 *
 	 * TODO: wrap with wrap-ansi, add wrap-ansi dev dependency using compatible version to @enquirer/prompts dependency
 	 * TODO: add an empty line below only
@@ -14,12 +14,12 @@ export interface Terminal {
 	p(text: string): void;
 
 	/**
-	 * Write an empty line to the terminal
+	 * Write an empty line
 	 */
 	br(): void;
 
 	/**
-	 * Write a big title to the terminal
+	 * Write a big title
 	 *
 	 * TODO: use the node styleText utility to make this bold
 	 * TODO: add a line break above and below
@@ -27,7 +27,7 @@ export interface Terminal {
 	h1(text: string): void;
 
 	/**
-	 * Write a subtitle to the terminal
+	 * Write a subtitle
 	 *
 	 * TODO use styleText to make this underlined
 	 * TODO: add an empty line below only
@@ -35,7 +35,7 @@ export interface Terminal {
 	h2(text: string): void;
 
 	/**
-	 * Write a definition list to the terminal. Like HTML's <dl> element, it
+	 * Write a definition list. Like HTML's <dl> element, it
 	 * renders a list of items with labels and definitions.
 	 *
 	 * Items can be objects with `label` and `definition` properties, or arrays
@@ -43,7 +43,7 @@ export interface Terminal {
 	 *
 	 * TODO: render descriptions as a 2 column table as in the example below
 	 * TODO: wrap descriptions using wrap-ansi and indent as per example below
-	 * TODO: don't allow descriptions to go above half the terminal width, truncate with ...
+	 * TODO: don't allow descriptions to go above half the output width, truncate with ...
 	 * TODO: use styleText to make the descriptions blue
 	 * TODO: create a twoColumnTable utility to handle this, takes an option of the color for the left column, wraps the right column with wrap-ansi, and determines the width of the left column using the stripVTControlCharacters util from node
 	 *
@@ -52,7 +52,7 @@ export interface Terminal {
 	 *
 	 * @example
 	 * // Render API documentation
-	 * terminal.dl({
+	 * cli.dl({
 	 *   items: [
 	 *     ["makeBreakfast()", "Starts frying eggs and bacon"],
 	 *     ["makeLunch()", "Toasts rye bread and tops with sliced avocado, very long descriptions will wrap, although this is not a wrap it's an open sandwich"],
@@ -64,10 +64,10 @@ export interface Terminal {
 	 * //                  long descriptions will wrap, although this is not a
 	 * //                  wrap it's an open sandwich
 	 */
-	dl(options: TerminalDlOptions): void;
+	dl(options: CliDlOptions): void;
 
 	/**
-	 * Write a list to the terminal. Items can be strings or objects with a
+	 * Write an unordered list. Items can be strings or objects with a
 	 * `label` property
 	 *
 	 * TODO: use styleText to make the bullets blue
@@ -77,15 +77,15 @@ export interface Terminal {
 	 * @param options.title Optional title to display above the list
 	 *
 	 * @example
-	 * terminal.ul({ items: ["Apples", "Pears"] });
+	 * cli.ul({ items: ["Apples", "Pears"] });
 	 * // Renders as:
 	 * // - Apples
 	 * // - Pears
 	 */
-	ul(options: TerminalUlOptions): void;
+	ul(options: CliUlOptions): void;
 
 	/**
-	 * Write an ordered list to the terminal. Items can be strings or objects
+	 * Write an ordered list. Items can be strings or objects
 	 * with a `label` property and optional `listNumber` property
 	 *
 	 * TODO: use styleText to make the numbers blue
@@ -95,13 +95,13 @@ export interface Terminal {
 	 * @param options.title Optional title to display above the list
 	 *
 	 * @example
-	 * terminal.ol({ items: ["Apples", "Pears"] });
+	 * cli.ol({ items: ["Apples", "Pears"] });
 	 * // Renders as:
 	 * // 1. Apples
 	 * // 2. Pears
 	 *
 	 * @example
-	 * terminal.ol({
+	 * cli.ol({
 	 *   title: "There are two hard problems in distributed computing:",
 	 *   items: [
 	 *     {listNumber: 2, label: "Exactly-once delivery"},
@@ -115,7 +115,7 @@ export interface Terminal {
 	 * // 1. Deterministic ordering
 	 * // 2. Exactly-once delivery
 	 */
-	ol(options: TerminalOlOptions): void;
+	ol(options: CliOlOptions): void;
 
 	/**
 	 * Choose one option from a list. Renders an interactive UI to display
@@ -129,7 +129,7 @@ export interface Terminal {
 	 * @param options.initialValue Initially selected option (compared using `===`)
 	 *
 	 * @example
-	 * terminal.select({
+	 * cli.select({
 	 *   prompt: "What do you want to do?",
 	 *   options: [
 	 *     {label: "Make a cup of tea", value: "make-tea"},
@@ -137,7 +137,7 @@ export interface Terminal {
 	 *   ],
 	 * });
 	 */
-	select<V>(options: TerminalSelectOptions<V>): Promise<TerminalPromptResponse<V>>;
+	select<V>(options: CliSelectOptions<V>): Promise<CliPromptResponse<V>>;
 
 	/**
 	 * Prompt for user input
@@ -150,7 +150,7 @@ export interface Terminal {
 	 * @param options.sensitive Hide input for sensitive data like passwords or API keys
 	 * @param options.parse Parse and validate the input, throw an Error to display a validation message and retry
 	 */
-	input<T = string>(options: TerminalInputOptions<T>): Promise<TerminalPromptResponse<T>>;
+	input<T = string>(options: CliInputOptions<T>): Promise<CliPromptResponse<T>>;
 
 	/**
 	 * Prompt for yes/no confirmation
@@ -160,10 +160,10 @@ export interface Terminal {
 	 * @param options.prompt Text to display, e.g. "Are you sure you want to delete this file?"
 	 * @param options.defaultValue Value returned if user presses enter without typing y or n
 	 */
-	confirm(options: TerminalConfirmOptions): Promise<TerminalPromptResponse<boolean>>;
+	confirm(options: CliConfirmOptions): Promise<CliPromptResponse<boolean>>;
 }
 
-export type TerminalDefinitionListItem =
+export type CliDefinitionListItem =
 	| {
 			label: string;
 			definition: string;
@@ -171,24 +171,24 @@ export type TerminalDefinitionListItem =
 	| [string, string]
 	| string[];
 
-export type TerminalUnorderedListItem =
+export type CliUnorderedListItem =
 	| {
 			label: string;
 	  }
 	| string;
 
-export type TerminalOrderedListItem =
+export type CliOrderedListItem =
 	| {
 			label: string;
 			listNumber?: number;
 	  }
 	| string;
 
-export type TerminalDlOptions = {
+export type CliDlOptions = {
 	/**
 	 * The items to display
 	 */
-	items: TerminalDefinitionListItem[];
+	items: CliDefinitionListItem[];
 
 	/**
 	 * Optional title to display above the list
@@ -196,11 +196,11 @@ export type TerminalDlOptions = {
 	title?: string | undefined;
 };
 
-export type TerminalUlOptions = {
+export type CliUlOptions = {
 	/**
 	 * The items to display
 	 */
-	items: TerminalUnorderedListItem[];
+	items: CliUnorderedListItem[];
 
 	/**
 	 * Optional title to display above the list
@@ -208,11 +208,11 @@ export type TerminalUlOptions = {
 	title?: string | undefined;
 };
 
-export type TerminalOlOptions = {
+export type CliOlOptions = {
 	/**
 	 * The items to display
 	 */
-	items: TerminalOrderedListItem[];
+	items: CliOrderedListItem[];
 
 	/**
 	 * Optional title to display above the list
@@ -220,7 +220,7 @@ export type TerminalOlOptions = {
 	title?: string | undefined;
 };
 
-export type TerminalPromptResponse<V> =
+export type CliPromptResponse<V> =
 	| {
 			success: true;
 			value: V;
@@ -229,7 +229,7 @@ export type TerminalPromptResponse<V> =
 			success: false;
 	  };
 
-export type TerminalSelectChoice<V> = {
+export type CliSelectChoice<V> = {
 	/**
 	 * Text to display for this item in the list of choices
 	 */
@@ -251,7 +251,7 @@ export type TerminalSelectChoice<V> = {
 	selectedLabel?: string | undefined;
 };
 
-export type TerminalSelectOptions<V> = {
+export type CliSelectOptions<V> = {
 	/**
 	 * Question to display above the choice list, e.g. "What do you want to do?"
 	 */
@@ -260,7 +260,7 @@ export type TerminalSelectOptions<V> = {
 	/**
 	 * The options to select from
 	 */
-	options: ReadonlyArray<TerminalSelectChoice<V>>;
+	options: ReadonlyArray<CliSelectChoice<V>>;
 
 	/**
 	 * Initially selected option. This must be exactly equal (compared using
@@ -269,7 +269,7 @@ export type TerminalSelectOptions<V> = {
 	initialValue?: V | undefined;
 };
 
-export type TerminalInputOptions<T> = {
+export type CliInputOptions<T> = {
 	/**
 	 * Text to display above the input
 	 */
@@ -298,7 +298,7 @@ export type TerminalInputOptions<T> = {
 	parse?: ((value: string) => T) | undefined;
 };
 
-export type TerminalConfirmOptions = {
+export type CliConfirmOptions = {
 	/**
 	 * Text to display, e.g. "Are you sure you want to delete this file?"
 	 */
@@ -310,4 +310,4 @@ export type TerminalConfirmOptions = {
 	defaultValue: boolean;
 };
 
-export const Terminal: TypeToken<Terminal> = createTypeToken("Terminal");
+export const CliApi: TypeToken<CliApi> = createTypeToken("CliApi");

@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, expectTypeOf, test } from "bun:test";
-import { MemoryTerminal } from "../cli/MemoryTerminal.ts";
 import { Cookies, Headers } from "../facades-entry-point.ts";
 import type { ControllerContext } from "../http/Controller.ts";
 import { BaseController } from "../http/Controller.ts";
@@ -560,18 +559,6 @@ describe("ApplicationImpl", () => {
 			expect(() => app.container.get(Dispatcher)).not.toThrow();
 			expect(() => app.events).not.toThrow();
 			expect(() => app.storage).not.toThrow();
-		});
-	});
-
-	describe(ApplicationImpl.prototype.handleCommand, () => {
-		test("delegates to CommandHandler", async () => {
-			const app = new ApplicationImpl();
-			const terminal = new MemoryTerminal();
-			app.bootstrap();
-
-			// Default "list" command should succeed
-			const exitCode = await app.handleCommand([], terminal);
-			expect(exitCode).toBe(0);
 		});
 	});
 });

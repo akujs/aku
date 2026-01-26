@@ -1,7 +1,7 @@
 import { BaseClass } from "../utils.ts";
 import { CliExitError } from "./cli-errors.ts";
+import type { CliApi } from "./contracts/CliApi.ts";
 import type { CliErrorHandler } from "./contracts/CliErrorHandler.ts";
-import type { Terminal } from "./contracts/Terminal.ts";
 
 export type CapturedError = {
 	error: unknown;
@@ -11,7 +11,7 @@ export type CapturedError = {
 export class MemoryCliErrorHandler extends BaseClass implements CliErrorHandler {
 	errors: CapturedError[] = [];
 
-	handleError(error: unknown, _terminal: Terminal): number {
+	handleError(error: unknown, _cli: CliApi): number {
 		this.errors.push({
 			error,
 			isExpected: error instanceof CliExitError,

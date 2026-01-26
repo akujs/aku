@@ -1,6 +1,6 @@
 import type { TypeToken } from "../../container/container-key.ts";
 import { createTypeToken } from "../../container/container-key.ts";
-import type { Terminal } from "./Terminal.ts";
+import type { CliApi } from "./CliApi.ts";
 
 /**
  * Handle errors that occur during CLI command execution.
@@ -13,9 +13,9 @@ export interface CliErrorHandler {
 	/**
 	 * Handle an error and return the exit code that should be used.
 	 *
-	 * @param terminal The terminal instance for displaying error messages
+	 * @param cli - The CLI API instance for displaying error messages
 	 */
-	handleError(error: unknown, terminal: Terminal): number;
+	handleError(error: unknown, cli: CliApi): number;
 }
 
 export const CliErrorHandler: TypeToken<CliErrorHandler> = createTypeToken("CliErrorHandler");

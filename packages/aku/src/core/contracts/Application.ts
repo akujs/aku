@@ -1,4 +1,4 @@
-import type { Terminal } from "../../cli/contracts/Terminal.ts";
+import type { CliApi } from "../../cli/contracts/CliApi.ts";
 import type { TypeToken } from "../../container/container-key.ts";
 import { createTypeToken } from "../../container/container-key.ts";
 import type { Container } from "../../container/contracts/Container.ts";
@@ -42,9 +42,9 @@ export interface Application<RouteParams extends Record<string, string> = {}> {
 	 * looked up in the registry and executed.
 	 *
 	 * @param args Command-line arguments, e.g. ["db:test", "--connection=default"]
-	 * @param terminal Terminal interface for I/O
+	 * @param cli - CLI API for user interaction
 	 */
-	handleCommand(args: string[], terminal: Terminal): Promise<number>;
+	handleCommand(args: string[], cli: CliApi): Promise<number>;
 
 	/**
 	 * Execute a callback in a context where request data is available.

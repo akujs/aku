@@ -3,19 +3,19 @@ import { inject } from "../container/inject.ts";
 import { ServiceProvider } from "../core/ServiceProvider.ts";
 import { createTestApplication } from "../test-utils/http-test-utils.bun.ts";
 import { CliExitError } from "./cli-errors.ts";
+import type { CliApi } from "./contracts/CliApi.ts";
+import { CliApi as CliApiToken } from "./contracts/CliApi.ts";
 import { CliErrorHandler } from "./contracts/CliErrorHandler.ts";
-import type { Terminal } from "./contracts/Terminal.ts";
-import { Terminal as TerminalToken } from "./contracts/Terminal.ts";
+import { MemoryCliApi } from "./MemoryCliApi.ts";
 import { MemoryCliErrorHandler } from "./MemoryCliErrorHandler.ts";
-import { MemoryTerminal } from "./MemoryTerminal.ts";
 
 describe("CLI command handling", () => {
 	test("executes registered command with args", async () => {
 		class GreetCommand {
 			static readonly name = "greet";
 			static readonly description = "Greet someone";
-			async execute(args: string[], terminal: Terminal): Promise<void> {
-				terminal.p(`Hello, ${args[0] ?? "world"}!`);
+			async execute({ args, cli }: { args: string[]; cli: CliApi }): Promise<void> {
+				cli.p(`Hello, ${args[0] ?? "world"}!`);
 			}
 		}
 
@@ -26,21 +26,21 @@ describe("CLI command handling", () => {
 		}
 
 		const { app } = createTestApplication({ providers: [TestProvider] });
-		const terminal = new MemoryTerminal();
+		const cli = new MemoryCliApi();
 
-		const exitCode = await app.handleCommand(["greet", "Alice"], terminal);
+		const exitCode = await app.handleCommand(["greet", "Alice"], cli);
 
 		expect(exitCode).toBe(0);
-		expect(terminal.output).toContainEqual({ paragraph: "Hello, Alice!" });
+		expect(cli.output).toContainEqual({ paragraph: "Hello, Alice!" });
 	});
 
 	test("exit code 1 for unknown command", async () => {
 		const errorHandler = new MemoryCliErrorHandler();
 		const { app, container } = createTestApplication();
 		container.singletonInstance(CliErrorHandler, errorHandler);
-		const terminal = new MemoryTerminal();
+		const cli = new MemoryCliApi();
 
-		const exitCode = await app.handleCommand(["nonexistent"], terminal);
+		const exitCode = await app.handleCommand(["nonexistent"], cli);
 
 		expect(exitCode).toBe(1);
 		expect(errorHandler.lastError).toBeDefined();
@@ -51,12 +51,12 @@ describe("CLI command handling", () => {
 
 	test("defaults to 'list' command when no command specified", async () => {
 		const { app } = createTestApplication();
-		const terminal = new MemoryTerminal();
+		const cli = new MemoryCliApi();
 
-		const exitCode = await app.handleCommand([], terminal);
+		const exitCode = await app.handleCommand([], cli);
 
 		expect(exitCode).toBe(0);
-		expect(terminal.output).toContainEqual({ h1: "Available commands" });
+		expect(cli.output).toContainEqual({ h1: "Available commands" });
 	});
 
 	test("handles CliExitError (expected errors)", async () => {
@@ -77,9 +77,9 @@ describe("CLI command handling", () => {
 		const errorHandler = new MemoryCliErrorHandler();
 		const { app, container } = createTestApplication({ providers: [TestProvider] });
 		container.singletonInstance(CliErrorHandler, errorHandler);
-		const terminal = new MemoryTerminal();
+		const cli = new MemoryCliApi();
 
-		const exitCode = await app.handleCommand(["fail"], terminal);
+		const exitCode = await app.handleCommand(["fail"], cli);
 
 		expect(exitCode).toBe(1);
 		expect(errorHandler.lastError).toBeDefined();
@@ -105,9 +105,9 @@ describe("CLI command handling", () => {
 		const errorHandler = new MemoryCliErrorHandler();
 		const { app, container } = createTestApplication({ providers: [TestProvider] });
 		container.singletonInstance(CliErrorHandler, errorHandler);
-		const terminal = new MemoryTerminal();
+		const cli = new MemoryCliApi();
 
-		const exitCode = await app.handleCommand(["crash"], terminal);
+		const exitCode = await app.handleCommand(["crash"], cli);
 
 		expect(exitCode).toBe(1);
 		expect(errorHandler.lastError).toBeDefined();
@@ -115,22 +115,22 @@ describe("CLI command handling", () => {
 		expect((errorHandler.lastError!.error as Error).message).toBe("Unexpected boom");
 	});
 
-	test("Terminal is available via DI during command execution", async () => {
-		let injectedTerminal: Terminal | null = null;
+	test("CliApi is available via DI during command execution", async () => {
+		let injectedCli: CliApi | null = null;
 
 		class InjectCommand {
 			static readonly name = "inject-test";
-			static readonly description = "Test terminal injection";
+			static readonly description = "Test CLI injection";
 
-			#terminal: Terminal;
+			#cli: CliApi;
 
-			constructor(terminal: Terminal = inject(TerminalToken)) {
-				this.#terminal = terminal;
+			constructor(cli: CliApi = inject(CliApiToken)) {
+				this.#cli = cli;
 			}
 
-			async execute(_args: string[], terminalArg: Terminal): Promise<void> {
-				injectedTerminal = this.#terminal;
-				terminalArg.p("done");
+			async execute({ cli }: { args: string[]; cli: CliApi }): Promise<void> {
+				injectedCli = this.#cli;
+				cli.p("done");
 			}
 		}
 
@@ -141,22 +141,22 @@ describe("CLI command handling", () => {
 		}
 
 		const { app } = createTestApplication({ providers: [TestProvider] });
-		const terminal = new MemoryTerminal();
+		const cli = new MemoryCliApi();
 
-		const exitCode = await app.handleCommand(["inject-test"], terminal);
+		const exitCode = await app.handleCommand(["inject-test"], cli);
 
 		expect(exitCode).toBe(0);
-		expect(injectedTerminal === terminal).toBe(true);
+		expect(injectedCli === cli).toBe(true);
 	});
 
 	test("throws when app is not bootstrapped", async () => {
-		const terminal = new MemoryTerminal();
+		const cli = new MemoryCliApi();
 
 		// Create a new app that hasn't been bootstrapped
 		const { ApplicationImpl } = await import("../core/ApplicationImpl.ts");
 		const unbootedApp = new ApplicationImpl();
 
-		expect(() => unbootedApp.handleCommand(["test"], terminal)).toThrow(
+		expect(() => unbootedApp.handleCommand(["test"], cli)).toThrow(
 			"Application must be bootstrapped",
 		);
 	});

@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, spyOn, test } from "bun:test";
-import { TerminalImpl } from "./TerminalImpl.ts";
+import { CliApiImpl } from "./CliApiImpl.ts";
 
-describe.skip(TerminalImpl, () => {
+describe.skip(CliApiImpl, () => {
 	let output: string;
-	let terminal: TerminalImpl;
+	let cli: CliApiImpl;
 
 	beforeEach(() => {
 		output = "";
@@ -11,29 +11,29 @@ describe.skip(TerminalImpl, () => {
 			output += str;
 			return true;
 		});
-		terminal = new TerminalImpl();
+		cli = new CliApiImpl();
 	});
 
 	test("paragraph", () => {
-		terminal.p("Hello world");
+		cli.p("Hello world");
 
 		expect(output).toMatchSnapshot();
 	});
 
 	test("h1 renders bold", () => {
-		terminal.h1("My Title");
+		cli.h1("My Title");
 
 		expect(output).toMatchSnapshot();
 	});
 
 	test("h2 renders underlined", () => {
-		terminal.h2("My Subtitle");
+		cli.h2("My Subtitle");
 
 		expect(output).toMatchSnapshot();
 	});
 
 	test("definitionList formats as aligned table", () => {
-		terminal.dl({
+		cli.dl({
 			items: [
 				{ label: "short", definition: "First item" },
 				{ label: "much-longer", definition: "Second item" },
@@ -45,14 +45,14 @@ describe.skip(TerminalImpl, () => {
 	});
 
 	test("definitionList with empty array outputs nothing", () => {
-		terminal.dl({ items: [] });
+		cli.dl({ items: [] });
 
 		expect(output).toBe("");
 	});
 
 	test("combined output", () => {
-		terminal.h1("Available commands");
-		terminal.dl({
+		cli.h1("Available commands");
+		cli.dl({
 			items: [
 				{ label: "list", definition: "List all commands" },
 				{ label: "db:migrate", definition: "Run database migrations" },

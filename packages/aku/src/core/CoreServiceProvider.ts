@@ -1,5 +1,6 @@
 import { CommandHandler } from "../cli/CommandHandler.ts";
-import { type CommandDefinition, CommandRegistry } from "../cli/CommandRegistry.ts";
+import { CommandRegistry } from "../cli/CommandRegistry.ts";
+import type { CommandDefinition } from "../cli/cli-types.ts";
 import { CliErrorHandler } from "../cli/contracts/CliErrorHandler.ts";
 import { DefaultCliErrorHandler } from "../cli/DefaultCliErrorHandler.ts";
 import { ListCommand } from "../cli/ListCommand.ts";

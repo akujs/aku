@@ -1,7 +1,7 @@
 import { CommandHandler } from "../cli/CommandHandler.ts";
 import { CommandRegistry } from "../cli/CommandRegistry.ts";
-import type { Terminal } from "../cli/contracts/Terminal.ts";
-import { Terminal as TerminalToken } from "../cli/contracts/Terminal.ts";
+import type { CliApi } from "../cli/contracts/CliApi.ts";
+import { CliApi as CliApiToken } from "../cli/contracts/CliApi.ts";
 import { ContainerImpl } from "../container/ContainerImpl.ts";
 import type { Container } from "../container/contracts/Container.ts";
 import { Database } from "../database/contracts/Database.ts";
@@ -122,13 +122,13 @@ export class ApplicationImpl<RouteParams extends Record<string, string> = {}>
 		});
 	}
 
-	async handleCommand(args: string[], terminal: Terminal): Promise<number> {
+	async handleCommand(args: string[], cli: CliApi): Promise<number> {
 		this.#requireBooted(this.handleCommand.name);
 
 		return this.container.withScope(async () => {
-			this.container.scopedInstance(TerminalToken, terminal);
+			this.container.scopedInstance(CliApiToken, cli);
 			const commandHandler = this.container.get(CommandHandler);
-			return commandHandler.handle(args, terminal);
+			return commandHandler.handle(args, cli);
 		});
 	}
 

@@ -1,7 +1,7 @@
 // GENERATED CODE DO NOT EDIT!
 // Run `bun codegen` to regenerate this file
+export { CliApi } from "./cli/contracts/CliApi.ts";
 export { CliErrorHandler } from "./cli/contracts/CliErrorHandler.ts";
-export { Terminal } from "./cli/contracts/Terminal.ts";
 export { Container } from "./container/contracts/Container.ts";
 export { Application } from "./core/contracts/Application.ts";
 export { Configuration } from "./core/contracts/Configuration.ts";

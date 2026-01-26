@@ -1,17 +1,17 @@
 import { BaseClass } from "../utils.ts";
 import type {
-	Terminal,
-	TerminalConfirmOptions,
-	TerminalDefinitionListItem,
-	TerminalDlOptions,
-	TerminalInputOptions,
-	TerminalOlOptions,
-	TerminalPromptResponse,
-	TerminalSelectOptions,
-	TerminalUlOptions,
-} from "./contracts/Terminal.ts";
+	CliApi,
+	CliConfirmOptions,
+	CliDefinitionListItem,
+	CliDlOptions,
+	CliInputOptions,
+	CliOlOptions,
+	CliPromptResponse,
+	CliSelectOptions,
+	CliUlOptions,
+} from "./contracts/CliApi.ts";
 
-export class TerminalImpl extends BaseClass implements Terminal {
+export class CliApiImpl extends BaseClass implements CliApi {
 	p(text: string): void {
 		process.stdout.write(text + "\n");
 	}
@@ -30,7 +30,7 @@ export class TerminalImpl extends BaseClass implements Terminal {
 		process.stdout.write(`\x1b[4m${text}\x1b[0m\n`);
 	}
 
-	dl(options: TerminalDlOptions): void {
+	dl(options: CliDlOptions): void {
 		const { items } = options;
 		if (items.length === 0) return;
 
@@ -44,29 +44,29 @@ export class TerminalImpl extends BaseClass implements Terminal {
 		}
 	}
 
-	ul(_options: TerminalUlOptions): void {
+	ul(_options: CliUlOptions): void {
 		throw new Error("Not implemented");
 	}
 
-	ol(_options: TerminalOlOptions): void {
+	ol(_options: CliOlOptions): void {
 		throw new Error("Not implemented");
 	}
 
-	select<V>(_options: TerminalSelectOptions<V>): Promise<TerminalPromptResponse<V>> {
+	select<V>(_options: CliSelectOptions<V>): Promise<CliPromptResponse<V>> {
 		throw new Error("Not implemented");
 	}
 
-	input<T = string>(_options: TerminalInputOptions<T>): Promise<TerminalPromptResponse<T>> {
+	input<T = string>(_options: CliInputOptions<T>): Promise<CliPromptResponse<T>> {
 		throw new Error("Not implemented");
 	}
 
-	confirm(_options: TerminalConfirmOptions): Promise<TerminalPromptResponse<boolean>> {
+	confirm(_options: CliConfirmOptions): Promise<CliPromptResponse<boolean>> {
 		throw new Error("Not implemented");
 	}
 }
 
 const normaliseDefinitionListItem = (
-	item: TerminalDefinitionListItem,
+	item: CliDefinitionListItem,
 ): { label: string; definition: string } => {
 	if (Array.isArray(item)) {
 		return { label: item[0], definition: item[1] };

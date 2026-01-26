@@ -1,17 +1,16 @@
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { ApplicationImpl } from "../core/ApplicationImpl.ts";
+import { CliApiImpl } from "./CliApiImpl.ts";
 import { CliExitError } from "./cli-errors.ts";
-import { TerminalImpl } from "./TerminalImpl.ts";
 
 /**
- * Entry point for CLI execution. Called by @akujs/cli global package.
- * Reads argv from process, discovers the app, runs the command, exits with appropriate code.
+ * Entry point for CLI execution
  */
 export async function runCli(): Promise<never> {
 	const args = process.argv.slice(2);
 	const cwd = process.cwd();
-	const terminal = new TerminalImpl();
+	const cli = new CliApiImpl();
 
 	let exitCode: number;
 
@@ -29,7 +28,7 @@ export async function runCli(): Promise<never> {
 			throw new CliExitError('Exported "app" is not an Application instance');
 		}
 
-		exitCode = await module.app.handleCommand(remainingArgs, terminal);
+		exitCode = await module.app.handleCommand(remainingArgs, cli);
 	} catch (error) {
 		// Errors here are configuration errors (app not found, not exported, etc.)
 		// These don't need crash dumps - just a simple error message
