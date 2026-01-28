@@ -39,10 +39,12 @@ seedUploadsIfEmpty();
 export const app = createApplication({
 	routes,
 	development: true,
+	appUrl: {},
 	disks: {
 		local: filesystemStorage({
 			rootPath: storageRoot,
-			makePublicUrlWith: `/storage`,
+			publicUrlPrefix: "https://localhost/storage",
+			makePublicUrlWith: (url) => `${url}?v=123`,
 		}),
 	},
 });

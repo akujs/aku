@@ -1,5 +1,5 @@
 {
-  "entryPoints": ["../aku/src/index.ts"],
+  "entryPoints": ["../aku/src/index-entry-point.ts"],
   "out": "public/api",
   "name": "Aku API Reference",
   "includeVersion": true,
