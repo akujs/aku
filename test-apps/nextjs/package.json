@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack",
     "next:build": "next build --turbopack",
     "next:start": "next start",
+    "check": "bun test integration/",
     "test:integration": "bun test integration/"
   },
   "dependencies": {
