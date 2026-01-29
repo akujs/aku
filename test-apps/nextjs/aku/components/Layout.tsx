@@ -1,4 +1,4 @@
-/** @jsxImportSource aku/view **/
+/** @jsxImportSource @akujs/aku/view **/
 import type { Component, PropsWithChildren } from "@akujs/aku/view";
 
 interface LayoutProps extends PropsWithChildren {
