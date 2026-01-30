@@ -119,15 +119,12 @@ export class FilesystemEndpoint extends BaseClass implements StorageEndpoint {
 			throw new Error("publicUrlPrefix or makePublicUrlWith is required for URL generation");
 		}
 
-		// Build URL: prefix + path
 		let url = this.#publicUrlPrefix ? joinSlashPaths(this.#publicUrlPrefix, path) : path;
 
-		// Apply transformer if provided
 		if (this.#makePublicUrlWith) {
 			url = this.#makePublicUrlWith(url);
 		}
 
-		// Add downloadAs query param
 		if (options?.downloadAs) {
 			const separator = url.includes("?") ? "&" : "?";
 			return `${url}${separator}download=${encodeURIComponent(options.downloadAs)}`;
