@@ -4,6 +4,8 @@ import { createTypeToken } from "../container/container-key.ts";
 /**
  * The interface used by framework integrations to provide access to the request
  * and response
+ *
+ * Acts as the interface between the framework and the framework-agnostic code within Aku.
  */
 export interface IntegrationContext {
 	/**

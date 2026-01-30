@@ -24,12 +24,14 @@ export class FilesystemEndpoint extends BaseClass implements StorageEndpoint {
 	readonly invalidNameChars = '<>:"/\\|?*';
 	readonly supportsMimeTypes = false;
 	readonly #rootPath: string;
-	readonly #makePublicUrlWith: string | ((path: string) => string) | undefined;
+	readonly #publicUrlPrefix: string | undefined;
+	readonly #makePublicUrlWith: ((url: string) => string) | undefined;
 	readonly #config: FilesystemStorageConfig;
 
 	constructor(config: FilesystemStorageConfig) {
 		super();
 		this.#rootPath = config.rootPath;
+		this.#publicUrlPrefix = config.publicUrlPrefix;
 		this.#makePublicUrlWith = config.makePublicUrlWith;
 		this.#config = config;
 	}
@@ -113,19 +115,22 @@ export class FilesystemEndpoint extends BaseClass implements StorageEndpoint {
 		path: string,
 		options?: StorageEndpointPublicDownloadUrlOptions,
 	): Promise<string> {
-		if (!this.#makePublicUrlWith) {
-			throw new Error("makePublicUrlWith is required for URL generation");
+		if (!this.#publicUrlPrefix && !this.#makePublicUrlWith) {
+			throw new Error("publicUrlPrefix or makePublicUrlWith is required for URL generation");
 		}
 
-		const baseUrl =
-			typeof this.#makePublicUrlWith === "string"
-				? joinSlashPaths(this.#makePublicUrlWith, path)
-				: this.#makePublicUrlWith(path);
+		let url = this.#publicUrlPrefix ? joinSlashPaths(this.#publicUrlPrefix, path) : path;
+
+		if (this.#makePublicUrlWith) {
+			url = this.#makePublicUrlWith(url);
+		}
 
 		if (options?.downloadAs) {
-			return `${baseUrl}?download=${encodeURIComponent(options.downloadAs)}`;
+			const separator = url.includes("?") ? "&" : "?";
+			return `${url}${separator}download=${encodeURIComponent(options.downloadAs)}`;
 		}
-		return baseUrl;
+
+		return url;
 	}
 
 	async getSignedDownloadUrl(
