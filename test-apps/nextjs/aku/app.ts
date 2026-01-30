@@ -42,7 +42,7 @@ export const app = createApplication({
 	disks: {
 		local: filesystemStorage({
 			rootPath: storageRoot,
-			makePublicUrlWith: `/storage`,
+			makePublicUrlWith: () => `/storage`,
 		}),
 	},
 });

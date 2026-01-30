@@ -1,24 +1,24 @@
 {
-  "name": "nextjs",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev --turbopack",
-    "next:build": "next build --turbopack",
-    "next:start": "next start",
-    "check": "bun test integration/",
-    "test:integration": "bun test integration/"
-  },
-  "dependencies": {
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "next": "15.5.4",
-    "@akujs/aku": "workspace:*"
-  },
-  "devDependencies": {
-    "typescript": "^5",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19"
-  }
+	"name": "nextjs",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"dev": "next dev --turbopack",
+		"next:build": "next build --turbopack",
+		"next:start": "next start",
+		"check": "bun test integration/",
+		"test:integration": "bun test integration/"
+	},
+	"dependencies": {
+		"react": "19.2.4",
+		"react-dom": "19.2.4",
+		"next": "16.1.6",
+		"@akujs/aku": "workspace:*"
+	},
+	"devDependencies": {
+		"typescript": "5.9.3",
+		"@types/node": "25.1.0",
+		"@types/react": "19.2.10",
+		"@types/react-dom": "19.2.3"
+	}
 }
