@@ -5,6 +5,7 @@
 	"scripts": {
 		"dev": "next dev --turbopack",
 		"next:build": "next build --turbopack",
+    "next:build:vercel": "cd ../.. && bun run --filter=@akujs/aku build && cd test-apps/nextjs && bun run next:build",
 		"next:start": "next start",
 		"check": "bun test integration/",
 		"test:integration": "bun test integration/"
