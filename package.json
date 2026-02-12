@@ -2,7 +2,6 @@
   "type": "module",
   "private": true,
   "workspaces": [
-    "packages/*",
     "test-apps/*"
   ],
   "engines": {
