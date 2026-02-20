@@ -1,6 +1,6 @@
 # Aku
 
-Aku is an early-stage project attempting to port Laravel to TypeScript. See [the GitHub repo](https://github.com/akujs/aku#readme) for more information.
+Aku is an early-stage project attempting to build a batteries-included web framework for JavaScript.
 
 ## License
 
