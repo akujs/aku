@@ -1,6 +1,6 @@
 {
   "name": "@akujs/aku",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A batteries-included full-stack framework for TypeScript",
   "type": "module",
   "exports": {
