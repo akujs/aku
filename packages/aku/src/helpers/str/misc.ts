@@ -1,6 +1,38 @@
 export type Replacer = (input: string) => string;
 
 /**
+ * Format a number as an ordinal string (1st, 2nd, 3rd, etc.).
+ *
+ * @example
+ * ordinal(1);   // "1st"
+ * ordinal(2);   // "2nd"
+ * ordinal(3);   // "3rd"
+ * ordinal(11);  // "11th"
+ * ordinal(21);  // "21st"
+ */
+export function ordinal(n: number): string {
+	const abs = Math.abs(n);
+	const lastTwo = abs % 100;
+
+	// 11th, 12th, 13th are exceptions
+	if (lastTwo >= 11 && lastTwo <= 13) {
+		return `${n}th`;
+	}
+
+	const lastOne = abs % 10;
+	switch (lastOne) {
+		case 1:
+			return `${n}st`;
+		case 2:
+			return `${n}nd`;
+		case 3:
+			return `${n}rd`;
+		default:
+			return `${n}th`;
+	}
+}
+
+/**
  * Create a function that efficiently replaces keys with their corresponding values in a string.
  *
  * Compiles the keys into a regular expression, which for large dictionaries is more efficient than using multiple replace calls.

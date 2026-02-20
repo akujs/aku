@@ -3,6 +3,7 @@ import { inject } from "../container/inject.ts";
 import { ServiceProvider } from "../core/ServiceProvider.ts";
 import { createTestApplication } from "../test-utils/http-test-utils.bun.ts";
 import { CliExitError } from "./cli-errors.ts";
+import type { ArgumentSchema, CommandArgs, CommandExecuteContext } from "./cli-types.ts";
 import type { CliApi } from "./contracts/CliApi.ts";
 import { CliApi as CliApiToken } from "./contracts/CliApi.ts";
 import { CliErrorHandler } from "./contracts/CliErrorHandler.ts";
@@ -14,8 +15,14 @@ describe("CLI command handling", () => {
 		class GreetCommand {
 			static readonly name = "greet";
 			static readonly description = "Greet someone";
-			async execute({ args, cli }: { args: string[]; cli: CliApi }): Promise<void> {
-				cli.p(`Hello, ${args[0] ?? "world"}!`);
+			static readonly args = {
+				name: { type: "string", positional: true, description: "Name to greet" },
+			} as const satisfies ArgumentSchema;
+			async execute({
+				args,
+				cli,
+			}: CommandExecuteContext<CommandArgs<typeof GreetCommand>>): Promise<void> {
+				cli.p(`Hello, ${args.name ?? "world"}!`);
 			}
 		}
 
@@ -128,7 +135,7 @@ describe("CLI command handling", () => {
 				this.#cli = cli;
 			}
 
-			async execute({ cli }: { args: string[]; cli: CliApi }): Promise<void> {
+			async execute({ cli }: CommandExecuteContext): Promise<void> {
 				injectedCli = this.#cli;
 				cli.p("done");
 			}

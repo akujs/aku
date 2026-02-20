@@ -25,6 +25,10 @@ export class CommandRegistry extends BaseClass {
 		return [...this.#commands.keys()].sort();
 	}
 
+	getDefinition(name: string): CommandDefinition | undefined {
+		return this.#commands.get(name);
+	}
+
 	getCommandDefinitions(): CommandDefinition[] {
 		return [...this.#commands.values()].sort((a, b) => a.name.localeCompare(b.name));
 	}

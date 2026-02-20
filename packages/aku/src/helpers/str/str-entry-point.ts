@@ -12,7 +12,7 @@ export {
 	uppercase,
 	uppercaseFirst,
 } from "./case.ts";
-export { compileMultiReplace, multiReplace } from "./misc.ts";
+export { compileMultiReplace, multiReplace, ordinal } from "./misc.ts";
 export {
 	isUlid,
 	isUuid,
