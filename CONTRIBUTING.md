@@ -107,3 +107,28 @@ If you don't have Docker installed or want to skip these tests, set the `SKIP_DO
 ```bash
 SKIP_DOCKER_INTEGRATION_TESTS=1 bun check:test
 ```
+
+## Release Process
+
+This project uses [Changesets](https://github.com/changesets/changesets) to manage versioning and releases.
+
+### Adding a changeset to your PR
+
+When making changes that should be released, add a changeset:
+
+```bash
+bun changeset
+```
+
+This prompts you to:
+1. Select which packages are affected
+2. Choose the version bump type (major/minor/patch)
+3. Write a summary of the changes
+
+A markdown file will be created in `.changeset/` - commit this with your PR.
+
+### What happens after merging
+
+1. When your PR merges to `main`, a "Release" PR is automatically created/updated
+2. This PR accumulates all pending changesets and shows the version bumps
+3. When the Release PR is merged, packages are published to npm
