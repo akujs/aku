@@ -81,13 +81,14 @@ function buildExcludePattern(patterns: string[]): string {
 async function main() {
 	const args = process.argv.slice(2);
 	const nodeOnly = args.includes("--node");
+	const isCI = process.env.CI === "true";
 
 	if (nodeOnly) {
 		process.exit(runNodeTestsSync());
 	}
 
-	if (args.length > 0) {
-		// Any arguments trigger serial mode, passing args directly to bun test
+	if (isCI || args.length > 0) {
+		// CI environment or any arguments trigger serial mode, passing args directly to bun test
 		// allow --serial as an arg to trigger serial mode
 		const passArgs = args.filter((a) => a !== "--serial");
 		const bunArgs = ["bun", "--conditions=source", "test", ...passArgs];
