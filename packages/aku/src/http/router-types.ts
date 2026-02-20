@@ -1,5 +1,6 @@
 import type { TypeToken } from "../container/container-key.ts";
 import { createTypeToken } from "../container/container-key.ts";
+import type { Prettify } from "../utils.ts";
 import type { Component } from "../view/Component.ts";
 import type { Controller } from "./Controller.ts";
 import { type ControllerContext } from "./Controller.ts";
@@ -185,8 +186,6 @@ export type ExtractDomainAndPathParams<
 > = Domain extends string
 	? ExtractRouteParams<Domain> | ExtractRouteParams<Path>
 	: ExtractRouteParams<Path>;
-
-export type Prettify<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
 
 export type MergeChildren<Children extends readonly unknown[]> = Prettify<
 	Children extends readonly [infer First, ...infer Rest]

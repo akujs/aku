@@ -1,6 +1,5 @@
 import { sha256 } from "../helpers/hash/digest.ts";
 import { random } from "../helpers/str/random.ts";
-import { regExpEscape } from "../utils.ts";
 import { posix } from "./path-operations.ts";
 
 // MIME type and file name handling for storage operations. Based on Chrome's
@@ -154,7 +153,7 @@ export function createFileName(
 }
 
 export function sanitiseName(name: string, invalidChars: string): string {
-	const regex = new RegExp(`[${regExpEscape(invalidChars)}]+`, "g");
+	const regex = new RegExp(`[${RegExp.escape(invalidChars)}]+`, "g");
 
 	if (!regex.test(name)) {
 		return name;

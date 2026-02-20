@@ -128,7 +128,7 @@ describe("ApplicationImpl", () => {
 		app.url("users.show", { params: { incorrect: 123 }, query: { tab: "profile" } });
 	});
 
-	test("handles HTTP request through RouterV2", async () => {
+	test("handles HTTP request", async () => {
 		class TestController extends BaseController {
 			handle() {
 				const testCookie = Cookies.get("c");

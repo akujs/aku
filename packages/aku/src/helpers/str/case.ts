@@ -1,4 +1,3 @@
-import { regExpEscape } from "../../utils.ts";
 import { withoutComplexChars } from "./unicode.ts";
 
 // From https://apastyle.apa.org/style-grammar-guidelines/capitalization/title-case
@@ -78,7 +77,7 @@ export function splitWords(str: string, options?: SplitWordsOptions): string[] {
 	if (options?.splitOn instanceof RegExp) {
 		regex = options.splitOn;
 	} else if (typeof options?.splitOn === "string") {
-		regex = new RegExp(`[${regExpEscape(options.splitOn)}]+`);
+		regex = new RegExp(`[${RegExp.escape(options.splitOn)}]+`);
 	} else if (/\s/.test(str)) {
 		regex = /\s+/;
 	} else {

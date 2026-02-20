@@ -70,6 +70,12 @@ These guidelines must be followed when writing code for the Aku project. After i
     - ✅ CORRECT: `export const cleanString = () => ...`
     - ❌ WRONG: `export const sanitiseString = () => ...` OR `const sanitizeString = () => ...`
 
+- **Acronyms in identifiers**: Use Initial-Cap casing for acronyms (first letter uppercase, rest lowercase), regardless of position in the identifier
+    - ✅ CORRECT: `HttpClient`, `parseUrl`, `SqlApi`, `getJson`
+    - ❌ WRONG: `HTTPClient`, `parseURL`, `SQLAPI`, `getJSON`
+    - This applies to all identifiers: classes, interfaces, types, functions, variables, and methods
+    - File names use lowercase with hyphens: `http-client.ts`, `terminal-ui.ts`
+
 ## Documentation
 
 TSDoc comments, markdown files and test names are all "documentation"
@@ -84,6 +90,7 @@ TSDoc comments, markdown files and test names are all "documentation"
         - ❌ WRONG: `@param input - Input string` - stating the obvious
     - **@return tags in TSDoc**: Do not include these. The first sentence of the description should make the return value clear.
         - ❌ WRONG: `@return the input converted to lowercase` - instead, comment should start "Convert a string to lowercase"
+- Do not use // line comments for documentation of classes and exports, only for explaining unusual lines of code. If the linter complains about a doc comment on a non-public class, remove the comment entirely rather than converting to line comments.
 
 ## Linting
 

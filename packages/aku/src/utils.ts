@@ -134,6 +134,14 @@ export type MethodNames<T> = {
 	[K in keyof T]: T[K] extends Function ? K : never;
 }[keyof T];
 
+export type Prettify<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
+
+export type MakeUndefinedOptional<T> = {
+	[K in keyof T as undefined extends T[K] ? never : K]: T[K];
+} & {
+	[K in keyof T as undefined extends T[K] ? K : never]?: T[K];
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AnyFunction = (...args: any) => any;
 
@@ -171,10 +179,6 @@ export const plural = (word: string): string => word + "s";
 
 export const pluralCount = (count: number, word: string): string =>
 	count + " " + (count === 1 ? word : plural(word));
-
-export const regExpEscape = (str: string): string =>
-	// @ts-expect-error - Bun runtime supports RegExp.escape but TypeScript types don't include it yet
-	RegExp.escape(str);
 
 export const mapObjectValues = <K extends string | number | symbol, V, R>(
 	obj: Record<K, V>,

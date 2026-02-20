@@ -1,0 +1,16 @@
+{
+  "name": "@akujs/cli",
+  "version": "0.1.0",
+  "description": "Global CLI for the Aku framework",
+  "bin": {
+    "aku": "./lib/bin.mjs"
+  },
+  "type": "module",
+  "files": ["lib"],
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

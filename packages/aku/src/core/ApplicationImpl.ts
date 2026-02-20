@@ -1,3 +1,7 @@
+import { CommandHandler } from "../cli/CommandHandler.ts";
+import { CommandRegistry } from "../cli/CommandRegistry.ts";
+import type { CliApi } from "../cli/contracts/CliApi.ts";
+import { CliApi as CliApiToken } from "../cli/contracts/CliApi.ts";
 import { ContainerImpl } from "../container/ContainerImpl.ts";
 import type { Container } from "../container/contracts/Container.ts";
 import { Database } from "../database/contracts/Database.ts";
@@ -118,6 +122,16 @@ export class ApplicationImpl<RouteParams extends Record<string, string> = {}>
 		});
 	}
 
+	async handleCommand(args: string[], cli: CliApi): Promise<number> {
+		this.#requireBooted(this.handleCommand.name);
+
+		return this.container.withScope(async () => {
+			this.container.scopedInstance(CliApiToken, cli);
+			const commandHandler = this.container.get(CommandHandler);
+			return commandHandler.handle(args, cli);
+		});
+	}
+
 	withIntegration<R>(context: IntegrationContext, callback: () => R): R {
 		this.#requireBooted(this.withIntegration.name);
 		if (this.container.hasScope) {
@@ -151,9 +165,14 @@ export class ApplicationImpl<RouteParams extends Record<string, string> = {}>
 
 	#bootServiceProviders(): void {
 		try {
+			const registry = this.container.get(CommandRegistry);
 			// Iterate by index to allow providers to register new providers during boot
 			for (let i = 0; i < this.#serviceProvidersToBoot.length; i++) {
-				this.#serviceProvidersToBoot[i].boot();
+				const provider = this.#serviceProvidersToBoot[i];
+				provider.boot();
+				for (const commandClass of provider.commands) {
+					registry.register(commandClass);
+				}
 			}
 		} finally {
 			this.#hasBooted = true;

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { compileMultiReplace } from "./misc.ts";
+import { compileMultiReplace, ordinal } from "./misc.ts";
 
 describe(compileMultiReplace, () => {
 	test("replaces single characters", () => {
@@ -82,5 +82,38 @@ describe(compileMultiReplace, () => {
 		expect(replacer("подъезд")).toBe("подyeзд"); // ъе→ye
 		expect(replacer("объект")).toBe("обyeкт"); // ъе→ye (the word contains ъе)
 		expect(replacer("объём")).toBe("обxём"); // ъ→x (followed by ё not е)
+	});
+});
+
+describe(ordinal, () => {
+	test("formats numbers", () => {
+		expect(ordinal(1)).toBe("1st");
+		expect(ordinal(2)).toBe("2nd");
+		expect(ordinal(3)).toBe("3rd");
+		expect(ordinal(4)).toBe("4th");
+		expect(ordinal(5)).toBe("5th");
+		expect(ordinal(10)).toBe("10th");
+		expect(ordinal(11)).toBe("11th");
+		expect(ordinal(12)).toBe("12th");
+		expect(ordinal(13)).toBe("13th");
+		expect(ordinal(14)).toBe("14th");
+		expect(ordinal(21)).toBe("21st");
+		expect(ordinal(22)).toBe("22nd");
+		expect(ordinal(23)).toBe("23rd");
+		expect(ordinal(24)).toBe("24th");
+		expect(ordinal(111)).toBe("111th");
+		expect(ordinal(112)).toBe("112th");
+		expect(ordinal(113)).toBe("113th");
+		expect(ordinal(214)).toBe("214th");
+		expect(ordinal(221)).toBe("221st");
+		expect(ordinal(222)).toBe("222nd");
+		expect(ordinal(223)).toBe("223rd");
+		expect(ordinal(224)).toBe("224th");
+
+		expect(ordinal(0)).toBe("0th");
+		expect(ordinal(-1)).toBe("-1st");
+		expect(ordinal(-2)).toBe("-2nd");
+		expect(ordinal(-11)).toBe("-11th");
+		expect(ordinal(NaN)).toBe("NaNth");
 	});
 });
