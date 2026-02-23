@@ -221,9 +221,12 @@ function mapNamed(
 			continue;
 		}
 
-		// Arrays default to empty array when absent
+		// Arrays
 		if (def.array) {
 			if (value === undefined) {
+				if (def.required) {
+					throw new CliExitError(`Missing required option: --${def.name}`);
+				}
 				result[def.name] = [];
 			} else if (Array.isArray(value)) {
 				result[def.name] = value.map((v) => convertValue(v, def.type));

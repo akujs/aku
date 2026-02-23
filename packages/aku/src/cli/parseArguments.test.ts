@@ -599,4 +599,239 @@ describe(parseArguments, () => {
 			expectTypeOf(result).toEqualTypeOf<{}>();
 		});
 	});
+
+	describe("systematic argument combinations", () => {
+		// Testing all 16 combinations of: Positional, Required, Array, hasDefault
+		// Format: [N/P][O/R][S/A][_/D] = Named/Positional, Optional/Required, Single/Array, noDefault/Default
+
+		test("NOS_ - named, optional, single, no default", () => {
+			const arg = { type: "string" } as const;
+
+			// Type: optional string
+			const result = parseArguments([], { arg });
+			expectTypeOf(result).toEqualTypeOf<{ arg?: string | undefined }>();
+
+			// Omitted: property not set
+			expect(parseArguments([], { arg })).toEqual({});
+
+			// Provided: has value
+			expect(parseArguments(["--arg", "val"], { arg })).toEqual({ arg: "val" });
+		});
+
+		test("NOSD - named, optional, single, with default", () => {
+			const arg = { type: "string", default: "def" } as const;
+
+			// Type: always present string
+			const result = parseArguments([], { arg });
+			expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
+
+			// Omitted: uses default
+			expect(parseArguments([], { arg })).toEqual({ arg: "def" });
+
+			// Provided: overrides default
+			expect(parseArguments(["--arg", "val"], { arg })).toEqual({ arg: "val" });
+		});
+
+		test("NOA_ - named, optional, array, no default", () => {
+			const arg = { type: "string", array: true } as const;
+
+			// Type: always present array
+			const result = parseArguments([], { arg });
+			expectTypeOf(result).toEqualTypeOf<{ arg: string[] }>();
+
+			// Omitted: empty array
+			expect(parseArguments([], { arg })).toEqual({ arg: [] });
+
+			// Provided: array of values
+			expect(parseArguments(["--arg", "a", "--arg", "b"], { arg })).toEqual({ arg: ["a", "b"] });
+		});
+
+		test("NOAD - named, optional, array, with default", () => {
+			const arg = { type: "string", array: true, default: ["x", "y"] } as const;
+
+			// Type: always present array
+			const result = parseArguments([], { arg });
+			expectTypeOf(result).toEqualTypeOf<{ arg: string[] }>();
+
+			// Omitted: uses default
+			expect(parseArguments([], { arg })).toEqual({ arg: ["x", "y"] });
+
+			// Provided: overrides default
+			expect(parseArguments(["--arg", "a"], { arg })).toEqual({ arg: ["a"] });
+		});
+
+		test("NRS_ - named, required, single, no default", () => {
+			const arg = { type: "string", required: true } as const;
+
+			// Type: required string
+			const result = parseArguments(["--arg", "val"], { arg });
+			expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
+
+			// Omitted: throws error
+			expect(() => parseArguments([], { arg })).toThrow("Missing required option: --arg");
+
+			// Provided: has value
+			expect(parseArguments(["--arg", "val"], { arg })).toEqual({ arg: "val" });
+		});
+
+		test("NRSD - named, required, single, with default", () => {
+			const arg = { type: "string", required: true, default: "def" } as const;
+
+			// Type: always present (default overrides required at runtime, but type still non-optional)
+			const result = parseArguments([], { arg });
+			expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
+
+			// Omitted: uses default (required ignored when default present)
+			expect(parseArguments([], { arg })).toEqual({ arg: "def" });
+
+			// Provided: overrides default
+			expect(parseArguments(["--arg", "val"], { arg })).toEqual({ arg: "val" });
+		});
+
+		test("NRA_ - named, required, array, no default", () => {
+			const arg = { type: "string", array: true, required: true } as const;
+
+			// Type: non-empty array
+			const result = parseArguments(["--arg", "a"], { arg });
+			expectTypeOf(result).toEqualTypeOf<{ arg: [string, ...string[]] }>();
+
+			// Omitted: throws error
+			expect(() => parseArguments([], { arg })).toThrow("Missing required option: --arg");
+
+			// Provided: non-empty array
+			expect(parseArguments(["--arg", "a", "--arg", "b"], { arg })).toEqual({ arg: ["a", "b"] });
+		});
+
+		test("NRAD - named, required, array, with default", () => {
+			const arg = { type: "string", array: true, required: true, default: ["x", "y"] } as const;
+
+			// Type: non-empty array (required in schema)
+			const result = parseArguments([], { arg });
+			expectTypeOf(result).toEqualTypeOf<{ arg: [string, ...string[]] }>();
+
+			// Omitted: uses default (required ignored when default present)
+			expect(parseArguments([], { arg })).toEqual({ arg: ["x", "y"] });
+
+			// Provided: overrides default
+			expect(parseArguments(["--arg", "a"], { arg })).toEqual({ arg: ["a"] });
+		});
+
+		test("POS_ - positional, optional, single, no default", () => {
+			const arg = { type: "string", positional: true } as const;
+
+			// Type: optional string
+			const result = parseArguments([], { arg });
+			expectTypeOf(result).toEqualTypeOf<{ arg?: string | undefined }>();
+
+			// Omitted: property not set
+			expect(parseArguments([], { arg })).toEqual({});
+
+			// Provided: has value
+			expect(parseArguments(["val"], { arg })).toEqual({ arg: "val" });
+		});
+
+		test("POSD - positional, optional, single, with default", () => {
+			const arg = { type: "string", positional: true, default: "def" } as const;
+
+			// Type: always present string
+			const result = parseArguments([], { arg });
+			expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
+
+			// Omitted: uses default
+			expect(parseArguments([], { arg })).toEqual({ arg: "def" });
+
+			// Provided: overrides default
+			expect(parseArguments(["val"], { arg })).toEqual({ arg: "val" });
+		});
+
+		test("POA_ - positional, optional, array, no default", () => {
+			const arg = { type: "string", positional: true, array: true } as const;
+
+			// Type: always present array
+			const result = parseArguments([], { arg });
+			expectTypeOf(result).toEqualTypeOf<{ arg: string[] }>();
+
+			// Omitted: empty array
+			expect(parseArguments([], { arg })).toEqual({ arg: [] });
+
+			// Provided: array of values
+			expect(parseArguments(["a", "b", "c"], { arg })).toEqual({ arg: ["a", "b", "c"] });
+		});
+
+		test("POAD - positional, optional, array, with default", () => {
+			const arg = { type: "string", positional: true, array: true, default: ["x", "y"] } as const;
+
+			// Type: always present array
+			const result = parseArguments([], { arg });
+			expectTypeOf(result).toEqualTypeOf<{ arg: string[] }>();
+
+			// Omitted: uses default
+			expect(parseArguments([], { arg })).toEqual({ arg: ["x", "y"] });
+
+			// Provided: overrides default
+			expect(parseArguments(["a"], { arg })).toEqual({ arg: ["a"] });
+		});
+
+		test("PRS_ - positional, required, single, no default", () => {
+			const arg = { type: "string", positional: true, required: true } as const;
+
+			// Type: required string
+			const result = parseArguments(["val"], { arg });
+			expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
+
+			// Omitted: throws error
+			expect(() => parseArguments([], { arg })).toThrow("Missing required argument: arg");
+
+			// Provided: has value
+			expect(parseArguments(["val"], { arg })).toEqual({ arg: "val" });
+		});
+
+		test("PRSD - positional, required, single, with default", () => {
+			const arg = { type: "string", positional: true, required: true, default: "def" } as const;
+
+			// Type: always present string
+			const result = parseArguments([], { arg });
+			expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
+
+			// Omitted: uses default (required ignored when default present)
+			expect(parseArguments([], { arg })).toEqual({ arg: "def" });
+
+			// Provided: overrides default
+			expect(parseArguments(["val"], { arg })).toEqual({ arg: "val" });
+		});
+
+		test("PRA_ - positional, required, array, no default", () => {
+			const arg = { type: "string", positional: true, array: true, required: true } as const;
+
+			// Type: non-empty array
+			const result = parseArguments(["a"], { arg });
+			expectTypeOf(result).toEqualTypeOf<{ arg: [string, ...string[]] }>();
+
+			// Omitted: throws error
+			expect(() => parseArguments([], { arg })).toThrow("Missing required argument: arg");
+
+			// Provided: non-empty array
+			expect(parseArguments(["a", "b"], { arg })).toEqual({ arg: ["a", "b"] });
+		});
+
+		test("PRAD - positional, required, array, with default", () => {
+			const arg = {
+				type: "string",
+				positional: true,
+				array: true,
+				required: true,
+				default: ["x", "y"],
+			} as const;
+
+			// Type: non-empty array (required in schema)
+			const result = parseArguments([], { arg });
+			expectTypeOf(result).toEqualTypeOf<{ arg: [string, ...string[]] }>();
+
+			// Omitted: uses default (required ignored when default present)
+			expect(parseArguments([], { arg })).toEqual({ arg: ["x", "y"] });
+
+			// Provided: overrides default
+			expect(parseArguments(["a"], { arg })).toEqual({ arg: ["a"] });
+		});
+	});
 });

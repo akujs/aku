@@ -7,7 +7,7 @@ export interface ArgumentDefinition {
 	readonly positional?: boolean | undefined;
 	readonly required?: boolean | undefined;
 	readonly array?: boolean | undefined;
-	readonly default?: string | number | boolean | string[] | number[] | undefined;
+	readonly default?: string | number | boolean | readonly string[] | readonly number[] | undefined;
 }
 
 export interface ArgumentSchema {
