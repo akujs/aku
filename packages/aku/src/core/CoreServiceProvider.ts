@@ -4,6 +4,7 @@ import type { CommandDefinition } from "../cli/cli-types.ts";
 import { CliErrorHandler } from "../cli/contracts/CliErrorHandler.ts";
 import { DefaultCliErrorHandler } from "../cli/DefaultCliErrorHandler.ts";
 import { ListCommand } from "../cli/ListCommand.ts";
+import { TestbedCommand } from "../cli/TestbedCommand.ts";
 import { Dispatcher } from "./contracts/Dispatcher.ts";
 import { DispatcherImpl } from "./DispatcherImpl.ts";
 import { ServiceProvider } from "./ServiceProvider.ts";
@@ -17,6 +18,6 @@ export class CoreServiceProvider extends ServiceProvider {
 	}
 
 	override get commands(): CommandDefinition[] {
-		return [ListCommand];
+		return [ListCommand, TestbedCommand];
 	}
 }

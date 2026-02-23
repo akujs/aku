@@ -20,6 +20,10 @@ exports[`ListCommand displays title and command list 1`] = `
           "definition": "List all available commands",
           "label": "list",
         },
+        {
+          "definition": "Exercise CLI features for manual testing",
+          "label": "testbed",
+        },
       ],
     },
   },
@@ -37,6 +41,10 @@ exports[`ListCommand is the default command when no args provided 1`] = `
         {
           "definition": "List all available commands",
           "label": "list",
+        },
+        {
+          "definition": "Exercise CLI features for manual testing",
+          "label": "testbed",
         },
       ],
     },
@@ -59,6 +67,10 @@ exports[`ListCommand commands are listed in alphabetical order 1`] = `
         {
           "definition": "List all available commands",
           "label": "list",
+        },
+        {
+          "definition": "Exercise CLI features for manual testing",
+          "label": "testbed",
         },
         {
           "definition": "Z command",

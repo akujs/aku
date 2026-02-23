@@ -1,38 +1,62 @@
 import { beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { CliApiImpl } from "./CliApiImpl.ts";
 
-describe.skip(CliApiImpl, () => {
-	let output: string;
+describe(CliApiImpl, () => {
+	let stdout: string;
 	let cli: CliApiImpl;
 
 	beforeEach(() => {
-		output = "";
+		stdout = "";
 		spyOn(process.stdout, "write").mockImplementation((str) => {
-			output += str;
+			stdout += str;
 			return true;
 		});
+		// Mock terminal width for consistent tests
+		Object.defineProperty(process.stdout, "columns", { value: 60, configurable: true });
 		cli = new CliApiImpl();
 	});
 
-	test("paragraph", () => {
+	test("p() outputs wrapped text with trailing blank line", () => {
 		cli.p("Hello world");
 
-		expect(output).toMatchSnapshot();
+		expect(stdout).toMatchInlineSnapshot(`
+"Hello world
+
+"
+`);
 	});
 
-	test("h1 renders bold", () => {
+	test("br() outputs empty line", () => {
+		cli.br();
+
+		expect(stdout).toMatchInlineSnapshot(`
+"
+"
+`);
+	});
+
+	test("h1() renders bold with line breaks above and below", () => {
 		cli.h1("My Title");
 
-		expect(output).toMatchSnapshot();
+		expect(stdout).toMatchInlineSnapshot(`
+"
+\x1B[1mMy Title\x1B[22m
+
+"
+`);
 	});
 
-	test("h2 renders underlined", () => {
+	test("h2() renders underlined with line break below", () => {
 		cli.h2("My Subtitle");
 
-		expect(output).toMatchSnapshot();
+		expect(stdout).toMatchInlineSnapshot(`
+"\x1B[4mMy Subtitle\x1B[24m
+
+"
+`);
 	});
 
-	test("definitionList formats as aligned table", () => {
+	test("dl() formats as aligned table with blue labels", () => {
 		cli.dl({
 			items: [
 				{ label: "short", definition: "First item" },
@@ -41,13 +65,105 @@ describe.skip(CliApiImpl, () => {
 			],
 		});
 
-		expect(output).toMatchSnapshot();
+		expect(stdout).toMatchInlineSnapshot(`
+"  \x1B[34mshort      \x1B[39m  First item
+  \x1B[34mmuch-longer\x1B[39m  Second item
+  \x1B[34mmid        \x1B[39m  Third item
+"
+`);
 	});
 
-	test("definitionList with empty array outputs nothing", () => {
+	test("dl() with title outputs title first", () => {
+		cli.dl({
+			title: "Options:",
+			items: [["--help", "Show help"]],
+		});
+
+		expect(stdout).toMatchInlineSnapshot(`
+"Options:
+
+  \x1B[34m--help\x1B[39m  Show help
+"
+`);
+	});
+
+	test("dl() with empty array outputs nothing", () => {
 		cli.dl({ items: [] });
 
-		expect(output).toBe("");
+		expect(stdout).toBe("");
+	});
+
+	test("ul() formats as bullet list with blue bullets", () => {
+		cli.ul({
+			items: ["Apples", "Bananas", "Cherries"],
+		});
+
+		expect(stdout).toMatchInlineSnapshot(`
+"  \x1B[34m-\x1B[39m  Apples
+  \x1B[34m-\x1B[39m  Bananas
+  \x1B[34m-\x1B[39m  Cherries
+"
+`);
+	});
+
+	test("ul() with title outputs title first", () => {
+		cli.ul({
+			title: "Fruits:",
+			items: ["Apples", "Pears"],
+		});
+
+		expect(stdout).toMatchInlineSnapshot(`
+"Fruits:
+
+  \x1B[34m-\x1B[39m  Apples
+  \x1B[34m-\x1B[39m  Pears
+"
+`);
+	});
+
+	test("ol() formats as numbered list with blue numbers", () => {
+		cli.ol({
+			items: ["First", "Second", "Third"],
+		});
+
+		expect(stdout).toMatchInlineSnapshot(`
+"  \x1B[34m1.\x1B[39m  First
+  \x1B[34m2.\x1B[39m  Second
+  \x1B[34m3.\x1B[39m  Third
+"
+`);
+	});
+
+	test("ol() supports custom list numbers", () => {
+		cli.ol({
+			items: [
+				{ listNumber: 2, label: "Exactly-once delivery" },
+				{ listNumber: 1, label: "Deterministic ordering" },
+				{ listNumber: 2, label: "Exactly-once delivery" },
+			],
+		});
+
+		expect(stdout).toMatchInlineSnapshot(`
+"  \x1B[34m2.\x1B[39m  Exactly-once delivery
+  \x1B[34m1.\x1B[39m  Deterministic ordering
+  \x1B[34m2.\x1B[39m  Exactly-once delivery
+"
+`);
+	});
+
+	test("ol() with title outputs title first", () => {
+		cli.ol({
+			title: "Steps:",
+			items: ["Do this", "Then that"],
+		});
+
+		expect(stdout).toMatchInlineSnapshot(`
+"Steps:
+
+  \x1B[34m1.\x1B[39m  Do this
+  \x1B[34m2.\x1B[39m  Then that
+"
+`);
 	});
 
 	test("combined output", () => {
@@ -59,6 +175,13 @@ describe.skip(CliApiImpl, () => {
 			],
 		});
 
-		expect(output).toMatchSnapshot();
+		expect(stdout).toMatchInlineSnapshot(`
+"
+\x1B[1mAvailable commands\x1B[22m
+
+  \x1B[34mlist      \x1B[39m  List all commands
+  \x1B[34mdb:migrate\x1B[39m  Run database migrations
+"
+`);
 	});
 });
