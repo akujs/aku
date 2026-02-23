@@ -63,7 +63,6 @@ function processSchema(schema: ArgumentSchema): AnalysedSchema {
 		if (!def.positional) {
 			parseArgsOptions[def.name] = withoutUndefinedValues({
 				type: def.type === "boolean" ? "boolean" : "string",
-				short: def.short,
 				multiple: def.array,
 			});
 		}
@@ -80,32 +79,16 @@ interface PreprocessResult {
 function preprocessBooleanValues(argv: string[], defs: ProcessedDef[]): PreprocessResult {
 	const booleanDefs = defs.filter((def) => !def.positional && def.type === "boolean");
 	const booleanNames = new Set(booleanDefs.map((def) => def.name));
-	const shortToName = new Map<string, string>();
-	for (const def of booleanDefs) {
-		if (def.short) {
-			shortToName.set(def.short, def.name);
-		}
-	}
 
 	const processedArgv: string[] = [];
 	const booleanValues: Record<string, boolean> = {};
 
 	for (const arg of argv) {
-		// Match --name=value or -x=value
+		// Match --name=value
 		const longMatch = arg.match(/^--([^=]+)=(.+)$/);
 		if (longMatch) {
 			const [, name, value] = longMatch;
 			if (booleanNames.has(name)) {
-				booleanValues[name] = convertValue(value, "boolean") as boolean;
-				continue;
-			}
-		}
-
-		const shortMatch = arg.match(/^-([^-=])=(.+)$/);
-		if (shortMatch) {
-			const [, short, value] = shortMatch;
-			const name = shortToName.get(short);
-			if (name) {
 				booleanValues[name] = convertValue(value, "boolean") as boolean;
 				continue;
 			}
@@ -273,10 +256,10 @@ function convertValue(
 	}
 	if (type === "boolean") {
 		const str = String(value).toLowerCase();
-		if (str === "false" || str === "0" || str === "no") {
+		if (str === "false" || str === "0" || str === "no" || str === "n") {
 			return false;
 		}
-		if (str === "true" || str === "yes") {
+		if (str === "true" || str === "yes" || str === "y") {
 			return true;
 		}
 		// Check for non-zero number
@@ -284,7 +267,9 @@ function convertValue(
 		if (!Number.isNaN(num) && num !== 0) {
 			return true;
 		}
-		throw new CliExitError(`Invalid boolean: "${String(value)}". Use true/false, yes/no, or 0/1.`);
+		throw new CliExitError(
+			`Invalid boolean: "${String(value)}". Use true/false, yes/no, y/n, or 0/1.`,
+		);
 	}
 	return String(value);
 }

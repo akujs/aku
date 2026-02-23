@@ -3,10 +3,9 @@ import type { CliApi } from "./contracts/CliApi.ts";
 
 export interface ArgumentDefinition {
 	readonly type: "string" | "number" | "boolean";
-	readonly description?: string;
+	readonly description?: string | undefined;
 	readonly positional?: boolean | undefined;
 	readonly required?: boolean | undefined;
-	readonly short?: string | undefined;
 	readonly array?: boolean | undefined;
 	readonly default?: string | number | boolean | string[] | number[] | undefined;
 }

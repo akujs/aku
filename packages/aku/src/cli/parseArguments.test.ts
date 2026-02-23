@@ -53,10 +53,10 @@ describe(parseArguments, () => {
 			});
 
 			test("handles mixed positional and named arguments", () => {
-				const result = parseArguments(["input.txt", "-v", "-o", "output.txt"], {
+				const result = parseArguments(["input.txt", "--verbose", "--output", "output.txt"], {
 					file: requiredStringPositional,
-					verbose: { type: "boolean", short: "v" },
-					output: { type: "string", short: "o" },
+					verbose: { type: "boolean" },
+					output: { type: "string" },
 				});
 				expect(result).toEqual({ file: "input.txt", verbose: true, output: "output.txt" });
 			});
@@ -89,13 +89,6 @@ describe(parseArguments, () => {
 		describe("named", () => {
 			test("parses string option with value", () => {
 				const result = parseArguments(["--output", "file.txt"], { output: optionalString });
-				expect(result).toEqual({ output: "file.txt" });
-			});
-
-			test("parses short alias for string option", () => {
-				const result = parseArguments(["-o", "file.txt"], {
-					output: { type: "string", short: "o" },
-				});
 				expect(result).toEqual({ output: "file.txt" });
 			});
 
@@ -145,7 +138,7 @@ describe(parseArguments, () => {
 				const result = parseArguments(["src"], {
 					source: { type: "string", positional: true, required: true },
 					dest: { type: "string", positional: true },
-					force: { type: "boolean", short: "f" },
+					force: { type: "boolean" },
 					count: { type: "number" },
 				} as const satisfies ArgumentSchema);
 
@@ -258,6 +251,15 @@ describe(parseArguments, () => {
 				expect(result).toEqual({ flag: false });
 			});
 
+			test('parses "y" string as true', () => {
+				const result = parseArguments(["y"], { flag: requiredBooleanPositional });
+				expect(result).toEqual({ flag: true });
+			});
+
+			test('parses "n" string as false', () => {
+				const result = parseArguments(["n"], { flag: requiredBooleanPositional });
+				expect(result).toEqual({ flag: false });
+			});
 			test('parses "1" string as true', () => {
 				const result = parseArguments(["1"], { flag: requiredBooleanPositional });
 				expect(result).toEqual({ flag: true });
@@ -281,6 +283,12 @@ describe(parseArguments, () => {
 				expect(parseArguments(["No"], { flag: requiredBooleanPositional })).toEqual({
 					flag: false,
 				});
+				expect(parseArguments(["Y"], { flag: requiredBooleanPositional })).toEqual({
+					flag: true,
+				});
+				expect(parseArguments(["N"], { flag: requiredBooleanPositional })).toEqual({
+					flag: false,
+				});
 			});
 		});
 
@@ -293,13 +301,6 @@ describe(parseArguments, () => {
 			test("parses boolean flag as false when absent", () => {
 				const result = parseArguments([], { verbose: optionalBoolean });
 				expect(result).toEqual({ verbose: false });
-			});
-
-			test("parses short alias for boolean flag", () => {
-				const result = parseArguments(["-f"], {
-					force: { type: "boolean", short: "f" },
-				});
-				expect(result).toEqual({ force: true });
 			});
 
 			test("uses boolean default value", () => {
@@ -324,7 +325,7 @@ describe(parseArguments, () => {
 		describe("validation errors", () => {
 			test("throws for invalid boolean string", () => {
 				expect(() => parseArguments(["maybe"], { flag: requiredBooleanPositional })).toThrow(
-					'Invalid boolean: "maybe". Use true/false, yes/no, or 0/1.',
+					'Invalid boolean: "maybe". Use true/false, yes/no, y/n, or 0/1.',
 				);
 			});
 		});
