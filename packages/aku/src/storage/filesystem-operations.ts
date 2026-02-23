@@ -3,9 +3,7 @@ import * as fsPromises from "node:fs/promises";
 import { onResetAllMocks } from "../testing/mocks.ts";
 
 export type Dir = fs.Dir;
-export type ReadStream = fs.ReadStream;
 export type Stats = fs.Stats;
-export type WriteStream = fs.WriteStream;
 
 export type FilesystemOps = {
 	stat(this: void, path: string): Promise<fs.Stats>;

@@ -1,7 +1,7 @@
 import { domainAndPathToSegments, getMatchParams, staticCacheKey } from "./matcher-utils.ts";
 import type { MatchedRoute, MatcherContext, MethodData, Node } from "./types.ts";
 
-export type FindRouteResult<T> = {
+type FindRouteResult<T> = {
 	match?: MatchedRoute<T> | undefined;
 	methodMismatch?: boolean | undefined;
 	static?: boolean | undefined;

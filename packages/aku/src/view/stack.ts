@@ -46,12 +46,12 @@ export function createStack({ displayName = "Stack" }: CreateStackOptions = {}):
 	return { Push, Out };
 }
 
-export type StackPushNode = JSXNode[] & SpecialNode & { stackPush: symbol };
+type StackPushNode = JSXNode[] & SpecialNode & { stackPush: symbol };
 
 export const isStackPushNode = (node: JSXNode): node is StackPushNode =>
 	typeof (node as StackPushNode)?.stackPush === "symbol";
 
-export type StackOutNode = JSXNode[] & SpecialNode & { stackOut: symbol };
+type StackOutNode = JSXNode[] & SpecialNode & { stackOut: symbol };
 
 export const isStackOutNode = (node: JSXNode): node is StackOutNode =>
 	typeof (node as StackOutNode)?.stackOut === "symbol";

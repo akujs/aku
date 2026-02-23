@@ -68,7 +68,7 @@ export abstract class DatabaseOperationCompletedEvent extends DatabaseEvent {
 	}
 }
 
-export interface QueryEventInit extends DatabaseEventInit {
+interface QueryEventInit extends DatabaseEventInit {
 	readonly statement: Statement;
 }
 
@@ -205,7 +205,7 @@ export class TransactionFailedEvent extends DatabaseEvent {
 	}
 }
 
-export interface TransactionRetryEventInit extends DatabaseEventInit {
+interface TransactionRetryEventInit extends DatabaseEventInit {
 	readonly attempt: number;
 	readonly previousTransactionId: number;
 	readonly error: DatabaseError;

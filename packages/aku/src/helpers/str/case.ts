@@ -38,7 +38,7 @@ const DEFAULT_SPLIT_REGEX = new RegExp(
 	].join("|"),
 );
 
-export interface SplitWordsOptions {
+interface SplitWordsOptions {
 	splitOn?: RegExp | string | undefined;
 }
 

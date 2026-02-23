@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "exclude": ["optionalPeerDependencies"],
+  "entry": [
+    "src/**/*-entry-point.ts",
+    "src/**/*.node-test.ts",
+    "src/test-utils/test-setup.bun.ts",
+    "src/database/adapters/sqlite/SqliteOps.bun.ts",
+    "src/database/adapters/sqlite/SqliteOps.node.ts",
+    "scripts/*.ts",
+    "tsdown.config.ts"
+  ],
+  "project": ["src/**/*.ts", "scripts/**/*.ts"],
+  "ignore": [
+    "src/test-utils/source/__fixtures__/**",
+    "src/view/jsx-dev-runtime/index.ts",
+    "src/integrations/next-ambient.d.ts"
+  ],
+  "ignoreBinaries": ["biome"],
+  "ignoreDependencies": ["bun-types", "@akujs/cli"]
+}

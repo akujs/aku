@@ -80,9 +80,7 @@ type BindArgsWithoutFactory<T> = {
 
 type ExtenderCallback<T = unknown> = (instance: T, container: Container) => T;
 
-export type InstanceCallback<T> = (instance: T, container: Container) => void;
-
-export type TypeCallback<T> = (type: KeyOrClass<T>, container: Container) => void;
+type InstanceCallback<T> = (instance: T, container: Container) => void;
 
 /**
  * The primary implementation of {@link Container}. Most applications use the

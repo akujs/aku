@@ -51,7 +51,7 @@ export const abortExceptionKey: Key<AbortException | undefined> = createKey<Abor
 	displayName: "abortException",
 });
 
-export type Abort = {
+type Abort = {
 	/**
 	 * Abort request handling return a response with the given status code.
 	 *

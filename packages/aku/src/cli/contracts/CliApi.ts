@@ -229,7 +229,7 @@ export type CliPromptResponse<V> =
 			success: false;
 	  };
 
-export type CliSelectChoice<V> = {
+type CliSelectChoice<V> = {
 	/**
 	 * Text to display for this item in the list of choices
 	 */

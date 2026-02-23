@@ -10,7 +10,7 @@ import type {
 	CliUlOptions,
 } from "./contracts/CliApi.ts";
 
-export type CliOutput =
+type CliOutput =
 	| { paragraph: string }
 	| { h1: string }
 	| { h2: string }

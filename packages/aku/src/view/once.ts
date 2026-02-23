@@ -6,7 +6,7 @@ import { tagAsJsxElement } from "./view-types.ts";
 
 export type OnceKey = string | number | symbol | bigint;
 
-export type OnceNode = JSXNode[] & SpecialNode & { onceKey: OnceKey };
+type OnceNode = JSXNode[] & SpecialNode & { onceKey: OnceKey };
 
 export const isOnceNode = (node: JSXNode): node is OnceNode =>
 	typeof (node as OnceNode)?.onceKey !== "undefined";
