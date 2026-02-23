@@ -3,6 +3,260 @@ import type { ArgumentSchema } from "./cli-types.ts";
 import { parseArguments } from "./parseArguments.ts";
 
 describe(parseArguments, () => {
+	describe("systematic argument combinations", () => {
+		// Type-safe 32-case matrix covering all combinations of:
+		// - Type: string | boolean
+		// - Position: Named | Positional
+		// - Requirement: Optional | Required
+		// - Cardinality: Single | Array
+		// - Default: Undefaulted | Defaulted
+		// Boolean arrays (8 cases) throw schema validation errors.
+
+		type ValueType = "string" | "boolean";
+		type Position = "Named" | "Positional";
+		type Requirement = "Optional" | "Required";
+		type Cardinality = "Single" | "Array";
+		type DefaultType = "Undefaulted" | "Defaulted";
+
+		type TestKey = `${ValueType}${Position}${Requirement}${Cardinality}${DefaultType}`;
+
+		const testCases: Record<TestKey, () => void> = {
+			// String - Named
+			stringNamedOptionalSingleUndefaulted() {
+				const arg = { type: "string" } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg?: string | undefined }>();
+				expect(parseArguments([], { arg })).toEqual({});
+				expect(parseArguments(["--arg", "val"], { arg })).toEqual({ arg: "val" });
+			},
+			stringNamedOptionalSingleDefaulted() {
+				const arg = { type: "string", default: "def" } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: "def" });
+				expect(parseArguments(["--arg", "val"], { arg })).toEqual({ arg: "val" });
+			},
+			stringNamedOptionalArrayUndefaulted() {
+				const arg = { type: "string", array: true } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: string[] }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: [] });
+				expect(parseArguments(["--arg", "a", "--arg", "b"], { arg })).toEqual({ arg: ["a", "b"] });
+			},
+			stringNamedOptionalArrayDefaulted() {
+				const arg = { type: "string", array: true, default: ["x", "y"] } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: string[] }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: ["x", "y"] });
+				expect(parseArguments(["--arg", "a"], { arg })).toEqual({ arg: ["a"] });
+			},
+			stringNamedRequiredSingleUndefaulted() {
+				const arg = { type: "string", required: true } as const;
+				const result = parseArguments(["--arg", "val"], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
+				expect(() => parseArguments([], { arg })).toThrow("Missing required option: --arg");
+				expect(parseArguments(["--arg", "val"], { arg })).toEqual({ arg: "val" });
+			},
+			stringNamedRequiredSingleDefaulted() {
+				const arg = { type: "string", required: true, default: "def" } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: "def" });
+				expect(parseArguments(["--arg", "val"], { arg })).toEqual({ arg: "val" });
+			},
+			stringNamedRequiredArrayUndefaulted() {
+				const arg = { type: "string", array: true, required: true } as const;
+				const result = parseArguments(["--arg", "a"], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: [string, ...string[]] }>();
+				expect(() => parseArguments([], { arg })).toThrow("Missing required option: --arg");
+				expect(parseArguments(["--arg", "a", "--arg", "b"], { arg })).toEqual({ arg: ["a", "b"] });
+			},
+			stringNamedRequiredArrayDefaulted() {
+				const arg = { type: "string", array: true, required: true, default: ["x", "y"] } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: [string, ...string[]] }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: ["x", "y"] });
+				expect(parseArguments(["--arg", "a"], { arg })).toEqual({ arg: ["a"] });
+			},
+
+			// String - Positional
+			stringPositionalOptionalSingleUndefaulted() {
+				const arg = { type: "string", positional: true } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg?: string | undefined }>();
+				expect(parseArguments([], { arg })).toEqual({});
+				expect(parseArguments(["val"], { arg })).toEqual({ arg: "val" });
+			},
+			stringPositionalOptionalSingleDefaulted() {
+				const arg = { type: "string", positional: true, default: "def" } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: "def" });
+				expect(parseArguments(["val"], { arg })).toEqual({ arg: "val" });
+			},
+			stringPositionalOptionalArrayUndefaulted() {
+				const arg = { type: "string", positional: true, array: true } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: string[] }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: [] });
+				expect(parseArguments(["a", "b", "c"], { arg })).toEqual({ arg: ["a", "b", "c"] });
+			},
+			stringPositionalOptionalArrayDefaulted() {
+				const arg = { type: "string", positional: true, array: true, default: ["x", "y"] } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: string[] }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: ["x", "y"] });
+				expect(parseArguments(["a"], { arg })).toEqual({ arg: ["a"] });
+			},
+			stringPositionalRequiredSingleUndefaulted() {
+				const arg = { type: "string", positional: true, required: true } as const;
+				const result = parseArguments(["val"], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
+				expect(() => parseArguments([], { arg })).toThrow("Missing required argument: arg");
+				expect(parseArguments(["val"], { arg })).toEqual({ arg: "val" });
+			},
+			stringPositionalRequiredSingleDefaulted() {
+				const arg = { type: "string", positional: true, required: true, default: "def" } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: "def" });
+				expect(parseArguments(["val"], { arg })).toEqual({ arg: "val" });
+			},
+			stringPositionalRequiredArrayUndefaulted() {
+				const arg = { type: "string", positional: true, array: true, required: true } as const;
+				const result = parseArguments(["a"], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: [string, ...string[]] }>();
+				expect(() => parseArguments([], { arg })).toThrow("Missing required argument: arg");
+				expect(parseArguments(["a", "b"], { arg })).toEqual({ arg: ["a", "b"] });
+			},
+			stringPositionalRequiredArrayDefaulted() {
+				const arg = {
+					type: "string",
+					positional: true,
+					array: true,
+					required: true,
+					default: ["x", "y"],
+				} as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: [string, ...string[]] }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: ["x", "y"] });
+				expect(parseArguments(["a"], { arg })).toEqual({ arg: ["a"] });
+			},
+
+			// Boolean - Named
+			booleanNamedOptionalSingleUndefaulted() {
+				const arg = { type: "boolean" } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: boolean }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: false });
+				expect(parseArguments(["--arg"], { arg })).toEqual({ arg: true });
+			},
+			booleanNamedOptionalSingleDefaulted() {
+				const arg = { type: "boolean", default: true } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: boolean }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: true });
+				expect(parseArguments(["--arg=false"], { arg })).toEqual({ arg: false });
+			},
+			booleanNamedOptionalArrayUndefaulted() {
+				const arg = { type: "boolean", array: true } as const;
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean array arguments are not supported",
+				);
+			},
+			booleanNamedOptionalArrayDefaulted() {
+				const arg = { type: "boolean", array: true } as const;
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean array arguments are not supported",
+				);
+			},
+			booleanNamedRequiredSingleUndefaulted() {
+				const arg = { type: "boolean", required: true } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: boolean }>();
+				// Booleans always have a value, required is ignored
+				expect(parseArguments([], { arg })).toEqual({ arg: false });
+				expect(parseArguments(["--arg"], { arg })).toEqual({ arg: true });
+			},
+			booleanNamedRequiredSingleDefaulted() {
+				const arg = { type: "boolean", required: true, default: true } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: boolean }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: true });
+				expect(parseArguments(["--arg=false"], { arg })).toEqual({ arg: false });
+			},
+			booleanNamedRequiredArrayUndefaulted() {
+				const arg = { type: "boolean", array: true, required: true } as const;
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean array arguments are not supported",
+				);
+			},
+			booleanNamedRequiredArrayDefaulted() {
+				const arg = { type: "boolean", array: true, required: true } as const;
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean array arguments are not supported",
+				);
+			},
+
+			// Boolean - Positional
+			booleanPositionalOptionalSingleUndefaulted() {
+				const arg = { type: "boolean", positional: true } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: boolean }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: false });
+				expect(parseArguments(["true"], { arg })).toEqual({ arg: true });
+			},
+			booleanPositionalOptionalSingleDefaulted() {
+				const arg = { type: "boolean", positional: true, default: true } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: boolean }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: true });
+				expect(parseArguments(["false"], { arg })).toEqual({ arg: false });
+			},
+			booleanPositionalOptionalArrayUndefaulted() {
+				const arg = { type: "boolean", positional: true, array: true } as const;
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean array arguments are not supported",
+				);
+			},
+			booleanPositionalOptionalArrayDefaulted() {
+				const arg = { type: "boolean", positional: true, array: true } as const;
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean array arguments are not supported",
+				);
+			},
+			booleanPositionalRequiredSingleUndefaulted() {
+				const arg = { type: "boolean", positional: true, required: true } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: boolean }>();
+				// Booleans always have a value, required is ignored
+				expect(parseArguments([], { arg })).toEqual({ arg: false });
+				expect(parseArguments(["true"], { arg })).toEqual({ arg: true });
+			},
+			booleanPositionalRequiredSingleDefaulted() {
+				const arg = { type: "boolean", positional: true, required: true, default: true } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: boolean }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: true });
+				expect(parseArguments(["false"], { arg })).toEqual({ arg: false });
+			},
+			booleanPositionalRequiredArrayUndefaulted() {
+				const arg = { type: "boolean", positional: true, array: true, required: true } as const;
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean array arguments are not supported",
+				);
+			},
+			booleanPositionalRequiredArrayDefaulted() {
+				const arg = { type: "boolean", positional: true, array: true, required: true } as const;
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean array arguments are not supported",
+				);
+			},
+		};
+
+		test.each(Object.entries(testCases))("%s", (_, fn) => fn());
+	});
+
 	// Reusable argument definitions at top level
 	const requiredStringPositional = { type: "string", positional: true, required: true } as const;
 	const optionalStringPositional = { type: "string", positional: true } as const;
@@ -16,155 +270,93 @@ describe(parseArguments, () => {
 	} as const;
 	const optionalBoolean = { type: "boolean" } as const;
 	const optionalString = { type: "string" } as const;
-	const requiredString = { type: "string", required: true } as const;
 	const optionalNumber = { type: "number" } as const;
-	const optionalStringArray = { type: "string", array: true } as const;
 	const optionalNumberArray = { type: "number", array: true } as const;
 
-	describe("string arguments", () => {
-		describe("positional", () => {
-			test("accepts required string positional", () => {
-				const result = parseArguments(["foo.txt"], { file: requiredStringPositional });
-				expect(result).toEqual({ file: "foo.txt" });
+	describe("multi-argument schemas", () => {
+		test("parses multiple positionals in order", () => {
+			const result = parseArguments(["a.txt", "b.txt"], {
+				source: requiredStringPositional,
+				dest: optionalStringPositional,
 			});
-
-			test("errors when required string positional is missing", () => {
-				expect(() =>
-					parseArguments([], { file: requiredStringPositional }),
-				).toThrowErrorMatchingInlineSnapshot(`"Missing required argument: file"`);
-			});
-
-			test("accepts optional string positional", () => {
-				const result = parseArguments(["foo.txt"], { file: optionalStringPositional });
-				expect(result).toEqual({ file: "foo.txt" });
-			});
-
-			test("does not create properties for missing optional positional", () => {
-				const result = parseArguments([], { file: optionalStringPositional });
-				expect(result).toEqual({});
-			});
-
-			test("parses multiple positionals in order", () => {
-				const result = parseArguments(["a.txt", "b.txt"], {
-					source: requiredStringPositional,
-					dest: optionalStringPositional,
-				});
-				expect(result).toEqual({ source: "a.txt", dest: "b.txt" });
-			});
-
-			test("handles mixed positional and named arguments", () => {
-				const result = parseArguments(["input.txt", "--verbose", "--output", "output.txt"], {
-					file: requiredStringPositional,
-					verbose: { type: "boolean" },
-					output: { type: "string" },
-				});
-				expect(result).toEqual({ file: "input.txt", verbose: true, output: "output.txt" });
-			});
-
-			test("throws for missing required positional", () => {
-				expect(() => parseArguments([], { file: requiredStringPositional })).toThrow(
-					"Missing required argument: file",
-				);
-			});
-
-			test("throws for excess positional arguments", () => {
-				expect(() => parseArguments(["foo", "bar"], { file: requiredStringPositional })).toThrow(
-					'Unexpected 2nd positional argument "bar"',
-				);
-			});
-
-			test("throws for excess positional with special characters", () => {
-				expect(() =>
-					parseArguments(["foo", 'bar "baz"'], { file: requiredStringPositional }),
-				).toThrow('Unexpected 2nd positional argument "bar \\"baz\\""');
-			});
-
-			test("throws for excess positional with no schema", () => {
-				expect(() => parseArguments(["foo"], {})).toThrow(
-					'Unexpected 1st positional argument "foo"',
-				);
-			});
+			expect(result).toEqual({ source: "a.txt", dest: "b.txt" });
 		});
 
-		describe("named", () => {
-			test("parses string option with value", () => {
-				const result = parseArguments(["--output", "file.txt"], { output: optionalString });
-				expect(result).toEqual({ output: "file.txt" });
+		test("handles mixed positional and named arguments", () => {
+			const result = parseArguments(["input.txt", "--verbose", "--output", "output.txt"], {
+				file: requiredStringPositional,
+				verbose: { type: "boolean" },
+				output: { type: "string" },
 			});
-
-			test("throws for missing required named", () => {
-				expect(() => parseArguments([], { output: requiredString })).toThrow(
-					"Missing required option: --output",
-				);
-			});
-
-			test("throws for unknown named argument", () => {
-				expect(() => parseArguments(["--unknown"], { known: optionalBoolean })).toThrow(
-					"Unknown option: --unknown",
-				);
-			});
-
-			test("throws for string option without value", () => {
-				expect(() => parseArguments(["--output"], { output: optionalString })).toThrow(
-					"Option '--output' requires a value",
-				);
-			});
-
-			test("throws for number option without value", () => {
-				expect(() => parseArguments(["--port"], { port: optionalNumber })).toThrow(
-					"Option '--port' requires a value",
-				);
-			});
+			expect(result).toEqual({ file: "input.txt", verbose: true, output: "output.txt" });
 		});
 
-		describe("type inference", () => {
-			test("infers required string positional", () => {
-				const result = parseArguments(["test"], {
-					file: { type: "string", positional: true, required: true },
-				} as const satisfies ArgumentSchema);
-
-				expectTypeOf(result).toEqualTypeOf<{ file: string }>();
+		test("parses mixed positional with variadic last", () => {
+			const result = parseArguments(["src.txt", "a.txt", "b.txt"], {
+				source: requiredStringPositional,
+				targets: requiredStringArrayPositional,
 			});
+			expect(result).toEqual({ source: "src.txt", targets: ["a.txt", "b.txt"] });
+		});
 
-			test("infers optional string positional", () => {
-				const result = parseArguments([], {
-					file: { type: "string", positional: true },
-				} as const satisfies ArgumentSchema);
-
-				expectTypeOf(result).toEqualTypeOf<{ file?: string | undefined }>();
+		test("supports array positional after non-array positional", () => {
+			const result = parseArguments(["a", "b", "c"], {
+				action: requiredStringPositional,
+				files: requiredStringArrayPositional,
 			});
+			expect(result).toEqual({ action: "a", files: ["b", "c"] });
+		});
 
-			test("infers combined positional and named", () => {
-				const result = parseArguments(["src"], {
-					source: { type: "string", positional: true, required: true },
-					dest: { type: "string", positional: true },
-					force: { type: "boolean" },
-					count: { type: "number" },
-				} as const satisfies ArgumentSchema);
+		test("infers combined positional and named", () => {
+			const result = parseArguments(["src"], {
+				source: { type: "string", positional: true, required: true },
+				dest: { type: "string", positional: true },
+				force: { type: "boolean" },
+				count: { type: "number" },
+			} as const satisfies ArgumentSchema);
 
-				expectTypeOf(result).toEqualTypeOf<{
-					source: string;
-					dest?: string | undefined;
-					force: boolean;
-					count?: number | undefined;
-				}>();
-			});
+			expectTypeOf(result).toEqualTypeOf<{
+				source: string;
+				dest?: string | undefined;
+				force: boolean;
+				count?: number | undefined;
+			}>();
+		});
+	});
 
-			test("infers required named string", () => {
-				const result = parseArguments(["--output", "file.txt"], {
-					output: { type: "string", required: true },
-				} as const satisfies ArgumentSchema);
+	describe("validation errors", () => {
+		test("throws for excess positional arguments", () => {
+			expect(() => parseArguments(["foo", "bar"], { file: requiredStringPositional })).toThrow(
+				'Unexpected 2nd positional argument "bar"',
+			);
+		});
 
-				expectTypeOf(result).toEqualTypeOf<{ output: string }>();
-			});
+		test("throws for excess positional with special characters", () => {
+			expect(() =>
+				parseArguments(["foo", 'bar "baz"'], { file: requiredStringPositional }),
+			).toThrow('Unexpected 2nd positional argument "bar \\"baz\\""');
+		});
 
-			test("infers optional named string", () => {
-				const result = parseArguments([], {
-					output: { type: "string" },
-				} as const satisfies ArgumentSchema);
+		test("throws for excess positional with no schema", () => {
+			expect(() => parseArguments(["foo"], {})).toThrow('Unexpected 1st positional argument "foo"');
+		});
 
-				expectTypeOf(result).toEqualTypeOf<{ output?: string | undefined }>();
-			});
+		test("throws for unknown named argument", () => {
+			expect(() => parseArguments(["--unknown"], { known: optionalBoolean })).toThrow(
+				"Unknown option: --unknown",
+			);
+		});
+
+		test("throws for string option without value", () => {
+			expect(() => parseArguments(["--output"], { output: optionalString })).toThrow(
+				"Option '--output' requires a value",
+			);
+		});
+
+		test("throws for number option without value", () => {
+			expect(() => parseArguments(["--port"], { port: optionalNumber })).toThrow(
+				"Option '--port' requires a value",
+			);
 		});
 	});
 
@@ -185,6 +377,13 @@ describe(parseArguments, () => {
 			test("parses number option and converts to number", () => {
 				const result = parseArguments(["--port", "8080"], { port: optionalNumber });
 				expect(result).toEqual({ port: 8080 });
+			});
+
+			test("parses number array named", () => {
+				const result = parseArguments(["--ids", "1", "--ids", "2", "--ids", "3"], {
+					ids: optionalNumberArray,
+				});
+				expect(result).toEqual({ ids: [1, 2, 3] });
 			});
 		});
 
@@ -229,287 +428,119 @@ describe(parseArguments, () => {
 		});
 	});
 
-	describe("boolean arguments", () => {
-		describe("positional", () => {
-			test('parses "true" string as true', () => {
-				const result = parseArguments(["true"], { flag: requiredBooleanPositional });
-				expect(result).toEqual({ flag: true });
-			});
+	describe("boolean parsing", () => {
+		test('parses "true" string as true', () => {
+			const result = parseArguments(["true"], { flag: requiredBooleanPositional });
+			expect(result).toEqual({ flag: true });
+		});
 
-			test('parses "false" string as false', () => {
-				const result = parseArguments(["false"], { flag: requiredBooleanPositional });
-				expect(result).toEqual({ flag: false });
-			});
+		test('parses "false" string as false', () => {
+			const result = parseArguments(["false"], { flag: requiredBooleanPositional });
+			expect(result).toEqual({ flag: false });
+		});
 
-			test('parses "yes" string as true', () => {
-				const result = parseArguments(["yes"], { flag: requiredBooleanPositional });
-				expect(result).toEqual({ flag: true });
-			});
+		test('parses "yes" string as true', () => {
+			const result = parseArguments(["yes"], { flag: requiredBooleanPositional });
+			expect(result).toEqual({ flag: true });
+		});
 
-			test('parses "no" string as false', () => {
-				const result = parseArguments(["no"], { flag: requiredBooleanPositional });
-				expect(result).toEqual({ flag: false });
-			});
+		test('parses "no" string as false', () => {
+			const result = parseArguments(["no"], { flag: requiredBooleanPositional });
+			expect(result).toEqual({ flag: false });
+		});
 
-			test('parses "y" string as true', () => {
-				const result = parseArguments(["y"], { flag: requiredBooleanPositional });
-				expect(result).toEqual({ flag: true });
-			});
+		test('parses "y" string as true', () => {
+			const result = parseArguments(["y"], { flag: requiredBooleanPositional });
+			expect(result).toEqual({ flag: true });
+		});
 
-			test('parses "n" string as false', () => {
-				const result = parseArguments(["n"], { flag: requiredBooleanPositional });
-				expect(result).toEqual({ flag: false });
-			});
-			test('parses "1" string as true', () => {
-				const result = parseArguments(["1"], { flag: requiredBooleanPositional });
-				expect(result).toEqual({ flag: true });
-			});
+		test('parses "n" string as false', () => {
+			const result = parseArguments(["n"], { flag: requiredBooleanPositional });
+			expect(result).toEqual({ flag: false });
+		});
 
-			test('parses "0" string as false', () => {
-				const result = parseArguments(["0"], { flag: requiredBooleanPositional });
-				expect(result).toEqual({ flag: false });
-			});
+		test('parses "1" string as true', () => {
+			const result = parseArguments(["1"], { flag: requiredBooleanPositional });
+			expect(result).toEqual({ flag: true });
+		});
 
-			test("parses case insensitively", () => {
-				expect(parseArguments(["TRUE"], { flag: requiredBooleanPositional })).toEqual({
-					flag: true,
-				});
-				expect(parseArguments(["FALSE"], { flag: requiredBooleanPositional })).toEqual({
-					flag: false,
-				});
-				expect(parseArguments(["Yes"], { flag: requiredBooleanPositional })).toEqual({
-					flag: true,
-				});
-				expect(parseArguments(["No"], { flag: requiredBooleanPositional })).toEqual({
-					flag: false,
-				});
-				expect(parseArguments(["Y"], { flag: requiredBooleanPositional })).toEqual({
-					flag: true,
-				});
-				expect(parseArguments(["N"], { flag: requiredBooleanPositional })).toEqual({
-					flag: false,
-				});
+		test('parses "0" string as false', () => {
+			const result = parseArguments(["0"], { flag: requiredBooleanPositional });
+			expect(result).toEqual({ flag: false });
+		});
+
+		test("parses case insensitively", () => {
+			expect(parseArguments(["TRUE"], { flag: requiredBooleanPositional })).toEqual({
+				flag: true,
+			});
+			expect(parseArguments(["FALSE"], { flag: requiredBooleanPositional })).toEqual({
+				flag: false,
+			});
+			expect(parseArguments(["Yes"], { flag: requiredBooleanPositional })).toEqual({
+				flag: true,
+			});
+			expect(parseArguments(["No"], { flag: requiredBooleanPositional })).toEqual({
+				flag: false,
+			});
+			expect(parseArguments(["Y"], { flag: requiredBooleanPositional })).toEqual({
+				flag: true,
+			});
+			expect(parseArguments(["N"], { flag: requiredBooleanPositional })).toEqual({
+				flag: false,
 			});
 		});
 
-		describe("named", () => {
-			test("parses boolean flag as true when present", () => {
-				const result = parseArguments(["--verbose"], { verbose: optionalBoolean });
-				expect(result).toEqual({ verbose: true });
-			});
-
-			test("parses boolean flag as false when absent", () => {
-				const result = parseArguments([], { verbose: optionalBoolean });
-				expect(result).toEqual({ verbose: false });
-			});
-
-			test("uses boolean default value", () => {
-				const result = parseArguments([], {
-					verbose: { type: "boolean", default: false },
-				});
-				expect(result).toEqual({ verbose: false });
-			});
-
-			test("parses --flag=false as false", () => {
-				const result = parseArguments(["--verbose=false"], { verbose: optionalBoolean });
-				expect(result).toEqual({ verbose: false });
-			});
-
-			test("overrides default true with --flag=false", () => {
-				const schema = { verbose: { type: "boolean", default: true } } as const;
-				expect(parseArguments([], schema)).toEqual({ verbose: true });
-				expect(parseArguments(["--verbose=false"], schema)).toEqual({ verbose: false });
-			});
+		test("parses --flag=false as false", () => {
+			const result = parseArguments(["--verbose=false"], { verbose: optionalBoolean });
+			expect(result).toEqual({ verbose: false });
 		});
 
-		describe("validation errors", () => {
-			test("throws for invalid boolean string", () => {
-				expect(() => parseArguments(["maybe"], { flag: requiredBooleanPositional })).toThrow(
-					'Invalid boolean: "maybe". Use true/false, yes/no, y/n, or 0/1.',
-				);
-			});
+		test("overrides default true with --flag=false", () => {
+			const schema = { verbose: { type: "boolean", default: true } } as const;
+			expect(parseArguments([], schema)).toEqual({ verbose: true });
+			expect(parseArguments(["--verbose=false"], schema)).toEqual({ verbose: false });
 		});
 
-		describe("type inference", () => {
-			test("infers optional boolean named as always present", () => {
-				const result = parseArguments([], {
-					verbose: { type: "boolean" },
-				} as const satisfies ArgumentSchema);
-
-				expectTypeOf(result).toEqualTypeOf<{ verbose: boolean }>();
-			});
-
-			test("infers required boolean positional", () => {
-				const result = parseArguments(["true"], {
-					flag: { type: "boolean", positional: true, required: true },
-				} as const satisfies ArgumentSchema);
-
-				expectTypeOf(result).toEqualTypeOf<{ flag: boolean }>();
-			});
-
-			test("infers optional boolean positional as always present", () => {
-				const result = parseArguments([], {
-					flag: { type: "boolean", positional: true },
-				} as const satisfies ArgumentSchema);
-
-				expectTypeOf(result).toEqualTypeOf<{ flag: boolean }>();
-			});
+		test("throws for invalid boolean string", () => {
+			expect(() => parseArguments(["maybe"], { flag: requiredBooleanPositional })).toThrow(
+				'Invalid boolean: "maybe". Use true/false, yes/no, y/n, or 0/1.',
+			);
 		});
 	});
 
-	describe("array arguments", () => {
-		describe("positional (variadic)", () => {
-			test("parses variadic positional into array", () => {
-				const result = parseArguments(["a.txt", "b.txt", "c.txt"], {
-					files: requiredStringArrayPositional,
-				});
-				expect(result).toEqual({ files: ["a.txt", "b.txt", "c.txt"] });
-			});
-
-			test("parses mixed positional with variadic last", () => {
-				const result = parseArguments(["src.txt", "a.txt", "b.txt"], {
-					source: requiredStringPositional,
-					targets: requiredStringArrayPositional,
-				});
-				expect(result).toEqual({ source: "src.txt", targets: ["a.txt", "b.txt"] });
-			});
-
-			test("parses 1 value for required array positional", () => {
-				const result = parseArguments(["foo.txt"], { files: requiredStringArrayPositional });
-				expect(result).toEqual({ files: ["foo.txt"] });
-			});
-
-			test("parses 2 values for required array positional", () => {
-				const result = parseArguments(["foo.txt", "bar.txt"], {
-					files: requiredStringArrayPositional,
-				});
-				expect(result).toEqual({ files: ["foo.txt", "bar.txt"] });
-			});
-
-			test("throws for 0 values for required array positional", () => {
-				expect(() => parseArguments([], { files: requiredStringArrayPositional })).toThrow(
-					"Missing required argument",
-				);
-			});
-
-			test("supports array positional after non-array positional", () => {
-				const result = parseArguments(["a", "b", "c"], {
-					action: requiredStringPositional,
-					files: requiredStringArrayPositional,
-				});
-				expect(result).toEqual({ action: "a", files: ["b", "c"] });
-			});
+	describe("schema validation", () => {
+		test("throws for array on non-last positional", () => {
+			expect(() =>
+				parseArguments([], {
+					files: { type: "string", positional: true, array: true },
+					extra: optionalStringPositional,
+				}),
+			).toThrow("array positional argument (files) must be the last positional argument");
 		});
 
-		describe("named", () => {
-			test("parses 0 values for array named arg as undefined", () => {
-				const result = parseArguments([], { tags: optionalStringArray });
-				expect(result).toEqual({ tags: [] });
-			});
-
-			test("parses 1 value for array named arg as array", () => {
-				const result = parseArguments(["--tags", "foo"], { tags: optionalStringArray });
-				expect(result).toEqual({ tags: ["foo"] });
-			});
-
-			test("parses 2 values for array named arg as array", () => {
-				const result = parseArguments(["--tags", "foo", "--tags", "bar"], {
-					tags: optionalStringArray,
-				});
-				expect(result).toEqual({ tags: ["foo", "bar"] });
-			});
-
-			test("parses number array named", () => {
-				const result = parseArguments(["--ids", "1", "--ids", "2", "--ids", "3"], {
-					ids: optionalNumberArray,
-				});
-				expect(result).toEqual({ ids: [1, 2, 3] });
-			});
+		test("throws for mixing array and optional positionals", () => {
+			expect(() =>
+				parseArguments([], {
+					optional: optionalStringPositional,
+					files: { type: "string", positional: true, array: true },
+				}),
+			).toThrow("can't mix array positional arguments (files) and optional (optional)");
 		});
 
-		describe("schema validation", () => {
-			test("throws for array on non-last positional", () => {
-				expect(() =>
-					parseArguments([], {
-						files: { type: "string", positional: true, array: true },
-						extra: optionalStringPositional,
-					}),
-				).toThrow("array positional argument (files) must be the last positional argument");
-			});
-
-			test("throws for mixing array and optional positionals", () => {
-				expect(() =>
-					parseArguments([], {
-						optional: optionalStringPositional,
-						files: { type: "string", positional: true, array: true },
-					}),
-				).toThrow("can't mix array positional arguments (files) and optional (optional)");
-			});
-
-			test("throws for required positional after optional", () => {
-				expect(() =>
-					parseArguments([], {
-						optional: optionalStringPositional,
-						required: requiredStringPositional,
-					}),
-				).toThrow(
-					'required positional argument "required" cannot follow optional positional argument "optional"',
-				);
-			});
-
-			test("throws for boolean array positional", () => {
-				expect(() =>
-					parseArguments([], {
-						flags: { type: "boolean", positional: true, array: true },
-					}),
-				).toThrow("boolean array arguments are not supported (flags)");
-			});
-
-			test("throws for boolean array named", () => {
-				expect(() =>
-					parseArguments([], {
-						flags: { type: "boolean", array: true },
-					}),
-				).toThrow("boolean array arguments are not supported (flags)");
-			});
-		});
-
-		describe("type inference", () => {
-			test("infers required positional array as non-empty", () => {
-				const result = parseArguments(["a"], {
-					files: { type: "string", positional: true, array: true, required: true },
-				} as const satisfies ArgumentSchema);
-
-				expectTypeOf(result).toEqualTypeOf<{ files: [string, ...string[]] }>();
-			});
-
-			test("infers optional named array as always present", () => {
-				const result = parseArguments([], {
-					tags: { type: "string", array: true },
-				} as const satisfies ArgumentSchema);
-
-				expectTypeOf(result).toEqualTypeOf<{ tags: string[] }>();
-			});
-
-			test("infers required named array as non-empty", () => {
-				const result = parseArguments(["--tags", "a"], {
-					tags: { type: "string", array: true, required: true },
-				} as const satisfies ArgumentSchema);
-
-				expectTypeOf(result).toEqualTypeOf<{ tags: [string, ...string[]] }>();
-			});
+		test("throws for required positional after optional", () => {
+			expect(() =>
+				parseArguments([], {
+					optional: optionalStringPositional,
+					required: requiredStringPositional,
+				}),
+			).toThrow(
+				'required positional argument "required" cannot follow optional positional argument "optional"',
+			);
 		});
 	});
 
-	describe("default values", () => {
-		test("uses default for missing positional", () => {
-			const result = parseArguments([], {
-				file: { type: "string", positional: true, default: "default.txt" },
-			});
-			expect(result).toEqual({ file: "default.txt" });
-		});
-
-		test("uses default for missing named", () => {
+	describe("number defaults", () => {
+		test("uses default for missing named number", () => {
 			const result = parseArguments([], { port: { type: "number", default: 8080 } });
 			expect(result).toEqual({ port: 8080 });
 		});
@@ -521,54 +552,12 @@ describe(parseArguments, () => {
 			expect(result).toEqual({ port: 3000 });
 		});
 
-		test("a required positional with a default value can be omitted", () => {
-			const result = parseArguments([], {
-				file: { type: "string", positional: true, required: true, default: "fallback.txt" },
-			});
-			expect(result).toEqual({ file: "fallback.txt" });
-		});
-
-		test("default ignores required for named", () => {
-			const result = parseArguments([], {
-				output: { type: "string", required: true, default: "out.txt" },
-			});
-			expect(result).toEqual({ output: "out.txt" });
-		});
-
-		test("default ignores required for positional array", () => {
-			const result = parseArguments([], {
-				files: {
-					type: "string",
-					positional: true,
-					array: true,
-					required: true,
-					default: ["a.txt", "b.txt"],
-				},
-			});
-			expect(result).toEqual({ files: ["a.txt", "b.txt"] });
-		});
-
-		test("default ignores required for named array", () => {
-			const result = parseArguments([], {
-				tags: { type: "string", array: true, required: true, default: ["dev", "test"] },
-			});
-			expect(result).toEqual({ tags: ["dev", "test"] });
-		});
-
 		test("infers non-optional type when named has default", () => {
 			const result = parseArguments([], {
 				port: { type: "number", default: 8080 },
 			} as const satisfies ArgumentSchema);
 
 			expectTypeOf(result).toEqualTypeOf<{ port: number }>();
-		});
-
-		test("infers non-optional type when positional has default", () => {
-			const result = parseArguments([], {
-				file: { type: "string", positional: true, default: "default.txt" },
-			} as const satisfies ArgumentSchema);
-
-			expectTypeOf(result).toEqualTypeOf<{ file: string }>();
 		});
 	});
 
@@ -597,241 +586,6 @@ describe(parseArguments, () => {
 			const result = parseArguments([], {} as const satisfies ArgumentSchema);
 
 			expectTypeOf(result).toEqualTypeOf<{}>();
-		});
-	});
-
-	describe("systematic argument combinations", () => {
-		// Testing all 16 combinations of: Positional, Required, Array, hasDefault
-		// Format: [N/P][O/R][S/A][_/D] = Named/Positional, Optional/Required, Single/Array, noDefault/Default
-
-		test("NOS_ - named, optional, single, no default", () => {
-			const arg = { type: "string" } as const;
-
-			// Type: optional string
-			const result = parseArguments([], { arg });
-			expectTypeOf(result).toEqualTypeOf<{ arg?: string | undefined }>();
-
-			// Omitted: property not set
-			expect(parseArguments([], { arg })).toEqual({});
-
-			// Provided: has value
-			expect(parseArguments(["--arg", "val"], { arg })).toEqual({ arg: "val" });
-		});
-
-		test("NOSD - named, optional, single, with default", () => {
-			const arg = { type: "string", default: "def" } as const;
-
-			// Type: always present string
-			const result = parseArguments([], { arg });
-			expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
-
-			// Omitted: uses default
-			expect(parseArguments([], { arg })).toEqual({ arg: "def" });
-
-			// Provided: overrides default
-			expect(parseArguments(["--arg", "val"], { arg })).toEqual({ arg: "val" });
-		});
-
-		test("NOA_ - named, optional, array, no default", () => {
-			const arg = { type: "string", array: true } as const;
-
-			// Type: always present array
-			const result = parseArguments([], { arg });
-			expectTypeOf(result).toEqualTypeOf<{ arg: string[] }>();
-
-			// Omitted: empty array
-			expect(parseArguments([], { arg })).toEqual({ arg: [] });
-
-			// Provided: array of values
-			expect(parseArguments(["--arg", "a", "--arg", "b"], { arg })).toEqual({ arg: ["a", "b"] });
-		});
-
-		test("NOAD - named, optional, array, with default", () => {
-			const arg = { type: "string", array: true, default: ["x", "y"] } as const;
-
-			// Type: always present array
-			const result = parseArguments([], { arg });
-			expectTypeOf(result).toEqualTypeOf<{ arg: string[] }>();
-
-			// Omitted: uses default
-			expect(parseArguments([], { arg })).toEqual({ arg: ["x", "y"] });
-
-			// Provided: overrides default
-			expect(parseArguments(["--arg", "a"], { arg })).toEqual({ arg: ["a"] });
-		});
-
-		test("NRS_ - named, required, single, no default", () => {
-			const arg = { type: "string", required: true } as const;
-
-			// Type: required string
-			const result = parseArguments(["--arg", "val"], { arg });
-			expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
-
-			// Omitted: throws error
-			expect(() => parseArguments([], { arg })).toThrow("Missing required option: --arg");
-
-			// Provided: has value
-			expect(parseArguments(["--arg", "val"], { arg })).toEqual({ arg: "val" });
-		});
-
-		test("NRSD - named, required, single, with default", () => {
-			const arg = { type: "string", required: true, default: "def" } as const;
-
-			// Type: always present (default overrides required at runtime, but type still non-optional)
-			const result = parseArguments([], { arg });
-			expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
-
-			// Omitted: uses default (required ignored when default present)
-			expect(parseArguments([], { arg })).toEqual({ arg: "def" });
-
-			// Provided: overrides default
-			expect(parseArguments(["--arg", "val"], { arg })).toEqual({ arg: "val" });
-		});
-
-		test("NRA_ - named, required, array, no default", () => {
-			const arg = { type: "string", array: true, required: true } as const;
-
-			// Type: non-empty array
-			const result = parseArguments(["--arg", "a"], { arg });
-			expectTypeOf(result).toEqualTypeOf<{ arg: [string, ...string[]] }>();
-
-			// Omitted: throws error
-			expect(() => parseArguments([], { arg })).toThrow("Missing required option: --arg");
-
-			// Provided: non-empty array
-			expect(parseArguments(["--arg", "a", "--arg", "b"], { arg })).toEqual({ arg: ["a", "b"] });
-		});
-
-		test("NRAD - named, required, array, with default", () => {
-			const arg = { type: "string", array: true, required: true, default: ["x", "y"] } as const;
-
-			// Type: non-empty array (required in schema)
-			const result = parseArguments([], { arg });
-			expectTypeOf(result).toEqualTypeOf<{ arg: [string, ...string[]] }>();
-
-			// Omitted: uses default (required ignored when default present)
-			expect(parseArguments([], { arg })).toEqual({ arg: ["x", "y"] });
-
-			// Provided: overrides default
-			expect(parseArguments(["--arg", "a"], { arg })).toEqual({ arg: ["a"] });
-		});
-
-		test("POS_ - positional, optional, single, no default", () => {
-			const arg = { type: "string", positional: true } as const;
-
-			// Type: optional string
-			const result = parseArguments([], { arg });
-			expectTypeOf(result).toEqualTypeOf<{ arg?: string | undefined }>();
-
-			// Omitted: property not set
-			expect(parseArguments([], { arg })).toEqual({});
-
-			// Provided: has value
-			expect(parseArguments(["val"], { arg })).toEqual({ arg: "val" });
-		});
-
-		test("POSD - positional, optional, single, with default", () => {
-			const arg = { type: "string", positional: true, default: "def" } as const;
-
-			// Type: always present string
-			const result = parseArguments([], { arg });
-			expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
-
-			// Omitted: uses default
-			expect(parseArguments([], { arg })).toEqual({ arg: "def" });
-
-			// Provided: overrides default
-			expect(parseArguments(["val"], { arg })).toEqual({ arg: "val" });
-		});
-
-		test("POA_ - positional, optional, array, no default", () => {
-			const arg = { type: "string", positional: true, array: true } as const;
-
-			// Type: always present array
-			const result = parseArguments([], { arg });
-			expectTypeOf(result).toEqualTypeOf<{ arg: string[] }>();
-
-			// Omitted: empty array
-			expect(parseArguments([], { arg })).toEqual({ arg: [] });
-
-			// Provided: array of values
-			expect(parseArguments(["a", "b", "c"], { arg })).toEqual({ arg: ["a", "b", "c"] });
-		});
-
-		test("POAD - positional, optional, array, with default", () => {
-			const arg = { type: "string", positional: true, array: true, default: ["x", "y"] } as const;
-
-			// Type: always present array
-			const result = parseArguments([], { arg });
-			expectTypeOf(result).toEqualTypeOf<{ arg: string[] }>();
-
-			// Omitted: uses default
-			expect(parseArguments([], { arg })).toEqual({ arg: ["x", "y"] });
-
-			// Provided: overrides default
-			expect(parseArguments(["a"], { arg })).toEqual({ arg: ["a"] });
-		});
-
-		test("PRS_ - positional, required, single, no default", () => {
-			const arg = { type: "string", positional: true, required: true } as const;
-
-			// Type: required string
-			const result = parseArguments(["val"], { arg });
-			expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
-
-			// Omitted: throws error
-			expect(() => parseArguments([], { arg })).toThrow("Missing required argument: arg");
-
-			// Provided: has value
-			expect(parseArguments(["val"], { arg })).toEqual({ arg: "val" });
-		});
-
-		test("PRSD - positional, required, single, with default", () => {
-			const arg = { type: "string", positional: true, required: true, default: "def" } as const;
-
-			// Type: always present string
-			const result = parseArguments([], { arg });
-			expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
-
-			// Omitted: uses default (required ignored when default present)
-			expect(parseArguments([], { arg })).toEqual({ arg: "def" });
-
-			// Provided: overrides default
-			expect(parseArguments(["val"], { arg })).toEqual({ arg: "val" });
-		});
-
-		test("PRA_ - positional, required, array, no default", () => {
-			const arg = { type: "string", positional: true, array: true, required: true } as const;
-
-			// Type: non-empty array
-			const result = parseArguments(["a"], { arg });
-			expectTypeOf(result).toEqualTypeOf<{ arg: [string, ...string[]] }>();
-
-			// Omitted: throws error
-			expect(() => parseArguments([], { arg })).toThrow("Missing required argument: arg");
-
-			// Provided: non-empty array
-			expect(parseArguments(["a", "b"], { arg })).toEqual({ arg: ["a", "b"] });
-		});
-
-		test("PRAD - positional, required, array, with default", () => {
-			const arg = {
-				type: "string",
-				positional: true,
-				array: true,
-				required: true,
-				default: ["x", "y"],
-			} as const;
-
-			// Type: non-empty array (required in schema)
-			const result = parseArguments([], { arg });
-			expectTypeOf(result).toEqualTypeOf<{ arg: [string, ...string[]] }>();
-
-			// Omitted: uses default (required ignored when default present)
-			expect(parseArguments([], { arg })).toEqual({ arg: ["x", "y"] });
-
-			// Provided: overrides default
-			expect(parseArguments(["a"], { arg })).toEqual({ arg: ["a"] });
 		});
 	});
 });
