@@ -122,7 +122,7 @@ export class RouteUrlGenerator extends BaseClass {
 const firstHeaderValue = (headers: Headers, name: string): string | null =>
 	headers.get(name)?.split(",")[0]?.trim() ?? null;
 
-export function getProtocolFromHeaders(headers: Headers): string | null {
+function getProtocolFromHeaders(headers: Headers): string | null {
 	const forwardedProto =
 		firstHeaderValue(headers, "x-forwarded-proto") ??
 		firstHeaderValue(headers, "x-forwarded-protocol") ??
@@ -140,7 +140,7 @@ export function getProtocolFromHeaders(headers: Headers): string | null {
 	return null;
 }
 
-export function getHostFromHeaders(headers: Headers): string | null {
+function getHostFromHeaders(headers: Headers): string | null {
 	const host = firstHeaderValue(headers, "x-forwarded-host") ?? firstHeaderValue(headers, "host");
 
 	return host;

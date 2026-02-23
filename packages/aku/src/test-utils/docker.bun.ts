@@ -1,11 +1,10 @@
 import * as path from "node:path";
 
-export type DockerService = "minio";
+type DockerService = "minio";
 
 export const MINIO_ROOT_USER = "minioadmin";
 export const MINIO_ROOT_PASSWORD = "minioadmin";
-export const MINIO_PORT = 22855;
-export const MINIO_CONSOLE_PORT = 22856;
+const MINIO_PORT = 22855;
 export const MINIO_ENDPOINT: string = `http://localhost:${MINIO_PORT}`;
 
 /**

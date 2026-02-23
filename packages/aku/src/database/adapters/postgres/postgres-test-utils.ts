@@ -5,7 +5,7 @@ import type { ExecutableStatement } from "../../query-types.ts";
 import { sql } from "../../sql.ts";
 import { postgresDatabase } from "./postgresDatabase.ts";
 
-export const POSTGRES_URL = "postgres://aku:aku@localhost:22857/aku_test";
+const POSTGRES_URL = "postgres://aku:aku@localhost:22857/aku_test";
 
 export const recreatePostgresPublicSchema: ExecutableStatement = sql`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public`;
 

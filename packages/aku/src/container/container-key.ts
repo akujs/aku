@@ -32,8 +32,6 @@ class TypeTokenImpl<T> implements TypeToken<T> {
 	}
 }
 
-export const isTypeToken = (value: unknown): value is TypeToken => value instanceof TypeTokenImpl;
-
 /**
  * Create a token representing an arbitrary type. This allows typescript types
  * that don't normally have a runtime value associated (like interfaces) to be

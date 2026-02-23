@@ -175,7 +175,7 @@ export function getPrototypeChain(instanceOrClass: unknown): AnyConstructor[] {
 	return result;
 }
 
-export const plural = (word: string): string => word + "s";
+const plural = (word: string): string => word + "s";
 
 export const pluralCount = (count: number, word: string): string =>
 	count + " " + (count === 1 ? word : plural(word));

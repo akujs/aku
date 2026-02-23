@@ -6,11 +6,7 @@ export function isConfiguredStorageDriver(value: unknown): value is StorageAdapt
 	return typeof (value as StorageAdapter | null)?.build === "function";
 }
 
-export function isStorageEndpoint(value: unknown): value is StorageEndpoint {
-	return typeof (value as StorageEndpoint | null)?.readSingle === "function";
-}
-
-export function isStorageDisk(value: unknown): value is StorageDisk {
+function isStorageDisk(value: unknown): value is StorageDisk {
 	return value instanceof StorageDiskImpl;
 }
 

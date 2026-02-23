@@ -3,13 +3,13 @@ import type { ContextualBindingBuilder } from "../ContextualBindingBuilder.ts";
 import type { KeyOrClass, TypeToken } from "../container-key.ts";
 import { createTypeToken } from "../container-key.ts";
 
-export type FactoryFunction<T> = (container: Container) => {
+type FactoryFunction<T> = (container: Container) => {
 	[K in keyof T]: T[K];
 };
 
 export type Lifecycle = "transient" | "singleton" | "scoped";
 
-export type BindArgsWithFactory<T> = {
+type BindArgsWithFactory<T> = {
 	class?: new (...args: never[]) => T;
 	factory?: FactoryFunction<T>;
 	instance?: T;
@@ -17,7 +17,7 @@ export type BindArgsWithFactory<T> = {
 	ifNotBound?: boolean;
 };
 
-export type BindArgsWithoutFactory<T> = {
+type BindArgsWithoutFactory<T> = {
 	class: NoArgConstructor<T>;
 	factory?: never;
 	instance?: never;
@@ -25,7 +25,7 @@ export type BindArgsWithoutFactory<T> = {
 	ifNotBound?: boolean;
 };
 
-export type InstanceCallback<T> = (instance: T, container: Container) => void;
+type InstanceCallback<T> = (instance: T, container: Container) => void;
 
 /**
  * A type-safe Inversion of Control (IoC) container. Essentially a fancy map of

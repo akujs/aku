@@ -127,10 +127,6 @@ export interface Statement extends SqlFragments {
 	readonly prepare?: boolean | undefined;
 }
 
-export interface MutationResult {
-	rowsAffected: number;
-}
-
 export interface StatementResult {
 	rows: Row[];
 	rowsAffected: number;

@@ -16,7 +16,7 @@ export type Routes<Params extends Record<string, string> = {}> = readonly RouteD
 	readonly __nameParamsMap?: Params; // Phantom type for type inference
 };
 
-export type Status = number | "4xx" | "5xx";
+type Status = number | "4xx" | "5xx";
 
 export type StatusPageComponent = Component<{
 	status: number;
@@ -136,13 +136,11 @@ export interface RouteGroupOptions<NamePrefix extends string = "", PathPrefix ex
 	namePrefix?: NamePrefix | undefined;
 }
 
-export type ParamsObject<U extends string> = Prettify<Record<U, string | number>>;
-
 export type BuiltInRouteConstraint = "numeric" | "alphanumeric" | "uuid" | "ulid";
 
 export type ParamConstraint = BuiltInRouteConstraint | RegExp | ((value: string) => boolean);
 
-export type ParamConstraints = Record<string, ParamConstraint | undefined>;
+type ParamConstraints = Record<string, ParamConstraint | undefined>;
 
 export type StatusPages = Partial<Record<Status, StatusPageComponent>>;
 
@@ -173,7 +171,7 @@ export interface RouteWithParams {
 	params: Record<string, string>;
 }
 
-export type ExtractRouteParams<T extends string> =
+type ExtractRouteParams<T extends string> =
 	T extends `${infer Before}{${infer Param}}${infer After}`
 		? Param extends `...${infer WildcardParam}`
 			? WildcardParam | ExtractRouteParams<`${Before}${After}`>
@@ -187,7 +185,7 @@ export type ExtractDomainAndPathParams<
 	? ExtractRouteParams<Domain> | ExtractRouteParams<Path>
 	: ExtractRouteParams<Path>;
 
-export type MergeChildren<Children extends readonly unknown[]> = Prettify<
+type MergeChildren<Children extends readonly unknown[]> = Prettify<
 	Children extends readonly [infer First, ...infer Rest]
 		? ExtractMap<First> & MergeChildren<Rest>
 		: {}
@@ -195,14 +193,11 @@ export type MergeChildren<Children extends readonly unknown[]> = Prettify<
 
 type ExtractMap<T> = T extends Routes<infer Map> ? Map : {};
 
-export type AddPrefixParams<Map extends Record<string, string>, PrefixParams extends string> = {
+type AddPrefixParams<Map extends Record<string, string>, PrefixParams extends string> = {
 	[K in keyof Map]: Map[K] extends never ? PrefixParams : Map[K] | PrefixParams;
 };
 
-export type PrependPrefixToKeys<
-	Map extends Record<string, string>,
-	Prefix extends string,
-> = Prettify<{
+type PrependPrefixToKeys<Map extends Record<string, string>, Prefix extends string> = Prettify<{
 	[K in keyof Map as K extends string ? `${Prefix}${K}` : never]: Map[K];
 }>;
 

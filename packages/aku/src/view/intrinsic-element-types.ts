@@ -62,7 +62,7 @@ type BaseMime =
 
 type StringLiteralUnion<T> = T | (string & Record<never, never>);
 
-export type CrossOrigin = "anonymous" | "use-credentials" | "" | undefined;
+type CrossOrigin = "anonymous" | "use-credentials" | "" | undefined;
 
 type AnyAttributes = {
 	[attributeName: string]: unknown;
@@ -74,7 +74,7 @@ interface JSXAttributes {
 	};
 }
 
-export interface HTMLAttributes extends JSXAttributes, AnyAttributes {
+interface HTMLAttributes extends JSXAttributes, AnyAttributes {
 	accesskey?: string | undefined;
 	autocapitalize?: "off" | "none" | "on" | "sentences" | "words" | "characters" | undefined;
 	autofocus?: boolean | undefined;

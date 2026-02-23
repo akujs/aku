@@ -1,7 +1,8 @@
 {
   "extends": "./tsconfig.common.json",
   "compilerOptions": {
-    "lib": ["ES2024"],
+    // FIXME - should be ES2025, update once ts releases official v6/7 and we update tooling to match
+    "lib": ["ESNext"],
     "types": ["node"],
     "erasableSyntaxOnly": true
   },

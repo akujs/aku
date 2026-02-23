@@ -3,7 +3,7 @@ import { CliExitError } from "./cli-errors.ts";
 import type { CliApi } from "./contracts/CliApi.ts";
 import type { CliErrorHandler } from "./contracts/CliErrorHandler.ts";
 
-export type CapturedError = {
+type CapturedError = {
 	error: unknown;
 	isExpected: boolean;
 };

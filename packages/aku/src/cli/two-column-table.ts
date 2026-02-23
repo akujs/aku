@@ -1,7 +1,7 @@
 import { stripVTControlCharacters, styleText } from "node:util";
 import wrapAnsi from "wrap-ansi";
 
-export type TwoColumnTableOptions = {
+type TwoColumnTableOptions = {
 	rows: Array<[string, string]>;
 	width: number;
 	leftColor?: Parameters<typeof styleText>[0] | undefined;
