@@ -170,8 +170,8 @@ export class ApplicationImpl<RouteParams extends Record<string, string> = {}>
 			for (let i = 0; i < this.#serviceProvidersToBoot.length; i++) {
 				const provider = this.#serviceProvidersToBoot[i];
 				provider.boot();
-				for (const commandClass of provider.commands) {
-					registry.register(commandClass);
+				for (const command of provider.commands) {
+					registry.register(command);
 				}
 			}
 		} finally {

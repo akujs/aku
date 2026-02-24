@@ -1,7 +1,8 @@
 import { Container } from "../container/contracts/Container.ts";
 import { inject } from "../container/inject.ts";
 import { BaseClass } from "../utils.ts";
-import type { Command, CommandDefinition } from "./cli-types.ts";
+import { isClassCommand } from "./Command.ts";
+import type { CommandDefinition, CommandExecuteContext } from "./cli-types.ts";
 
 export class CommandRegistry extends BaseClass {
 	#commands = new Map<string, CommandDefinition>();
@@ -12,13 +13,19 @@ export class CommandRegistry extends BaseClass {
 		this.#container = container;
 	}
 
-	register(commandClass: CommandDefinition): void {
-		this.#commands.set(commandClass.name, commandClass);
+	register(definition: CommandDefinition): void {
+		this.#commands.set(definition.name, definition);
 	}
 
-	resolve(name: string): Command | undefined {
+	resolve(name: string): ((ctx: CommandExecuteContext) => Promise<void>) | undefined {
 		const definition = this.#commands.get(name);
-		return definition ? this.#container.withInject(() => new definition()) : undefined;
+		if (!definition) return undefined;
+
+		if (isClassCommand(definition.handler)) {
+			const instance = this.#container.get(definition.handler);
+			return (ctx) => instance.execute(ctx);
+		}
+		return definition.handler as (ctx: CommandExecuteContext) => Promise<void>;
 	}
 
 	getCommandNames(): string[] {

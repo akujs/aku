@@ -1,28 +1,29 @@
 import { describe, expect, test } from "bun:test";
 import { ServiceProvider } from "../core/ServiceProvider.ts";
 import { createTestApplication } from "../test-utils/http-test-utils.bun.ts";
-import { ListCommand } from "./ListCommand.ts";
+import { defineCommand } from "./defineCommand.ts";
+import { listCommand } from "./ListCommand.ts";
 import { MemoryCliApi } from "./MemoryCliApi.ts";
 
-class FooCommand {
-	static readonly name = "foo";
-	static readonly description = "Do foo things";
-	async execute(): Promise<void> {}
-}
+const fooCommand = defineCommand({
+	name: "foo",
+	description: "Do foo things",
+	handler: async () => {},
+});
 
-class BarCommand {
-	static readonly name = "bar";
-	static readonly description = "Do bar things";
-	async execute(): Promise<void> {}
-}
+const barCommand = defineCommand({
+	name: "bar",
+	description: "Do bar things",
+	handler: async () => {},
+});
 
 class TestCommandProvider extends ServiceProvider {
 	override get commands() {
-		return [FooCommand, BarCommand];
+		return [fooCommand, barCommand];
 	}
 }
 
-describe(ListCommand, () => {
+describe(listCommand.handler, () => {
 	test("displays title and command list", async () => {
 		const { app } = createTestApplication({
 			providers: [TestCommandProvider],
@@ -32,7 +33,35 @@ describe(ListCommand, () => {
 		const exitCode = await app.handleCommand(["list"], cli);
 
 		expect(exitCode).toBe(0);
-		expect(cli.output).toMatchSnapshot();
+		expect(cli.output).toMatchInlineSnapshot(`
+		  [
+		    {
+		      "h1": "Available commands",
+		    },
+		    {
+		      "dl": {
+		        "items": [
+		          {
+		            "definition": "Do bar things",
+		            "label": "bar",
+		          },
+		          {
+		            "definition": "Do foo things",
+		            "label": "foo",
+		          },
+		          {
+		            "definition": "List all available commands",
+		            "label": "list",
+		          },
+		          {
+		            "definition": "Exercise CLI features for manual testing",
+		            "label": "testbed",
+		          },
+		        ],
+		      },
+		    },
+		  ]
+		`);
 	});
 
 	test("is the default command when no args provided", async () => {
@@ -42,24 +71,44 @@ describe(ListCommand, () => {
 		const exitCode = await app.handleCommand([], cli);
 
 		expect(exitCode).toBe(0);
-		expect(cli.output).toMatchSnapshot();
+		expect(cli.output).toMatchInlineSnapshot(`
+		  [
+		    {
+		      "h1": "Available commands",
+		    },
+		    {
+		      "dl": {
+		        "items": [
+		          {
+		            "definition": "List all available commands",
+		            "label": "list",
+		          },
+		          {
+		            "definition": "Exercise CLI features for manual testing",
+		            "label": "testbed",
+		          },
+		        ],
+		      },
+		    },
+		  ]
+		`);
 	});
 
 	test("commands are listed in alphabetical order", async () => {
-		class ZCommand {
-			static readonly name = "zebra";
-			static readonly description = "Z command";
-			async execute(): Promise<void> {}
-		}
-		class ACommand {
-			static readonly name = "alpha";
-			static readonly description = "A command";
-			async execute(): Promise<void> {}
-		}
+		const zebraCommand = defineCommand({
+			name: "zebra",
+			description: "Z command",
+			handler: async () => {},
+		});
+		const alphaCommand = defineCommand({
+			name: "alpha",
+			description: "A command",
+			handler: async () => {},
+		});
 
 		class OrderTestProvider extends ServiceProvider {
 			override get commands() {
-				return [ZCommand, ACommand];
+				return [zebraCommand, alphaCommand];
 			}
 		}
 
@@ -71,6 +120,34 @@ describe(ListCommand, () => {
 		const exitCode = await app.handleCommand(["list"], cli);
 
 		expect(exitCode).toBe(0);
-		expect(cli.output).toMatchSnapshot();
+		expect(cli.output).toMatchInlineSnapshot(`
+		  [
+		    {
+		      "h1": "Available commands",
+		    },
+		    {
+		      "dl": {
+		        "items": [
+		          {
+		            "definition": "A command",
+		            "label": "alpha",
+		          },
+		          {
+		            "definition": "List all available commands",
+		            "label": "list",
+		          },
+		          {
+		            "definition": "Exercise CLI features for manual testing",
+		            "label": "testbed",
+		          },
+		          {
+		            "definition": "Z command",
+		            "label": "zebra",
+		          },
+		        ],
+		      },
+		    },
+		  ]
+		`);
 	});
 });

@@ -1,3 +1,4 @@
+import type { CommandHandler } from "./Command.ts";
 import type { CliApi } from "./contracts/CliApi.ts";
 
 interface ArgumentDefinitionBase {
@@ -72,8 +73,6 @@ export type InferArgs<S extends ArgumentSchema> = {
 	>;
 };
 
-export type CommandArgs<C extends { args: ArgumentSchema }> = InferArgs<C["args"]>;
-
 /**
  * Context passed to command execute method.
  */
@@ -83,19 +82,11 @@ export interface CommandExecuteContext<A = unknown> {
 }
 
 /**
- * Instance interface for a command.
+ * A definition for a CLI command, including its metadata and handler.
  */
-export interface Command<A = unknown> {
-	execute(context: CommandExecuteContext<A>): Promise<void>;
-}
-
-/**
- * A command for the CLI. This is the type of a command class, describing its
- * static properties.
- */
-export interface CommandDefinition<A = unknown> {
+export interface CommandDefinition {
 	readonly name: string;
 	readonly description: string;
 	readonly args?: ArgumentSchema | undefined;
-	new (): Command<A>;
+	readonly handler: CommandHandler;
 }

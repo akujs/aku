@@ -41,10 +41,10 @@ export class CommandHandler extends BaseClass {
 				throw new CliExitError(message);
 			}
 
-			const command = this.#registry.resolve(commandName)!;
+			const execute = this.#registry.resolve(commandName)!;
 			const parsedArgs = parseArguments(commandArgs, definition.args);
 
-			await command.execute({ args: parsedArgs, cli });
+			await execute({ args: parsedArgs, cli });
 			return 0;
 		} catch (error) {
 			return this.#errorHandler.handleError(error, cli);

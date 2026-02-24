@@ -41,6 +41,8 @@ These guidelines must be followed when writing code for the Aku project. After i
 
 - **Mocking**: Do not explicitly call mockRestore() after tests that use mocking, as we do that in common test setup anyway
 
+- **Snapshots**: Use inline snapshots: `expect(...).toMatchInlineSnapshot()` instead of `expect(cli.output).toMatchSnapshot()`
+
 ## Code Style
 
 - **Avoid `any` type**: Use `unknown` where possible. When type casting is necessary:

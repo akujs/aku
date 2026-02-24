@@ -2,33 +2,70 @@ import { describe, expect, test } from "bun:test";
 import { inject } from "../container/inject.ts";
 import { ServiceProvider } from "../core/ServiceProvider.ts";
 import { createTestApplication } from "../test-utils/http-test-utils.bun.ts";
+import { BaseCommand } from "./Command.ts";
 import { CliExitError } from "./cli-errors.ts";
-import type { ArgumentSchema, CommandArgs, CommandExecuteContext } from "./cli-types.ts";
+import type { ArgumentSchema, CommandExecuteContext, InferArgs } from "./cli-types.ts";
 import type { CliApi } from "./contracts/CliApi.ts";
 import { CliApi as CliApiToken } from "./contracts/CliApi.ts";
-import { CliErrorHandler } from "./contracts/CliErrorHandler.ts";
+import { defineCommand } from "./defineCommand.ts";
 import { MemoryCliApi } from "./MemoryCliApi.ts";
-import { MemoryCliErrorHandler } from "./MemoryCliErrorHandler.ts";
+
+const greetArgs = {
+	name: { type: "string", positional: true, description: "Name to greet" },
+} as const satisfies ArgumentSchema;
+
+const greetCommand = defineCommand({
+	name: "greet",
+	description: "Greet someone",
+	args: greetArgs,
+	handler: async ({ args, cli }: CommandExecuteContext<InferArgs<typeof greetArgs>>) => {
+		cli.p(`Hello, ${args.name ?? "world"}!`);
+	},
+});
+
+const failCommand = defineCommand({
+	name: "fail",
+	description: "A command that fails",
+	handler: async () => {
+		throw new CliExitError("Something went wrong");
+	},
+});
+
+const crashCommand = defineCommand({
+	name: "crash",
+	description: "A command that crashes",
+	handler: async () => {
+		throw new Error("Unexpected boom");
+	},
+});
+
+class InjectCommandHandler extends BaseCommand {
+	#cli: CliApi;
+
+	constructor(cli: CliApi = inject(CliApiToken)) {
+		super();
+		this.#cli = cli;
+	}
+
+	async execute({ cli }: CommandExecuteContext): Promise<void> {
+		injectedCli = this.#cli;
+		cli.p("done");
+	}
+}
+
+let injectedCli: CliApi | null = null;
+
+const injectTestCommand = defineCommand({
+	name: "inject-test",
+	description: "Test CLI injection",
+	handler: InjectCommandHandler,
+});
 
 describe("CLI command handling", () => {
 	test("executes registered command with args", async () => {
-		class GreetCommand {
-			static readonly name = "greet";
-			static readonly description = "Greet someone";
-			static readonly args = {
-				name: { type: "string", positional: true, description: "Name to greet" },
-			} as const satisfies ArgumentSchema;
-			async execute({
-				args,
-				cli,
-			}: CommandExecuteContext<CommandArgs<typeof GreetCommand>>): Promise<void> {
-				cli.p(`Hello, ${args.name ?? "world"}!`);
-			}
-		}
-
 		class TestProvider extends ServiceProvider {
 			override get commands() {
-				return [GreetCommand];
+				return [greetCommand];
 			}
 		}
 
@@ -42,9 +79,7 @@ describe("CLI command handling", () => {
 	});
 
 	test("exit code 1 for unknown command", async () => {
-		const errorHandler = new MemoryCliErrorHandler();
-		const { app, container } = createTestApplication();
-		container.singletonInstance(CliErrorHandler, errorHandler);
+		const { app, errorHandler } = createTestApplication();
 		const cli = new MemoryCliApi();
 
 		const exitCode = await app.handleCommand(["nonexistent"], cli);
@@ -67,23 +102,13 @@ describe("CLI command handling", () => {
 	});
 
 	test("handles CliExitError (expected errors)", async () => {
-		class FailCommand {
-			static readonly name = "fail";
-			static readonly description = "A command that fails";
-			async execute(): Promise<void> {
-				throw new CliExitError("Something went wrong");
-			}
-		}
-
 		class TestProvider extends ServiceProvider {
 			override get commands() {
-				return [FailCommand];
+				return [failCommand];
 			}
 		}
 
-		const errorHandler = new MemoryCliErrorHandler();
-		const { app, container } = createTestApplication({ providers: [TestProvider] });
-		container.singletonInstance(CliErrorHandler, errorHandler);
+		const { app, errorHandler } = createTestApplication({ providers: [TestProvider] });
 		const cli = new MemoryCliApi();
 
 		const exitCode = await app.handleCommand(["fail"], cli);
@@ -95,23 +120,13 @@ describe("CLI command handling", () => {
 	});
 
 	test("handles unexpected errors", async () => {
-		class CrashCommand {
-			static readonly name = "crash";
-			static readonly description = "A command that crashes";
-			async execute(): Promise<void> {
-				throw new Error("Unexpected boom");
-			}
-		}
-
 		class TestProvider extends ServiceProvider {
 			override get commands() {
-				return [CrashCommand];
+				return [crashCommand];
 			}
 		}
 
-		const errorHandler = new MemoryCliErrorHandler();
-		const { app, container } = createTestApplication({ providers: [TestProvider] });
-		container.singletonInstance(CliErrorHandler, errorHandler);
+		const { app, errorHandler } = createTestApplication({ providers: [TestProvider] });
 		const cli = new MemoryCliApi();
 
 		const exitCode = await app.handleCommand(["crash"], cli);
@@ -123,27 +138,11 @@ describe("CLI command handling", () => {
 	});
 
 	test("CliApi is available via DI during command execution", async () => {
-		let injectedCli: CliApi | null = null;
-
-		class InjectCommand {
-			static readonly name = "inject-test";
-			static readonly description = "Test CLI injection";
-
-			#cli: CliApi;
-
-			constructor(cli: CliApi = inject(CliApiToken)) {
-				this.#cli = cli;
-			}
-
-			async execute({ cli }: CommandExecuteContext): Promise<void> {
-				injectedCli = this.#cli;
-				cli.p("done");
-			}
-		}
+		injectedCli = null;
 
 		class TestProvider extends ServiceProvider {
 			override get commands() {
-				return [InjectCommand];
+				return [injectTestCommand];
 			}
 		}
 

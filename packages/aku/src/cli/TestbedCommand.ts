@@ -1,10 +1,8 @@
-import { BaseClass } from "../utils.ts";
-import type { Command, CommandExecuteContext } from "./cli-types.ts";
+import { BaseCommand } from "./Command.ts";
+import type { CommandExecuteContext } from "./cli-types.ts";
+import { defineCommand } from "./defineCommand.ts";
 
-export class TestbedCommand extends BaseClass implements Command {
-	static override readonly name = "testbed";
-	static readonly description = "Exercise CLI features for manual testing";
-
+class TestbedCommandHandler extends BaseCommand {
 	async execute({ cli }: CommandExecuteContext): Promise<void> {
 		const choice = await cli.select({
 			prompt: "What would you like to test?",
@@ -138,3 +136,9 @@ export class TestbedCommand extends BaseClass implements Command {
 		}
 	}
 }
+
+export const testbedCommand = defineCommand({
+	name: "testbed",
+	description: "Exercise CLI features for manual testing",
+	handler: TestbedCommandHandler,
+});

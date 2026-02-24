@@ -1,12 +1,10 @@
 import { inject } from "../container/inject.ts";
-import { BaseClass } from "../utils.ts";
+import { BaseCommand } from "./Command.ts";
 import { CommandRegistry } from "./CommandRegistry.ts";
-import type { Command, CommandExecuteContext } from "./cli-types.ts";
+import type { CommandExecuteContext } from "./cli-types.ts";
+import { defineCommand } from "./defineCommand.ts";
 
-export class ListCommand extends BaseClass implements Command {
-	static override readonly name = "list";
-	static readonly description = "List all available commands";
-
+class ListCommandHandler extends BaseCommand {
 	#registry: CommandRegistry;
 
 	constructor(registry: CommandRegistry = inject(CommandRegistry)) {
@@ -23,3 +21,9 @@ export class ListCommand extends BaseClass implements Command {
 		});
 	}
 }
+
+export const listCommand = defineCommand({
+	name: "list",
+	description: "List all available commands",
+	handler: ListCommandHandler,
+});
