@@ -33,3 +33,11 @@ Aku's routing engine is a fork of Rou3, adapted for our specific requirements. T
 **Copyright:** Douglas Christopher Wilson
 
 Aku's RFC 5987 value/attribute header implementation is a fork of the content-disposition package with modifications for our use case.
+
+## leven
+
+**Repository:** https://github.com/sindresorhus/leven
+**License:** MIT
+**Copyright:** Sindre Sorhus
+
+Aku's Levenshtein distance implementation is based on leven, adapted to TypeScript with modifications for our API.

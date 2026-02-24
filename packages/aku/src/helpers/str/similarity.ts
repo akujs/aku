@@ -19,7 +19,7 @@ export function levenshteinDistance(
 		return 0;
 	}
 
-	const maxDistance = options?.maxDistance;
+	const maxDistance = options?.maxDistance ?? Infinity;
 
 	// Ensure `a` is the shorter string
 	if (a.length > b.length) {
@@ -73,8 +73,7 @@ export function levenshteinDistance(
 		result = index2;
 
 		for (index = 0; index < aLength; index++) {
-			temporary2 =
-				bCharacterCode === characterCodeCache[index] ? temporary : temporary + 1;
+			temporary2 = bCharacterCode === characterCodeCache[index] ? temporary : temporary + 1;
 			temporary = array[index]!;
 			result = array[index] =
 				temporary > result
@@ -129,7 +128,7 @@ export function findSimilar(
 
 	for (const candidate of candidates) {
 		const distance = levenshteinDistance(target, candidate, {
-			maxDistance: threshold,
+			maxDistance: threshold + 1,
 		});
 		if (distance <= threshold) {
 			matches.push({ candidate, distance });

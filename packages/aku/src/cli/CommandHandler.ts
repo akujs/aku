@@ -1,4 +1,5 @@
 import { inject } from "../container/inject.ts";
+import { findSimilar } from "../helpers/str/similarity.ts";
 import { BaseClass } from "../utils.ts";
 import { CommandRegistry } from "./CommandRegistry.ts";
 import { CliExitError } from "./cli-errors.ts";
@@ -28,9 +29,16 @@ export class CommandHandler extends BaseClass {
 			const definition = this.#registry.getDefinition(commandName);
 
 			if (!definition) {
-				throw new CliExitError(
-					`Command "${commandName}" not found. Run "aku list" to see available commands.`,
-				);
+				const similar = findSimilar(commandName, this.#registry.getCommandNames(), {
+					threshold: 3,
+					maxResults: 6,
+				});
+				let message = `Command "${commandName}" not found.`;
+				if (similar.length > 0) {
+					message += `\n\nDid you mean:\n${similar.map((s) => `  ${s}`).join("\n")}`;
+				}
+				message += `\n\nRun "aku list" to see available commands.`;
+				throw new CliExitError(message);
 			}
 
 			const command = this.#registry.resolve(commandName)!;
