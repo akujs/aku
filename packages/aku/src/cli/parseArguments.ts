@@ -1,13 +1,15 @@
 import { type ParseArgsOptionsConfig, parseArgs } from "node:util";
+import { kebabCase } from "../helpers/str/case.ts";
 import { ordinal } from "../helpers/str/misc.ts";
 import { type Prettify, withoutUndefinedValues } from "../utils.ts";
 import { CliExitError } from "./cli-errors.ts";
 import type { ArgumentDefinition, ArgumentSchema, InferArgs } from "./cli-types.ts";
 
-interface ProcessedDef extends ArgumentDefinition {
+type ProcessedDef = ArgumentDefinition & {
 	name: string;
+	argumentName: string;
 	index: number;
-}
+};
 
 interface AnalysedSchema {
 	defs: ProcessedDef[];
@@ -53,6 +55,7 @@ function processSchema(schema: ArgumentSchema): AnalysedSchema {
 		([name, rawDef], index): ProcessedDef => ({
 			...rawDef,
 			name,
+			argumentName: rawDef.positional ? name : kebabCase(name),
 			index,
 			required: rawDef.default !== undefined ? false : rawDef.required,
 		}),
@@ -61,7 +64,7 @@ function processSchema(schema: ArgumentSchema): AnalysedSchema {
 	const parseArgsOptions: ParseArgsOptionsConfig = {};
 	for (const def of defs) {
 		if (!def.positional) {
-			parseArgsOptions[def.name] = withoutUndefinedValues({
+			parseArgsOptions[def.argumentName] = withoutUndefinedValues({
 				type: def.type === "boolean" ? "boolean" : "string",
 				multiple: def.array,
 			});
@@ -78,18 +81,18 @@ interface PreprocessResult {
 
 function preprocessBooleanValues(argv: string[], defs: ProcessedDef[]): PreprocessResult {
 	const booleanDefs = defs.filter((def) => !def.positional && def.type === "boolean");
-	const booleanNames = new Set(booleanDefs.map((def) => def.name));
+	const booleanArgumentNames = new Set(booleanDefs.map((def) => def.argumentName));
 
 	const processedArgv: string[] = [];
 	const booleanValues: Record<string, boolean> = {};
 
 	for (const arg of argv) {
-		// Match --name=value
+		// Match --argument-name=value
 		const longMatch = arg.match(/^--([^=]+)=(.+)$/);
 		if (longMatch) {
-			const [, name, value] = longMatch;
-			if (booleanNames.has(name)) {
-				booleanValues[name] = convertValue(value, "boolean") as boolean;
+			const [, argumentName, value] = longMatch;
+			if (booleanArgumentNames.has(argumentName)) {
+				booleanValues[argumentName] = convertValue(value, "boolean") as boolean;
 				continue;
 			}
 		}
@@ -134,16 +137,20 @@ function validateDefs(defs: ProcessedDef[]): void {
 
 function validateValues(defs: ProcessedDef[], values: Record<string, unknown>): void {
 	const namedDefs = defs.filter((def) => !def.positional);
-	const knownNames = new Set(namedDefs.map((def) => def.name));
+	const knownArgumentNames = new Set(namedDefs.map((def) => def.argumentName));
 
-	const unknownOption = Object.keys(values).find((name) => !knownNames.has(name));
+	const unknownOption = Object.keys(values).find(
+		(argumentName) => !knownArgumentNames.has(argumentName),
+	);
 	if (unknownOption) {
 		throw new CliExitError(`Unknown option: --${unknownOption}`);
 	}
 
-	const missingValue = namedDefs.find((def) => values[def.name] === true && def.type !== "boolean");
+	const missingValue = namedDefs.find(
+		(def) => values[def.argumentName] === true && def.type !== "boolean",
+	);
 	if (missingValue) {
-		throw new CliExitError(`Option '--${missingValue.name}' requires a value`);
+		throw new CliExitError(`Option '--${missingValue.argumentName}' requires a value`);
 	}
 }
 
@@ -206,7 +213,7 @@ function mapNamed(
 	result: Record<string, unknown>,
 ): void {
 	for (const def of namedDefs) {
-		const value = values[def.name] ?? def.default;
+		const value = values[def.argumentName] ?? def.default;
 
 		// Booleans default to false when absent (required is ignored for booleans)
 		if (def.type === "boolean") {
@@ -225,7 +232,7 @@ function mapNamed(
 		if (def.array) {
 			if (value === undefined) {
 				if (def.required) {
-					throw new CliExitError(`Missing required option: --${def.name}`);
+					throw new CliExitError(`Missing required option: --${def.argumentName}`);
 				}
 				result[def.name] = [];
 			} else if (Array.isArray(value)) {
@@ -235,7 +242,7 @@ function mapNamed(
 		}
 
 		if (def.required && value === undefined) {
-			throw new CliExitError(`Missing required option: --${def.name}`);
+			throw new CliExitError(`Missing required option: --${def.argumentName}`);
 		}
 
 		if (value === undefined) {

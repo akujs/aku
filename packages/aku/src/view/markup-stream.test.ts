@@ -995,7 +995,7 @@ describe("error handling", () => {
 			expect(error).toBeInstanceOf(RenderingError);
 			const err = error as RenderingError;
 			expect(err.message).toContain("Encountered a React JSX element");
-			expect(err.message).toContain("@jsxImportSource aku/view");
+			expect(err.message).toContain("@jsxImportSource @akujs/aku/view");
 			expect(err.errorKind).toBe("invalid-content");
 			expect(err.componentStack).toEqual(["div"]);
 		}

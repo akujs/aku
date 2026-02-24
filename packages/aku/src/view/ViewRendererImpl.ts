@@ -296,7 +296,7 @@ export class ViewRendererImpl extends BaseClass implements ViewRenderer {
 							"invalid-content",
 							stack,
 							new Error(
-								'Encountered a React JSX element. Use Aku JSX instead, add /** @jsxImportSource aku/view **/ to the file containing the JSX, or configure your build system to use "aku/view" as a default JSX import source.',
+								'Encountered a React JSX element. Use Aku JSX instead, add /** @jsxImportSource @akujs/aku/view **/ to the file containing the JSX, or configure your build system to use "aku/view" as a default JSX import source.',
 							),
 						);
 					}
