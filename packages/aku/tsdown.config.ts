@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import module from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { visualizer } from "rollup-plugin-visualizer";
 import { discoverEntryPointsFromFilesystem } from "./src/test-utils/source/discoverEntryPoints.ts";
 
 const bundledDeps = ["devalue", "@bradenmacdonald/s3-lite-client", "csstype", "@inquirer/prompts", "wrap-ansi"];
@@ -23,6 +24,12 @@ export default defineConfig({
     sourcemap: true,
   },
   clean: false,
+  plugins: [
+    visualizer({
+      filename: "bundle-treemap.html",
+      gzipSize: true,
+    }),
+  ],
   external: (dep) => {
     // local source files are bundled
     if (dep.startsWith(".") || dep.startsWith("/") || dep.startsWith("src/")) return false;

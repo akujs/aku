@@ -6,3 +6,4 @@ yarn-error.log*
 *.tsbuildinfo
 coverage
 aku-crash-*.log
+bundle-treemap.html
