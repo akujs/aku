@@ -70,6 +70,14 @@
         "vue": "^3.5.13",
       },
     },
+    "test-apps/cli-test": {
+      "name": "@test-apps/cli-test",
+      "version": "0.1.0",
+      "dependencies": {
+        "@akujs/aku": "workspace:*",
+        "@akujs/cli": "workspace:*",
+      },
+    },
     "test-apps/nextjs": {
       "name": "@test-apps/nextjs",
       "version": "0.1.0",
@@ -533,6 +541,8 @@
     "@speed-highlight/core": ["@speed-highlight/core@1.2.14", "", {}, "sha512-G4ewlBNhUtlLvrJTb88d2mdy2KRijzs4UhnlrOSRT4bmjh/IqNElZa3zkrZ+TC47TwtlDWzVLFADljF1Ijp5hA=="],
 
     "@swc/helpers": ["@swc/helpers@0.5.15", "", { "dependencies": { "tslib": "^2.8.0" } }, "sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g=="],
+
+    "@test-apps/cli-test": ["@test-apps/cli-test@workspace:test-apps/cli-test"],
 
     "@test-apps/nextjs": ["@test-apps/nextjs@workspace:test-apps/nextjs"],
 

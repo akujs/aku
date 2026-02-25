@@ -53,10 +53,6 @@ describe(listCommand.handler, () => {
 		            "definition": "List all available commands",
 		            "label": "list",
 		          },
-		          {
-		            "definition": "Exercise CLI features for manual testing",
-		            "label": "testbed",
-		          },
 		        ],
 		      },
 		    },
@@ -82,10 +78,6 @@ describe(listCommand.handler, () => {
 		          {
 		            "definition": "List all available commands",
 		            "label": "list",
-		          },
-		          {
-		            "definition": "Exercise CLI features for manual testing",
-		            "label": "testbed",
 		          },
 		        ],
 		      },
@@ -135,10 +127,6 @@ describe(listCommand.handler, () => {
 		          {
 		            "definition": "List all available commands",
 		            "label": "list",
-		          },
-		          {
-		            "definition": "Exercise CLI features for manual testing",
-		            "label": "testbed",
 		          },
 		          {
 		            "definition": "Z command",
