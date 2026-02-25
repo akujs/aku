@@ -1,7 +1,6 @@
 import type { Mock } from "bun:test";
 import { mock } from "bun:test";
-import { CliErrorHandler } from "../cli/contracts/CliErrorHandler.ts";
-import { MemoryCliErrorHandler } from "../cli/MemoryCliErrorHandler.ts";
+import { type CliTestHarness, createCliTestHarness } from "../cli/cli-test-harness.ts";
 import type { Container } from "../container/contracts/Container.ts";
 import type { Application } from "../core/contracts/Application.ts";
 import type { Configuration } from "../core/contracts/Configuration.ts";
@@ -213,7 +212,7 @@ export const createTestApplication = <RouteParams extends Record<string, string>
 	container: Container;
 	router: Router;
 	handle: (url: string, method?: string) => Promise<Response>;
-	errorHandler: MemoryCliErrorHandler;
+	cli: CliTestHarness;
 } => {
 	const app = createApplication({
 		...config,
@@ -221,8 +220,6 @@ export const createTestApplication = <RouteParams extends Record<string, string>
 	});
 
 	const container = app.container;
-	const errorHandler = new MemoryCliErrorHandler();
-	container.singletonInstance(CliErrorHandler, errorHandler);
 	const router = container.get(Router);
 
 	const handle = async (url: string, method = "GET") => {
@@ -234,5 +231,7 @@ export const createTestApplication = <RouteParams extends Record<string, string>
 		return await app.handleRequest(new Request(url, { method }), mockIntegrationContext());
 	};
 
-	return { app, container, router, handle, errorHandler };
+	const cli = createCliTestHarness(app);
+
+	return { app, container, router, handle, cli };
 };

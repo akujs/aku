@@ -3,7 +3,6 @@ import { ServiceProvider } from "../core/ServiceProvider.ts";
 import { createTestApplication } from "../test-utils/http-test-utils.bun.ts";
 import { defineCommand } from "./defineCommand.ts";
 import { listCommand } from "./ListCommand.ts";
-import { MemoryCliApi } from "./MemoryCliApi.ts";
 
 const fooCommand = defineCommand({
 	name: "foo",
@@ -25,12 +24,11 @@ class TestCommandProvider extends ServiceProvider {
 
 describe(listCommand.handler, () => {
 	test("displays title and command list", async () => {
-		const { app } = createTestApplication({
+		const { cli } = createTestApplication({
 			providers: [TestCommandProvider],
 		});
-		const cli = new MemoryCliApi();
 
-		const exitCode = await app.handleCommand(["list"], cli);
+		const exitCode = await cli.handleCommand(["list"]);
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toMatchInlineSnapshot(`
@@ -61,10 +59,9 @@ describe(listCommand.handler, () => {
 	});
 
 	test("is the default command when no args provided", async () => {
-		const { app } = createTestApplication();
-		const cli = new MemoryCliApi();
+		const { cli } = createTestApplication();
 
-		const exitCode = await app.handleCommand([], cli);
+		const exitCode = await cli.handleCommand([]);
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toMatchInlineSnapshot(`
@@ -104,12 +101,11 @@ describe(listCommand.handler, () => {
 			}
 		}
 
-		const { app } = createTestApplication({
+		const { cli } = createTestApplication({
 			providers: [OrderTestProvider],
 		});
-		const cli = new MemoryCliApi();
 
-		const exitCode = await app.handleCommand(["list"], cli);
+		const exitCode = await cli.handleCommand(["list"]);
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toMatchInlineSnapshot(`

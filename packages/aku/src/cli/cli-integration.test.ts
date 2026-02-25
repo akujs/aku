@@ -69,33 +69,28 @@ describe("CLI command handling", () => {
 			}
 		}
 
-		const { app } = createTestApplication({ providers: [TestProvider] });
-		const cli = new MemoryCliApi();
+		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await app.handleCommand(["greet", "Alice"], cli);
+		const exitCode = await cli.handleCommand(["greet", "Alice"]);
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toContainEqual({ paragraph: "Hello, Alice!" });
 	});
 
 	test("exit code 1 for unknown command", async () => {
-		const { app, errorHandler } = createTestApplication();
-		const cli = new MemoryCliApi();
+		const { cli } = createTestApplication();
 
-		const exitCode = await app.handleCommand(["nonexistent"], cli);
+		const exitCode = await cli.handleCommand(["nonexistent"]);
 
 		expect(exitCode).toBe(1);
-		expect(errorHandler.lastError).toBeDefined();
-		expect((errorHandler.lastError!.error as Error).message).toContain(
-			'Command "nonexistent" not found',
-		);
+		expect(cli.lastError).toBeDefined();
+		expect((cli.lastError!.error as Error).message).toContain('Command "nonexistent" not found');
 	});
 
 	test("defaults to 'list' command when no command specified", async () => {
-		const { app } = createTestApplication();
-		const cli = new MemoryCliApi();
+		const { cli } = createTestApplication();
 
-		const exitCode = await app.handleCommand([], cli);
+		const exitCode = await cli.handleCommand([]);
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toContainEqual({ h1: "Available commands" });
@@ -108,15 +103,14 @@ describe("CLI command handling", () => {
 			}
 		}
 
-		const { app, errorHandler } = createTestApplication({ providers: [TestProvider] });
-		const cli = new MemoryCliApi();
+		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await app.handleCommand(["fail"], cli);
+		const exitCode = await cli.handleCommand(["fail"]);
 
 		expect(exitCode).toBe(1);
-		expect(errorHandler.lastError).toBeDefined();
-		expect(errorHandler.lastError!.isExpected).toBe(true);
-		expect((errorHandler.lastError!.error as Error).message).toBe("Something went wrong");
+		expect(cli.lastError).toBeDefined();
+		expect(cli.lastError!.isExpected).toBe(true);
+		expect((cli.lastError!.error as Error).message).toBe("Something went wrong");
 	});
 
 	test("handles unexpected errors", async () => {
@@ -126,15 +120,14 @@ describe("CLI command handling", () => {
 			}
 		}
 
-		const { app, errorHandler } = createTestApplication({ providers: [TestProvider] });
-		const cli = new MemoryCliApi();
+		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await app.handleCommand(["crash"], cli);
+		const exitCode = await cli.handleCommand(["crash"]);
 
 		expect(exitCode).toBe(1);
-		expect(errorHandler.lastError).toBeDefined();
-		expect(errorHandler.lastError!.isExpected).toBe(false);
-		expect((errorHandler.lastError!.error as Error).message).toBe("Unexpected boom");
+		expect(cli.lastError).toBeDefined();
+		expect(cli.lastError!.isExpected).toBe(false);
+		expect((cli.lastError!.error as Error).message).toBe("Unexpected boom");
 	});
 
 	test("CliApi is available via DI during command execution", async () => {
@@ -147,22 +140,22 @@ describe("CLI command handling", () => {
 		}
 
 		const { app } = createTestApplication({ providers: [TestProvider] });
-		const cli = new MemoryCliApi();
+		const memoryCli = new MemoryCliApi();
 
-		const exitCode = await app.handleCommand(["inject-test"], cli);
+		const exitCode = await app.handleCommand(["inject-test"], memoryCli);
 
 		expect(exitCode).toBe(0);
-		expect(injectedCli === cli).toBe(true);
+		expect(injectedCli === memoryCli).toBe(true);
 	});
 
 	test("throws when app is not bootstrapped", async () => {
-		const cli = new MemoryCliApi();
+		const memoryCli = new MemoryCliApi();
 
 		// Create a new app that hasn't been bootstrapped
 		const { ApplicationImpl } = await import("../core/ApplicationImpl.ts");
 		const unbootedApp = new ApplicationImpl();
 
-		expect(() => unbootedApp.handleCommand(["test"], cli)).toThrow(
+		expect(() => unbootedApp.handleCommand(["test"], memoryCli)).toThrow(
 			"Application must be bootstrapped",
 		);
 	});

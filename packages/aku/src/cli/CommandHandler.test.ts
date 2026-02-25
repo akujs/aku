@@ -4,7 +4,6 @@ import { CommandHandler } from "./CommandHandler.ts";
 import { CommandRegistry } from "./CommandRegistry.ts";
 import type { CliExitError } from "./cli-errors.ts";
 import { MemoryCliApi } from "./MemoryCliApi.ts";
-import { MemoryCliErrorHandler } from "./MemoryCliErrorHandler.ts";
 
 function createHandler(commandNames: string[]) {
 	const container = new ContainerImpl();
@@ -16,7 +15,7 @@ function createHandler(commandNames: string[]) {
 			async execute() {},
 		} as never);
 	}
-	const errorHandler = new MemoryCliErrorHandler();
+	const errorHandler = new MemoryCliApi();
 	const handler = new CommandHandler(registry, errorHandler);
 	return { handler, errorHandler };
 }
