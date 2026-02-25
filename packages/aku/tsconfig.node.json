@@ -7,5 +7,5 @@
     "erasableSyntaxOnly": true
   },
   "include": ["src/**/*.ts", "src/**/*.node-test.ts"],
-  "exclude": ["src/**/*.bun.ts", "src/**/*.test.ts"]
+  "exclude": ["src/**/*.bun.ts", "src/**/*.test.ts", "src/**/*.test-utils.ts"]
 }

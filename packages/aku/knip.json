@@ -4,7 +4,7 @@
   "entry": [
     "src/**/*-entry-point.ts",
     "src/**/*.node-test.ts",
-    "src/test-utils/test-setup.bun.ts",
+    "src/test-utils/test-setup.test-utils.ts",
     "src/database/adapters/sqlite/SqliteOps.bun.ts",
     "src/database/adapters/sqlite/SqliteOps.node.ts",
     "scripts/*.ts",

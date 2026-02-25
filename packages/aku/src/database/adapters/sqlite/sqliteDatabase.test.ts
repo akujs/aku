@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { asyncGate } from "../../../test-utils/async-gate.bun.ts";
-import { type MockDispatcher, mockDispatcher } from "../../../test-utils/internal-mocks.bun.ts";
+import { asyncGate } from "../../../test-utils/async-gate.test-utils.ts";
+import {
+	type MockDispatcher,
+	mockDispatcher,
+} from "../../../test-utils/internal-mocks.test-utils.ts";
 import { createTestDirectory } from "../../../testing/test-directories.ts";
 import type { DatabaseClient } from "../../DatabaseClient.ts";
 import { DatabaseClientImpl } from "../../DatabaseClientImpl.ts";

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mockDispatcher } from "../../../test-utils/internal-mocks.bun.ts";
+import { mockDispatcher } from "../../../test-utils/internal-mocks.test-utils.ts";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
 import { DatabaseImpl } from "../../DatabaseImpl.ts";
 import { D1DatabaseAdapter } from "./D1DatabaseAdapter.ts";

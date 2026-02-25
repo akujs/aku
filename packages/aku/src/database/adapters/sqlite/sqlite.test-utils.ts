@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { createTestDirectory } from "../../../testing/test-directories.ts";
-import type { SharedTestConfig } from "../../database-test-utils.ts";
+import type { SharedTestConfig } from "../../database.test-utils.ts";
 import { sqliteDatabase } from "./sqliteDatabase.ts";
 
 export const sqliteMemorySharedTestConfig: SharedTestConfig = {

@@ -1,15 +1,15 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, mock as mockFn, test } from "bun:test";
 import { join } from "node:path";
 import { sleep } from "../helpers/async/sleep.ts";
-import { asyncGate } from "../test-utils/async-gate.bun.ts";
-import { mockDispatcher } from "../test-utils/internal-mocks.bun.ts";
+import { asyncGate } from "../test-utils/async-gate.test-utils.ts";
+import { mockDispatcher } from "../test-utils/internal-mocks.test-utils.ts";
 import { mock } from "../testing/mocks.ts";
 import { createTestDirectory } from "../testing/test-directories.ts";
 import {
 	createPostgresAdapter,
 	postgresSharedTestConfig,
 	recreatePostgresPublicSchema,
-} from "./adapters/postgres/postgres-test-utils.ts";
+} from "./adapters/postgres/postgres.test-utils.ts";
 import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 import { DatabaseClientImpl } from "./DatabaseClientImpl.ts";

@@ -1,8 +1,6 @@
 import type { Mock } from "bun:test";
 import { mock } from "bun:test";
-import { type CliTestHarness, createCliTestHarness } from "../cli/cli-test-harness.ts";
-import type { Container } from "../container/contracts/Container.ts";
-import type { Application } from "../core/contracts/Application.ts";
+import { createCliTestHarness } from "../cli/cli-test-harness.ts";
 import type { Configuration } from "../core/contracts/Configuration.ts";
 import { createApplication } from "../core/createApplication.ts";
 import type { BaseController, ControllerContext, FunctionController } from "../http/Controller.ts";
@@ -207,13 +205,7 @@ export const mockMiddleware: MockMiddlewareFunction = Object.assign(
 
 export const createTestApplication = <RouteParams extends Record<string, string> = {}>(
 	config: Configuration<RouteParams> = {},
-): {
-	app: Application<RouteParams>;
-	container: Container;
-	router: Router;
-	handle: (url: string, method?: string) => Promise<Response>;
-	cli: CliTestHarness;
-} => {
+) => {
 	const app = createApplication({
 		...config,
 		devMode: { autoRefresh: false, ...config.devMode },

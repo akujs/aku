@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
-import { type MockDispatcher, mockDispatcher } from "../test-utils/internal-mocks.bun.ts";
+import { type MockDispatcher, mockDispatcher } from "../test-utils/internal-mocks.test-utils.ts";
 import { mockCurrentTime, resetMockTime } from "../testing/mock-time.ts";
 import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";

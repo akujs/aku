@@ -1,14 +1,14 @@
 import { beforeAll, beforeEach, describe, expect, expectTypeOf, spyOn, test } from "bun:test";
 import { sleep } from "../../helpers/async/sleep.ts";
 import { abort } from "../../http/abort.ts";
-import { mockDispatcher } from "../../test-utils/internal-mocks.bun.ts";
-import { pgLiteSharedTestConfig } from "../adapters/pglite/pglite-test-utils.ts";
-import { sqliteMemorySharedTestConfig } from "../adapters/sqlite/sqlite-test-utils.ts";
+import { mockDispatcher } from "../../test-utils/internal-mocks.test-utils.ts";
+import { pgLiteSharedTestConfig } from "../adapters/pglite/pglite.test-utils.ts";
+import { sqliteMemorySharedTestConfig } from "../adapters/sqlite/sqlite.test-utils.ts";
 import type { Database } from "../contracts/Database.js";
 import type { DatabaseAdapter } from "../DatabaseAdapter.ts";
 import type { DatabaseClient } from "../DatabaseClient.ts";
 import { DatabaseImpl } from "../DatabaseImpl.ts";
-import type { SharedTestConfig } from "../database-test-utils.ts";
+import type { SharedTestConfig } from "../database.test-utils.ts";
 import { PostgresGrammar } from "../grammar/PostgresGrammar.ts";
 import type { QueryBuilder, Row, StatementResult } from "../query-types.ts";
 import { sql } from "../sql.ts";

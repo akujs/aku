@@ -3,7 +3,7 @@ import { ContainerImpl } from "../container/ContainerImpl.ts";
 import type { Container } from "../container/contracts/Container.ts";
 import type { Configuration } from "../core/contracts/Configuration.ts";
 import { IntegrationContext } from "../integrations/IntegrationContext.ts";
-import { MockController, mockIntegrationContext } from "../test-utils/http-test-utils.bun.ts";
+import { MockController, mockIntegrationContext } from "../test-utils/http.test-utils.ts";
 import { get, group, resource } from "./helpers.ts";
 import { ResourceController } from "./ResourceController.ts";
 import { RouteUrlGenerator } from "./RouteUrlGenerator.ts";

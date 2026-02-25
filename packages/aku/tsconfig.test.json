@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.common.json",
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    "types": ["bun"],
+    "isolatedDeclarations": false
+  },
+  "include": [
+    "src/**/*.test.ts",
+    "src/**/*.test-utils.ts"
+  ],
+  "exclude": [
+    "src/**/*.node.ts",
+    "src/**/*.node-test.ts"
+  ]
+}

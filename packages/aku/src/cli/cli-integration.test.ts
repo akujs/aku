@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { inject } from "../container/inject.ts";
 import { ServiceProvider } from "../core/ServiceProvider.ts";
-import { createTestApplication } from "../test-utils/http-test-utils.bun.ts";
+import { createTestApplication } from "../test-utils/http.test-utils.ts";
 import { BaseCommand } from "./Command.ts";
 import { CliExitError } from "./cli-errors.ts";
 import type { ArgumentSchema, CommandExecuteContext, InferArgs } from "./cli-types.ts";

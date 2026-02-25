@@ -1,4 +1,4 @@
-import type { SharedTestConfig } from "../../database-test-utils.ts";
+import type { SharedTestConfig } from "../../database.test-utils.ts";
 import { PGLiteDatabaseAdapter } from "./PGLiteDatabaseAdapter.ts";
 import { pgliteDatabase } from "./pgliteDatabase.ts";
 

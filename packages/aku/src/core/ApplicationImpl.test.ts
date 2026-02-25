@@ -8,7 +8,7 @@ import {
 	MockController,
 	mockIntegrationContext,
 	mockMiddleware,
-} from "../test-utils/http-test-utils.bun.ts";
+} from "../test-utils/http.test-utils.ts";
 import { ApplicationImpl } from "./ApplicationImpl.ts";
 import type { Application, ServiceProviderReference } from "./contracts/Application.ts";
 import { Dispatcher } from "./contracts/Dispatcher.ts";

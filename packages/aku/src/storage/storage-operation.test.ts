@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mockDispatcher } from "../test-utils/internal-mocks.bun.ts";
+import { mockDispatcher } from "../test-utils/internal-mocks.test-utils.ts";
 import { mockCurrentTime, resetMockTime } from "../testing/mock-time.ts";
 import type { StorageDisk } from "./contracts/Storage.ts";
 import { InvalidPathError, StorageUnknownError } from "./storage-errors.ts";

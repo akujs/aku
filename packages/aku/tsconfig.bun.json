@@ -6,5 +6,10 @@
     "types": ["bun"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.node.ts", "src/**/*.node-test.ts"]
+  "exclude": [
+    "src/**/*.node.ts",
+    "src/**/*.node-test.ts",
+    "src/**/*.test.ts",
+    "src/**/*.test-utils.ts"
+  ]
 }

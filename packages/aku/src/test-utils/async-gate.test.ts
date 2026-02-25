@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { asyncGate } from "./async-gate.bun.ts";
+import { asyncGate } from "./async-gate.test-utils.ts";
 
 test("basic checkpoint flow", async () => {
 	const checkpoint = asyncGate();

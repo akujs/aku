@@ -1,7 +1,10 @@
 import { beforeAll, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import type { Sql } from "postgres";
-import { asyncGate } from "../../../test-utils/async-gate.bun.ts";
-import { type MockDispatcher, mockDispatcher } from "../../../test-utils/internal-mocks.bun.ts";
+import { asyncGate } from "../../../test-utils/async-gate.test-utils.ts";
+import {
+	type MockDispatcher,
+	mockDispatcher,
+} from "../../../test-utils/internal-mocks.test-utils.ts";
 import type { DatabaseClient } from "../../DatabaseClient.ts";
 import { DatabaseClientImpl } from "../../DatabaseClientImpl.ts";
 import { QueryError } from "../../database-errors.ts";
@@ -12,7 +15,7 @@ import {
 	createPostgresAdapter,
 	getSharedPostgresJsClient,
 	recreatePostgresPublicSchema,
-} from "./postgres-test-utils.ts";
+} from "./postgres.test-utils.ts";
 
 describe(PostgresDatabaseAdapter, () => {
 	let db: DatabaseClient;

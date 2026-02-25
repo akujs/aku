@@ -1,18 +1,18 @@
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { mockDispatcher } from "../../test-utils/internal-mocks.bun.ts";
+import { mockDispatcher } from "../../test-utils/internal-mocks.test-utils.ts";
 import type { Database } from "../contracts/Database.js";
 import type { IsolationLevel } from "../DatabaseClient.ts";
 import { DatabaseImpl } from "../DatabaseImpl.ts";
+import type { SharedTestConfig } from "../database.test-utils.ts";
 import { QueryError } from "../database-errors.ts";
-import type { SharedTestConfig } from "../database-test-utils.ts";
 import { sql } from "../sql.ts";
-import { d1SharedTestConfig } from "./d1/d1-test-utils.ts";
-import { pgLiteSharedTestConfig } from "./pglite/pglite-test-utils.ts";
-import { postgresSharedTestConfig } from "./postgres/postgres-test-utils.ts";
+import { d1SharedTestConfig } from "./d1/d1.test-utils.ts";
+import { pgLiteSharedTestConfig } from "./pglite/pglite.test-utils.ts";
+import { postgresSharedTestConfig } from "./postgres/postgres.test-utils.ts";
 import {
 	sqliteFileSharedTestConfig,
 	sqliteMemorySharedTestConfig,
-} from "./sqlite/sqlite-test-utils.ts";
+} from "./sqlite/sqlite.test-utils.ts";
 
 const adapterConfigs: SharedTestConfig[] = [
 	sqliteMemorySharedTestConfig,

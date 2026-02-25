@@ -1,6 +1,6 @@
 import type { D1Database as D1DatabaseBinding } from "@cloudflare/workers-types";
 import { Miniflare } from "miniflare";
-import type { SharedTestConfig } from "../../database-test-utils.ts";
+import type { SharedTestConfig } from "../../database.test-utils.ts";
 import { D1DatabaseAdapter } from "./D1DatabaseAdapter.ts";
 import { d1Database } from "./d1Database.ts";
 

@@ -1,6 +1,6 @@
 import postgres, { type Notice, type Sql } from "postgres";
 import type { DatabaseAdapter } from "../../DatabaseAdapter.ts";
-import type { SharedTestConfig } from "../../database-test-utils.ts";
+import type { SharedTestConfig } from "../../database.test-utils.ts";
 import type { ExecutableStatement } from "../../query-types.ts";
 import { sql } from "../../sql.ts";
 import { postgresDatabase } from "./postgresDatabase.ts";

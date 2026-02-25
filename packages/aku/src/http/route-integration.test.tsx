@@ -10,7 +10,7 @@ import {
 	createTestApplication,
 	MockController,
 	mockMiddleware,
-} from "../test-utils/http-test-utils.bun.ts";
+} from "../test-utils/http.test-utils.ts";
 import { abort } from "./abort.ts";
 import type { ClassController, Controller } from "./Controller.ts";
 import { BaseController, type ControllerContext, type ControllerReturn } from "./Controller.ts";

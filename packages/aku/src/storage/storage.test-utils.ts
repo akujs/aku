@@ -2,7 +2,7 @@ import type { WriteStream } from "node:fs";
 import { ReadStream } from "node:fs";
 import { Writable } from "node:stream";
 import { ContainerImpl } from "../container/ContainerImpl.ts";
-import { spyOnAll } from "../test-utils/spy-on-all.bun.ts";
+import { spyOnAll } from "../test-utils/spy-on-all.test-utils.ts";
 import { BaseClass } from "../utils.ts";
 import type { StorageAdapter, StorageEndpoint } from "./contracts/Storage.ts";
 import type { Dir, FilesystemOps, Stats } from "./filesystem-operations.ts";

@@ -1,7 +1,7 @@
 /** @jsxImportSource . */
 import { expect, test } from "bun:test";
 import { createKey } from "../core/Key.ts";
-import { render } from "../test-utils/view-test-utils.bun.ts";
+import { render } from "../test-utils/view.test-utils.ts";
 import type { Component } from "./Component.ts";
 import { Cache } from "./cache.ts";
 import { Once } from "./once.ts";

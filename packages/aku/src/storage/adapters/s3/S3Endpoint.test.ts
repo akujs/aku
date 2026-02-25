@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { MINIO_ENDPOINT, shouldSkipDockerTests } from "../../../test-utils/docker.bun.ts";
+import { MINIO_ENDPOINT, shouldSkipDockerTests } from "../../../test-utils/docker.test-utils.ts";
 import { mockCurrentTime, resetMockTime } from "../../../testing/mock-time.ts";
 import { PermissionsError } from "../../storage-errors.ts";
 import {

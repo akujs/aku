@@ -1,11 +1,11 @@
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { shouldSkipDockerTests } from "../../test-utils/docker.bun.ts";
-import { expectError } from "../../test-utils/error.bun.ts";
-import { mockDispatcher } from "../../test-utils/internal-mocks.bun.ts";
+import { shouldSkipDockerTests } from "../../test-utils/docker.test-utils.ts";
+import { expectError } from "../../test-utils/error.test-utils.ts";
+import { mockDispatcher } from "../../test-utils/internal-mocks.test-utils.ts";
 import type { StorageDisk, StorageEndpoint } from "../contracts/Storage.ts";
 import { StorageImpl } from "../StorageImpl.ts";
+import { mockEndpointBuilder, type SharedTestConfig } from "../storage.test-utils.ts";
 import { NotFoundError } from "../storage-errors.ts";
-import { mockEndpointBuilder, type SharedTestConfig } from "../storage-test-utils.bun.ts";
 import { filesystemStorageSharedTestConfig } from "./filesystem/FilesystemEndpoint.test.ts";
 import { memoryStorageSharedTestConfig } from "./memory/MemoryEndpoint.test.ts";
 import { MemoryEndpoint } from "./memory/MemoryEndpoint.ts";

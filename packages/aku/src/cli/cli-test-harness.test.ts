@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { ServiceProvider } from "../core/ServiceProvider.ts";
-import { createTestApplication } from "../test-utils/http-test-utils.bun.ts";
+import { createTestApplication } from "../test-utils/http.test-utils.ts";
 import { createCliTestHarness, tokeniseCommand } from "./cli-test-harness.ts";
 import type { CommandExecuteContext } from "./cli-types.ts";
 import type { CliConfirmOptions, CliInputOptions, CliSelectOptions } from "./contracts/CliApi.ts";
