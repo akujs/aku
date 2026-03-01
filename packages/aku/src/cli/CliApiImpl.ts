@@ -27,6 +27,32 @@ export class CliApiImpl extends BaseClass implements CliApi {
 		return process.stdout.columns || 80;
 	}
 
+	async #withEscapeCancel<T>(
+		fn: (context: { signal: AbortSignal }) => Promise<T>,
+	): Promise<CliPromptResponse<T>> {
+		const controller = new AbortController();
+		const onKeypress = (_ch: string, key: { name: string }) => {
+			if (key?.name === "escape") {
+				controller.abort();
+			}
+		};
+		process.stdin.on("keypress", onKeypress);
+		try {
+			const value = await fn({ signal: controller.signal });
+			return { success: true, value };
+		} catch (error) {
+			if (
+				error instanceof Error &&
+				(error.name === "ExitPromptError" || error.name === "AbortPromptError")
+			) {
+				return { success: false };
+			}
+			throw error;
+		} finally {
+			process.stdin.removeListener("keypress", onKeypress);
+		}
+	}
+
 	p(text: string): void {
 		const width = this.#getWidth();
 		const wrapped = wrapAnsi(text, width, { hard: true });
@@ -111,89 +137,72 @@ export class CliApiImpl extends BaseClass implements CliApi {
 	}
 
 	async select<V>(options: CliSelectOptions<V>): Promise<CliPromptResponse<V>> {
-		try {
-			const choices = options.options.map((opt) => {
-				const choice: { name: string; value: V; description?: string } = {
-					name: opt.label,
-					value: opt.value,
-				};
-				if (opt.note !== undefined) {
-					choice.description = opt.note;
-				}
-				return choice;
-			});
-
-			const config: Parameters<typeof inquirerSelect<V>>[0] = {
-				message: options.prompt,
-				choices,
+		const choices = options.options.map((opt) => {
+			const choice: { name: string; value: V; description?: string } = {
+				name: opt.label,
+				value: opt.value,
 			};
-			if (options.initialValue !== undefined) {
-				config.default = options.initialValue;
+			if (opt.note !== undefined) {
+				choice.description = opt.note;
 			}
+			return choice;
+		});
 
-			const result = await inquirerSelect(config);
-			return { success: true, value: result };
-		} catch (error) {
-			if (error instanceof Error && error.name === "ExitPromptError") {
-				return { success: false };
-			}
-			throw error;
+		const config: Parameters<typeof inquirerSelect<V>>[0] = {
+			message: options.prompt,
+			choices,
+		};
+		if (options.initialValue !== undefined) {
+			config.default = options.initialValue;
 		}
+
+		return this.#withEscapeCancel((ctx) => inquirerSelect(config, ctx));
 	}
 
 	async input<T = string>(options: CliInputOptions<T>): Promise<CliPromptResponse<T>> {
 		const promptFn = options.sensitive ? inquirerPassword : inquirerInput;
 
-		try {
-			while (true) {
-				const config: {
-					message: string;
-					default?: string;
-					validate?: (value: string) => boolean | string;
-				} = {
-					message: options.prompt,
-				};
-				if (options.initialValue !== undefined) {
-					config.default = options.initialValue;
-				}
-				if (options.required) {
-					config.validate = (value: string) => (value.trim() ? true : "This field is required");
-				}
-
-				const result = await promptFn(config);
-
-				if (options.parse) {
-					try {
-						const parsed = options.parse(result);
-						return { success: true, value: parsed };
-					} catch (parseError) {
-						process.stdout.write((parseError as Error).message + "\n");
-						continue;
-					}
-				}
-				return { success: true, value: result as T };
+		while (true) {
+			const config: {
+				message: string;
+				default?: string;
+				validate?: (value: string) => boolean | string;
+			} = {
+				message: options.prompt,
+			};
+			if (options.initialValue !== undefined) {
+				config.default = options.initialValue;
 			}
-		} catch (error) {
-			if (error instanceof Error && error.name === "ExitPromptError") {
-				return { success: false };
+			if (options.required) {
+				config.validate = (value: string) => (value.trim() ? true : "This field is required");
 			}
-			throw error;
+
+			const response = await this.#withEscapeCancel((ctx) => promptFn(config, ctx));
+			if (!response.success) return response;
+
+			if (options.parse) {
+				try {
+					const parsed = options.parse(response.value);
+					return { success: true, value: parsed };
+				} catch (parseError) {
+					process.stdout.write((parseError as Error).message + "\n");
+					continue;
+				}
+			}
+			return { success: true, value: response.value as T };
 		}
 	}
 
 	async confirm(options: CliConfirmOptions): Promise<CliPromptResponse<boolean>> {
-		try {
-			const result = await inquirerConfirm({
-				message: options.prompt,
-				default: options.defaultValue,
-			});
-			return { success: true, value: result };
-		} catch (error) {
-			if (error instanceof Error && error.name === "ExitPromptError") {
-				return { success: false };
-			}
-			throw error;
-		}
+		return this.#withEscapeCancel((ctx) =>
+			inquirerConfirm(
+				{
+					message: options.prompt,
+					default: options.defaultValue,
+				},
+				ctx,
+			),
+		);
 	}
 }
 
