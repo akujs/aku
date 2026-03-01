@@ -48,6 +48,10 @@ describe(listCommand.handler, () => {
 		            "label": "foo",
 		          },
 		          {
+		            "definition": "Show help for a command",
+		            "label": "help",
+		          },
+		          {
 		            "definition": "List all available commands",
 		            "label": "list",
 		          },
@@ -72,6 +76,10 @@ describe(listCommand.handler, () => {
 		    {
 		      "dl": {
 		        "items": [
+		          {
+		            "definition": "Show help for a command",
+		            "label": "help",
+		          },
 		          {
 		            "definition": "List all available commands",
 		            "label": "list",
@@ -119,6 +127,10 @@ describe(listCommand.handler, () => {
 		          {
 		            "definition": "A command",
 		            "label": "alpha",
+		          },
+		          {
+		            "definition": "Show help for a command",
+		            "label": "help",
 		          },
 		          {
 		            "definition": "List all available commands",

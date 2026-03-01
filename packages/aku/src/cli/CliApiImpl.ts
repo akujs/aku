@@ -23,8 +23,17 @@ import type {
 import { twoColumnTable } from "./two-column-table.ts";
 
 export class CliApiImpl extends BaseClass implements CliApi {
-	#getWidth(): number {
-		return process.stdout.columns || 80;
+	get columns(): number {
+		const env = process.env.COLUMNS;
+		if (env) {
+			const parsed = parseInt(env, 10);
+			if (parsed > 0) return parsed;
+		}
+		return Math.min(process.stdout.columns || 80, 120);
+	}
+
+	get isInteractive(): boolean {
+		return !!process.stdin.isTTY;
 	}
 
 	async #withEscapeCancel<T>(
@@ -54,7 +63,7 @@ export class CliApiImpl extends BaseClass implements CliApi {
 	}
 
 	p(text: string): void {
-		const width = this.#getWidth();
+		const width = this.columns;
 		const wrapped = wrapAnsi(text, width, { hard: true });
 		process.stdout.write(wrapped + "\n\n");
 	}
@@ -86,7 +95,7 @@ export class CliApiImpl extends BaseClass implements CliApi {
 
 		const output = twoColumnTable({
 			rows,
-			width: this.#getWidth(),
+			width: this.columns,
 			leftColor: "blue",
 			indent: "  ",
 		});
@@ -106,7 +115,7 @@ export class CliApiImpl extends BaseClass implements CliApi {
 
 		const output = twoColumnTable({
 			rows,
-			width: this.#getWidth(),
+			width: this.columns,
 			leftColor: "blue",
 			indent: "  ",
 		});
@@ -129,7 +138,7 @@ export class CliApiImpl extends BaseClass implements CliApi {
 
 		const output = twoColumnTable({
 			rows,
-			width: this.#getWidth(),
+			width: this.columns,
 			leftColor: "blue",
 			indent: "  ",
 		});

@@ -2,9 +2,6 @@ import type { CommandDefinition } from "./cli-types.ts";
 import type { CliApi } from "./contracts/CliApi.ts";
 import { formatArgumentDetail, formatUsageToken } from "./formatArgument.ts";
 
-/**
- * Render help output for a command definition to the CLI.
- */
 export function renderHelp(definition: CommandDefinition, cli: CliApi): void {
 	cli.h1(definition.name);
 	cli.p(definition.description);

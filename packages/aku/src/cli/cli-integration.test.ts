@@ -160,3 +160,98 @@ describe("CLI command handling", () => {
 		);
 	});
 });
+
+const requiredArgCommand = defineCommand({
+	name: "compile",
+	description: "Compile a file",
+	args: {
+		file: {
+			type: "string",
+			positional: true,
+			required: true,
+			description: "The file to compile",
+		},
+	} as const satisfies ArgumentSchema,
+	handler: async () => {},
+});
+
+describe("--help flag handling", () => {
+	test("--help flag rewrites to help command", async () => {
+		class TestProvider extends ServiceProvider {
+			override get commands() {
+				return [greetCommand];
+			}
+		}
+
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+
+		const exitCode = await cli.handleCommand(["greet", "--help"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toContainEqual({ h1: "greet" });
+		expect(cli.output).toContainEqual({ paragraph: "Greet someone" });
+	});
+
+	test("--help with other args still shows help", async () => {
+		class TestProvider extends ServiceProvider {
+			override get commands() {
+				return [greetCommand];
+			}
+		}
+
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+
+		const exitCode = await cli.handleCommand(["greet", "--help", "Alice"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toContainEqual({ h1: "greet" });
+	});
+
+	test("--help with no command shows general help message", async () => {
+		const { cli } = createTestApplication();
+
+		const exitCode = await cli.handleCommand(["--help"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toContainEqual({
+			paragraph: "This is the command line interface for the Aku framework.",
+		});
+	});
+});
+
+describe("help on validation failure", () => {
+	test("shows help output on validation failure for missing required arg", async () => {
+		class TestProvider extends ServiceProvider {
+			override get commands() {
+				return [requiredArgCommand];
+			}
+		}
+
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+
+		const exitCode = await cli.handleCommand(["compile"]);
+
+		expect(exitCode).toBe(1);
+		expect(cli.output).toContainEqual({ h1: "compile" });
+		expect(cli.output).toContainEqual({ paragraph: "Compile a file" });
+		expect(cli.lastError).toBeDefined();
+		expect((cli.lastError!.error as Error).message).toContain("Missing required argument: file");
+	});
+
+	test("shows help output on validation failure for unknown option", async () => {
+		class TestProvider extends ServiceProvider {
+			override get commands() {
+				return [requiredArgCommand];
+			}
+		}
+
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+
+		const exitCode = await cli.handleCommand(["compile", "main.ts", "--unknown"]);
+
+		expect(exitCode).toBe(1);
+		expect(cli.output).toContainEqual({ h1: "compile" });
+		expect(cli.lastError).toBeDefined();
+		expect((cli.lastError!.error as Error).message).toContain("Unknown option: --unknown");
+	});
+});

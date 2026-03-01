@@ -1,10 +1,6 @@
 import { kebabCase } from "../helpers/str/case.ts";
 import type { ArgumentDefinition } from "./cli-types.ts";
 
-/**
- * Return the token for the `Usage:` line, or `null` for optional named args
- * (which are collapsed into `[options]` by the caller).
- */
 export function formatUsageToken(name: string, def: ArgumentDefinition): string | null {
 	const effectivelyRequired = isEffectivelyRequired(def);
 
@@ -25,9 +21,6 @@ export function formatUsageToken(name: string, def: ArgumentDefinition): string 
 	return `--${cliName}=<value>`;
 }
 
-/**
- * Return the label and description for the Arguments/Options detail section.
- */
 export function formatArgumentDetail(
 	name: string,
 	def: ArgumentDefinition,

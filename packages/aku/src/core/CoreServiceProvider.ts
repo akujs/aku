@@ -3,6 +3,7 @@ import { CommandRegistry } from "../cli/CommandRegistry.ts";
 import type { CommandDefinition } from "../cli/cli-types.ts";
 import { CliErrorHandler } from "../cli/contracts/CliErrorHandler.ts";
 import { DefaultCliErrorHandler } from "../cli/DefaultCliErrorHandler.ts";
+import { helpCommand } from "../cli/HelpCommand.ts";
 import { listCommand } from "../cli/ListCommand.ts";
 import { Dispatcher } from "./contracts/Dispatcher.ts";
 import { DispatcherImpl } from "./DispatcherImpl.ts";
@@ -17,6 +18,6 @@ export class CoreServiceProvider extends ServiceProvider {
 	}
 
 	override get commands(): CommandDefinition[] {
-		return [listCommand];
+		return [helpCommand, listCommand];
 	}
 }

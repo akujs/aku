@@ -86,6 +86,13 @@ function rejectBooleanValues(argv: string[], defs: ProcessedDef[]): void {
 }
 
 function validateDefs(defs: ProcessedDef[]): void {
+	const helpArg = defs.find((def) => def.name === "help");
+	if (helpArg) {
+		throw new Error(
+			'Invalid argument schema: "help" is a reserved argument name (--help is used for displaying command help).',
+		);
+	}
+
 	const booleanArray = defs.find((def) => def.type === "boolean" && def.array);
 	if (booleanArray) {
 		throw new Error(

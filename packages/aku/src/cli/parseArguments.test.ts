@@ -490,6 +490,12 @@ describe(parseArguments, () => {
 				'required positional argument "required" cannot follow optional positional argument "optional"',
 			);
 		});
+
+		test('throws for argument schema with "help" name', () => {
+			expect(() => parseArguments([], { help: { type: "boolean" } })).toThrow(
+				'"help" is a reserved argument name (--help is used for displaying command help)',
+			);
+		});
 	});
 
 	describe("number defaults", () => {

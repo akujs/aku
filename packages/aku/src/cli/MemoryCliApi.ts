@@ -40,6 +40,8 @@ export type CapturedError = {
 };
 
 export class MemoryCliApi extends BaseClass implements CliApi, CliErrorHandler {
+	columns = 80;
+	isInteractive = false;
 	output: CliOutput[] = [];
 	errors: CapturedError[] = [];
 

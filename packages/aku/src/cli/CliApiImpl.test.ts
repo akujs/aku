@@ -7,6 +7,7 @@ describe(CliApiImpl, () => {
 
 	beforeEach(() => {
 		stdout = "";
+		delete process.env.COLUMNS;
 		spyOn(process.stdout, "write").mockImplementation((str) => {
 			stdout += str;
 			return true;
@@ -14,6 +15,49 @@ describe(CliApiImpl, () => {
 		// Mock terminal width for consistent tests
 		Object.defineProperty(process.stdout, "columns", { value: 60, configurable: true });
 		cli = new CliApiImpl();
+	});
+
+	describe("columns", () => {
+		test("uses process.stdout.columns when COLUMNS env var is not set", () => {
+			delete process.env.COLUMNS;
+			Object.defineProperty(process.stdout, "columns", { value: 100, configurable: true });
+
+			expect(cli.columns).toBe(100);
+		});
+
+		test("caps process.stdout.columns at 120", () => {
+			delete process.env.COLUMNS;
+			Object.defineProperty(process.stdout, "columns", { value: 200, configurable: true });
+
+			expect(cli.columns).toBe(120);
+		});
+
+		test("falls back to 80 when stdout has no columns", () => {
+			delete process.env.COLUMNS;
+			Object.defineProperty(process.stdout, "columns", { value: 0, configurable: true });
+
+			expect(cli.columns).toBe(80);
+		});
+
+		test("COLUMNS env var overrides process.stdout.columns", () => {
+			process.env.COLUMNS = "40";
+			Object.defineProperty(process.stdout, "columns", { value: 100, configurable: true });
+
+			expect(cli.columns).toBe(40);
+		});
+
+		test("COLUMNS env var is not capped at 120", () => {
+			process.env.COLUMNS = "200";
+
+			expect(cli.columns).toBe(200);
+		});
+
+		test("ignores invalid COLUMNS env var", () => {
+			process.env.COLUMNS = "not-a-number";
+			Object.defineProperty(process.stdout, "columns", { value: 90, configurable: true });
+
+			expect(cli.columns).toBe(90);
+		});
 	});
 
 	test("p() outputs wrapped text with trailing blank line", () => {
