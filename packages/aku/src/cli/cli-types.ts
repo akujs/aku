@@ -31,7 +31,7 @@ export type ArgumentDefinition =
 	| (ArgumentDefinitionBase & {
 			type: "boolean";
 			array?: false | undefined;
-			default?: boolean | undefined;
+			default?: undefined;
 	  });
 
 export interface ArgumentSchema {

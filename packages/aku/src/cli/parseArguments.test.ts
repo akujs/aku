@@ -45,7 +45,11 @@ describe(parseArguments, () => {
 			},
 			namedStringRequiredDefault() {
 				// required is ignored when a default is present
-				testCases.namedStringOptionalDefault();
+				const arg = { type: "string", required: true, default: "def" } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: "def" });
+				expect(parseArguments(["--arg", "val"], { arg })).toEqual({ arg: "val" });
 			},
 			namedStringArrayOptional() {
 				const arg = { type: "string", array: true } as const;
@@ -70,7 +74,11 @@ describe(parseArguments, () => {
 			},
 			namedStringArrayRequiredDefault() {
 				// required is ignored when a default is present
-				testCases.namedStringArrayOptionalDefault();
+				const arg = { type: "string", array: true, required: true, default: ["x", "y"] } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: string[] }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: ["x", "y"] });
+				expect(parseArguments(["--arg", "a"], { arg })).toEqual({ arg: ["a"] });
 			},
 
 			// Named - Boolean
@@ -83,18 +91,26 @@ describe(parseArguments, () => {
 			},
 			namedBooleanOptionalDefault() {
 				const arg = { type: "boolean", default: true } as const;
-				const result = parseArguments([], { arg });
-				expectTypeOf(result).toEqualTypeOf<{ arg: boolean }>();
-				expect(parseArguments([], { arg })).toEqual({ arg: true });
-				expect(parseArguments(["--arg=false"], { arg })).toEqual({ arg: false });
+				// @ts-expect-error default is not valid on boolean arguments
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean arguments do not support defaults",
+				);
 			},
 			namedBooleanRequired() {
-				// required is ignored for booleans as they always have a default value
-				testCases.namedBooleanOptional();
+				// required has no effect on booleans; they are always present
+				const arg = { type: "boolean", required: true } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: boolean }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: false });
+				expect(parseArguments(["--arg"], { arg })).toEqual({ arg: true });
 			},
 			namedBooleanRequiredDefault() {
-				// required is ignored when a default is present
-				testCases.namedBooleanOptionalDefault();
+				// required and default both rejected for booleans
+				const arg = { type: "boolean", required: true, default: true } as const;
+				// @ts-expect-error default is not valid on boolean arguments
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean arguments do not support defaults",
+				);
 			},
 			namedBooleanArrayOptional() {
 				const arg = { type: "boolean", array: true } as const;
@@ -111,12 +127,20 @@ describe(parseArguments, () => {
 				);
 			},
 			namedBooleanArrayRequired() {
-				// required is ignored for booleans as they always have a default value
-				testCases.namedBooleanArrayOptional();
+				// array check fires before required is considered
+				const arg = { type: "boolean", array: true, required: true } as const;
+				// @ts-expect-error boolean arrays are invalid at type level
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean array arguments are not supported",
+				);
 			},
 			namedBooleanArrayRequiredDefault() {
-				// required is ignored when a default is present
-				testCases.namedBooleanArrayOptionalDefault();
+				// array check fires before required or default are considered
+				const arg = { type: "boolean", array: true, required: true, default: [true] } as const;
+				// @ts-expect-error boolean arrays are invalid at type level
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean array arguments are not supported",
+				);
 			},
 
 			// Positional - String
@@ -143,7 +167,11 @@ describe(parseArguments, () => {
 			},
 			positionalStringRequiredDefault() {
 				// required is ignored when a default is present
-				testCases.positionalStringOptionalDefault();
+				const arg = { type: "string", positional: true, required: true, default: "def" } as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: string }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: "def" });
+				expect(parseArguments(["val"], { arg })).toEqual({ arg: "val" });
 			},
 			positionalStringArrayOptional() {
 				const arg = { type: "string", positional: true, array: true } as const;
@@ -168,31 +196,47 @@ describe(parseArguments, () => {
 			},
 			positionalStringArrayRequiredDefault() {
 				// required is ignored when a default is present
-				testCases.positionalStringArrayOptionalDefault();
+				const arg = {
+					type: "string",
+					positional: true,
+					array: true,
+					required: true,
+					default: ["x", "y"],
+				} as const;
+				const result = parseArguments([], { arg });
+				expectTypeOf(result).toEqualTypeOf<{ arg: string[] }>();
+				expect(parseArguments([], { arg })).toEqual({ arg: ["x", "y"] });
+				expect(parseArguments(["a"], { arg })).toEqual({ arg: ["a"] });
 			},
 
 			// Positional - Boolean
 			positionalBooleanOptional() {
 				const arg = { type: "boolean", positional: true } as const;
-				const result = parseArguments([], { arg });
-				expectTypeOf(result).toEqualTypeOf<{ arg: boolean }>();
-				expect(parseArguments([], { arg })).toEqual({ arg: false });
-				expect(parseArguments(["true"], { arg })).toEqual({ arg: true });
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean positional arguments are not supported",
+				);
 			},
 			positionalBooleanOptionalDefault() {
 				const arg = { type: "boolean", positional: true, default: true } as const;
-				const result = parseArguments([], { arg });
-				expectTypeOf(result).toEqualTypeOf<{ arg: boolean }>();
-				expect(parseArguments([], { arg })).toEqual({ arg: true });
-				expect(parseArguments(["false"], { arg })).toEqual({ arg: false });
+				// @ts-expect-error default is not valid on boolean arguments
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean positional arguments are not supported",
+				);
 			},
 			positionalBooleanRequired() {
-				// required is ignored for booleans as they always have a default value
-				testCases.positionalBooleanOptional();
+				// positional check fires before required is considered
+				const arg = { type: "boolean", positional: true, required: true } as const;
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean positional arguments are not supported",
+				);
 			},
 			positionalBooleanRequiredDefault() {
-				// required is ignored when a default is present
-				testCases.positionalBooleanOptionalDefault();
+				// positional check fires before required or default are considered
+				const arg = { type: "boolean", positional: true, required: true, default: true } as const;
+				// @ts-expect-error default is not valid on boolean arguments
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean positional arguments are not supported",
+				);
 			},
 			positionalBooleanArrayOptional() {
 				const arg = { type: "boolean", positional: true, array: true } as const;
@@ -209,12 +253,26 @@ describe(parseArguments, () => {
 				);
 			},
 			positionalBooleanArrayRequired() {
-				// required is ignored for booleans as they always have a default value
-				testCases.positionalBooleanArrayOptional();
+				// array check fires before positional or required are considered
+				const arg = { type: "boolean", positional: true, array: true, required: true } as const;
+				// @ts-expect-error boolean arrays are invalid at type level
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean array arguments are not supported",
+				);
 			},
 			positionalBooleanArrayRequiredDefault() {
-				// required is ignored when a default is present
-				testCases.positionalBooleanArrayOptionalDefault();
+				// array check fires before positional, required, or default are considered
+				const arg = {
+					type: "boolean",
+					positional: true,
+					array: true,
+					required: true,
+					default: [true],
+				} as const;
+				// @ts-expect-error boolean arrays are invalid at type level
+				expect(() => parseArguments([], { arg })).toThrow(
+					"boolean array arguments are not supported",
+				);
 			},
 		};
 
@@ -225,7 +283,6 @@ describe(parseArguments, () => {
 	const requiredStringPositional = { type: "string", positional: true, required: true } as const;
 	const optionalStringPositional = { type: "string", positional: true } as const;
 	const requiredNumberPositional = { type: "number", positional: true, required: true } as const;
-	const requiredBooleanPositional = { type: "boolean", positional: true, required: true } as const;
 	const requiredStringArrayPositional = {
 		type: "string",
 		positional: true,
@@ -384,82 +441,22 @@ describe(parseArguments, () => {
 		});
 	});
 
-	describe("boolean parsing", () => {
-		test('parses "true" string as true', () => {
-			const result = parseArguments(["true"], { flag: requiredBooleanPositional });
-			expect(result).toEqual({ flag: true });
+	describe("boolean value rejection", () => {
+		test("throws for --flag=true", () => {
+			expect(() => parseArguments(["--flag=true"], { flag: optionalBoolean })).toThrow(
+				"is a boolean flag and does not accept a value",
+			);
 		});
 
-		test('parses "false" string as false', () => {
-			const result = parseArguments(["false"], { flag: requiredBooleanPositional });
-			expect(result).toEqual({ flag: false });
+		test("throws for --flag=false", () => {
+			expect(() => parseArguments(["--flag=false"], { flag: optionalBoolean })).toThrow(
+				"is a boolean flag and does not accept a value",
+			);
 		});
 
-		test('parses "yes" string as true', () => {
-			const result = parseArguments(["yes"], { flag: requiredBooleanPositional });
-			expect(result).toEqual({ flag: true });
-		});
-
-		test('parses "no" string as false', () => {
-			const result = parseArguments(["no"], { flag: requiredBooleanPositional });
-			expect(result).toEqual({ flag: false });
-		});
-
-		test('parses "y" string as true', () => {
-			const result = parseArguments(["y"], { flag: requiredBooleanPositional });
-			expect(result).toEqual({ flag: true });
-		});
-
-		test('parses "n" string as false', () => {
-			const result = parseArguments(["n"], { flag: requiredBooleanPositional });
-			expect(result).toEqual({ flag: false });
-		});
-
-		test('parses "1" string as true', () => {
-			const result = parseArguments(["1"], { flag: requiredBooleanPositional });
-			expect(result).toEqual({ flag: true });
-		});
-
-		test('parses "0" string as false', () => {
-			const result = parseArguments(["0"], { flag: requiredBooleanPositional });
-			expect(result).toEqual({ flag: false });
-		});
-
-		test("parses case insensitively", () => {
-			expect(parseArguments(["TRUE"], { flag: requiredBooleanPositional })).toEqual({
-				flag: true,
-			});
-			expect(parseArguments(["FALSE"], { flag: requiredBooleanPositional })).toEqual({
-				flag: false,
-			});
-			expect(parseArguments(["Yes"], { flag: requiredBooleanPositional })).toEqual({
-				flag: true,
-			});
-			expect(parseArguments(["No"], { flag: requiredBooleanPositional })).toEqual({
-				flag: false,
-			});
-			expect(parseArguments(["Y"], { flag: requiredBooleanPositional })).toEqual({
-				flag: true,
-			});
-			expect(parseArguments(["N"], { flag: requiredBooleanPositional })).toEqual({
-				flag: false,
-			});
-		});
-
-		test("parses --flag=false as false", () => {
-			const result = parseArguments(["--verbose=false"], { verbose: optionalBoolean });
-			expect(result).toEqual({ verbose: false });
-		});
-
-		test("overrides default true with --flag=false", () => {
-			const schema = { verbose: { type: "boolean", default: true } } as const;
-			expect(parseArguments([], schema)).toEqual({ verbose: true });
-			expect(parseArguments(["--verbose=false"], schema)).toEqual({ verbose: false });
-		});
-
-		test("throws for invalid boolean string", () => {
-			expect(() => parseArguments(["maybe"], { flag: requiredBooleanPositional })).toThrow(
-				'Invalid boolean: "maybe". Use true/false, yes/no, y/n, or 0/1.',
+		test("throws for --flag=anything", () => {
+			expect(() => parseArguments(["--flag=anything"], { flag: optionalBoolean })).toThrow(
+				"is a boolean flag and does not accept a value",
 			);
 		});
 	});
@@ -565,13 +562,6 @@ describe(parseArguments, () => {
 				dryRun: { type: "boolean" },
 			});
 			expect(result).toEqual({ dryRun: true });
-		});
-
-		test("maps --dry-run=false to dryRun schema key", () => {
-			const result = parseArguments(["--dry-run=false"], {
-				dryRun: { type: "boolean" },
-			});
-			expect(result).toEqual({ dryRun: false });
 		});
 
 		test("maps multiple kebab-case arguments", () => {

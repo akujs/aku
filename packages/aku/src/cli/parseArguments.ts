@@ -24,20 +24,14 @@ export function parseArguments<S extends ArgumentSchema>(
 
 	validateDefs(defs);
 
-	// Extract --boolFlag=value patterns before parseArgs (which doesn't support them)
-	const { processedArgv, booleanValues } = preprocessBooleanValues(argv, defs);
+	rejectBooleanValues(argv, defs);
 
 	const { values, positionals } = parseArgs({
-		args: processedArgv,
+		args: argv,
 		options: parseArgsOptions,
 		allowPositionals: true,
 		strict: false,
 	});
-
-	// Merge extracted boolean values back
-	for (const [name, value] of Object.entries(booleanValues)) {
-		values[name] = value;
-	}
 
 	validateValues(defs, values);
 
@@ -74,33 +68,21 @@ function processSchema(schema: ArgumentSchema): AnalysedSchema {
 	return { defs, parseArgsOptions };
 }
 
-interface PreprocessResult {
-	processedArgv: string[];
-	booleanValues: Record<string, boolean>;
-}
-
-function preprocessBooleanValues(argv: string[], defs: ProcessedDef[]): PreprocessResult {
+function rejectBooleanValues(argv: string[], defs: ProcessedDef[]): void {
 	const booleanDefs = defs.filter((def) => !def.positional && def.type === "boolean");
 	const booleanArgumentNames = new Set(booleanDefs.map((def) => def.argumentName));
 
-	const processedArgv: string[] = [];
-	const booleanValues: Record<string, boolean> = {};
-
 	for (const arg of argv) {
-		// Match --argument-name=value
 		const longMatch = arg.match(/^--([^=]+)=(.+)$/);
 		if (longMatch) {
-			const [, argumentName, value] = longMatch;
+			const [, argumentName] = longMatch;
 			if (booleanArgumentNames.has(argumentName)) {
-				booleanValues[argumentName] = convertValue(value, "boolean") as boolean;
-				continue;
+				throw new CliExitError(
+					`Option '--${argumentName}' is a boolean flag and does not accept a value. Use '--${argumentName}' to enable.`,
+				);
 			}
 		}
-
-		processedArgv.push(arg);
 	}
-
-	return { processedArgv, booleanValues };
 }
 
 function validateDefs(defs: ProcessedDef[]): void {
@@ -109,6 +91,21 @@ function validateDefs(defs: ProcessedDef[]): void {
 		throw new Error(
 			`Invalid argument schema: boolean array arguments are not supported (${booleanArray.name}).`,
 		);
+	}
+
+	const booleanPositional = defs.find((def) => def.type === "boolean" && def.positional);
+	if (booleanPositional) {
+		throw new Error(
+			`Invalid argument schema: boolean positional arguments are not supported (${booleanPositional.name}).`,
+		);
+	}
+
+	for (const def of defs) {
+		if (def.type === "boolean" && (def as unknown as { default: unknown }).default !== undefined) {
+			throw new Error(
+				`Invalid argument schema: boolean arguments do not support defaults (${def.name}). Booleans are always false when absent.`,
+			);
+		}
 	}
 
 	const positionals = defs.filter((def) => def.positional);
@@ -173,26 +170,19 @@ function mapPositionals(
 			}
 			result[def.name] =
 				remaining.length > 0
-					? remaining.map((v) => convertValue(v, def.type))
+					? remaining.map((v) => convertValue(v, def.type as "string" | "number"))
 					: (def.default ?? []);
 			return;
 		}
 
 		const value = remaining.shift();
 
-		// Booleans always have a value (default to false)
-		if (def.type === "boolean") {
-			result[def.name] =
-				value !== undefined ? convertValue(value, def.type) : (def.default ?? false);
-			continue;
-		}
-
 		// Strings and numbers
 		if (def.required && !hasDefault && value === undefined) {
 			throw new CliExitError(`Missing required argument: ${def.name}`);
 		}
 		if (value !== undefined) {
-			result[def.name] = convertValue(value, def.type);
+			result[def.name] = convertValue(value, def.type as "string" | "number");
 		} else if (hasDefault) {
 			result[def.name] = def.default;
 		}
@@ -215,16 +205,9 @@ function mapNamed(
 	for (const def of namedDefs) {
 		const value = values[def.argumentName] ?? def.default;
 
-		// Booleans default to false when absent (required is ignored for booleans)
+		// Booleans: presence check only (--flag means true, absent means false)
 		if (def.type === "boolean") {
-			if (value === undefined) {
-				result[def.name] = false;
-			} else if (value === true) {
-				// --flag without value sets boolean true directly
-				result[def.name] = true;
-			} else {
-				result[def.name] = convertValue(value, def.type);
-			}
+			result[def.name] = value === true;
 			continue;
 		}
 
@@ -253,33 +236,13 @@ function mapNamed(
 	}
 }
 
-function convertValue(
-	value: unknown,
-	type: "string" | "number" | "boolean",
-): string | number | boolean {
+function convertValue(value: unknown, type: "string" | "number"): string | number {
 	if (type === "number") {
 		const num = Number(value);
 		if (Number.isNaN(num)) {
 			throw new CliExitError(`Invalid number: "${String(value)}"`);
 		}
 		return num;
-	}
-	if (type === "boolean") {
-		const str = String(value).toLowerCase();
-		if (str === "false" || str === "0" || str === "no" || str === "n") {
-			return false;
-		}
-		if (str === "true" || str === "yes" || str === "y") {
-			return true;
-		}
-		// Check for non-zero number
-		const num = Number(value);
-		if (!Number.isNaN(num) && num !== 0) {
-			return true;
-		}
-		throw new CliExitError(
-			`Invalid boolean: "${String(value)}". Use true/false, yes/no, y/n, or 0/1.`,
-		);
 	}
 	return String(value);
 }
