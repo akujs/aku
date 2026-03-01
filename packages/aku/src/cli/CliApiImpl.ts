@@ -73,13 +73,13 @@ export class CliApiImpl extends BaseClass implements CliApi {
 	}
 
 	h1(text: string): void {
-		const styled = styleText("bold", text);
+		const styled = styleText("bold", text.toUpperCase());
 		process.stdout.write("\n" + styled + "\n\n");
 	}
 
 	h2(text: string): void {
 		const styled = styleText("underline", text);
-		process.stdout.write(styled + "\n\n");
+		process.stdout.write(styled + "\n");
 	}
 
 	dl(options: CliDlOptions): void {

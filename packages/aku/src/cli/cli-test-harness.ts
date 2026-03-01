@@ -96,7 +96,7 @@ export class CliTestHarness extends BaseClass {
 		return this.#cli.errors;
 	}
 
-	get lastError(): CapturedError | undefined {
+	get lastError(): CapturedError | null {
 		return this.#cli.lastError;
 	}
 
@@ -226,7 +226,7 @@ function renderCliOutputAsMarkdown(outputs: CliOutput[]): string {
 }
 
 function renderOneOutput(output: CliOutput): string {
-	if ("h1" in output) return `# ${output.h1}`;
+	if ("h1" in output) return `# ${output.h1.toUpperCase()}`;
 	if ("h2" in output) return `## ${output.h2}`;
 	if ("paragraph" in output) return output.paragraph;
 	if ("br" in output) return "";

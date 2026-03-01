@@ -84,7 +84,7 @@ describe(CliApiImpl, () => {
 
 		expect(stdout).toMatchInlineSnapshot(`
 "
-\x1B[1mMy Title\x1B[22m
+\x1B[1mMY TITLE\x1B[22m
 
 "
 `);
@@ -95,7 +95,6 @@ describe(CliApiImpl, () => {
 
 		expect(stdout).toMatchInlineSnapshot(`
 "\x1B[4mMy Subtitle\x1B[24m
-
 "
 `);
 	});
@@ -221,7 +220,7 @@ describe(CliApiImpl, () => {
 
 		expect(stdout).toMatchInlineSnapshot(`
 "
-\x1B[1mAvailable commands\x1B[22m
+\x1B[1mAVAILABLE COMMANDS\x1B[22m
 
   \x1B[34mlist      \x1B[39m  List all commands
   \x1B[34mdb:migrate\x1B[39m  Run database migrations

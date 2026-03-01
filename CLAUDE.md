@@ -42,6 +42,7 @@ These guidelines must be followed when writing code for the Aku project. After i
 - **Mocking**: Do not explicitly call mockRestore() after tests that use mocking, as we do that in common test setup anyway
 
 - **Snapshots**: Use inline snapshots: `expect(...).toMatchInlineSnapshot()` instead of `expect(cli.output).toMatchSnapshot()`
+    - When updating snapshots that are expected to change first run tests WITHOUT --update-snapshots, review failures are expected, then update snapshots, to avoid masking errors introduced accidentally.
 
 ## Code Style
 

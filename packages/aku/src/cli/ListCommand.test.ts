@@ -32,7 +32,7 @@ describe(listCommand.handler, () => {
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toMatchInlineSnapshot(`
-		  "# Available commands
+		  "# AVAILABLE COMMANDS
 
 		  bar: Do bar things
 		  foo: Do foo things
@@ -48,7 +48,7 @@ describe(listCommand.handler, () => {
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toMatchInlineSnapshot(`
-		  "# Available commands
+		  "# AVAILABLE COMMANDS
 
 		  help: Show help for a command
 		  list: List all available commands"
@@ -81,7 +81,7 @@ describe(listCommand.handler, () => {
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toMatchInlineSnapshot(`
-		  "# Available commands
+		  "# AVAILABLE COMMANDS
 
 		  alpha: A command
 		  help: Show help for a command

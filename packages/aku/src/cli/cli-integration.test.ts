@@ -84,7 +84,7 @@ describe("CLI command handling", () => {
 
 		expect(exitCode).toBe(1);
 		expect(cli.lastError).toBeDefined();
-		expect((cli.lastError!.error as Error).message).toContain('Command "nonexistent" not found');
+		expect(cli.lastError!.error.message).toContain('Command "nonexistent" not found');
 	});
 
 	test("defaults to 'list' command when no command specified", async () => {
@@ -94,7 +94,7 @@ describe("CLI command handling", () => {
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toMatchInlineSnapshot(`
-		  "# Available commands
+		  "# AVAILABLE COMMANDS
 
 		  help: Show help for a command
 		  list: List all available commands"
@@ -115,7 +115,7 @@ describe("CLI command handling", () => {
 		expect(exitCode).toBe(1);
 		expect(cli.lastError).toBeDefined();
 		expect(cli.lastError!.isExpected).toBe(true);
-		expect((cli.lastError!.error as Error).message).toBe("Something went wrong");
+		expect(cli.lastError!.error.message).toBe("Something went wrong");
 	});
 
 	test("handles unexpected errors", async () => {
@@ -132,7 +132,7 @@ describe("CLI command handling", () => {
 		expect(exitCode).toBe(1);
 		expect(cli.lastError).toBeDefined();
 		expect(cli.lastError!.isExpected).toBe(false);
-		expect((cli.lastError!.error as Error).message).toBe("Unexpected boom");
+		expect(cli.lastError!.error.message).toBe("Unexpected boom");
 	});
 
 	test("CliApi is available via DI during command execution", async () => {
@@ -194,13 +194,13 @@ describe("--help flag handling", () => {
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toMatchInlineSnapshot(`
-		  "# greet
+		  "# AKU GREET
 
 		  Greet someone
 
 		  ## Usage
 
-		    greet [name]
+		    aku greet [name]
 
 		  ## Arguments
 
@@ -221,13 +221,13 @@ describe("--help flag handling", () => {
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toMatchInlineSnapshot(`
-		  "# greet
+		  "# AKU GREET
 
 		  Greet someone
 
 		  ## Usage
 
-		    greet [name]
+		    aku greet [name]
 
 		  ## Arguments
 
@@ -263,20 +263,20 @@ describe("help on validation failure", () => {
 
 		expect(exitCode).toBe(1);
 		expect(cli.output).toMatchInlineSnapshot(`
-		  "# compile
+		  "# AKU COMPILE
 
 		  Compile a file
 
 		  ## Usage
 
-		    compile <file>
+		    aku compile <file>
 
 		  ## Arguments
 
 		  <file>: The file to compile (required)"
 		`);
 		expect(cli.lastError).toBeDefined();
-		expect((cli.lastError!.error as Error).message).toContain("Missing required argument: file");
+		expect(cli.lastError!.error.message).toContain("Missing required argument: file");
 	});
 
 	test("shows help output on validation failure for unknown option", async () => {
@@ -292,19 +292,19 @@ describe("help on validation failure", () => {
 
 		expect(exitCode).toBe(1);
 		expect(cli.output).toMatchInlineSnapshot(`
-		  "# compile
+		  "# AKU COMPILE
 
 		  Compile a file
 
 		  ## Usage
 
-		    compile <file>
+		    aku compile <file>
 
 		  ## Arguments
 
 		  <file>: The file to compile (required)"
 		`);
 		expect(cli.lastError).toBeDefined();
-		expect((cli.lastError!.error as Error).message).toContain("Unknown option: --unknown");
+		expect(cli.lastError!.error.message).toContain("Unknown option: --unknown");
 	});
 });

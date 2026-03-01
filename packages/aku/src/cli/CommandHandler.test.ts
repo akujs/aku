@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { ContainerImpl } from "../container/ContainerImpl.ts";
 import { CommandHandler } from "./CommandHandler.ts";
 import { CommandRegistry } from "./CommandRegistry.ts";
-import type { CliExitError } from "./cli-errors.ts";
+
 import { MemoryCliApi } from "./MemoryCliApi.ts";
 
 function createHandler(commandNames: string[]) {
@@ -27,7 +27,7 @@ describe(CommandHandler, () => {
 
 		await handler.handle(["migrat"], cli);
 
-		const error = errorHandler.lastError!.error as CliExitError;
+		const error = errorHandler.lastError!.error;
 		expect(error.message).toMatchInlineSnapshot(`
 		  "Command "migrat" not found.
 
@@ -44,7 +44,7 @@ describe(CommandHandler, () => {
 
 		await handler.handle(["serv"], cli);
 
-		const error = errorHandler.lastError!.error as CliExitError;
+		const error = errorHandler.lastError!.error;
 		expect(error.message).toMatchInlineSnapshot(`
 		  "Command "serv" not found.
 
@@ -63,7 +63,7 @@ describe(CommandHandler, () => {
 
 		await handler.handle(["zzzzzzz"], cli);
 
-		const error = errorHandler.lastError!.error as CliExitError;
+		const error = errorHandler.lastError!.error;
 		expect(error.message).toMatchInlineSnapshot(`
 		  "Command "zzzzzzz" not found.
 

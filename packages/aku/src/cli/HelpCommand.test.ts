@@ -45,13 +45,13 @@ describe(helpCommand.handler, () => {
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toMatchInlineSnapshot(`
-		  "# greet
+		  "# AKU GREET
 
 		  Greet someone by name
 
 		  ## Usage
 
-		    greet <name> [options]
+		    aku greet <name> [options]
 
 		  ## Arguments
 
@@ -70,13 +70,13 @@ describe(helpCommand.handler, () => {
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toMatchInlineSnapshot(`
-		  "# simple
+		  "# AKU SIMPLE
 
 		  A command with no args
 
 		  ## Usage
 
-		    simple"
+		    aku simple"
 		`);
 	});
 
@@ -87,9 +87,9 @@ describe(helpCommand.handler, () => {
 
 		expect(exitCode).toBe(1);
 		expect(cli.lastError).toBeDefined();
-		expect((cli.lastError!.error as Error).message).toContain('Command "gret" not found.');
-		expect((cli.lastError!.error as Error).message).toContain("Did you mean");
-		expect((cli.lastError!.error as Error).message).toContain("greet");
+		expect(cli.lastError!.error.message).toContain('Command "gret" not found.');
+		expect(cli.lastError!.error.message).toContain("Did you mean");
+		expect(cli.lastError!.error.message).toContain("greet");
 	});
 
 	test("shows generic not-found for distant name", async () => {
@@ -99,8 +99,8 @@ describe(helpCommand.handler, () => {
 
 		expect(exitCode).toBe(1);
 		expect(cli.lastError).toBeDefined();
-		expect((cli.lastError!.error as Error).message).toContain('Command "xyzzy" not found.');
-		expect((cli.lastError!.error as Error).message).toContain("aku list");
+		expect(cli.lastError!.error.message).toContain('Command "xyzzy" not found.');
+		expect(cli.lastError!.error.message).toContain("aku list");
 	});
 
 	test("shows general help message when no command given", async () => {

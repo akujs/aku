@@ -35,7 +35,7 @@ export type PendingPrompt =
 	| { type: "confirm"; options: CliConfirmOptions; respond(r: CliPromptResponse<unknown>): void };
 
 export type CapturedError = {
-	error: unknown;
+	error: Error;
 	isExpected: boolean;
 };
 
@@ -46,15 +46,16 @@ export class MemoryCliApi extends BaseClass implements CliApi, CliErrorHandler {
 	errors: CapturedError[] = [];
 
 	handleError(error: unknown, _cli: CliApi): number {
+		const normalised = error instanceof Error ? error : new Error(String(error), { cause: error });
 		this.errors.push({
-			error,
-			isExpected: error instanceof CliExitError,
+			error: normalised,
+			isExpected: normalised instanceof CliExitError,
 		});
 		return 1;
 	}
 
-	get lastError(): CapturedError | undefined {
-		return this.errors[this.errors.length - 1];
+	get lastError(): CapturedError | null {
+		return this.errors[this.errors.length - 1] ?? null;
 	}
 
 	reset(): void {

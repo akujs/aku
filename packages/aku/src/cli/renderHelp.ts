@@ -3,7 +3,7 @@ import type { CliApi } from "./contracts/CliApi.ts";
 import { formatArgumentDetail, formatUsageToken } from "./formatArgument.ts";
 
 export function renderHelp(definition: CommandDefinition, cli: CliApi): void {
-	cli.h1(definition.name);
+	cli.h1(`aku ${definition.name}`);
 	cli.p(definition.description);
 
 	const schema = definition.args ?? {};
@@ -13,7 +13,7 @@ export function renderHelp(definition: CommandDefinition, cli: CliApi): void {
 	const named = entries.filter(([, def]) => !def.positional);
 
 	// Build usage line
-	const usageTokens: string[] = [definition.name];
+	const usageTokens: string[] = [`aku ${definition.name}`];
 
 	for (const [name, def] of positionals) {
 		const token = formatUsageToken(name, def);
