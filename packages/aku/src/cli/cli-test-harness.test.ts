@@ -183,7 +183,7 @@ describe("answerSelect", () => {
 		await cli.answerSelect("red");
 		await done;
 
-		expect(cli.output).toContainEqual({ paragraph: "You chose: red" });
+		expect(cli.output).toBe("You chose: red");
 	});
 
 	test("callback form", async () => {
@@ -194,7 +194,7 @@ describe("answerSelect", () => {
 		await cli.answerSelect((opts: CliSelectOptions<unknown>) => opts.options[1].value);
 		await done;
 
-		expect(cli.output).toContainEqual({ paragraph: "You chose: blue" });
+		expect(cli.output).toBe("You chose: blue");
 	});
 
 	test("throws on invalid value", async () => {
@@ -223,7 +223,7 @@ describe("answerSelect", () => {
 		await cli.answerSelect({ cancel: true });
 		await done;
 
-		expect(cli.output).toContainEqual({ paragraph: "Cancelled" });
+		expect(cli.output).toBe("Cancelled");
 	});
 });
 
@@ -236,7 +236,7 @@ describe("answerInput", () => {
 		await cli.answerInput("Alice");
 		await done;
 
-		expect(cli.output).toContainEqual({ paragraph: "Hello, Alice!" });
+		expect(cli.output).toBe("Hello, Alice!");
 	});
 
 	test("callback form", async () => {
@@ -249,7 +249,7 @@ describe("answerInput", () => {
 		);
 		await done;
 
-		expect(cli.output).toContainEqual({ paragraph: "Hello, Bob!" });
+		expect(cli.output).toBe("Hello, Bob!");
 	});
 
 	test("throws if required and empty", async () => {
@@ -269,7 +269,7 @@ describe("answerInput", () => {
 		await cli.answerInput("21");
 		await done;
 
-		expect(cli.output).toContainEqual({ paragraph: "Double: 42" });
+		expect(cli.output).toBe("Double: 42");
 	});
 
 	test("throws if parse throws", async () => {
@@ -298,7 +298,7 @@ describe("answerInput", () => {
 		await cli.answerInput({ cancel: true });
 		await done;
 
-		expect(cli.output).toContainEqual({ paragraph: "Cancelled" });
+		expect(cli.output).toBe("Cancelled");
 	});
 });
 
@@ -311,7 +311,7 @@ describe("answerConfirm", () => {
 		await cli.answerConfirm(true);
 		await done;
 
-		expect(cli.output).toContainEqual({ paragraph: "Answer: true" });
+		expect(cli.output).toBe("Answer: true");
 	});
 
 	test("callback form", async () => {
@@ -322,7 +322,7 @@ describe("answerConfirm", () => {
 		await cli.answerConfirm((opts: CliConfirmOptions) => opts.defaultValue);
 		await done;
 
-		expect(cli.output).toContainEqual({ paragraph: "Answer: false" });
+		expect(cli.output).toBe("Answer: false");
 	});
 
 	test("throws on wrong type", async () => {
@@ -342,7 +342,7 @@ describe("answerConfirm", () => {
 		await cli.answerConfirm({ cancel: true });
 		await done;
 
-		expect(cli.output).toContainEqual({ paragraph: "Cancelled" });
+		expect(cli.output).toBe("Cancelled");
 	});
 });
 
@@ -357,7 +357,7 @@ describe("full sequential flow", () => {
 		await cli.answerConfirm(true);
 		await done;
 
-		expect(cli.output).toContainEqual({ paragraph: "Alice likes red: true" });
+		expect(cli.output).toBe("Alice likes red: true");
 	});
 
 	test("output captured correctly", async () => {
@@ -368,12 +368,6 @@ describe("full sequential flow", () => {
 		await cli.answerSelect("green");
 		await done;
 
-		expect(cli.output).toMatchInlineSnapshot(`
-		  [
-		    {
-		      "paragraph": "You chose: green",
-		    },
-		  ]
-		`);
+		expect(cli.output).toBe("You chose: green");
 	});
 });

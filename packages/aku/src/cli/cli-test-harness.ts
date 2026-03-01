@@ -2,7 +2,12 @@ import type { Application } from "../core/contracts/Application.ts";
 import { BaseClass } from "../utils.ts";
 import type { CliConfirmOptions, CliInputOptions, CliSelectOptions } from "./contracts/CliApi.ts";
 import { CliErrorHandler } from "./contracts/CliErrorHandler.ts";
-import { type CapturedError, MemoryCliApi, type PendingPrompt } from "./MemoryCliApi.ts";
+import {
+	type CapturedError,
+	type CliOutput,
+	MemoryCliApi,
+	type PendingPrompt,
+} from "./MemoryCliApi.ts";
 
 export function tokeniseCommand(input: string): string[] {
 	const tokens: string[] = [];
@@ -83,8 +88,8 @@ export class CliTestHarness extends BaseClass {
 		app.container.singletonInstance(CliErrorHandler, this.#cli);
 	}
 
-	get output(): MemoryCliApi["outputs"] {
-		return this.#cli.outputs;
+	get output(): string {
+		return renderCliOutputAsMarkdown(this.#cli.outputs);
 	}
 
 	get errors(): CapturedError[] {
@@ -95,12 +100,16 @@ export class CliTestHarness extends BaseClass {
 		return this.#cli.lastError;
 	}
 
+	reset(): void {
+		this.#cli.reset();
+	}
+
 	/**
 	 * Run a CLI command and return the exit code. Resets output and errors before each call.
 	 */
 	run(args: string[] | string): Promise<number> {
 		const resolved = typeof args === "string" ? tokeniseCommand(args) : args;
-		this.#cli = new MemoryCliApi();
+		this.reset();
 		return this.#app.handleCommand(resolved, this.#cli);
 	}
 
@@ -210,4 +219,43 @@ function isCancelOptions(value: unknown): value is { cancel: true; timeout?: num
 
 export function createCliTestHarness(app: Application): CliTestHarness {
 	return new CliTestHarness(app);
+}
+
+function renderCliOutputAsMarkdown(outputs: CliOutput[]): string {
+	return outputs.map(renderOneOutput).join("\n\n");
+}
+
+function renderOneOutput(output: CliOutput): string {
+	if ("h1" in output) return `# ${output.h1}`;
+	if ("h2" in output) return `## ${output.h2}`;
+	if ("paragraph" in output) return output.paragraph;
+	if ("br" in output) return "";
+	if ("dl" in output) {
+		const lines = output.dl.items.map((item) => {
+			if (Array.isArray(item)) return `${item[0]}: ${item[1]}`;
+			if (typeof item === "string") return item;
+			return `${item.label}: ${item.definition}`;
+		});
+		const body = lines.join("\n");
+		if (output.dl.title) return `## ${output.dl.title}\n\n${body}`;
+		return body;
+	}
+	if ("ul" in output) {
+		const lines = output.ul.items.map((item) => {
+			const label = typeof item === "string" ? item : item.label;
+			return `- ${label}`;
+		});
+		const body = lines.join("\n");
+		if (output.ul.title) return `## ${output.ul.title}\n\n${body}`;
+		return body;
+	}
+	// ol
+	const lines = output.ol.items.map((item, i) => {
+		if (typeof item === "string") return `${i + 1}. ${item}`;
+		const num = item.listNumber ?? i + 1;
+		return `${num}. ${item.label}`;
+	});
+	const body = lines.join("\n");
+	if (output.ol.title) return `## ${output.ol.title}\n\n${body}`;
+	return body;
 }

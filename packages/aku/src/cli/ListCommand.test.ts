@@ -32,33 +32,12 @@ describe(listCommand.handler, () => {
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toMatchInlineSnapshot(`
-		  [
-		    {
-		      "h1": "Available commands",
-		    },
-		    {
-		      "dl": {
-		        "items": [
-		          {
-		            "definition": "Do bar things",
-		            "label": "bar",
-		          },
-		          {
-		            "definition": "Do foo things",
-		            "label": "foo",
-		          },
-		          {
-		            "definition": "Show help for a command",
-		            "label": "help",
-		          },
-		          {
-		            "definition": "List all available commands",
-		            "label": "list",
-		          },
-		        ],
-		      },
-		    },
-		  ]
+		  "# Available commands
+
+		  bar: Do bar things
+		  foo: Do foo things
+		  help: Show help for a command
+		  list: List all available commands"
 		`);
 	});
 
@@ -69,25 +48,10 @@ describe(listCommand.handler, () => {
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toMatchInlineSnapshot(`
-		  [
-		    {
-		      "h1": "Available commands",
-		    },
-		    {
-		      "dl": {
-		        "items": [
-		          {
-		            "definition": "Show help for a command",
-		            "label": "help",
-		          },
-		          {
-		            "definition": "List all available commands",
-		            "label": "list",
-		          },
-		        ],
-		      },
-		    },
-		  ]
+		  "# Available commands
+
+		  help: Show help for a command
+		  list: List all available commands"
 		`);
 	});
 
@@ -117,33 +81,12 @@ describe(listCommand.handler, () => {
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toMatchInlineSnapshot(`
-		  [
-		    {
-		      "h1": "Available commands",
-		    },
-		    {
-		      "dl": {
-		        "items": [
-		          {
-		            "definition": "A command",
-		            "label": "alpha",
-		          },
-		          {
-		            "definition": "Show help for a command",
-		            "label": "help",
-		          },
-		          {
-		            "definition": "List all available commands",
-		            "label": "list",
-		          },
-		          {
-		            "definition": "Z command",
-		            "label": "zebra",
-		          },
-		        ],
-		      },
-		    },
-		  ]
+		  "# Available commands
+
+		  alpha: A command
+		  help: Show help for a command
+		  list: List all available commands
+		  zebra: Z command"
 		`);
 	});
 });

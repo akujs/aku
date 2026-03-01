@@ -74,7 +74,7 @@ describe("CLI command handling", () => {
 		const exitCode = await cli.run(["greet", "Alice"]);
 
 		expect(exitCode).toBe(0);
-		expect(cli.output).toContainEqual({ paragraph: "Hello, Alice!" });
+		expect(cli.output).toBe("Hello, Alice!");
 	});
 
 	test("exit code 1 for unknown command", async () => {
@@ -93,7 +93,12 @@ describe("CLI command handling", () => {
 		const exitCode = await cli.run([]);
 
 		expect(exitCode).toBe(0);
-		expect(cli.output).toContainEqual({ h1: "Available commands" });
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "# Available commands
+
+		  help: Show help for a command
+		  list: List all available commands"
+		`);
 	});
 
 	test("handles CliExitError (expected errors)", async () => {
@@ -188,8 +193,19 @@ describe("--help flag handling", () => {
 		const exitCode = await cli.run(["greet", "--help"]);
 
 		expect(exitCode).toBe(0);
-		expect(cli.output).toContainEqual({ h1: "greet" });
-		expect(cli.output).toContainEqual({ paragraph: "Greet someone" });
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "# greet
+
+		  Greet someone
+
+		  ## Usage
+
+		    greet [name]
+
+		  ## Arguments
+
+		  [name]: Name to greet (optional)"
+		`);
 	});
 
 	test("--help with other args still shows help", async () => {
@@ -204,7 +220,19 @@ describe("--help flag handling", () => {
 		const exitCode = await cli.run(["greet", "--help", "Alice"]);
 
 		expect(exitCode).toBe(0);
-		expect(cli.output).toContainEqual({ h1: "greet" });
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "# greet
+
+		  Greet someone
+
+		  ## Usage
+
+		    greet [name]
+
+		  ## Arguments
+
+		  [name]: Name to greet (optional)"
+		`);
 	});
 
 	test("--help with no command shows general help message", async () => {
@@ -213,9 +241,11 @@ describe("--help flag handling", () => {
 		const exitCode = await cli.run(["--help"]);
 
 		expect(exitCode).toBe(0);
-		expect(cli.output).toContainEqual({
-			paragraph: "This is the command line interface for the Aku framework.",
-		});
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "This is the command line interface for the Aku framework.
+
+		  Try "aku list" for a list of available commands, or "aku help <command>" for help with a specific command."
+		`);
 	});
 });
 
@@ -232,8 +262,19 @@ describe("help on validation failure", () => {
 		const exitCode = await cli.run(["compile"]);
 
 		expect(exitCode).toBe(1);
-		expect(cli.output).toContainEqual({ h1: "compile" });
-		expect(cli.output).toContainEqual({ paragraph: "Compile a file" });
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "# compile
+
+		  Compile a file
+
+		  ## Usage
+
+		    compile <file>
+
+		  ## Arguments
+
+		  <file>: The file to compile (required)"
+		`);
 		expect(cli.lastError).toBeDefined();
 		expect((cli.lastError!.error as Error).message).toContain("Missing required argument: file");
 	});
@@ -250,7 +291,19 @@ describe("help on validation failure", () => {
 		const exitCode = await cli.run(["compile", "main.ts", "--unknown"]);
 
 		expect(exitCode).toBe(1);
-		expect(cli.output).toContainEqual({ h1: "compile" });
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "# compile
+
+		  Compile a file
+
+		  ## Usage
+
+		    compile <file>
+
+		  ## Arguments
+
+		  <file>: The file to compile (required)"
+		`);
 		expect(cli.lastError).toBeDefined();
 		expect((cli.lastError!.error as Error).message).toContain("Unknown option: --unknown");
 	});

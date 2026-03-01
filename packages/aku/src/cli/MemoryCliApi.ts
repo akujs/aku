@@ -12,7 +12,7 @@ import type {
 } from "./contracts/CliApi.ts";
 import type { CliErrorHandler } from "./contracts/CliErrorHandler.ts";
 
-type CliOutput =
+export type CliOutput =
 	| { paragraph: string }
 	| { h1: string }
 	| { h2: string }
@@ -55,6 +55,11 @@ export class MemoryCliApi extends BaseClass implements CliApi, CliErrorHandler {
 
 	get lastError(): CapturedError | undefined {
 		return this.errors[this.errors.length - 1];
+	}
+
+	reset(): void {
+		this.outputs = [];
+		this.errors = [];
 	}
 
 	#pendingPrompt: PendingPrompt | null = null;

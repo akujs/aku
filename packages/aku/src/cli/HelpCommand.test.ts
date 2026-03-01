@@ -44,10 +44,23 @@ describe(helpCommand.handler, () => {
 		const exitCode = await cli.run(["help", "greet"]);
 
 		expect(exitCode).toBe(0);
-		expect(cli.output).toContainEqual({ h1: "greet" });
-		expect(cli.output).toContainEqual({ paragraph: "Greet someone by name" });
-		expect(cli.output).toContainEqual({ h2: "Arguments" });
-		expect(cli.output).toContainEqual({ h2: "Options" });
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "# greet
+
+		  Greet someone by name
+
+		  ## Usage
+
+		    greet <name> [options]
+
+		  ## Arguments
+
+		  <name>: The person to greet (required)
+
+		  ## Options
+
+		  --verbose: Enable verbose output (optional)"
+		`);
 	});
 
 	test("displays help for a command with no args", async () => {
@@ -56,8 +69,15 @@ describe(helpCommand.handler, () => {
 		const exitCode = await cli.run("help simple");
 
 		expect(exitCode).toBe(0);
-		expect(cli.output).toContainEqual({ h1: "simple" });
-		expect(cli.output).toContainEqual({ paragraph: "A command with no args" });
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "# simple
+
+		  A command with no args
+
+		  ## Usage
+
+		    simple"
+		`);
 	});
 
 	test("shows 'did you mean' for close misspelling", async () => {
@@ -89,12 +109,10 @@ describe(helpCommand.handler, () => {
 		const exitCode = await cli.run(["help"]);
 
 		expect(exitCode).toBe(0);
-		expect(cli.output).toContainEqual({
-			paragraph: "This is the command line interface for the Aku framework.",
-		});
-		expect(cli.output).toContainEqual({
-			paragraph:
-				'Try "aku list" for a list of available commands, or "aku help <command>" for help with a specific command.',
-		});
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "This is the command line interface for the Aku framework.
+
+		  Try "aku list" for a list of available commands, or "aku help <command>" for help with a specific command."
+		`);
 	});
 });
