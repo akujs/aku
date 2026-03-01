@@ -328,7 +328,7 @@ export class ContainerImpl extends BaseClass implements Container {
 				if (!isDefaultBindingAllowed(type)) {
 					return this.#containerError(
 						`${getKeyName(type)} has not been bound to the container. ` +
-							`Implicit binding is disabled via ${whitelistDefaultBindings.name}().`,
+							`Implicit binding is disabled via ${whitelistDefaultBindingsForInternalTests.name}().`,
 						{ omitTopOfBuildStack: true },
 					);
 				}
@@ -763,7 +763,8 @@ const getPropertiesThatSurviveRebinding = (
 
 let defaultBindingWhitelist: AnyConstructor[] | null = null;
 
-export function whitelistDefaultBindings(...classes: AnyConstructor[]): void {
+// Used internally to make it harder for us to forget to add a binding for services
+export function whitelistDefaultBindingsForInternalTests(...classes: AnyConstructor[]): void {
 	defaultBindingWhitelist ??= [];
 	defaultBindingWhitelist.push(...classes);
 }

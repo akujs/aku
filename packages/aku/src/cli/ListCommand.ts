@@ -1,7 +1,7 @@
 import { inject } from "../container/inject.ts";
 import { BaseCommand } from "./Command.ts";
 import { CommandRegistry } from "./CommandRegistry.ts";
-import type { CommandExecuteContext } from "./cli-types.ts";
+import type { CommandDefinition, CommandExecuteContext } from "./cli-types.ts";
 import { defineCommand } from "./defineCommand.ts";
 
 class ListCommandHandler extends BaseCommand {
@@ -22,7 +22,7 @@ class ListCommandHandler extends BaseCommand {
 	}
 }
 
-export const listCommand = defineCommand({
+export const listCommand: CommandDefinition = defineCommand({
 	name: "list",
 	description: "List all available commands",
 	handler: ListCommandHandler,

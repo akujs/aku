@@ -12,10 +12,10 @@ describe(twoColumnTable, () => {
 		});
 
 		expect(result).toMatchInlineSnapshot(`
-"a    First
-abc  Second
-"
-`);
+		  "a    First
+		  abc  Second
+		  "
+		`);
 	});
 
 	test("handles empty rows array", () => {
