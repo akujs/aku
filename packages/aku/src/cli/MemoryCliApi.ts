@@ -42,7 +42,7 @@ export type CapturedError = {
 export class MemoryCliApi extends BaseClass implements CliApi, CliErrorHandler {
 	columns = 80;
 	isInteractive = false;
-	output: CliOutput[] = [];
+	outputs: CliOutput[] = [];
 	errors: CapturedError[] = [];
 
 	handleError(error: unknown, _cli: CliApi): number {
@@ -61,31 +61,31 @@ export class MemoryCliApi extends BaseClass implements CliApi, CliErrorHandler {
 	#promptNotifier: PromiseWithResolvers<void> | null = null;
 
 	p(text: string): void {
-		this.output.push({ paragraph: text });
+		this.outputs.push({ paragraph: text });
 	}
 
 	br(): void {
-		this.output.push({ br: true });
+		this.outputs.push({ br: true });
 	}
 
 	h1(text: string): void {
-		this.output.push({ h1: text });
+		this.outputs.push({ h1: text });
 	}
 
 	h2(text: string): void {
-		this.output.push({ h2: text });
+		this.outputs.push({ h2: text });
 	}
 
 	dl(options: CliDlOptions): void {
-		this.output.push({ dl: options });
+		this.outputs.push({ dl: options });
 	}
 
 	ul(options: CliUlOptions): void {
-		this.output.push({ ul: options });
+		this.outputs.push({ ul: options });
 	}
 
 	ol(options: CliOlOptions): void {
-		this.output.push({ ol: options });
+		this.outputs.push({ ol: options });
 	}
 
 	select<V>(options: CliSelectOptions<V>): Promise<CliPromptResponse<V>> {

@@ -41,7 +41,7 @@ describe(helpCommand.handler, () => {
 	test("displays help for a known command with args", async () => {
 		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await cli.handleCommand(["help", "greet"]);
+		const exitCode = await cli.run(["help", "greet"]);
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toContainEqual({ h1: "greet" });
@@ -53,7 +53,7 @@ describe(helpCommand.handler, () => {
 	test("displays help for a command with no args", async () => {
 		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await cli.handleCommand(["help", "simple"]);
+		const exitCode = await cli.run("help simple");
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toContainEqual({ h1: "simple" });
@@ -63,7 +63,7 @@ describe(helpCommand.handler, () => {
 	test("shows 'did you mean' for close misspelling", async () => {
 		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await cli.handleCommand(["help", "gret"]);
+		const exitCode = await cli.run(["help", "gret"]);
 
 		expect(exitCode).toBe(1);
 		expect(cli.lastError).toBeDefined();
@@ -75,7 +75,7 @@ describe(helpCommand.handler, () => {
 	test("shows generic not-found for distant name", async () => {
 		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await cli.handleCommand(["help", "xyzzy"]);
+		const exitCode = await cli.run(["help", "xyzzy"]);
 
 		expect(exitCode).toBe(1);
 		expect(cli.lastError).toBeDefined();
@@ -86,7 +86,7 @@ describe(helpCommand.handler, () => {
 	test("shows general help message when no command given", async () => {
 		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await cli.handleCommand(["help"]);
+		const exitCode = await cli.run(["help"]);
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toContainEqual({

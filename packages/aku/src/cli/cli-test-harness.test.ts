@@ -179,7 +179,7 @@ describe("answerSelect", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		const done = cli.handleCommand(["select-demo"]);
+		const done = cli.run(["select-demo"]);
 		await cli.answerSelect("red");
 		await done;
 
@@ -190,7 +190,7 @@ describe("answerSelect", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		const done = cli.handleCommand(["select-demo"]);
+		const done = cli.run(["select-demo"]);
 		await cli.answerSelect((opts: CliSelectOptions<unknown>) => opts.options[1].value);
 		await done;
 
@@ -201,7 +201,7 @@ describe("answerSelect", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		void cli.handleCommand(["select-demo"]);
+		void cli.run(["select-demo"]);
 
 		expect(cli.answerSelect("purple")).rejects.toThrow('Value "purple" is not a valid option');
 	});
@@ -210,7 +210,7 @@ describe("answerSelect", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		void cli.handleCommand(["input-demo"]);
+		void cli.run(["input-demo"]);
 
 		expect(cli.answerSelect("red")).rejects.toThrow("Expected a select prompt but got input");
 	});
@@ -219,7 +219,7 @@ describe("answerSelect", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		const done = cli.handleCommand(["select-demo"]);
+		const done = cli.run(["select-demo"]);
 		await cli.answerSelect({ cancel: true });
 		await done;
 
@@ -232,7 +232,7 @@ describe("answerInput", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		const done = cli.handleCommand(["input-demo"]);
+		const done = cli.run(["input-demo"]);
 		await cli.answerInput("Alice");
 		await done;
 
@@ -243,7 +243,7 @@ describe("answerInput", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		const done = cli.handleCommand(["input-demo"]);
+		const done = cli.run(["input-demo"]);
 		await cli.answerInput((opts: CliInputOptions<unknown>) =>
 			opts.prompt === "Enter your name" ? "Bob" : "Unknown",
 		);
@@ -256,7 +256,7 @@ describe("answerInput", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		void cli.handleCommand(["input-demo"]);
+		void cli.run(["input-demo"]);
 
 		expect(cli.answerInput("")).rejects.toThrow("Input is required but received an empty string");
 	});
@@ -265,7 +265,7 @@ describe("answerInput", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		const done = cli.handleCommand(["parse-input-demo"]);
+		const done = cli.run(["parse-input-demo"]);
 		await cli.answerInput("21");
 		await done;
 
@@ -276,7 +276,7 @@ describe("answerInput", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		void cli.handleCommand(["parse-input-demo"]);
+		void cli.run(["parse-input-demo"]);
 
 		expect(cli.answerInput("abc")).rejects.toThrow("Not a number");
 	});
@@ -285,7 +285,7 @@ describe("answerInput", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		void cli.handleCommand(["select-demo"]);
+		void cli.run(["select-demo"]);
 
 		expect(cli.answerInput("hello")).rejects.toThrow("Expected a input prompt but got select");
 	});
@@ -294,7 +294,7 @@ describe("answerInput", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		const done = cli.handleCommand(["input-demo"]);
+		const done = cli.run(["input-demo"]);
 		await cli.answerInput({ cancel: true });
 		await done;
 
@@ -307,7 +307,7 @@ describe("answerConfirm", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		const done = cli.handleCommand(["confirm-demo"]);
+		const done = cli.run(["confirm-demo"]);
 		await cli.answerConfirm(true);
 		await done;
 
@@ -318,7 +318,7 @@ describe("answerConfirm", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		const done = cli.handleCommand(["confirm-demo"]);
+		const done = cli.run(["confirm-demo"]);
 		await cli.answerConfirm((opts: CliConfirmOptions) => opts.defaultValue);
 		await done;
 
@@ -329,7 +329,7 @@ describe("answerConfirm", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		void cli.handleCommand(["select-demo"]);
+		void cli.run(["select-demo"]);
 
 		expect(cli.answerConfirm(true)).rejects.toThrow("Expected a confirm prompt but got select");
 	});
@@ -338,7 +338,7 @@ describe("answerConfirm", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		const done = cli.handleCommand(["confirm-demo"]);
+		const done = cli.run(["confirm-demo"]);
 		await cli.answerConfirm({ cancel: true });
 		await done;
 
@@ -351,7 +351,7 @@ describe("full sequential flow", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		const done = cli.handleCommand(["multi-prompt"]);
+		const done = cli.run(["multi-prompt"]);
 		await cli.answerSelect("red");
 		await cli.answerInput("Alice");
 		await cli.answerConfirm(true);
@@ -364,7 +364,7 @@ describe("full sequential flow", () => {
 		const { app } = createTestApplication({ providers: [TestProvider] });
 		const cli = createCliTestHarness(app);
 
-		const done = cli.handleCommand(["select-demo"]);
+		const done = cli.run(["select-demo"]);
 		await cli.answerSelect("green");
 		await done;
 

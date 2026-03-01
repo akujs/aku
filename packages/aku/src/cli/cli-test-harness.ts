@@ -83,8 +83,8 @@ export class CliTestHarness extends BaseClass {
 		app.container.singletonInstance(CliErrorHandler, this.#cli);
 	}
 
-	get output(): MemoryCliApi["output"] {
-		return this.#cli.output;
+	get output(): MemoryCliApi["outputs"] {
+		return this.#cli.outputs;
 	}
 
 	get errors(): CapturedError[] {
@@ -98,10 +98,9 @@ export class CliTestHarness extends BaseClass {
 	/**
 	 * Run a CLI command and return the exit code. Resets output and errors before each call.
 	 */
-	handleCommand(args: string[] | string): Promise<number> {
+	run(args: string[] | string): Promise<number> {
 		const resolved = typeof args === "string" ? tokeniseCommand(args) : args;
-		this.#cli.output = [];
-		this.#cli.errors = [];
+		this.#cli = new MemoryCliApi();
 		return this.#app.handleCommand(resolved, this.#cli);
 	}
 

@@ -71,7 +71,7 @@ describe("CLI command handling", () => {
 
 		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await cli.handleCommand(["greet", "Alice"]);
+		const exitCode = await cli.run(["greet", "Alice"]);
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toContainEqual({ paragraph: "Hello, Alice!" });
@@ -80,7 +80,7 @@ describe("CLI command handling", () => {
 	test("exit code 1 for unknown command", async () => {
 		const { cli } = createTestApplication();
 
-		const exitCode = await cli.handleCommand(["nonexistent"]);
+		const exitCode = await cli.run(["nonexistent"]);
 
 		expect(exitCode).toBe(1);
 		expect(cli.lastError).toBeDefined();
@@ -90,7 +90,7 @@ describe("CLI command handling", () => {
 	test("defaults to 'list' command when no command specified", async () => {
 		const { cli } = createTestApplication();
 
-		const exitCode = await cli.handleCommand([]);
+		const exitCode = await cli.run([]);
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toContainEqual({ h1: "Available commands" });
@@ -105,7 +105,7 @@ describe("CLI command handling", () => {
 
 		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await cli.handleCommand(["fail"]);
+		const exitCode = await cli.run(["fail"]);
 
 		expect(exitCode).toBe(1);
 		expect(cli.lastError).toBeDefined();
@@ -122,7 +122,7 @@ describe("CLI command handling", () => {
 
 		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await cli.handleCommand(["crash"]);
+		const exitCode = await cli.run(["crash"]);
 
 		expect(exitCode).toBe(1);
 		expect(cli.lastError).toBeDefined();
@@ -185,7 +185,7 @@ describe("--help flag handling", () => {
 
 		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await cli.handleCommand(["greet", "--help"]);
+		const exitCode = await cli.run(["greet", "--help"]);
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toContainEqual({ h1: "greet" });
@@ -201,7 +201,7 @@ describe("--help flag handling", () => {
 
 		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await cli.handleCommand(["greet", "--help", "Alice"]);
+		const exitCode = await cli.run(["greet", "--help", "Alice"]);
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toContainEqual({ h1: "greet" });
@@ -210,7 +210,7 @@ describe("--help flag handling", () => {
 	test("--help with no command shows general help message", async () => {
 		const { cli } = createTestApplication();
 
-		const exitCode = await cli.handleCommand(["--help"]);
+		const exitCode = await cli.run(["--help"]);
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toContainEqual({
@@ -229,7 +229,7 @@ describe("help on validation failure", () => {
 
 		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await cli.handleCommand(["compile"]);
+		const exitCode = await cli.run(["compile"]);
 
 		expect(exitCode).toBe(1);
 		expect(cli.output).toContainEqual({ h1: "compile" });
@@ -247,7 +247,7 @@ describe("help on validation failure", () => {
 
 		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await cli.handleCommand(["compile", "main.ts", "--unknown"]);
+		const exitCode = await cli.run(["compile", "main.ts", "--unknown"]);
 
 		expect(exitCode).toBe(1);
 		expect(cli.output).toContainEqual({ h1: "compile" });

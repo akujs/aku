@@ -28,7 +28,7 @@ describe(listCommand.handler, () => {
 			providers: [TestCommandProvider],
 		});
 
-		const exitCode = await cli.handleCommand(["list"]);
+		const exitCode = await cli.run(["list"]);
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toMatchInlineSnapshot(`
@@ -65,7 +65,7 @@ describe(listCommand.handler, () => {
 	test("is the default command when no args provided", async () => {
 		const { cli } = createTestApplication();
 
-		const exitCode = await cli.handleCommand([]);
+		const exitCode = await cli.run([]);
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toMatchInlineSnapshot(`
@@ -113,7 +113,7 @@ describe(listCommand.handler, () => {
 			providers: [OrderTestProvider],
 		});
 
-		const exitCode = await cli.handleCommand(["list"]);
+		const exitCode = await cli.run(["list"]);
 
 		expect(exitCode).toBe(0);
 		expect(cli.output).toMatchInlineSnapshot(`

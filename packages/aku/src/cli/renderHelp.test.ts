@@ -4,10 +4,10 @@ import { defineCommand } from "./defineCommand.ts";
 import { MemoryCliApi } from "./MemoryCliApi.ts";
 import { renderHelp } from "./renderHelp.ts";
 
-function renderToMemory(definition: CommandDefinition): MemoryCliApi["output"] {
+function renderToMemory(definition: CommandDefinition): MemoryCliApi["outputs"] {
 	const cli = new MemoryCliApi();
 	renderHelp(definition, cli);
-	return cli.output;
+	return cli.outputs;
 }
 
 describe(renderHelp, () => {
