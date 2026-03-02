@@ -36,6 +36,10 @@
       "types": "./dist/helpers/async.d.ts",
       "default": "./dist/helpers/async.mjs"
     },
+    "./helpers/format": {
+      "types": "./dist/helpers/format.d.ts",
+      "default": "./dist/helpers/format.mjs"
+    },
     "./helpers/hash": {
       "types": "./dist/helpers/hash.d.ts",
       "default": "./dist/helpers/hash.mjs"
@@ -144,6 +148,7 @@
     "rollup-plugin-visualizer": "^7.0.0",
     "tsdown": "0.20.0-beta.4",
     "typescript": "6.0.0-beta",
+    "@toon-format/toon": "2.1.0",
     "wrap-ansi": "9.0.2"
   },
   "peerDependencies": {

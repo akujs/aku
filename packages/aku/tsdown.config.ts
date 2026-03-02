@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { visualizer } from "rollup-plugin-visualizer";
 import { discoverEntryPointsFromFilesystem } from "./src/test-utils/source/discoverEntryPoints.ts";
 
-const bundledDeps = ["devalue", "@bradenmacdonald/s3-lite-client", "csstype", "@inquirer/prompts", "wrap-ansi"];
+const bundledDeps = ["devalue", "@bradenmacdonald/s3-lite-client", "csstype", "@inquirer/prompts", "wrap-ansi", "@toon-format/toon"];
 
 const packageJson = JSON.parse(fs.readFileSync("./package.json", "utf-8"));
 const allBundledDeps = resolveTransitiveDeps(bundledDeps);
