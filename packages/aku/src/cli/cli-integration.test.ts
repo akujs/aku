@@ -96,6 +96,7 @@ describe("CLI command handling", () => {
 		expect(cli.output).toMatchInlineSnapshot(`
 		  "# AVAILABLE COMMANDS
 
+		  completions: Get tab completion for aku commands in your shell
 		  help: Show help for a command
 		  list: List all available commands"
 		`);
@@ -153,16 +154,40 @@ describe("CLI command handling", () => {
 		expect(injectedCli === memoryCli).toBe(true);
 	});
 
-	test("throws when app is not bootstrapped", async () => {
+	test("handleCommand auto-bootstraps if not yet bootstrapped", async () => {
+		const { ApplicationImpl } = await import("../core/ApplicationImpl.ts");
+		const app = new ApplicationImpl();
 		const memoryCli = new MemoryCliApi();
 
-		// Create a new app that hasn't been bootstrapped
-		const { ApplicationImpl } = await import("../core/ApplicationImpl.ts");
-		const unbootedApp = new ApplicationImpl();
+		const exitCode = await app.handleCommand(["list"], memoryCli);
 
-		expect(() => unbootedApp.handleCommand(["test"], memoryCli)).toThrow(
-			"Application must be bootstrapped",
-		);
+		expect(exitCode).toBe(0);
+	});
+});
+
+const hiddenCommand = defineCommand({
+	name: "secret",
+	description: "A hidden command",
+	hidden: true,
+	handler: async ({ cli }: CommandExecuteContext) => {
+		cli.p("secret executed");
+	},
+});
+
+describe("hidden commands", () => {
+	test("hidden command is callable by name", async () => {
+		class TestProvider extends ServiceProvider {
+			override get commands() {
+				return [hiddenCommand];
+			}
+		}
+
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+
+		const exitCode = await cli.run(["secret"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toBe("secret executed");
 	});
 });
 

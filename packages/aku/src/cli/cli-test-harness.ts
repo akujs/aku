@@ -226,6 +226,7 @@ function renderCliOutputAsMarkdown(outputs: CliOutput[]): string {
 }
 
 function renderOneOutput(output: CliOutput): string {
+	if ("raw" in output) return output.raw;
 	if ("h1" in output) return `# ${output.h1.toUpperCase()}`;
 	if ("h2" in output) return `## ${output.h2}`;
 	if ("paragraph" in output) return output.paragraph;

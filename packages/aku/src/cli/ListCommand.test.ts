@@ -35,6 +35,7 @@ describe(listCommand.handler, () => {
 		  "# AVAILABLE COMMANDS
 
 		  bar: Do bar things
+		  completions: Get tab completion for aku commands in your shell
 		  foo: Do foo things
 		  help: Show help for a command
 		  list: List all available commands"
@@ -50,9 +51,35 @@ describe(listCommand.handler, () => {
 		expect(cli.output).toMatchInlineSnapshot(`
 		  "# AVAILABLE COMMANDS
 
+		  completions: Get tab completion for aku commands in your shell
 		  help: Show help for a command
 		  list: List all available commands"
 		`);
+	});
+
+	test("hidden commands are not listed", async () => {
+		const hiddenCommand = defineCommand({
+			name: "secret",
+			description: "A secret command",
+			hidden: true,
+			handler: async () => {},
+		});
+
+		class HiddenTestProvider extends ServiceProvider {
+			override get commands() {
+				return [fooCommand, hiddenCommand];
+			}
+		}
+
+		const { cli } = createTestApplication({
+			providers: [HiddenTestProvider],
+		});
+
+		const exitCode = await cli.run(["list"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).not.toContain("secret");
+		expect(cli.output).toContain("foo");
 	});
 
 	test("commands are listed in alphabetical order", async () => {
@@ -84,6 +111,7 @@ describe(listCommand.handler, () => {
 		  "# AVAILABLE COMMANDS
 
 		  alpha: A command
+		  completions: Get tab completion for aku commands in your shell
 		  help: Show help for a command
 		  list: List all available commands
 		  zebra: Z command"

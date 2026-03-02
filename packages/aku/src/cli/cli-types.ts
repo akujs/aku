@@ -88,5 +88,6 @@ export interface CommandDefinition {
 	readonly name: string;
 	readonly description: string;
 	readonly args?: ArgumentSchema | undefined;
+	readonly hidden?: boolean | undefined;
 	readonly handler: CommandHandler;
 }

@@ -29,7 +29,10 @@ export class CommandRegistry extends BaseClass {
 	}
 
 	getCommandNames(): string[] {
-		return [...this.#commands.keys()].sort();
+		return [...this.#commands.values()]
+			.filter((cmd) => !cmd.hidden)
+			.map((cmd) => cmd.name)
+			.sort();
 	}
 
 	getDefinition(name: string): CommandDefinition | undefined {
@@ -37,6 +40,8 @@ export class CommandRegistry extends BaseClass {
 	}
 
 	getCommandDefinitions(): CommandDefinition[] {
-		return [...this.#commands.values()].sort((a, b) => a.name.localeCompare(b.name));
+		return [...this.#commands.values()]
+			.filter((cmd) => !cmd.hidden)
+			.sort((a, b) => a.name.localeCompare(b.name));
 	}
 }

@@ -62,6 +62,10 @@ export class CliApiImpl extends BaseClass implements CliApi {
 		}
 	}
 
+	raw(text: string): void {
+		process.stdout.write(text);
+	}
+
 	p(text: string): void {
 		const width = this.columns;
 		const wrapped = wrapAnsi(text, width, { hard: true });

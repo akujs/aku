@@ -20,6 +20,11 @@ export interface CliApi {
 	readonly isInteractive: boolean;
 
 	/**
+	 * Write raw text to the output without formatting, word-wrapping, or extra blank lines.
+	 */
+	raw(text: string): void;
+
+	/**
 	 * Write a paragraph of text
 	 *
 	 * TODO: wrap with wrap-ansi, add wrap-ansi dev dependency using compatible version to @enquirer/prompts dependency

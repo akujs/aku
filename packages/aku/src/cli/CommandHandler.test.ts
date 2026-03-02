@@ -3,17 +3,22 @@ import { ContainerImpl } from "../container/ContainerImpl.ts";
 import { CommandHandler } from "./CommandHandler.ts";
 import { CommandRegistry } from "./CommandRegistry.ts";
 
+import type { CommandDefinition } from "./cli-types.ts";
 import { MemoryCliApi } from "./MemoryCliApi.ts";
 
-function createHandler(commandNames: string[]) {
+function createHandler(commands: (string | CommandDefinition)[]) {
 	const container = new ContainerImpl();
 	const registry = new CommandRegistry(container);
-	for (const name of commandNames) {
-		registry.register({
-			name,
-			description: `The ${name} command`,
-			async execute() {},
-		} as never);
+	for (const cmd of commands) {
+		if (typeof cmd === "string") {
+			registry.register({
+				name: cmd,
+				description: `The ${cmd} command`,
+				async execute() {},
+			} as never);
+		} else {
+			registry.register(cmd);
+		}
 	}
 	const errorHandler = new MemoryCliApi();
 	const handler = new CommandHandler(registry, errorHandler);
@@ -55,6 +60,28 @@ describe(CommandHandler, () => {
 
 		  Run "aku list" to see available commands."
 		`);
+	});
+
+	test("excludes hidden commands from suggestions", async () => {
+		const { handler, errorHandler } = createHandler([
+			"migrate",
+			"serve",
+			"list",
+			"build",
+			{
+				name: "migrator",
+				description: "Hidden migrator command",
+				hidden: true,
+				handler: async () => {},
+			},
+		]);
+		const cli = new MemoryCliApi();
+
+		await handler.handle(["migrato"], cli);
+
+		const error = errorHandler.lastError!.error;
+		expect(error.message).toContain("migrate");
+		expect(error.message).not.toContain("migrator");
 	});
 
 	test("shows no suggestions when nothing is similar", async () => {

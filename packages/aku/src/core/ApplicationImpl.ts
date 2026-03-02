@@ -74,17 +74,17 @@ export class ApplicationImpl<RouteParams extends Record<string, string> = {}>
 	}
 
 	get events(): Dispatcher {
-		this.#requireBooted("events");
+		this.bootstrap();
 		return this.container.get(Dispatcher);
 	}
 
 	get storage(): Storage {
-		this.#requireBooted("storage");
+		this.bootstrap();
 		return this.container.get(Storage);
 	}
 
 	get database(): Database {
-		this.#requireBooted("storage");
+		this.bootstrap();
 		return this.container.get(Database);
 	}
 
@@ -94,12 +94,12 @@ export class ApplicationImpl<RouteParams extends Record<string, string> = {}>
 			? [] | [options?: UrlOptionsNoParams]
 			: [options: UrlOptionsWithParams<RouteParams[N]>]
 	): string {
-		this.#requireBooted(this.url.name);
+		this.bootstrap();
 		return this.container.get(RouteUrlGenerator).url(name, args[0]);
 	}
 
 	async handleRequest(request: Request, context: IntegrationContext): Promise<Response> {
-		this.#requireBooted(this.handleRequest.name);
+		this.bootstrap();
 		// Enrich context with requestUrl if not already provided
 		const enrichedContext: IntegrationContext = {
 			...context,
@@ -123,7 +123,7 @@ export class ApplicationImpl<RouteParams extends Record<string, string> = {}>
 	}
 
 	async handleCommand(args: string[], cli: CliApi): Promise<number> {
-		this.#requireBooted(this.handleCommand.name);
+		this.bootstrap();
 
 		return this.container.withScope(async () => {
 			this.container.scopedInstance(CliApiToken, cli);
@@ -133,7 +133,7 @@ export class ApplicationImpl<RouteParams extends Record<string, string> = {}>
 	}
 
 	withIntegration<R>(context: IntegrationContext, callback: () => R): R {
-		this.#requireBooted(this.withIntegration.name);
+		this.bootstrap();
 		if (this.container.hasScope) {
 			throw new AkuError("Can't start a new request scope, we're already handling a request.");
 		}
@@ -152,6 +152,7 @@ export class ApplicationImpl<RouteParams extends Record<string, string> = {}>
 		const provider = new providerClass(this);
 		provider.register();
 		this.#serviceProvidersToBoot.push(provider);
+
 		if (this.#hasBooted) {
 			this.#bootServiceProviders();
 		}
@@ -177,12 +178,6 @@ export class ApplicationImpl<RouteParams extends Record<string, string> = {}>
 		} finally {
 			this.#hasBooted = true;
 			this.#serviceProvidersToBoot.length = 0;
-		}
-	}
-
-	#requireBooted(method: string): void {
-		if (!this.#hasBooted) {
-			throw new AkuError(`Application must be bootstrapped before using app.${method}`);
 		}
 	}
 }

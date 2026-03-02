@@ -8,6 +8,7 @@ export function defineCommand<S extends ArgumentSchema>(options: {
 	name: string;
 	description: string;
 	args: S;
+	hidden?: boolean | undefined;
 	handler: CommandHandler<InferArgs<S>>;
 }): CommandDefinition;
 
@@ -17,6 +18,7 @@ export function defineCommand<S extends ArgumentSchema>(options: {
 export function defineCommand(options: {
 	name: string;
 	description: string;
+	hidden?: boolean | undefined;
 	handler: CommandHandler;
 }): CommandDefinition;
 
@@ -25,12 +27,14 @@ export function defineCommand(options: {
 	name: string;
 	description: string;
 	args?: ArgumentSchema | undefined;
+	hidden?: boolean | undefined;
 	handler: CommandHandler<never>;
 }): CommandDefinition {
 	return {
 		name: options.name,
 		description: options.description,
 		args: options.args,
+		hidden: options.hidden,
 		handler: options.handler as CommandHandler,
 	};
 }

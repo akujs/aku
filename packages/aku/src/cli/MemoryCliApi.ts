@@ -13,6 +13,7 @@ import type {
 import type { CliErrorHandler } from "./contracts/CliErrorHandler.ts";
 
 export type CliOutput =
+	| { raw: string }
 	| { paragraph: string }
 	| { h1: string }
 	| { h2: string }
@@ -65,6 +66,10 @@ export class MemoryCliApi extends BaseClass implements CliApi, CliErrorHandler {
 
 	#pendingPrompt: PendingPrompt | null = null;
 	#promptNotifier: PromiseWithResolvers<void> | null = null;
+
+	raw(text: string): void {
+		this.outputs.push({ raw: text });
+	}
 
 	p(text: string): void {
 		this.outputs.push({ paragraph: text });
