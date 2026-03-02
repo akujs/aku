@@ -1,7 +1,7 @@
 import { defineCommand } from "@akujs/aku/cli";
 
 export const outputDemoCommand = defineCommand({
-	name: "output-demo",
+	name: "demo output",
 	description: "Exercise all CLI output methods",
 	handler: async ({ cli }) => {
 		cli.h1("CLI Output Demo");

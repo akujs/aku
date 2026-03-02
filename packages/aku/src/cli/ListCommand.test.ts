@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { ServiceProvider } from "../core/ServiceProvider.ts";
 import { createTestApplication } from "../test-utils/http.test-utils.ts";
+import type { CommandGroupDefinition } from "./cli-types.ts";
 import { defineCommand } from "./defineCommand.ts";
 import { listCommand } from "./ListCommand.ts";
 
@@ -19,6 +20,28 @@ const barCommand = defineCommand({
 class TestCommandProvider extends ServiceProvider {
 	override get commands() {
 		return [fooCommand, barCommand];
+	}
+}
+
+const dbMigrateCommand = defineCommand({
+	name: "db migrate",
+	description: "Run database migrations",
+	handler: async () => {},
+});
+
+const dbSeedCommand = defineCommand({
+	name: "db seed",
+	description: "Seed the database",
+	handler: async () => {},
+});
+
+class GroupedTestProvider extends ServiceProvider {
+	override get commandGroups(): CommandGroupDefinition[] {
+		return [{ name: "db", description: "Database commands" }];
+	}
+
+	override get commands() {
+		return [fooCommand, dbMigrateCommand, dbSeedCommand];
 	}
 }
 
@@ -211,6 +234,81 @@ describe(listCommand.handler, () => {
 		  help: Show help for a command
 		  list: List all available commands
 		  zebra: Z command"
+		`);
+	});
+
+	test("displays grouped commands with section headings", async () => {
+		const { cli } = createTestApplication({
+			providers: [GroupedTestProvider],
+		});
+
+		const exitCode = await cli.run(["list"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "# AVAILABLE COMMANDS
+
+		  completions: Get tab completion for aku commands in your shell
+		  foo: Do foo things
+		  help: Show help for a command
+		  list: List all available commands
+
+		  ## Database commands
+
+		  migrate: Run database migrations
+		  seed: Seed the database"
+		`);
+	});
+
+	test("list with group filter shows only that group", async () => {
+		const { cli } = createTestApplication({
+			providers: [GroupedTestProvider],
+		});
+
+		const exitCode = await cli.run(["list", "db"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "# DATABASE COMMANDS
+
+		  migrate: Run database migrations
+		  seed: Seed the database"
+		`);
+	});
+
+	test("list with unknown group shows error", async () => {
+		const { cli } = createTestApplication({
+			providers: [GroupedTestProvider],
+		});
+
+		const exitCode = await cli.run(["list", "nope"]);
+
+		expect(exitCode).toBe(1);
+		expect(cli.lastError).toBeDefined();
+		expect(cli.lastError!.error.message).toContain('Command group "nope" not found.');
+	});
+
+	test("--format json with group filter shows only that group", async () => {
+		const { cli } = createTestApplication({
+			providers: [GroupedTestProvider],
+		});
+
+		const exitCode = await cli.run(["list", "db", "--format", "json", "--pretty"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "{
+		      "commands": [
+		          {
+		              "command": "db migrate",
+		              "description": "Run database migrations"
+		          },
+		          {
+		              "command": "db seed",
+		              "description": "Seed the database"
+		          }
+		      ]
+		  }"
 		`);
 	});
 });

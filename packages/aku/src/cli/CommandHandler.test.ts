@@ -1,10 +1,25 @@
 import { describe, expect, test } from "bun:test";
 import { ContainerImpl } from "../container/ContainerImpl.ts";
+import { ServiceProvider } from "../core/ServiceProvider.ts";
+import { createTestApplication } from "../test-utils/http.test-utils.ts";
 import { CommandHandler } from "./CommandHandler.ts";
 import { CommandRegistry } from "./CommandRegistry.ts";
 
 import type { CommandDefinition } from "./cli-types.ts";
+import { defineCommand } from "./defineCommand.ts";
 import { MemoryCliApi } from "./MemoryCliApi.ts";
+
+class GroupTestProvider extends ServiceProvider {
+	override get commands() {
+		return [
+			defineCommand({
+				name: "db migrate",
+				description: "Run migrations",
+				handler: async () => {},
+			}),
+		];
+	}
+}
 
 function createHandler(commands: (string | CommandDefinition)[]) {
 	const container = new ContainerImpl();
@@ -96,5 +111,54 @@ describe(CommandHandler, () => {
 
 		  Run "aku list" to see available commands."
 		`);
+	});
+
+	test("resolves two-word commands", async () => {
+		let called = false;
+		const { handler } = createHandler([
+			"list",
+			{
+				name: "db migrate",
+				description: "Run migrations",
+				handler: async () => {
+					called = true;
+				},
+			},
+		]);
+		const cli = new MemoryCliApi();
+
+		const exitCode = await handler.handle(["db", "migrate"], cli);
+
+		expect(exitCode).toBe(0);
+		expect(called).toBe(true);
+	});
+
+	test("group name with no subcommand delegates to list", async () => {
+		const { cli: fullCli } = createTestApplication({
+			providers: [GroupTestProvider],
+		});
+
+		const exitCode = await fullCli.run(["db"]);
+
+		expect(exitCode).toBe(0);
+		expect(fullCli.output).toContain("migrate");
+	});
+
+	test("suggests group names for typos", async () => {
+		const { handler, errorHandler } = createHandler([
+			"list",
+			{
+				name: "db migrate",
+				description: "Run migrations",
+				handler: async () => {},
+			},
+		]);
+		const cli = new MemoryCliApi();
+
+		await handler.handle(["dc"], cli);
+
+		const error = errorHandler.lastError!.error;
+		expect(error.message).toContain('Command "dc" not found.');
+		expect(error.message).toContain("db");
 	});
 });

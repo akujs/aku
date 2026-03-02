@@ -64,26 +64,53 @@ export function getCompletions(line: string, point: number, registry: CommandReg
 	const currentWord = endsWithSpace ? "" : (words.pop() ?? "");
 	const commandName = words[0];
 
-	// Completing the command name (first argument after program name)
+	// Completing the first word (command name or group name)
 	if (!commandName && !endsWithSpace) {
-		// Still typing the first word
-		return completeCommandName(currentWord, registry);
+		return completeFirstWord(currentWord, registry);
 	}
 	if (!commandName && endsWithSpace) {
-		// No words after program name, space pressed — list all commands
-		return completeCommandName("", registry);
+		return completeFirstWord("", registry);
 	}
 	if (commandName && words.length === 0 && !endsWithSpace) {
-		// The only word is still being typed — complete command name
-		return completeCommandName(currentWord, registry);
+		return completeFirstWord(currentWord, registry);
 	}
 
-	// Completing arguments for a specific command
+	// Check if the first word is a group name
+	const groupNames = registry.getGroupNames();
+	if (groupNames.includes(commandName)) {
+		// We're inside a group — check if we're completing the subcommand
+		const subcommand = words[1];
+		if (!subcommand) {
+			// No subcommand word typed yet — complete subcommand names
+			return completeGroupSubcommand(commandName, currentWord, registry);
+		}
+		if (words.length === 1 && !endsWithSpace) {
+			// Still typing the subcommand — complete subcommand names
+			return completeGroupSubcommand(commandName, currentWord, registry);
+		}
+		// Past the subcommand — complete flags for the two-word command
+		const twoWordName = `${commandName} ${subcommand}`;
+		return completeArguments(twoWordName, currentWord, registry);
+	}
+
+	// Completing arguments for an ungrouped command
 	return completeArguments(commandName, currentWord, registry);
 }
 
-function completeCommandName(prefix: string, registry: CommandRegistry): string[] {
+function completeFirstWord(prefix: string, registry: CommandRegistry): string[] {
 	return registry.getCommandNames().filter((name) => name.startsWith(prefix));
+}
+
+function completeGroupSubcommand(
+	groupName: string,
+	prefix: string,
+	registry: CommandRegistry,
+): string[] {
+	const groupCommands = registry.getDefinitionsInGroup(groupName);
+	return groupCommands
+		.map((cmd) => cmd.name.split(" ")[1])
+		.filter((name) => name.startsWith(prefix))
+		.sort();
 }
 
 function completeArguments(

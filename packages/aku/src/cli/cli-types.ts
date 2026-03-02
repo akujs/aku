@@ -91,3 +91,12 @@ export interface CommandDefinition {
 	readonly hidden?: boolean | undefined;
 	readonly handler: CommandHandler;
 }
+
+/**
+ * A definition for a command group, providing a description for a set of
+ * commands that share a common prefix.
+ */
+export interface CommandGroupDefinition {
+	readonly name: string;
+	readonly description: string;
+}

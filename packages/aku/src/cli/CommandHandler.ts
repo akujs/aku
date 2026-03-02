@@ -26,38 +26,56 @@ export class CommandHandler extends BaseClass {
 		try {
 			args = this.#rewriteHelpFlag(args);
 
-			const commandName = args[0] ?? "list";
-			const commandArgs = args.slice(1);
-
-			const definition = this.#registry.getDefinition(commandName);
-
-			if (!definition) {
-				const similar = findSimilar(commandName, this.#registry.getCommandNames(), {
-					threshold: 3,
-					maxResults: 6,
-				});
-				let message = `Command "${commandName}" not found.`;
-				if (similar.length > 0) {
-					message += `\n\nDid you mean:\n${similar.map((s) => `  ${s}`).join("\n")}`;
-				}
-				message += `\n\nRun "aku list" to see available commands.`;
-				throw new CliExitError(message);
+			if (args.length === 0) {
+				args = ["list"];
 			}
 
-			const execute = this.#registry.resolve(commandName)!;
+			const resolved = this.#registry.resolveFromArgs(args);
 
-			let parsedArgs;
-			try {
-				parsedArgs = parseArguments(commandArgs, definition.args);
-			} catch (error) {
-				if (error instanceof CliExitError) {
-					renderHelp(definition, cli);
+			if (resolved) {
+				const { definition, remainingArgs } = resolved;
+				const execute = this.#registry.resolve(definition.name)!;
+
+				let parsedArgs;
+				try {
+					parsedArgs = parseArguments(remainingArgs, definition.args);
+				} catch (error) {
+					if (error instanceof CliExitError) {
+						renderHelp(definition, cli);
+					}
+					throw error;
 				}
-				throw error;
+
+				await execute({ args: parsedArgs, cli });
+				return 0;
 			}
 
-			await execute({ args: parsedArgs, cli });
-			return 0;
+			// Check if the first arg is a group name — delegate to list for that group
+			const groupNames = this.#registry.getGroupNames();
+			if (groupNames.includes(args[0])) {
+				const listResolved = this.#registry.resolveFromArgs(["list", args[0]]);
+				if (listResolved) {
+					const execute = this.#registry.resolve(listResolved.definition.name)!;
+					const parsedArgs = parseArguments(
+						listResolved.remainingArgs,
+						listResolved.definition.args,
+					);
+					await execute({ args: parsedArgs, cli });
+					return 0;
+				}
+			}
+
+			const commandName = args[0];
+			const similar = findSimilar(commandName, this.#registry.getCommandNames(), {
+				threshold: 3,
+				maxResults: 6,
+			});
+			let message = `Command "${commandName}" not found.`;
+			if (similar.length > 0) {
+				message += `\n\nDid you mean:\n${similar.map((s) => `  ${s}`).join("\n")}`;
+			}
+			message += `\n\nRun "aku list" to see available commands.`;
+			throw new CliExitError(message);
 		} catch (error) {
 			return this.#errorHandler.handleError(error, cli);
 		}
@@ -65,7 +83,7 @@ export class CommandHandler extends BaseClass {
 
 	#rewriteHelpFlag(args: string[]): string[] {
 		if (!args.includes("--help")) return args;
-		const commandName = args.find((arg) => !arg.startsWith("-"));
-		return commandName ? ["help", commandName] : ["help"];
+		const nonFlagArgs = args.filter((arg) => !arg.startsWith("-"));
+		return nonFlagArgs.length > 0 ? ["help", ...nonFlagArgs] : ["help"];
 	}
 }

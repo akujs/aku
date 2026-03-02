@@ -140,4 +140,46 @@ describe(getCompletions, () => {
 		const result = complete(reg, "aku compile --");
 		expect(result).toEqual(["--optimize"]);
 	});
+
+	test("completes group names alongside ungrouped commands", () => {
+		const reg = createRegistry([{ name: "serve" }, { name: "db migrate" }, { name: "db seed" }]);
+		const result = complete(reg, "aku ");
+		expect(result).toEqual(["db", "serve"]);
+	});
+
+	test("completes subcommands within a group", () => {
+		const reg = createRegistry([
+			{ name: "db migrate" },
+			{ name: "db seed" },
+			{ name: "db status" },
+		]);
+		const result = complete(reg, "aku db ");
+		expect(result).toEqual(["migrate", "seed", "status"]);
+	});
+
+	test("completes subcommands with partial prefix", () => {
+		const reg = createRegistry([{ name: "db migrate" }, { name: "db seed" }]);
+		const result = complete(reg, "aku db m");
+		expect(result).toEqual(["migrate"]);
+	});
+
+	test("completes flags for a grouped command", () => {
+		const reg = createRegistry([
+			{
+				name: "db migrate",
+				args: {
+					fresh: { type: "boolean" },
+					seed: { type: "boolean" },
+				} as const satisfies ArgumentSchema,
+			},
+		]);
+		const result = complete(reg, "aku db migrate --");
+		expect(result).toEqual(["--fresh", "--seed"]);
+	});
+
+	test("completes group name with prefix", () => {
+		const reg = createRegistry([{ name: "serve" }, { name: "db migrate" }]);
+		const result = complete(reg, "aku d");
+		expect(result).toEqual(["db"]);
+	});
 });

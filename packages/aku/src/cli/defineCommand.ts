@@ -1,6 +1,8 @@
 import type { CommandHandler } from "./Command.ts";
 import type { ArgumentSchema, CommandDefinition, InferArgs } from "./cli-types.ts";
 
+const VALID_COMMAND_NAME = /^[\w-]+( [\w-]+)?$/;
+
 /**
  * Create a command definition with typed arguments.
  */
@@ -30,6 +32,11 @@ export function defineCommand(options: {
 	hidden?: boolean | undefined;
 	handler: CommandHandler<never>;
 }): CommandDefinition {
+	if (!VALID_COMMAND_NAME.test(options.name)) {
+		throw new Error(
+			`Invalid command name "${options.name}". Command names must be a single word or two words separated by a space (e.g. "greet" or "db migrate").`,
+		);
+	}
 	return {
 		name: options.name,
 		description: options.description,
