@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, spyOn, test } from "bun:test";
 import type { StorageEndpoint } from "../../contracts/Storage.ts";
 import { type SharedTestConfig } from "../../storage.test-utils.ts";
-import { PermissionsError } from "../../storage-errors.ts";
+import { StoragePermissionsError } from "../../storage-errors.ts";
 import { MemoryEndpoint } from "../memory/MemoryEndpoint.ts";
 import { ReadOnlyEndpoint } from "./ReadOnlyEndpoint.ts";
 import { readOnlyStorage } from "./readOnlyStorage.ts";
@@ -132,34 +132,36 @@ describe(readOnlyStorage, () => {
 		expect(result).toBe("mocked-url");
 	});
 
-	test("writeSingle() throws PermissionsError", async () => {
+	test("writeSingle() throws StoragePermissionsError", async () => {
 		expect(
 			readOnlyDisk.writeSingle({
 				path: "/file.txt",
 				data: "content",
 				mimeType: "text/plain",
 			}),
-		).rejects.toThrow(PermissionsError);
+		).rejects.toThrow(StoragePermissionsError);
 	});
 
-	test("copy() throws PermissionsError", async () => {
+	test("copy() throws StoragePermissionsError", async () => {
 		expect(readOnlyDisk.copy({ source: "/source.txt", destination: "/dest.txt" })).rejects.toThrow(
-			PermissionsError,
+			StoragePermissionsError,
 		);
 	});
 
-	test("move() throws PermissionsError", async () => {
+	test("move() throws StoragePermissionsError", async () => {
 		expect(readOnlyDisk.move({ source: "/source.txt", destination: "/dest.txt" })).rejects.toThrow(
-			PermissionsError,
+			StoragePermissionsError,
 		);
 	});
 
-	test("deleteSingle() throws PermissionsError", async () => {
-		expect(readOnlyDisk.deleteSingle("/file.txt")).rejects.toThrow(PermissionsError);
+	test("deleteSingle() throws StoragePermissionsError", async () => {
+		expect(readOnlyDisk.deleteSingle("/file.txt")).rejects.toThrow(StoragePermissionsError);
 	});
 
-	test("deleteAllUnderPrefix() throws PermissionsError", async () => {
-		expect(readOnlyDisk.deleteAllUnderPrefix("/subfolder/")).rejects.toThrow(PermissionsError);
+	test("deleteAllUnderPrefix() throws StoragePermissionsError", async () => {
+		expect(readOnlyDisk.deleteAllUnderPrefix("/subfolder/")).rejects.toThrow(
+			StoragePermissionsError,
+		);
 	});
 
 	test("forwards supportsMimeTypes from wrapped disk", () => {

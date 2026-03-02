@@ -16,7 +16,7 @@ import type {
 } from "./contracts/Storage.ts";
 import { mimeTypeFromFileName } from "./file-names.ts";
 import type { StorageDiskImpl } from "./StorageDiskImpl.ts";
-import { InvalidPathError } from "./storage-errors.ts";
+import { StorageInvalidPathError } from "./storage-errors.ts";
 import {
 	FileCopiedEvent,
 	FileCopyingEvent,
@@ -52,7 +52,7 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 		dispatcher: Dispatcher,
 	) {
 		if (!path.startsWith("/")) {
-			throw new InvalidPathError(path, "must start with a slash");
+			throw new StorageInvalidPathError(path, "must start with a slash");
 		}
 		super();
 		this.disk = disk;

@@ -11,7 +11,7 @@ import { mockPlatformPaths } from "./path-operations.ts";
 import { StorageDirectoryImpl } from "./StorageDirectoryImpl.ts";
 import { StorageDiskImpl } from "./StorageDiskImpl.ts";
 import { StorageFileImpl } from "./StorageFileImpl.ts";
-import { InvalidPathError } from "./storage-errors.ts";
+import { StorageInvalidPathError } from "./storage-errors.ts";
 import {
 	DirectoryDeletedEvent,
 	DirectoryDeletingEvent,
@@ -62,7 +62,7 @@ describe(StorageDirectoryImpl, () => {
 		test("throws when trailing slash is missing", () => {
 			expectError(
 				() => create("/path/to/dir"),
-				InvalidPathError,
+				StorageInvalidPathError,
 				(error) => {
 					expect(error.path).toBe("/path/to/dir");
 					expect(error.reason).toBe("directory paths must start and end with a slash");
@@ -71,7 +71,7 @@ describe(StorageDirectoryImpl, () => {
 		});
 
 		test("throws when leading slash is missing", () => {
-			expect(() => create("path/to/dir/")).toThrow(InvalidPathError);
+			expect(() => create("path/to/dir/")).toThrow(StorageInvalidPathError);
 		});
 
 		test('root path "/" is valid', () => {
@@ -265,7 +265,7 @@ describe(StorageDirectoryImpl, () => {
 			const dir = create("/parent/");
 			expectError(
 				() => dir.directory(""),
-				InvalidPathError,
+				StorageInvalidPathError,
 				(error) => {
 					expect(error.path).toBe("");
 					expect(error.reason).toBe("directory name cannot be empty");
@@ -309,11 +309,11 @@ describe(StorageDirectoryImpl, () => {
 			});
 			const dir = create("/parent/", sanitisingEndpoint);
 
-			expect(() => dir.directory("a<<b", { onInvalid: "throw" })).toThrow(InvalidPathError);
+			expect(() => dir.directory("a<<b", { onInvalid: "throw" })).toThrow(StorageInvalidPathError);
 
 			expectError(
 				() => dir.directory("a<<b", { onInvalid: "throw" }),
-				InvalidPathError,
+				StorageInvalidPathError,
 				(error) => {
 					expect(error.path).toBe("/parent/a<<b");
 					expect(error.reason).toBe("memory adapter does not allow <> in names");
@@ -416,7 +416,7 @@ describe(StorageDirectoryImpl, () => {
 			const dir = create("/parent/");
 			expectError(
 				() => dir.file(""),
-				InvalidPathError,
+				StorageInvalidPathError,
 				(error) => {
 					expect(error.path).toBe("");
 					expect(error.reason).toBe("file name cannot be empty");
@@ -424,7 +424,7 @@ describe(StorageDirectoryImpl, () => {
 			);
 			expectError(
 				() => dir.file("subdir/"),
-				InvalidPathError,
+				StorageInvalidPathError,
 				(error) => {
 					expect(error.path).toBe("subdir/");
 					expect(error.reason).toBe("file name cannot be empty");
@@ -432,7 +432,7 @@ describe(StorageDirectoryImpl, () => {
 			);
 			expectError(
 				() => dir.file("subdir\\"),
-				InvalidPathError,
+				StorageInvalidPathError,
 				(error) => {
 					expect(error.path).toBe("subdir\\");
 					expect(error.reason).toBe("file name cannot be empty");
@@ -477,7 +477,7 @@ describe(StorageDirectoryImpl, () => {
 			const dir = create("/parent/", sanitisingEndpoint);
 
 			expect(() => dir.file("my<<file>>:test.txt", { onInvalid: "throw" })).toThrow(
-				InvalidPathError,
+				StorageInvalidPathError,
 			);
 		});
 

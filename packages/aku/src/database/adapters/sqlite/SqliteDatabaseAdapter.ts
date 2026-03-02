@@ -7,7 +7,7 @@ import type {
 	DatabaseAdapterRunOptions,
 } from "../../DatabaseAdapter.ts";
 import type { TransactionOptions } from "../../DatabaseClient.ts";
-import { QueryError } from "../../database-errors.ts";
+import { DatabaseQueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { SqliteGrammar } from "../../grammar/SqliteGrammar.ts";
 import type { StatementResult } from "../../query-types.ts";
@@ -168,7 +168,7 @@ interface PlatformError {
 	message?: string;
 }
 
-function makeQueryError(sql: string, cause: unknown): QueryError {
+function makeQueryError(sql: string, cause: unknown): DatabaseQueryError {
 	const error = cause as PlatformError;
 
 	const errorNumber = error.errno ?? error.errcode;
@@ -187,7 +187,13 @@ function makeQueryError(sql: string, cause: unknown): QueryError {
 
 	message ??= error.message ?? String(error);
 
-	return new QueryError(sql, message ?? error.message ?? String(error), error, code, errorNumber);
+	return new DatabaseQueryError(
+		sql,
+		message ?? error.message ?? String(error),
+		error,
+		code,
+		errorNumber,
+	);
 }
 
 const sqliteErrorCodes = new Map<number, [string, string]>([

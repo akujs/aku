@@ -4,7 +4,7 @@ import type { Database } from "../contracts/Database.js";
 import type { IsolationLevel } from "../DatabaseClient.ts";
 import { DatabaseImpl } from "../DatabaseImpl.ts";
 import type { SharedTestConfig } from "../database.test-utils.ts";
-import { QueryError } from "../database-errors.ts";
+import { DatabaseQueryError } from "../database-errors.ts";
 import { sql } from "../sql.ts";
 import { d1SharedTestConfig } from "./d1/d1.test-utils.ts";
 import { pgLiteSharedTestConfig } from "./pglite/pglite.test-utils.ts";
@@ -63,8 +63,10 @@ describe.each(adapterConfigs)("$name", ({ createDatabase, supportsTransactions }
 			]);
 		});
 
-		test("throws QueryError on invalid SQL", async () => {
-			expect(db.run(sql`SELECT * FROM nonexistent_table`)).rejects.toBeInstanceOf(QueryError);
+		test("throws DatabaseQueryError on invalid SQL", async () => {
+			expect(db.run(sql`SELECT * FROM nonexistent_table`)).rejects.toBeInstanceOf(
+				DatabaseQueryError,
+			);
 		});
 
 		test("executes INSERT and returns rowsAffected", async () => {
@@ -122,7 +124,7 @@ describe.each(adapterConfigs)("$name", ({ createDatabase, supportsTransactions }
 					sql`INSERT INTO users (name, age) VALUES ('Alice', 30)`,
 					sql`INSERT INTO nonexistent_table (x) VALUES (1)`,
 				]),
-			).rejects.toBeInstanceOf(QueryError);
+			).rejects.toBeInstanceOf(DatabaseQueryError);
 
 			// First insert should have been rolled back
 			const result = await db.run(sql`SELECT * FROM users`);

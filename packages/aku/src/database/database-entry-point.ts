@@ -9,10 +9,10 @@ export { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 export type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 export type { DatabaseClient } from "./DatabaseClient.ts";
 export {
-	ClientNotFoundError,
+	DatabaseClientNotFoundError,
 	DatabaseError,
-	QueryError,
-	UnsupportedFeatureError,
+	DatabaseQueryError,
+	DatabaseUnsupportedFeatureError,
 } from "./database-errors.ts";
 export {
 	DatabaseEvent,

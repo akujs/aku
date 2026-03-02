@@ -11,7 +11,7 @@ import type {
 import { createFileName, mimeTypeFromFileName, sanitiseName } from "./file-names.ts";
 import { posix } from "./path-operations.ts";
 import type { StorageDiskImpl } from "./StorageDiskImpl.ts";
-import { InvalidPathError } from "./storage-errors.ts";
+import { StorageInvalidPathError } from "./storage-errors.ts";
 import {
 	DirectoryDeletedEvent,
 	DirectoryDeletingEvent,
@@ -38,7 +38,7 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 	) {
 		super();
 		if (!path.startsWith("/") || !path.endsWith("/")) {
-			throw new InvalidPathError(path, "directory paths must start and end with a slash");
+			throw new StorageInvalidPathError(path, "directory paths must start and end with a slash");
 		}
 		this.disk = disk;
 		this.#endpoint = endpoint;
@@ -169,7 +169,7 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 
 	directory(path: string, options?: { onInvalid?: "convert" | "throw" }): StorageDirectory {
 		if (path === "") {
-			throw new InvalidPathError(path, "directory name cannot be empty");
+			throw new StorageInvalidPathError(path, "directory name cannot be empty");
 		}
 		const parts = this.#splitAndSanitisePath(path, options?.onInvalid);
 		// Return self if path resolves to current directory (e.g. "/" or ".")
@@ -188,7 +188,7 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 
 	file(path: string, options?: { onInvalid?: "convert" | "throw" }): StorageFile {
 		if (path.endsWith("/") || path.endsWith("\\") || path === "") {
-			throw new InvalidPathError(path, "file name cannot be empty");
+			throw new StorageInvalidPathError(path, "file name cannot be empty");
 		}
 
 		const parts = this.#splitAndSanitisePath(path, options?.onInvalid);
@@ -206,7 +206,7 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 			const sanitisedName = sanitiseName(segment, this.#endpoint.invalidNameChars);
 			if (onInvalid === "throw" && sanitisedName !== segment) {
 				const fullPath = posix.join(this.path, path);
-				throw InvalidPathError.forInvalidCharacters(fullPath, this.#endpoint);
+				throw StorageInvalidPathError.forInvalidCharacters(fullPath, this.#endpoint);
 			}
 			return sanitisedName;
 		});

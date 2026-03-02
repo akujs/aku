@@ -7,7 +7,7 @@ import {
 } from "../../../test-utils/internal-mocks.test-utils.ts";
 import type { DatabaseClient } from "../../DatabaseClient.ts";
 import { DatabaseClientImpl } from "../../DatabaseClientImpl.ts";
-import { QueryError } from "../../database-errors.ts";
+import { DatabaseQueryError } from "../../database-errors.ts";
 import { TransactionRetryingEvent } from "../../database-events.ts";
 import { sql } from "../../sql.ts";
 import { PostgresDatabaseAdapter } from "./PostgresDatabaseAdapter.ts";
@@ -185,7 +185,7 @@ describe(PostgresDatabaseAdapter, () => {
 		expect(retryEvents[0].error?.toString()).toInclude("40P01: deadlock detected");
 	});
 
-	test("QueryError captures SQLSTATE code", async () => {
+	test("DatabaseQueryError captures SQLSTATE code", async () => {
 		await db.run(sql`INSERT INTO test (value) VALUES ('a')`);
 		await db.run(sql`CREATE UNIQUE INDEX test_value_unique ON test (value)`);
 
@@ -193,8 +193,8 @@ describe(PostgresDatabaseAdapter, () => {
 			await db.run(sql`INSERT INTO test (value) VALUES ('a')`);
 			expect.unreachable("Should have thrown");
 		} catch (e) {
-			expect(e).toBeInstanceOf(QueryError);
-			expect((e as QueryError).code).toBe("23505"); // unique_violation
+			expect(e).toBeInstanceOf(DatabaseQueryError);
+			expect((e as DatabaseQueryError).code).toBe("23505"); // unique_violation
 		}
 	});
 

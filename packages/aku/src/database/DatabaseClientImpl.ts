@@ -5,7 +5,7 @@ import { abort } from "../http/abort.ts";
 import { BaseClass, type FifoLock, fifoLock, withoutUndefinedValues } from "../utils.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 import type { DatabaseClient, TransactionOptions } from "./DatabaseClient.ts";
-import { DatabaseError, QueryError } from "./database-errors.ts";
+import { DatabaseError, DatabaseQueryError } from "./database-errors.ts";
 import type { DatabaseEventInit, TransactionEventInit } from "./database-events.ts";
 import {
 	QueryExecutedEvent,
@@ -59,14 +59,14 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 		return this.#withConnection((connection) => {
 			const ctx = this.#connectionStorage.getStore();
 			if (ctx?.committed) {
-				throw new QueryError(
+				throw new DatabaseQueryError(
 					statement.toHumanReadableSql(),
 					"the transaction has already been committed - probably an asynchronous operation was started and not awaited, and ran after the transaction finished",
 					undefined,
 				);
 			}
 			if (ctx?.isRunningNestedTransaction) {
-				throw new QueryError(
+				throw new DatabaseQueryError(
 					statement.toHumanReadableSql(),
 					"a nested transaction is active - probably an asynchronous operation was started and not awaited, and ran after the nested transaction started",
 					undefined,
@@ -347,7 +347,11 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 	async getFirstOrFail<T = Row>(statement: Statement): Promise<T> {
 		const result = await this.run(statement);
 		if (result.rows.length === 0) {
-			throw new QueryError(statement.toHumanReadableSql(), "Query returned no rows", undefined);
+			throw new DatabaseQueryError(
+				statement.toHumanReadableSql(),
+				"Query returned no rows",
+				undefined,
+			);
 		}
 		return result.rows[0] as T;
 	}

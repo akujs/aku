@@ -10,7 +10,7 @@ import { MemoryEndpoint } from "./adapters/memory/MemoryEndpoint.ts";
 import type { StorageEndpoint, StorageFile } from "./contracts/Storage.ts";
 import { StorageDiskImpl } from "./StorageDiskImpl.ts";
 import { StorageFileImpl } from "./StorageFileImpl.ts";
-import { InvalidPathError, NotFoundError } from "./storage-errors.ts";
+import { StorageInvalidPathError, StorageNotFoundError } from "./storage-errors.ts";
 import {
 	FileCopiedEvent,
 	FileCopyingEvent,
@@ -59,12 +59,12 @@ describe(StorageFileImpl, () => {
 		});
 
 		test("throws when path does not start with a slash", () => {
-			expect(() => create("")).toThrowError(InvalidPathError);
-			expect(() => create("foo.txt")).toThrowError(InvalidPathError);
+			expect(() => create("")).toThrowError(StorageInvalidPathError);
+			expect(() => create("foo.txt")).toThrowError(StorageInvalidPathError);
 
 			expectError(
 				() => create("foo.txt"),
-				InvalidPathError,
+				StorageInvalidPathError,
 				(error) => {
 					expect(error.path).toBe("foo.txt");
 					expect(error.reason).toBe("must start with a slash");
@@ -111,11 +111,11 @@ describe(StorageFileImpl, () => {
 
 		test("throws when file doesn't exist", async () => {
 			const file = disk.file("nonexistent.txt");
-			expect(file.get()).rejects.toThrow(NotFoundError);
+			expect(file.get()).rejects.toThrow(StorageNotFoundError);
 
 			await expectError(
 				() => file.get(),
-				NotFoundError,
+				StorageNotFoundError,
 				(error) => {
 					expect(error.path).toBe("/nonexistent.txt");
 				},
@@ -243,7 +243,7 @@ describe(StorageFileImpl, () => {
 		test("if endpoint throws FileNotFound we convert to null", async () => {
 			const file = disk.file("nonexistent.txt");
 			spyOn(endpoint, "getInfoSingle").mockImplementation(async () => {
-				throw new NotFoundError("nonexistent.txt");
+				throw new StorageNotFoundError("nonexistent.txt");
 			});
 			const result = await file.info();
 			expect(result).toBeNull();
@@ -507,11 +507,11 @@ describe(StorageFileImpl, () => {
 			const disk2 = new StorageDiskImpl("disk2", endpoint2, mockDispatcher());
 			const source = disk.file("nonexistent.txt");
 			const dest = disk2.file("dest.txt");
-			expect(source.copyTo(dest)).rejects.toThrow(NotFoundError);
+			expect(source.copyTo(dest)).rejects.toThrow(StorageNotFoundError);
 
 			await expectError(
 				() => source.copyTo(dest),
-				NotFoundError,
+				StorageNotFoundError,
 				(error) => {
 					expect(error.path).toBe("/nonexistent.txt");
 				},
@@ -577,7 +577,7 @@ describe(StorageFileImpl, () => {
 			const disk2 = new StorageDiskImpl("disk2", endpoint2, mockDispatcher());
 			const source = disk.file("nonexistent.txt");
 			const dest = disk2.file("dest.txt");
-			expect(source.moveTo(dest)).rejects.toThrow(NotFoundError);
+			expect(source.moveTo(dest)).rejects.toThrow(StorageNotFoundError);
 		});
 
 		test("does not delete source if cross-disk copy fails", async () => {

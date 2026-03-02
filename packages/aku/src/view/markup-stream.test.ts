@@ -3,7 +3,7 @@ import { createKey } from "../core/Key.ts";
 import { asyncGate } from "../test-utils/async-gate.test-utils.ts";
 import { render, renderResponse, renderStream } from "../test-utils/view.test-utils.ts";
 import { MarkupStream } from "./markup-stream.ts";
-import { RenderingError } from "./view-errors.ts";
+import { ViewRenderingError } from "./view-errors.ts";
 import type { Context, JSXNode } from "./view-types.ts";
 
 describe("basic functionality", () => {
@@ -124,8 +124,8 @@ describe("attribute handling", () => {
 			await render(stream);
 			throw new Error("Expected render(stream) to throw");
 		} catch (error) {
-			expect(error).toBeInstanceOf(RenderingError);
-			const err = error as RenderingError;
+			expect(error).toBeInstanceOf(ViewRenderingError);
+			const err = error as ViewRenderingError;
 			expect(err.message).toContain('Attribute "funcAttr" has an invalid value type: Function');
 			expect(err.errorKind).toBe("attribute-type-error");
 			expect(err.componentStack).toEqual(["div"]);
@@ -145,8 +145,8 @@ describe("attribute handling", () => {
 			await render(stream);
 			throw new Error("Expected render(stream) to throw");
 		} catch (error) {
-			expect(error).toBeInstanceOf(RenderingError);
-			const err = error as RenderingError;
+			expect(error).toBeInstanceOf(ViewRenderingError);
+			const err = error as ViewRenderingError;
 			expect(err.message).toContain('Attribute "symAttr" has an invalid value type: Symbol');
 			expect(err.errorKind).toBe("attribute-type-error");
 			expect(err.componentStack).toEqual(["div"]);
@@ -166,8 +166,8 @@ describe("attribute handling", () => {
 			await render(stream);
 			throw new Error("Expected render(stream) to throw");
 		} catch (error) {
-			expect(error).toBeInstanceOf(RenderingError);
-			const err = error as RenderingError;
+			expect(error).toBeInstanceOf(ViewRenderingError);
+			const err = error as ViewRenderingError;
 			expect(err.message).toContain('Attribute "promiseAttr" has an invalid value type: Promise');
 			expect(err.errorKind).toBe("attribute-type-error");
 			expect(err.componentStack).toEqual(["div"]);
@@ -837,8 +837,8 @@ describe("error handling", () => {
 			await render(stream);
 			throw new Error("Expected render(stream) to throw");
 		} catch (error) {
-			expect(error).toBeInstanceOf(RenderingError);
-			const err = error as RenderingError;
+			expect(error).toBeInstanceOf(ViewRenderingError);
+			const err = error as ViewRenderingError;
 			expect(err.message).toContain(errorMessage);
 			expect(err.cause).toBeInstanceOf(Error);
 			expect((err.cause as Error).message).toBe(errorMessage);
@@ -858,8 +858,8 @@ describe("error handling", () => {
 			await render(stream);
 			throw new Error("Expected render(stream) to throw");
 		} catch (error) {
-			expect(error).toBeInstanceOf(RenderingError);
-			const err = error as RenderingError;
+			expect(error).toBeInstanceOf(ViewRenderingError);
+			const err = error as ViewRenderingError;
 			expect(err.message).toContain(errorMessage);
 			expect(err.cause).toBeInstanceOf(Error);
 			expect((err.cause as Error).message).toBe(errorMessage);
@@ -879,8 +879,8 @@ describe("error handling", () => {
 			await render(stream);
 			throw new Error("Expected render(stream) to throw");
 		} catch (error) {
-			expect(error).toBeInstanceOf(RenderingError);
-			const err = error as RenderingError;
+			expect(error).toBeInstanceOf(ViewRenderingError);
+			const err = error as ViewRenderingError;
 			expect(err.message).toContain(errorMessage);
 			expect(err.cause).toBeInstanceOf(Error);
 			expect((err.cause as Error).message).toBe(errorMessage);
@@ -903,8 +903,8 @@ describe("error handling", () => {
 			await render(stream);
 			throw new Error("Expected render(stream) to throw");
 		} catch (error) {
-			expect(error).toBeInstanceOf(RenderingError);
-			const err = error as RenderingError;
+			expect(error).toBeInstanceOf(ViewRenderingError);
+			const err = error as ViewRenderingError;
 			expect(err.message).toMatchInlineSnapshot(
 				`"Rendering error: Deep error; Component stack: <outer> -> <middle> -> <inner>"`,
 			);
@@ -923,8 +923,8 @@ describe("error handling", () => {
 			await render(stream);
 			throw new Error("Expected render(stream) to throw");
 		} catch (error) {
-			expect(error).toBeInstanceOf(RenderingError);
-			const err = error as RenderingError;
+			expect(error).toBeInstanceOf(ViewRenderingError);
+			const err = error as ViewRenderingError;
 			expect(err.message).toContain("string error");
 			expect(err.cause).toBeInstanceOf(Error);
 			expect((err.cause as Error).message).toBe("string error");
@@ -943,8 +943,8 @@ describe("error handling", () => {
 			await render(stream);
 			throw new Error("Expected render(stream) to throw");
 		} catch (error) {
-			expect(error).toBeInstanceOf(RenderingError);
-			const err = error as RenderingError;
+			expect(error).toBeInstanceOf(ViewRenderingError);
+			const err = error as ViewRenderingError;
 			expect(err.message).toContain("plain string error");
 			expect(err.cause).toBe("plain string error");
 			expect(err.errorKind).toBe("content-function-error");
@@ -969,8 +969,8 @@ describe("error handling", () => {
 			await render(stream);
 			throw new Error("Expected render(stream) to throw");
 		} catch (error) {
-			expect(error).toBeInstanceOf(RenderingError);
-			const err = error as RenderingError;
+			expect(error).toBeInstanceOf(ViewRenderingError);
+			const err = error as ViewRenderingError;
 			expect(err.message).toContain("Nested array error");
 			expect(err.errorKind).toBe("content-function-error");
 		}
@@ -992,8 +992,8 @@ describe("error handling", () => {
 			await render(stream);
 			throw new Error("Expected render(stream) to throw");
 		} catch (error) {
-			expect(error).toBeInstanceOf(RenderingError);
-			const err = error as RenderingError;
+			expect(error).toBeInstanceOf(ViewRenderingError);
+			const err = error as ViewRenderingError;
 			expect(err.message).toContain("Encountered a React JSX element");
 			expect(err.message).toContain("@jsxImportSource @akujs/aku/view");
 			expect(err.errorKind).toBe("invalid-content");
@@ -1018,8 +1018,8 @@ describe("error handling", () => {
 			await render(stream);
 			throw new Error("Expected render(stream) to throw");
 		} catch (error) {
-			expect(error).toBeInstanceOf(RenderingError);
-			const err = error as RenderingError;
+			expect(error).toBeInstanceOf(ViewRenderingError);
+			const err = error as ViewRenderingError;
 			expect(err.message).toContain("Encountered a React JSX element");
 			expect(err.errorKind).toBe("invalid-content");
 			expect(err.componentStack).toEqual(["outer", "middle", "inner"]);

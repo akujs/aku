@@ -6,7 +6,7 @@ import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 import { Database } from "./contracts/Database.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 import { DatabaseImpl } from "./DatabaseImpl.ts";
-import { QueryError } from "./database-errors.ts";
+import { DatabaseQueryError } from "./database-errors.ts";
 import { ExecutableStatementImpl } from "./ExecutableStatementImpl.ts";
 import { sql } from "./sql.ts";
 
@@ -39,9 +39,9 @@ describe("Sql execution methods", () => {
 		expect(row).toBeNull();
 	});
 
-	test("getFirstOrFail() throws QueryError when no rows", async () => {
+	test("getFirstOrFail() throws DatabaseQueryError when no rows", async () => {
 		expect(sql`SELECT * FROM test WHERE name = 'Unknown'`.getFirstOrFail()).rejects.toBeInstanceOf(
-			QueryError,
+			DatabaseQueryError,
 		);
 	});
 

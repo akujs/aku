@@ -1,1 +1,6 @@
-export { FooError, GoodError, NotInLocalErrorsError } from "./errors/errors-errors.ts";
+export {
+	BadPrefixError,
+	ErrorsGoodError,
+	ErrorsNotInLocalError,
+	FooError,
+} from "./errors/errors-errors.ts";

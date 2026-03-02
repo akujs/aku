@@ -634,7 +634,7 @@ describe.each(adapterConfigs)("queries: $name", ({ dialect, createDatabase }) =>
 				// Verify SQL generation
 				expect(query.toHumanReadableSql()).toContain('DISTINCT ON ("team_id")');
 			} else {
-				// SQLite: Throws UnsupportedFeatureError
+				// SQLite: Throws DatabaseUnsupportedFeatureError
 				expect(async () => await query.getAll()).toThrow("does not support DISTINCT ON");
 			}
 		});
@@ -1915,15 +1915,15 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 			expect(row).toEqual({ id: 1, name: "by_id_test", value: 100 });
 		});
 
-		test("getByIdOrFail() throws QueryError when not found", async () => {
+		test("getByIdOrFail() throws DatabaseQueryError when not found", async () => {
 			expect(table.getByIdOrFail(999)).rejects.toMatchInlineSnapshot(
-				`[QueryError: Query returned no rows (query: SELECT * FROM "test_mutations" WHERE ( "id" = [$1: 999] ))]`,
+				`[DatabaseQueryError: Query returned no rows (query: SELECT * FROM "test_mutations" WHERE ( "id" = [$1: 999] ))]`,
 			);
 		});
 
-		test("getByIdOrNotFound() throws QueryError when not found", async () => {
+		test("getByIdOrNotFound() throws DatabaseQueryError when not found", async () => {
 			expect(table.getByIdOrFail(999)).rejects.toMatchInlineSnapshot(
-				`[QueryError: Query returned no rows (query: SELECT * FROM "test_mutations" WHERE ( "id" = [$1: 999] ))]`,
+				`[DatabaseQueryError: Query returned no rows (query: SELECT * FROM "test_mutations" WHERE ( "id" = [$1: 999] ))]`,
 			);
 		});
 

@@ -12,7 +12,7 @@ import { isSpecialNode } from "./special-node.ts";
 import { isStackOutNode, isStackPushNode } from "./stack.ts";
 import { StreamBuffer } from "./stream-buffer.ts";
 import { styleObjectToString } from "./style-attribute.ts";
-import { type ErrorKind, RenderingError } from "./view-errors.ts";
+import { type ErrorKind, ViewRenderingError } from "./view-errors.ts";
 import type { Props } from "./view-types.ts";
 import {
 	type Context,
@@ -39,7 +39,7 @@ function throwRenderingError(
 		node = node.parent;
 	}
 
-	throw new RenderingError(errorKind, stackArray, cause);
+	throw new ViewRenderingError(errorKind, stackArray, cause);
 }
 
 const HTML_ESCAPE: Record<string, string> = {
@@ -347,7 +347,7 @@ export class ViewRendererImpl extends BaseClass implements ViewRenderer {
 							const resolved = (await node) as JSXNode;
 							await renderNode(resolved, context, stack);
 						} catch (error) {
-							if (error instanceof RenderingError) {
+							if (error instanceof ViewRenderingError) {
 								throw error;
 							}
 							throwRenderingError("content-promise-error", stack, error);
@@ -408,7 +408,7 @@ export class ViewRendererImpl extends BaseClass implements ViewRenderer {
 							}
 						}
 					} catch (error) {
-						if (error instanceof RenderingError) {
+						if (error instanceof ViewRenderingError) {
 							throw error;
 						}
 						throwRenderingError("content-function-error", stack, error);
@@ -442,7 +442,7 @@ export class ViewRendererImpl extends BaseClass implements ViewRenderer {
 				try {
 					renderOpeningTag(tag, attributes, selfClosing, newStack);
 				} catch (error) {
-					if (error instanceof RenderingError) {
+					if (error instanceof ViewRenderingError) {
 						throw error;
 					}
 					throwRenderingError("attribute-type-error", newStack, error);

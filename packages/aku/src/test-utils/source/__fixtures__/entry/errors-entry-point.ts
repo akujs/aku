@@ -1,8 +1,9 @@
 export {
 	BadErrorExtension,
+	BadPrefixError,
+	ErrorsGoodError,
+	ErrorsNotInRootError,
 	FooError,
-	GoodError,
-	NotInRootErrorsError,
 	RegularClass as RegularErrorClass,
 } from "../errors/errors-errors.ts";
 export {

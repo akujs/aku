@@ -5,7 +5,7 @@ import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 import type { DatabaseClient } from "./DatabaseClient.ts";
 import { DatabaseClientImpl } from "./DatabaseClientImpl.ts";
-import { QueryError } from "./database-errors.ts";
+import { DatabaseQueryError } from "./database-errors.ts";
 import {
 	QueryExecutedEvent,
 	QueryExecutingEvent,
@@ -241,7 +241,7 @@ describe("database events", () => {
 			const originalRun = adapter.run.bind(adapter);
 			spyOn(adapter, "run").mockImplementation(async (options) => {
 				if (options.sql === "BEGIN" && beginAttempts++ === 0) {
-					throw new QueryError("BEGIN", "database is locked", undefined, "SQLITE_BUSY", 5);
+					throw new DatabaseQueryError("BEGIN", "database is locked", undefined, "SQLITE_BUSY", 5);
 				}
 				return originalRun(options);
 			});
@@ -271,7 +271,7 @@ describe("database events", () => {
 					type: "transaction:retry",
 					attempt: 2,
 					previousTransactionId: tx1Id,
-					error: expect.any(QueryError),
+					error: expect.any(DatabaseQueryError),
 				}),
 				// Attempt 2: succeeds
 				expect.objectContaining({
@@ -309,7 +309,13 @@ describe("database events", () => {
 					await db.transaction(
 						async () => {
 							attempts++;
-							throw new QueryError("test", "database is locked", undefined, "SQLITE_BUSY", 5);
+							throw new DatabaseQueryError(
+								"test",
+								"database is locked",
+								undefined,
+								"SQLITE_BUSY",
+								5,
+							);
 						},
 						{ retry: { maxAttempts: 3 } },
 					);

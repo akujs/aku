@@ -6,7 +6,7 @@ import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 import { DatabaseClientImpl } from "./DatabaseClientImpl.ts";
 import { DatabaseImpl } from "./DatabaseImpl.ts";
-import { ClientNotFoundError, QueryError } from "./database-errors.ts";
+import { DatabaseClientNotFoundError, DatabaseQueryError } from "./database-errors.ts";
 import { sql } from "./sql.ts";
 
 describe("DatabaseImpl", () => {
@@ -61,8 +61,10 @@ describe("DatabaseImpl", () => {
 			expect(row.name).toBe("Alice");
 		});
 
-		test("firstOrFail() throws QueryError when no rows", async () => {
-			expect(db.getFirstOrFail(sql`SELECT * FROM test WHERE 0`)).rejects.toBeInstanceOf(QueryError);
+		test("firstOrFail() throws DatabaseQueryError when no rows", async () => {
+			expect(db.getFirstOrFail(sql`SELECT * FROM test WHERE 0`)).rejects.toBeInstanceOf(
+				DatabaseQueryError,
+			);
 		});
 
 		test("scalar() returns first column of first row", async () => {
@@ -70,8 +72,10 @@ describe("DatabaseImpl", () => {
 			expect(name).toBe("Alice");
 		});
 
-		test("scalar() throws QueryError when no rows", async () => {
-			expect(db.getScalar(sql`SELECT name FROM test WHERE 0`)).rejects.toBeInstanceOf(QueryError);
+		test("scalar() throws DatabaseQueryError when no rows", async () => {
+			expect(db.getScalar(sql`SELECT name FROM test WHERE 0`)).rejects.toBeInstanceOf(
+				DatabaseQueryError,
+			);
 		});
 
 		test("column() returns first column of each row", async () => {
@@ -166,10 +170,10 @@ describe("DatabaseImpl", () => {
 			expect(dbName).toBe("additional");
 		});
 
-		test("client() throws ClientNotFoundError for unknown name", () => {
+		test("client() throws DatabaseClientNotFoundError for unknown name", () => {
 			const db = new DatabaseImpl(defaultAdapter, mockDispatcher());
 
-			expect(() => db.client("nonexistent")).toThrow(ClientNotFoundError);
+			expect(() => db.client("nonexistent")).toThrow(DatabaseClientNotFoundError);
 		});
 
 		test("rolling back parent transaction does not affect nested transaction on different client", async () => {

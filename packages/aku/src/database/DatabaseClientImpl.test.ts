@@ -13,7 +13,7 @@ import {
 import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 import { DatabaseClientImpl } from "./DatabaseClientImpl.ts";
-import { DatabaseError, QueryError } from "./database-errors.ts";
+import { DatabaseError, DatabaseQueryError } from "./database-errors.ts";
 import { paramAsFragment } from "./query-builder/statement-utils.ts";
 import { sql } from "./sql.ts";
 
@@ -35,10 +35,10 @@ describe(DatabaseClientImpl, () => {
 	describe("transaction retry", () => {
 		test("retry: false doesn't retry on concurrency error", async () => {
 			const callback = mockFn(async () => {
-				throw new QueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
+				throw new DatabaseQueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
 			});
 
-			expect(db.transaction(callback, { retry: false })).rejects.toThrow(QueryError);
+			expect(db.transaction(callback, { retry: false })).rejects.toThrow(DatabaseQueryError);
 
 			expect(callback).toHaveBeenCalledTimes(1);
 		});
@@ -48,7 +48,7 @@ describe(DatabaseClientImpl, () => {
 
 			const callback = mockFn(async () => {
 				if (callback.mock.calls.length < 3) {
-					throw new QueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
+					throw new DatabaseQueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
 				}
 				await db.run(sql`INSERT INTO test (value) VALUES ('success')`);
 			});
@@ -64,10 +64,10 @@ describe(DatabaseClientImpl, () => {
 			mock(sleep, async () => {});
 
 			const callback = mockFn(async () => {
-				throw new QueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
+				throw new DatabaseQueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
 			});
 
-			expect(db.transaction(callback, { retry: 3 })).rejects.toBeInstanceOf(QueryError);
+			expect(db.transaction(callback, { retry: 3 })).rejects.toBeInstanceOf(DatabaseQueryError);
 
 			expect(callback).toHaveBeenCalledTimes(3);
 		});
@@ -89,7 +89,7 @@ describe(DatabaseClientImpl, () => {
 
 			const callback = mockFn(async () => {
 				if (callback.mock.calls.length < 3) {
-					throw new QueryError("SELECT 1", "wotcha", null);
+					throw new DatabaseQueryError("SELECT 1", "wotcha", null);
 				}
 				await db.run(sql`INSERT INTO test (value) VALUES ('success')`);
 			});
@@ -109,7 +109,7 @@ describe(DatabaseClientImpl, () => {
 
 			const callback = mockFn(async () => {
 				if (callback.mock.calls.length < 3) {
-					throw new QueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
+					throw new DatabaseQueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
 				}
 			});
 
@@ -128,7 +128,7 @@ describe(DatabaseClientImpl, () => {
 				const attempt = callback.mock.calls.length;
 				await db.run(sql`INSERT INTO test (value) VALUES (${`attempt-${attempt}`})`);
 				if (attempt < 2) {
-					throw new QueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
+					throw new DatabaseQueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
 				}
 			});
 
@@ -152,7 +152,7 @@ describe(DatabaseClientImpl, () => {
 			mock(sleep, async () => {});
 
 			const callback = mockFn(async () => {
-				throw new QueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
+				throw new DatabaseQueryError("SELECT 1", "database is locked", null, "SQLITE_BUSY", 5);
 			});
 
 			try {
@@ -259,7 +259,7 @@ describe(DatabaseClientImpl, () => {
 		expect(rows).toEqual([{ value: "escaped" }]);
 	});
 
-	test("throws QueryError with SQL when executing statement with undefined param", async () => {
+	test("throws DatabaseQueryError with SQL when executing statement with undefined param", async () => {
 		// Manually construct a statement with undefined to bypass sql`` validation
 		// const stmt = new StatementImpl([{ sql: "SELECT * FROM test WHERE id = ", param: undefined }]);
 		const stmt = sql`SELECT ${{ sqlFragments: [paramAsFragment(undefined)] }}`;

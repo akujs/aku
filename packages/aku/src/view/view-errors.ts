@@ -11,7 +11,7 @@ export type ErrorKind =
  * Error thrown during rendering when an error occurs during content expansion or rendering.
  * Includes a component stack trace for debugging.
  */
-export class RenderingError extends AkuError {
+export class ViewRenderingError extends AkuError {
 	readonly errorKind: ErrorKind;
 	readonly componentStack: string[];
 

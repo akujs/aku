@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { MINIO_ENDPOINT, shouldSkipDockerTests } from "../../../test-utils/docker.test-utils.ts";
 import { mockCurrentTime, resetMockTime } from "../../../testing/mock-time.ts";
-import { PermissionsError } from "../../storage-errors.ts";
+import { StoragePermissionsError } from "../../storage-errors.ts";
 import {
 	createS3,
 	createS3WithUniqueBucket,
@@ -269,7 +269,7 @@ describe.skipIf(shouldSkipDockerTests())(s3Storage, () => {
 			expect(uploadResponse.status).toBe(403);
 		});
 
-		test("invalid credentials throw PermissionsError", async () => {
+		test("invalid credentials throw StoragePermissionsError", async () => {
 			const bucket = await createUniqueBucket();
 
 			const endpoint = createS3(MINIO_ENDPOINT, {
@@ -278,7 +278,7 @@ describe.skipIf(shouldSkipDockerTests())(s3Storage, () => {
 				secretKey: "invalid-secret",
 			});
 
-			expect(endpoint.readSingle("/any-file.txt")).rejects.toThrow(PermissionsError);
+			expect(endpoint.readSingle("/any-file.txt")).rejects.toThrow(StoragePermissionsError);
 		});
 	});
 });

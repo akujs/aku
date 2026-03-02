@@ -14,7 +14,11 @@ import type {
 import { joinSlashPaths } from "../../file-names.ts";
 import { type Dir, fsOps, type Stats } from "../../filesystem-operations.ts";
 import { platform } from "../../path-operations.ts";
-import { NotFoundError, PermissionsError, StorageUnknownError } from "../../storage-errors.ts";
+import {
+	StorageNotFoundError,
+	StoragePermissionsError,
+	StorageUnknownError,
+} from "../../storage-errors.ts";
 import type { FilesystemStorageConfig } from "./FilesystemStorageConfig.ts";
 
 const pipelineAsync = promisify(pipeline);
@@ -185,12 +189,12 @@ export class FilesystemEndpoint extends BaseClass implements StorageEndpoint {
 			return false;
 		} catch (error) {
 			const storageError = convertNodeError(error, fsPath);
-			if (storageError instanceof NotFoundError) {
+			if (storageError instanceof StorageNotFoundError) {
 				if (entries > 0) {
 					// If we successfully got the first entry, but later got a
 					// ENOENT, it's either a bug in our code or the directory
 					// was deleted while we were iterating, either way throw the
-					// node error not NotFoundError
+					// node error not StorageNotFoundError
 					throw error;
 				}
 				return false;
@@ -253,12 +257,12 @@ export class FilesystemEndpoint extends BaseClass implements StorageEndpoint {
 			}
 		} catch (error) {
 			const storageError = convertNodeError(error, rootFsPath);
-			if (storageError instanceof NotFoundError) {
+			if (storageError instanceof StorageNotFoundError) {
 				if (entries.length > 0) {
 					// If we successfully got the first entry, but later got a
 					// ENOENT, it's either a bug in our code or the directory
 					// was deleted while we were iterating, either way throw the
-					// node error not NotFoundError
+					// node error not StorageNotFoundError
 					throw error;
 				}
 				return;
@@ -309,10 +313,10 @@ const convertNodeError = (error: unknown, path: string): Error => {
 	if (typeof error === "object" && error !== null && "code" in error) {
 		const code = (error as { code: string }).code;
 		if (code === "ENOENT" || code === "ENOTDIR") {
-			return new NotFoundError(path);
+			return new StorageNotFoundError(path);
 		}
 		if (code === "EACCES") {
-			return new PermissionsError(path, 0, "EACCES");
+			return new StoragePermissionsError(path, 0, "EACCES");
 		}
 	}
 	return new StorageUnknownError(`operate on ${path}`, error);

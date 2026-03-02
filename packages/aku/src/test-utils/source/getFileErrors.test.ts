@@ -18,12 +18,15 @@ describe(getFileErrors, () => {
 
 		expect(errors).toMatchInlineSnapshot(`
 		  [
-		    "GoodError in errors/errors-errors.ts should be exported twice in errors-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: entry/errors-entry-point.ts, errors-entry-point.ts",
+		    "ErrorsGoodError in errors/errors-errors.ts should be exported twice in errors-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: entry/errors-entry-point.ts, errors-entry-point.ts",
 		    "FooError in errors/errors-errors.ts ends with "Error" but does not extend AkuError",
+		    "FooError in errors/errors-errors.ts should start with "Errors" (the module name)",
 		    "FooError in errors/errors-errors.ts should be exported twice in errors-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: entry/errors-entry-point.ts, errors-entry-point.ts",
-		    "NotInRootErrorsError in errors/errors-errors.ts should be exported twice in errors-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: entry/errors-entry-point.ts",
-		    "NotInLocalErrorsError in errors/errors-errors.ts should be exported twice in errors-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: errors-entry-point.ts",
+		    "ErrorsNotInRootError in errors/errors-errors.ts should be exported twice in errors-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: entry/errors-entry-point.ts",
+		    "ErrorsNotInLocalError in errors/errors-errors.ts should be exported twice in errors-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: errors-entry-point.ts",
 		    "BadErrorExtension in errors/errors-errors.ts extends AkuError but does not end with "Error"",
+		    "BadPrefixError in errors/errors-errors.ts should start with "Errors" (the module name)",
+		    "BadPrefixError in errors/errors-errors.ts should be exported twice in errors-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: entry/errors-entry-point.ts, errors-entry-point.ts",
 		  ]
 		`);
 	});

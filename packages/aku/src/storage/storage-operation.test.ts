@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mockDispatcher } from "../test-utils/internal-mocks.test-utils.ts";
 import { mockCurrentTime, resetMockTime } from "../testing/mock-time.ts";
 import type { StorageDisk } from "./contracts/Storage.ts";
-import { InvalidPathError, StorageUnknownError } from "./storage-errors.ts";
+import { StorageInvalidPathError, StorageUnknownError } from "./storage-errors.ts";
 import {
 	FileDeletedEvent,
 	FileDeletingEvent,
@@ -36,7 +36,7 @@ describe(storageOperation, () => {
 	test("preserves StorageError instances unchanged", async () => {
 		const mockDisk: StorageDisk = { name: "test-disk" } as StorageDisk;
 		const dispatcher = mockDispatcher();
-		const originalError = new InvalidPathError("/bad", "test reason");
+		const originalError = new StorageInvalidPathError("/bad", "test reason");
 
 		try {
 			await storageOperation(
@@ -52,7 +52,7 @@ describe(storageOperation, () => {
 			throw new Error("Should have thrown");
 		} catch (error) {
 			expect(error).toBe(originalError);
-			expect(error).toBeInstanceOf(InvalidPathError);
+			expect(error).toBeInstanceOf(StorageInvalidPathError);
 		}
 	});
 

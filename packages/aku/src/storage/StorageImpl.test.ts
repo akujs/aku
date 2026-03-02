@@ -11,7 +11,7 @@ import { StorageDiskImpl } from "./StorageDiskImpl.ts";
 import type { StorageEndpointBuilder } from "./StorageEndpointBuilder.ts";
 import { StorageImpl } from "./StorageImpl.ts";
 import { mockEndpointBuilder } from "./storage.test-utils.ts";
-import { DiskNotFoundError } from "./storage-errors.ts";
+import { StorageDiskNotFoundError } from "./storage-errors.ts";
 
 function createStorageImpl(
 	config: { disks?: Record<string, StorageAdapter>; defaultDisk?: string },
@@ -52,7 +52,7 @@ describe(StorageImpl, () => {
 		test("throws clear error when disk doesn't exist", () => {
 			expectError(
 				() => storage.disk("nonexistent"),
-				DiskNotFoundError,
+				StorageDiskNotFoundError,
 				(error) => {
 					expect(error.diskName).toBe("nonexistent");
 				},
@@ -66,7 +66,7 @@ describe(StorageImpl, () => {
 			});
 			expectError(
 				() => storageWithoutDefault.disk(),
-				DiskNotFoundError,
+				StorageDiskNotFoundError,
 				(error) => {
 					expect(error.diskName).toBe("local");
 				},
@@ -89,7 +89,7 @@ describe(StorageImpl, () => {
 
 		test("built disk not registered by name", () => {
 			const disk = storage.build(memoryStorage({}));
-			expect(() => storage.disk(disk.name)).toThrow(DiskNotFoundError);
+			expect(() => storage.disk(disk.name)).toThrow(StorageDiskNotFoundError);
 		});
 
 		test("multiple build() calls create independent disks", () => {

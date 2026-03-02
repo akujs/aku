@@ -1,8 +1,8 @@
 import { AkuError } from "../../../../core/core-errors.ts";
 import { BaseClass } from "../../../../utils.ts";
 
-// Good: ends with Error and extends AkuError
-export class GoodError extends AkuError {
+// Good: ends with Error, extends AkuError, starts with module name
+export class ErrorsGoodError extends AkuError {
 	constructor() {
 		super("good error");
 	}
@@ -15,10 +15,10 @@ export class RegularClass extends BaseClass {}
 export class FooError extends BaseClass {}
 
 // Bad: not re-exported from the root errors.ts
-export class NotInRootErrorsError extends AkuError {}
+export class ErrorsNotInRootError extends AkuError {}
 
 // Bad: not re-exported from the root errors.ts
-export class NotInLocalErrorsError extends AkuError {}
+export class ErrorsNotInLocalError extends AkuError {}
 
 // Bad: extends AkuError but doesn't end with Error
 export class BadErrorExtension extends AkuError {
@@ -26,3 +26,6 @@ export class BadErrorExtension extends AkuError {
 		super("bad extension");
 	}
 }
+
+// Bad: extends AkuError, ends with Error, but doesn't start with module name
+export class BadPrefixError extends AkuError {}
