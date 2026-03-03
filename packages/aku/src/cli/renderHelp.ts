@@ -2,7 +2,7 @@ import type { CommandDefinition } from "./cli-types.ts";
 import type { CliApi } from "./contracts/CliApi.ts";
 import { formatArgumentDetail, formatUsageToken } from "./formatArgument.ts";
 
-export function renderHelp(definition: CommandDefinition, cli: CliApi): void {
+export function outputHumanCommandHelp(definition: CommandDefinition, cli: CliApi): void {
 	cli.h1(`aku ${definition.name}`);
 	cli.p(definition.description);
 

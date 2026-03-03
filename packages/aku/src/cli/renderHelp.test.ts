@@ -2,15 +2,15 @@ import { describe, expect, test } from "bun:test";
 import type { ArgumentSchema, CommandDefinition } from "./cli-types.ts";
 import { defineCommand } from "./defineCommand.ts";
 import { MemoryCliApi } from "./MemoryCliApi.ts";
-import { renderHelp } from "./renderHelp.ts";
+import { outputHumanCommandHelp } from "./renderHelp.ts";
 
 function renderToMemory(definition: CommandDefinition): MemoryCliApi["outputs"] {
 	const cli = new MemoryCliApi();
-	renderHelp(definition, cli);
+	outputHumanCommandHelp(definition, cli);
 	return cli.outputs;
 }
 
-describe(renderHelp, () => {
+describe(outputHumanCommandHelp, () => {
 	test("renders command name as h1 and description as paragraph", () => {
 		const cmd = defineCommand({
 			name: "greet",

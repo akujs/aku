@@ -1,17 +1,21 @@
 import { inject } from "../container/inject.ts";
 import { findSimilar } from "../helpers/str/similarity.ts";
+import { withoutUndefinedValues } from "../utils.ts";
 import { BaseCommand } from "./Command.ts";
 import { CommandRegistry } from "./CommandRegistry.ts";
 import { CliExitError } from "./cli-errors.ts";
 import type {
+	ArgumentDefinition,
 	ArgumentSchema,
 	CommandDefinition,
 	CommandExecuteContext,
 	InferArgs,
 } from "./cli-types.ts";
 import { defineCommand } from "./defineCommand.ts";
-import { parseArguments } from "./parseArguments.ts";
-import { renderHelp } from "./renderHelp.ts";
+import { formatUsageToken } from "./formatArgument.ts";
+import { formatOutput } from "./formatOutput.ts";
+import { formatMachineCommandList, outputHumanCommandList } from "./ListCommand.ts";
+import { outputHumanCommandHelp } from "./renderHelp.ts";
 
 const helpArgs = {
 	command: {
@@ -19,6 +23,14 @@ const helpArgs = {
 		positional: true,
 		array: true,
 		description: "The command to get help for",
+	},
+	format: {
+		type: "string",
+		description: "Output format (json or toon)",
+	},
+	pretty: {
+		type: "boolean",
+		description: "Pretty-print JSON output with indentation",
 	},
 } as const satisfies ArgumentSchema;
 
@@ -32,6 +44,11 @@ class HelpCommandHandler extends BaseCommand {
 
 	async execute({ args, cli }: CommandExecuteContext<InferArgs<typeof helpArgs>>): Promise<void> {
 		if (args.command.length === 0) {
+			if (args.format) {
+				throw new CliExitError(
+					"The --format option requires a command name. Usage: aku help <command> --format json",
+				);
+			}
 			cli.p("This is the command line interface for the Aku framework.");
 			cli.p(
 				'Try "aku list" for a list of available commands, or "aku help <command>" for help with a specific command.',
@@ -44,7 +61,11 @@ class HelpCommandHandler extends BaseCommand {
 			const twoWordName = `${args.command[0]} ${args.command[1]}`;
 			const definition = this.#registry.getDefinition(twoWordName);
 			if (definition) {
-				renderHelp(definition, cli);
+				if (args.format) {
+					cli.raw(formatMachineCommandHelp(definition, args.format, args.pretty));
+				} else {
+					outputHumanCommandHelp(definition, cli);
+				}
 				return;
 			}
 		}
@@ -52,20 +73,25 @@ class HelpCommandHandler extends BaseCommand {
 		// Try single-word command name (e.g. "help greet" or "help greet Alice")
 		const singleWordDef = this.#registry.getDefinition(args.command[0]);
 		if (singleWordDef) {
-			renderHelp(singleWordDef, cli);
+			if (args.format) {
+				cli.raw(formatMachineCommandHelp(singleWordDef, args.format, args.pretty));
+			} else {
+				outputHumanCommandHelp(singleWordDef, cli);
+			}
 			return;
 		}
 
-		// If the first arg matches a group name, delegate to list for that group
+		// If the first arg matches a group name, show list for that group
 		const groupNames = this.#registry.getGroupNames();
 		if (groupNames.includes(args.command[0])) {
-			const listDef = this.#registry.getDefinition("list");
-			if (listDef) {
-				const execute = this.#registry.resolve("list")!;
-				const parsedArgs = parseArguments([args.command[0]], listDef.args);
-				await execute({ args: parsedArgs, cli });
-				return;
+			if (args.format) {
+				cli.raw(
+					formatMachineCommandList(args.command[0], this.#registry, args.format, args.pretty),
+				);
+			} else {
+				outputHumanCommandList(args.command[0], this.#registry, cli);
 			}
+			return;
 		}
 
 		const commandName = args.command.join(" ");
@@ -80,6 +106,54 @@ class HelpCommandHandler extends BaseCommand {
 		message += `\n\nRun "aku list" to see available commands.`;
 		throw new CliExitError(message);
 	}
+}
+
+function formatMachineCommandHelp(
+	definition: CommandDefinition,
+	format: string,
+	pretty: boolean,
+): string {
+	const schema = definition.args ?? {};
+	const entries = Object.entries(schema);
+
+	const positionals = entries.filter(([, def]) => def.positional);
+	const named = entries.filter(([, def]) => !def.positional);
+
+	// Build usage string using the same logic as outputHumanCommandHelp
+	const usageTokens: string[] = [`aku ${definition.name}`];
+	for (const [name, def] of positionals) {
+		const token = formatUsageToken(name, def);
+		if (token) usageTokens.push(token);
+	}
+	for (const [name, def] of named) {
+		const token = formatUsageToken(name, def);
+		if (token) usageTokens.push(token);
+	}
+	const hasOptionalNamed = named.some(([name, def]) => formatUsageToken(name, def) === null);
+	if (hasOptionalNamed) {
+		usageTokens.push("[options]");
+	}
+
+	const data = {
+		command: definition.name,
+		description: definition.description,
+		usage: usageTokens.join(" "),
+		args: entries.map(([name, def]) => buildArgData(name, def)),
+	};
+
+	return formatOutput(data, format, pretty);
+}
+
+function buildArgData(name: string, def: ArgumentDefinition): Record<string, unknown> {
+	return withoutUndefinedValues({
+		name,
+		type: def.type,
+		positional: def.positional === true,
+		required: def.required === true && def.default === undefined,
+		description: def.description,
+		default: def.default,
+		array: def.array || undefined,
+	});
 }
 
 export const helpCommand: CommandDefinition = defineCommand({

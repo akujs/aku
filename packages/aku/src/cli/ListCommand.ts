@@ -1,5 +1,4 @@
 import { inject } from "../container/inject.ts";
-import { formatToon } from "../helpers/format/toon.ts";
 import { findSimilar } from "../helpers/str/similarity.ts";
 import { BaseCommand } from "./Command.ts";
 import { CommandRegistry } from "./CommandRegistry.ts";
@@ -10,7 +9,9 @@ import type {
 	CommandExecuteContext,
 	InferArgs,
 } from "./cli-types.ts";
+import type { CliApi } from "./contracts/CliApi.ts";
 import { defineCommand } from "./defineCommand.ts";
+import { formatOutput } from "./formatOutput.ts";
 
 const listArgs = {
 	group: {
@@ -27,6 +28,35 @@ const listArgs = {
 		description: "Pretty-print JSON output with indentation",
 	},
 } as const satisfies ArgumentSchema;
+
+export function outputHumanCommandList(
+	group: string,
+	registry: CommandRegistry,
+	cli: CliApi,
+): void {
+	const groupCommands = registry.getDefinitionsInGroup(group);
+	const description = registry.getGroupDescription(group) ?? group;
+	cli.h1(description);
+	cli.dl({
+		items: groupCommands.map((cmd) => ({
+			label: cmd.name.split(" ")[1],
+			definition: cmd.description,
+		})),
+	});
+}
+
+export function formatMachineCommandList(
+	group: string,
+	registry: CommandRegistry,
+	format: string,
+	pretty: boolean,
+): string {
+	const commands = registry.getDefinitionsInGroup(group);
+	const data = {
+		commands: commands.map((cmd) => ({ command: cmd.name, description: cmd.description })),
+	};
+	return formatOutput(data, format, pretty);
+}
 
 class ListCommandHandler extends BaseCommand {
 	#registry: CommandRegistry;
@@ -58,37 +88,22 @@ class ListCommandHandler extends BaseCommand {
 			return;
 		}
 
-		const commands = args.group
-			? this.#registry.getDefinitionsInGroup(args.group)
-			: this.#registry.getCommandDefinitions();
+		if (args.group) {
+			cli.raw(formatMachineCommandList(args.group, this.#registry, args.format, args.pretty));
+			return;
+		}
 
 		const data = {
-			commands: commands.map((cmd) => ({ command: cmd.name, description: cmd.description })),
+			commands: this.#registry
+				.getCommandDefinitions()
+				.map((cmd) => ({ command: cmd.name, description: cmd.description })),
 		};
-
-		switch (args.format) {
-			case "json":
-				cli.raw(args.pretty ? JSON.stringify(data, null, "    ") : JSON.stringify(data));
-				break;
-			case "toon":
-				cli.raw(formatToon(data));
-				break;
-			default:
-				throw new CliExitError(`Unknown format: "${args.format}". Supported formats: json, toon`);
-		}
+		cli.raw(formatOutput(data, args.format, args.pretty));
 	}
 
 	#renderDefault(args: InferArgs<typeof listArgs>, cli: CommandExecuteContext["cli"]): void {
 		if (args.group) {
-			const groupCommands = this.#registry.getDefinitionsInGroup(args.group);
-			const description = this.#registry.getGroupDescription(args.group) ?? args.group;
-			cli.h1(description);
-			cli.dl({
-				items: groupCommands.map((cmd) => ({
-					label: cmd.name.split(" ")[1],
-					definition: cmd.description,
-				})),
-			});
+			outputHumanCommandList(args.group, this.#registry, cli);
 			return;
 		}
 

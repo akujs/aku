@@ -6,8 +6,9 @@ import { CliExitError } from "./cli-errors.ts";
 import type { CliApi } from "./contracts/CliApi.ts";
 import type { CliErrorHandler } from "./contracts/CliErrorHandler.ts";
 import { CliErrorHandler as CliErrorHandlerToken } from "./contracts/CliErrorHandler.ts";
+import { outputHumanCommandList } from "./ListCommand.ts";
 import { parseArguments } from "./parseArguments.ts";
-import { renderHelp } from "./renderHelp.ts";
+import { outputHumanCommandHelp } from "./renderHelp.ts";
 
 export class CommandHandler extends BaseClass {
 	#registry: CommandRegistry;
@@ -41,7 +42,7 @@ export class CommandHandler extends BaseClass {
 					parsedArgs = parseArguments(remainingArgs, definition.args);
 				} catch (error) {
 					if (error instanceof CliExitError) {
-						renderHelp(definition, cli);
+						outputHumanCommandHelp(definition, cli);
 					}
 					throw error;
 				}
@@ -50,19 +51,11 @@ export class CommandHandler extends BaseClass {
 				return 0;
 			}
 
-			// Check if the first arg is a group name — delegate to list for that group
+			// Check if the first arg is a group name — show commands in that group
 			const groupNames = this.#registry.getGroupNames();
 			if (groupNames.includes(args[0])) {
-				const listResolved = this.#registry.resolveFromArgs(["list", args[0]]);
-				if (listResolved) {
-					const execute = this.#registry.resolve(listResolved.definition.name)!;
-					const parsedArgs = parseArguments(
-						listResolved.remainingArgs,
-						listResolved.definition.args,
-					);
-					await execute({ args: parsedArgs, cli });
-					return 0;
-				}
+				outputHumanCommandList(args[0], this.#registry, cli);
+				return 0;
 			}
 
 			const commandName = args[0];

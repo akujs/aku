@@ -103,7 +103,7 @@ export class CliApiImpl extends BaseClass implements CliApi {
 			leftColor: "blue",
 			indent: "  ",
 		});
-		process.stdout.write(output);
+		process.stdout.write(output + "\n");
 	}
 
 	ul(options: CliUlOptions): void {
@@ -123,7 +123,7 @@ export class CliApiImpl extends BaseClass implements CliApi {
 			leftColor: "blue",
 			indent: "  ",
 		});
-		process.stdout.write(output);
+		process.stdout.write(output + "\n");
 	}
 
 	ol(options: CliOlOptions): void {
@@ -146,7 +146,7 @@ export class CliApiImpl extends BaseClass implements CliApi {
 			leftColor: "blue",
 			indent: "  ",
 		});
-		process.stdout.write(output);
+		process.stdout.write(output + "\n");
 	}
 
 	async select<V>(options: CliSelectOptions<V>): Promise<CliPromptResponse<V>> {

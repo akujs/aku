@@ -156,7 +156,7 @@ describe(helpCommand.handler, () => {
 		`);
 	});
 
-	test("help with group name delegates to list", async () => {
+	test("help with group name shows group commands", async () => {
 		const { cli } = createTestApplication({ providers: [GroupedTestProvider] });
 
 		const exitCode = await cli.run(["help", "db"]);
@@ -167,5 +167,128 @@ describe(helpCommand.handler, () => {
 
 		  migrate: Run database migrations"
 		`);
+	});
+
+	test("help greet --format json outputs compact JSON with args", async () => {
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+
+		const exitCode = await cli.run(["help", "greet", "--format", "json"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toMatchInlineSnapshot(
+			`"{"command":"greet","description":"Greet someone by name","usage":"aku greet <name> [options]","args":[{"name":"name","type":"string","positional":true,"required":true,"description":"The person to greet"},{"name":"verbose","type":"boolean","positional":false,"required":false,"description":"Enable verbose output"}]}"`,
+		);
+	});
+
+	test("help greet --format json --pretty outputs indented JSON", async () => {
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+
+		const exitCode = await cli.run(["help", "greet", "--format", "json", "--pretty"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "{
+		      "command": "greet",
+		      "description": "Greet someone by name",
+		      "usage": "aku greet <name> [options]",
+		      "args": [
+		          {
+		              "name": "name",
+		              "type": "string",
+		              "positional": true,
+		              "required": true,
+		              "description": "The person to greet"
+		          },
+		          {
+		              "name": "verbose",
+		              "type": "boolean",
+		              "positional": false,
+		              "required": false,
+		              "description": "Enable verbose output"
+		          }
+		      ]
+		  }"
+		`);
+	});
+
+	test("help simple --format json outputs empty args array", async () => {
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+
+		const exitCode = await cli.run(["help", "simple", "--format", "json"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toMatchInlineSnapshot(
+			`"{"command":"simple","description":"A command with no args","usage":"aku simple","args":[]}"`,
+		);
+	});
+
+	test("help greet --format toon outputs TOON format", async () => {
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+
+		const exitCode = await cli.run(["help", "greet", "--format", "toon"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "command: greet
+		  description: Greet someone by name
+		  usage: "aku greet <name> [options]"
+		  args[2]{name,type,positional,required,description}:
+		    name,string,true,true,The person to greet
+		    verbose,boolean,false,false,Enable verbose output"
+		`);
+	});
+
+	test("help greet --format toon --pretty produces same output as --format toon", async () => {
+		const { cli: cli1 } = createTestApplication({ providers: [TestProvider] });
+		const { cli: cli2 } = createTestApplication({ providers: [TestProvider] });
+
+		await cli1.run(["help", "greet", "--format", "toon"]);
+		await cli2.run(["help", "greet", "--format", "toon", "--pretty"]);
+
+		expect(cli1.output).toBe(cli2.output);
+	});
+
+	test("help --format json errors (format requires a command name)", async () => {
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+
+		const exitCode = await cli.run(["help", "--format", "json"]);
+
+		expect(exitCode).toBe(1);
+		expect(cli.lastError).toBeDefined();
+		expect(cli.lastError!.isExpected).toBe(true);
+		expect(cli.lastError!.error.message).toBe(
+			"The --format option requires a command name. Usage: aku help <command> --format json",
+		);
+	});
+
+	test("help db --format json outputs list-style JSON for group", async () => {
+		const { cli } = createTestApplication({ providers: [GroupedTestProvider] });
+
+		const exitCode = await cli.run(["help", "db", "--format", "json", "--pretty"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "{
+		      "commands": [
+		          {
+		              "command": "db migrate",
+		              "description": "Run database migrations"
+		          }
+		      ]
+		  }"
+		`);
+	});
+
+	test("help greet --format invalid errors", async () => {
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+
+		const exitCode = await cli.run(["help", "greet", "--format", "invalid"]);
+
+		expect(exitCode).toBe(1);
+		expect(cli.lastError).toBeDefined();
+		expect(cli.lastError!.isExpected).toBe(true);
+		expect(cli.lastError!.error.message).toBe(
+			'Unknown format: "invalid". Supported formats: json, toon',
+		);
 	});
 });
