@@ -17,7 +17,7 @@ const completeArgs = {
 		description: "The full command line",
 	},
 	point: {
-		type: "string",
+		type: "number",
 		positional: true,
 		description: "The cursor position",
 	},
@@ -36,7 +36,7 @@ class CompleteCommandHandler extends BaseCommand {
 		cli,
 	}: CommandExecuteContext<InferArgs<typeof completeArgs>>): Promise<void> {
 		const line = args.line ?? "";
-		const point = Number(args.point ?? line.length);
+		const point = args.point ?? line.length;
 
 		const completions = getCompletions(line, point, this.#registry);
 		if (completions.length > 0) {
@@ -90,11 +90,11 @@ export function getCompletions(line: string, point: number, registry: CommandReg
 		}
 		// Past the subcommand — complete flags for the two-word command
 		const twoWordName = `${commandName} ${subcommand}`;
-		return completeArguments(twoWordName, currentWord, registry);
+		return completeArguments(twoWordName, currentWord, words.slice(2), registry);
 	}
 
 	// Completing arguments for an ungrouped command
-	return completeArguments(commandName, currentWord, registry);
+	return completeArguments(commandName, currentWord, words.slice(1), registry);
 }
 
 function completeFirstWord(prefix: string, registry: CommandRegistry): string[] {
@@ -116,26 +116,43 @@ function completeGroupSubcommand(
 function completeArguments(
 	commandName: string,
 	currentWord: string,
+	precedingArgs: string[],
 	registry: CommandRegistry,
 ): string[] {
-	const definition = registry.getDefinition(commandName);
-	if (!definition?.args) return [];
-
 	if (currentWord.startsWith("-")) {
-		return completeFlags(definition.args, currentWord);
+		const definition = registry.getDefinition(commandName);
+		if (!definition?.args) return [];
+		return completeFlags(definition.args, currentWord, precedingArgs);
 	}
 
-	return [];
+	// Special-case: help completes command and group names
+	if (commandName === "help") {
+		return registry.getCommandNames().filter((name) => name.startsWith(currentWord));
+	}
+
+	// Special-case: list completes group names
+	if (commandName === "list") {
+		return registry.getGroupNames().filter((name) => name.startsWith(currentWord));
+	}
+
+	const definition = registry.getDefinition(commandName);
+	if (!definition?.args) return [];
+	return completeFlags(definition.args, currentWord, precedingArgs);
 }
 
-function completeFlags(schema: ArgumentSchema, prefix: string): string[] {
+function completeFlags(schema: ArgumentSchema, prefix: string, precedingArgs: string[]): string[] {
+	const usedFlags = new Set(
+		precedingArgs.filter((w) => w.startsWith("--")).map((w) => w.split("=")[0]),
+	);
+
 	const flags: string[] = [];
 	for (const [name, def] of Object.entries(schema)) {
-		if (!def.positional) {
-			const flagName = `--${kebabCase(name)}`;
-			if (flagName.startsWith(prefix)) {
-				flags.push(flagName);
-			}
+		if (def.positional) continue;
+		const flagName = `--${kebabCase(name)}`;
+		if (usedFlags.has(flagName) && !def.array) continue;
+		const completion = def.type === "boolean" ? flagName : `${flagName}=`;
+		if (completion.startsWith(prefix)) {
+			flags.push(completion);
 		}
 	}
 	return flags.sort();

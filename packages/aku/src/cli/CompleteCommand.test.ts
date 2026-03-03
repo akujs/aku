@@ -80,7 +80,7 @@ describe(getCompletions, () => {
 			},
 		]);
 		const result = complete(reg, "aku serve --");
-		expect(result).toEqual(["--host", "--port", "--verbose"]);
+		expect(result).toEqual(["--host=", "--port=", "--verbose"]);
 	});
 
 	test("completes flags with partial prefix", () => {
@@ -94,7 +94,7 @@ describe(getCompletions, () => {
 			},
 		]);
 		const result = complete(reg, "aku serve --p");
-		expect(result).toEqual(["--port"]);
+		expect(result).toEqual(["--port="]);
 	});
 
 	test("does not complete flags for unknown command", () => {
@@ -103,7 +103,8 @@ describe(getCompletions, () => {
 	});
 
 	test("does not complete flags for command without args", () => {
-		const result = complete(registry, "aku list --");
+		const reg = createRegistry([{ name: "noop" }]);
+		const result = complete(reg, "aku noop --");
 		expect(result).toEqual([]);
 	});
 
@@ -124,7 +125,7 @@ describe(getCompletions, () => {
 			},
 		]);
 		const result = complete(reg, "aku build --");
-		expect(result).toEqual(["--no-cache", "--output-dir"]);
+		expect(result).toEqual(["--no-cache", "--output-dir="]);
 	});
 
 	test("excludes positional args from flag completions", () => {
@@ -181,5 +182,139 @@ describe(getCompletions, () => {
 		const reg = createRegistry([{ name: "serve" }, { name: "db migrate" }]);
 		const result = complete(reg, "aku d");
 		expect(result).toEqual(["db"]);
+	});
+
+	test("completes flags without -- prefix", () => {
+		const reg = createRegistry([
+			{
+				name: "serve",
+				args: {
+					port: { type: "number", description: "Port to serve on" },
+					host: { type: "string", description: "Host to bind to" },
+				} as const satisfies ArgumentSchema,
+			},
+		]);
+		const result = complete(reg, "aku serve ");
+		expect(result).toEqual(["--host=", "--port="]);
+	});
+
+	test("completes flags after a positional arg value", () => {
+		const reg = createRegistry([
+			{
+				name: "build",
+				args: {
+					file: { type: "string", positional: true },
+					optimize: { type: "boolean" },
+				} as const satisfies ArgumentSchema,
+			},
+		]);
+		const result = complete(reg, "aku build somefile ");
+		expect(result).toEqual(["--optimize"]);
+	});
+
+	test("help completes command and group names", () => {
+		const reg = createRegistry([
+			{ name: "help", args: { command: { type: "string", positional: true, array: true } } },
+			{ name: "serve" },
+			{ name: "db migrate" },
+			{ name: "db seed" },
+		]);
+		const result = complete(reg, "aku help ");
+		expect(result).toEqual(["db", "help", "serve"]);
+	});
+
+	test("help completes command names with prefix", () => {
+		const reg = createRegistry([
+			{ name: "help", args: { command: { type: "string", positional: true, array: true } } },
+			{ name: "serve" },
+			{ name: "build" },
+		]);
+		const result = complete(reg, "aku help s");
+		expect(result).toEqual(["serve"]);
+	});
+
+	test("list completes group names", () => {
+		const reg = createRegistry([
+			{
+				name: "list",
+				args: { group: { type: "string", positional: true } },
+			},
+			{ name: "serve" },
+			{ name: "db migrate" },
+			{ name: "db seed" },
+			{ name: "cache clear" },
+		]);
+		const result = complete(reg, "aku list ");
+		expect(result).toEqual(["cache", "db"]);
+	});
+
+	test("list completes group names with prefix", () => {
+		const reg = createRegistry([
+			{
+				name: "list",
+				args: { group: { type: "string", positional: true } },
+			},
+			{ name: "db migrate" },
+			{ name: "cache clear" },
+		]);
+		const result = complete(reg, "aku list d");
+		expect(result).toEqual(["db"]);
+	});
+
+	test("excludes already-provided non-array flags", () => {
+		const reg = createRegistry([
+			{
+				name: "serve",
+				args: {
+					port: { type: "number" },
+					host: { type: "string" },
+					verbose: { type: "boolean" },
+				} as const satisfies ArgumentSchema,
+			},
+		]);
+		const result = complete(reg, "aku serve --port 8080 --");
+		expect(result).toEqual(["--host=", "--verbose"]);
+	});
+
+	test("excludes already-provided flags using = syntax", () => {
+		const reg = createRegistry([
+			{
+				name: "serve",
+				args: {
+					port: { type: "number" },
+					host: { type: "string" },
+				} as const satisfies ArgumentSchema,
+			},
+		]);
+		const result = complete(reg, "aku serve --port=8080 --");
+		expect(result).toEqual(["--host="]);
+	});
+
+	test("still offers array flags that are already provided", () => {
+		const reg = createRegistry([
+			{
+				name: "build",
+				args: {
+					include: { type: "string", array: true },
+					verbose: { type: "boolean" },
+				} as const satisfies ArgumentSchema,
+			},
+		]);
+		const result = complete(reg, "aku build --include foo --");
+		expect(result).toEqual(["--include=", "--verbose"]);
+	});
+
+	test("excludes already-provided flags for grouped commands", () => {
+		const reg = createRegistry([
+			{
+				name: "db migrate",
+				args: {
+					fresh: { type: "boolean" },
+					seed: { type: "boolean" },
+				} as const satisfies ArgumentSchema,
+			},
+		]);
+		const result = complete(reg, "aku db migrate --fresh --");
+		expect(result).toEqual(["--seed"]);
 	});
 });

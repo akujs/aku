@@ -47,8 +47,9 @@ function bashCompletions(): string {
 _aku_completions() {
   local IFS=$'\\n'
   COMPREPLY=($(aku _complete "$COMP_LINE" "$COMP_POINT"))
+  [[ \${#COMPREPLY[@]} -eq 1 && \${COMPREPLY[0]} == *= ]] && compopt -o nospace
 }
-complete -F _aku_completions aku
+complete -o default -F _aku_completions aku
 `;
 }
 
@@ -62,7 +63,18 @@ function zshCompletions(): string {
 _aku_completions() {
   local completions
   completions=(\${(f)"$(aku _complete "$BUFFER" "$CURSOR")"})
-  compadd -- $completions
+  if (( \${#completions} )); then
+    local c
+    for c in $completions; do
+      if [[ $c == *= ]]; then
+        compadd -S '' -- $c
+      else
+        compadd -- $c
+      fi
+    done
+  else
+    _files
+  fi
 }
 compdef _aku_completions aku
 `;
@@ -75,7 +87,7 @@ function fishCompletions(): string {
 #
 #   aku completions fish | source
 #
-complete -c aku -f -a '(aku _complete (commandline) (commandline -C))'
+complete -c aku -a '(aku _complete (commandline) (commandline -C))'
 `;
 }
 
