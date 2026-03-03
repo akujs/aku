@@ -23,7 +23,7 @@ export default defineConfig({
     build: true,
     sourcemap: true,
   },
-  clean: false,
+  clean: true,
   plugins: [
     visualizer({
       filename: "bundle-treemap.html",
