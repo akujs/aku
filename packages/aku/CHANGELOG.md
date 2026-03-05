@@ -1,5 +1,11 @@
 # @akujs/aku
 
+## 0.0.6
+
+### Patch Changes
+
+- 3b0528d: Use PAT for release PRs to trigger CI workflows, and use default changesets PR title
+
 ## 0.0.5
 
 ### Patch Changes
