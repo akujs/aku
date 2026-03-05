@@ -106,3 +106,8 @@ If a lint rule blocks your implementation:
 3. Let the human decide how to handle it
 
 It is acceptable to leave unfixable lint errors. It is NOT acceptable to add disable comments.
+
+## Creating commits and PRs
+
+- Do not add Co-Authored-By lines to commits or PRs, or otherwise add any indication of authorship in any place including comments.
+- Creating commits and PRs are irreversible actions. Unless you are directly instructed to do so, ask first.
