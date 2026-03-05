@@ -47,8 +47,8 @@ jobs:
       - name: Create Release Pull Request or Publish
         uses: changesets/action@v1
         with:
-          version: bun changeset version
-          publish: bun changeset publish
+          version: bun changeset version && bun update
+          publish: for dir in packages/*; do (cd "$dir" && bun publish --access public || true); done && bun changeset tag
           commit: 'Release ${{ env.CHANGED_PACKAGES }}'
           title: 'Release ${{ env.CHANGED_PACKAGES }}'
         env:
