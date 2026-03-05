@@ -1,5 +1,11 @@
 # @akujs/aku
 
+## 0.0.5
+
+### Patch Changes
+
+- 92145ea: Fix publish authentication by using bun pack with npm publish for OIDC support
+
 ## 0.0.4
 
 ### Patch Changes
