@@ -11,7 +11,9 @@
   },
   "scripts": {
     "changeset": "changeset",
-    "check": "bun run --cwd packages/aku check && bun run --cwd packages/aku build && bun run --cwd test-apps/nextjs check"
+    "check": "bun run --cwd packages/aku check && bun run --cwd packages/aku build && bun run --cwd test-apps/nextjs check",
+    "ci:version": "bun changeset version && bun update",
+    "ci:publish": "for dir in packages/*; do (cd \"$dir\" && bun publish --access public || true); done && bun changeset tag"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.5",
