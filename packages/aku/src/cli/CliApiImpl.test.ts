@@ -112,6 +112,7 @@ describe(CliApiImpl, () => {
 "  \x1B[34mshort      \x1B[39m  First item
   \x1B[34mmuch-longer\x1B[39m  Second item
   \x1B[34mmid        \x1B[39m  Third item
+
 "
 `);
 	});
@@ -126,6 +127,7 @@ describe(CliApiImpl, () => {
 "Options:
 
   \x1B[34m--help\x1B[39m  Show help
+
 "
 `);
 	});
@@ -145,6 +147,7 @@ describe(CliApiImpl, () => {
 "  \x1B[34m-\x1B[39m  Apples
   \x1B[34m-\x1B[39m  Bananas
   \x1B[34m-\x1B[39m  Cherries
+
 "
 `);
 	});
@@ -160,6 +163,7 @@ describe(CliApiImpl, () => {
 
   \x1B[34m-\x1B[39m  Apples
   \x1B[34m-\x1B[39m  Pears
+
 "
 `);
 	});
@@ -173,6 +177,7 @@ describe(CliApiImpl, () => {
 "  \x1B[34m1.\x1B[39m  First
   \x1B[34m2.\x1B[39m  Second
   \x1B[34m3.\x1B[39m  Third
+
 "
 `);
 	});
@@ -190,6 +195,7 @@ describe(CliApiImpl, () => {
 "  \x1B[34m2.\x1B[39m  Exactly-once delivery
   \x1B[34m1.\x1B[39m  Deterministic ordering
   \x1B[34m2.\x1B[39m  Exactly-once delivery
+
 "
 `);
 	});
@@ -205,6 +211,7 @@ describe(CliApiImpl, () => {
 
   \x1B[34m1.\x1B[39m  Do this
   \x1B[34m2.\x1B[39m  Then that
+
 "
 `);
 	});
@@ -224,6 +231,7 @@ describe(CliApiImpl, () => {
 
   \x1B[34mlist      \x1B[39m  List all commands
   \x1B[34mdb:migrate\x1B[39m  Run database migrations
+
 "
 `);
 	});

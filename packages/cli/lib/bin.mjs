@@ -23,5 +23,14 @@ while (true) {
 	akuPath = parent;
 }
 
-const { runCli } = await import(join(akuPath, "dist/cli.mjs"));
-runCli();
+try {
+	const { runCli } = await import(join(akuPath, "dist/cli.mjs"));
+	runCli();
+} catch (error) {
+	console.error(
+		"Error: Failed to load Aku CLI. Your installation may be corrupted.\n" +
+			"Try reinstalling with: npm install @akujs/aku\n\n" +
+			String(error),
+	);
+	process.exit(1);
+}

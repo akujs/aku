@@ -3,11 +3,15 @@ import { join, resolve } from "node:path";
 import { ApplicationImpl } from "../core/ApplicationImpl.ts";
 import { CliApiImpl } from "./CliApiImpl.ts";
 import { CliExitError } from "./cli-errors.ts";
+import { writeCrashDumpAndExit } from "./crash-dump.ts";
 
 /**
  * Entry point for CLI execution
  */
 export async function runCli(): Promise<never> {
+	process.on("uncaughtException", (error) => writeCrashDumpAndExit(error));
+	process.on("unhandledRejection", (reason) => writeCrashDumpAndExit(reason));
+
 	const args = process.argv.slice(2);
 	const cwd = process.cwd();
 	const cli = new CliApiImpl();
@@ -18,7 +22,16 @@ export async function runCli(): Promise<never> {
 		const { appPath, remainingArgs } = extractAppOption(args);
 		const entryFile = findAppFile(cwd, appPath);
 
-		const module = await import(entryFile);
+		let module;
+		try {
+			module = await import(entryFile);
+		} catch (error) {
+			process.stderr.write(
+				`Error: Failed to load app file ${appPath ?? entryFile}:\n${String(error)}\n`,
+			);
+			process.exit(1);
+		}
+
 		if (!module.app) {
 			throw new CliExitError(
 				'Entry file must export "app": export const app = createApplication(...)',
@@ -30,11 +43,12 @@ export async function runCli(): Promise<never> {
 
 		exitCode = await module.app.handleCommand(remainingArgs, cli);
 	} catch (error) {
-		// Errors here are configuration errors (app not found, not exported, etc.)
-		// These don't need crash dumps - just a simple error message
-		const message = error instanceof CliExitError ? error.message : String(error);
-		process.stderr.write(`Error: ${message}\n`);
-		exitCode = 1;
+		if (error instanceof CliExitError) {
+			process.stderr.write(`Error: ${error.message}\n`);
+			exitCode = error.exitCode;
+		} else {
+			writeCrashDumpAndExit(error);
+		}
 	}
 
 	process.exit(exitCode);
