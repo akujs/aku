@@ -1,13 +1,17 @@
-import type { Application } from "../core/contracts/Application.ts";
-import { BaseClass } from "../utils.ts";
-import type { CliConfirmOptions, CliInputOptions, CliSelectOptions } from "./contracts/CliApi.ts";
-import { CliErrorHandler } from "./contracts/CliErrorHandler.ts";
+import type {
+	CliConfirmOptions,
+	CliInputOptions,
+	CliSelectOptions,
+} from "../cli/contracts/CliApi.ts";
+import { CliErrorHandler } from "../cli/contracts/CliErrorHandler.ts";
 import {
 	type CapturedError,
 	type CliOutput,
 	MemoryCliApi,
 	type PendingPrompt,
-} from "./MemoryCliApi.ts";
+} from "../cli/MemoryCliApi.ts";
+import type { Application } from "../core/contracts/Application.ts";
+import { BaseClass } from "../utils.ts";
 
 export function tokeniseCommand(input: string): string[] {
 	const tokens: string[] = [];
@@ -77,6 +81,10 @@ export function tokeniseCommand(input: string): string[] {
 	return tokens;
 }
 
+/**
+ * Test harness for running CLI commands against an application and inspecting
+ * their output, errors, and interactive prompts.
+ */
 export class CliTestHarness extends BaseClass {
 	#app: Application;
 	#cli: MemoryCliApi;
@@ -88,18 +96,22 @@ export class CliTestHarness extends BaseClass {
 		app.container.singletonInstance(CliErrorHandler, this.#cli);
 	}
 
+	/** All CLI output rendered as a markdown string. */
 	get output(): string {
 		return renderCliOutputAsMarkdown(this.#cli.outputs);
 	}
 
+	/** All errors captured during command execution. */
 	get errors(): CapturedError[] {
 		return this.#cli.errors;
 	}
 
+	/** The most recent captured error, or `null` if no errors have been captured. */
 	get lastError(): CapturedError | null {
 		return this.#cli.lastError;
 	}
 
+	/** Clear all captured output and errors. */
 	reset(): void {
 		this.#cli.reset();
 	}

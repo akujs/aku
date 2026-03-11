@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createTestApplication } from "../test-utils/http.test-utils.ts";
+import { createTestApplication } from "../testing/create-test-application.ts";
 import { completionsCommand } from "./CompletionsCommand.ts";
 
 describe(completionsCommand.handler, () => {

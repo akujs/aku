@@ -1,10 +1,14 @@
 import { describe, expect, test } from "bun:test";
+import type { CommandExecuteContext } from "../cli/cli-types.ts";
+import type {
+	CliConfirmOptions,
+	CliInputOptions,
+	CliSelectOptions,
+} from "../cli/contracts/CliApi.ts";
+import { defineCommand } from "../cli/defineCommand.ts";
 import { ServiceProvider } from "../core/ServiceProvider.ts";
-import { createTestApplication } from "../test-utils/http.test-utils.ts";
 import { createCliTestHarness, tokeniseCommand } from "./cli-test-harness.ts";
-import type { CommandExecuteContext } from "./cli-types.ts";
-import type { CliConfirmOptions, CliInputOptions, CliSelectOptions } from "./contracts/CliApi.ts";
-import { defineCommand } from "./defineCommand.ts";
+import { createTestApplication } from "./create-test-application.ts";
 
 // ─── Test commands ───
 

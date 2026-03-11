@@ -176,6 +176,24 @@ export function getFileErrors(file: SourceFile): string[] {
 			);
 		}
 
+		// Entry points should only re-export values from within their own top-level module
+		// (type-only re-exports are allowed since they don't create runtime coupling)
+		if (
+			file.isEntryPoint() &&
+			exp.reexport &&
+			typeof exp.runtimeValue !== "symbol" &&
+			exp.reexport.originalFile.startsWith("../")
+		) {
+			const topLevelModule = file.path.split("/")[0];
+			const resolvedPath = file.project.resolveImportPath(file.path, exp.reexport.originalFile);
+			const reexportModule = resolvedPath.split("/")[0];
+			if (topLevelModule !== reexportModule) {
+				errors.push(
+					`Entry point ${file.path} re-exports from outside its module ("${exp.reexport.originalFile}"). Entry points should only re-export from within the ${topLevelModule}/ module.`,
+				);
+			}
+		}
+
 		const checkPublicApiDoc = !exp.isPrimitive && !exp.reexport;
 		if (checkPublicApiDoc && exp.project.entryPointMode !== "disable") {
 			// Check public API doc comments (skip re-exports - doc should be on original)

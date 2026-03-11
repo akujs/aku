@@ -4,11 +4,8 @@ import type { ControllerContext } from "../http/Controller.ts";
 import { BaseController } from "../http/Controller.ts";
 import { get, group } from "../http/helpers.ts";
 import type { Routes } from "../http/router-types.ts";
-import {
-	MockController,
-	mockIntegrationContext,
-	mockMiddleware,
-} from "../test-utils/http.test-utils.ts";
+import { MockController, mockMiddleware } from "../test-utils/http.test-utils.ts";
+import { mockIntegrationContext } from "../testing/mock-integration-context.ts";
 import { ApplicationImpl } from "./ApplicationImpl.ts";
 import type { Application, ServiceProviderReference } from "./contracts/Application.ts";
 import { Dispatcher } from "./contracts/Dispatcher.ts";

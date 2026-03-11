@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, expectTypeOf, test } from "bun:test";
 import { ContainerImpl } from "../container/ContainerImpl.ts";
 import type { Container } from "../container/contracts/Container.ts";
 import { Configuration } from "../core/contracts/Configuration.ts";
-import { createTestApplication, mockMiddleware } from "../test-utils/http.test-utils.ts";
+import { mockMiddleware } from "../test-utils/http.test-utils.ts";
+import { createTestApplication } from "../testing/create-test-application.ts";
 import type { ControllerContext } from "./Controller.ts";
 import { apiResource, group, resource } from "./helpers.ts";
 import { ResourceController } from "./ResourceController.ts";
@@ -14,8 +15,8 @@ beforeEach(() => {
 });
 
 const getMethodCalled = async (routes: Routes, path: string, method = "GET") => {
-	const { handle } = createTestApplication({ routes });
-	const response = await handle(path, method);
+	const { request } = createTestApplication({ routes });
+	const response = await request(path, { method });
 	return response.status === 200 ? await response.text() : response.status;
 };
 
