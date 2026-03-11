@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { ServiceProvider } from "../core/ServiceProvider.ts";
-import { createTestApplication } from "../test-utils/http.test-utils.ts";
+import { createTestApplication } from "../testing/create-test-application.ts";
 import type { CommandGroupDefinition } from "./cli-types.ts";
 import { defineCommand } from "./defineCommand.ts";
 import { listCommand } from "./ListCommand.ts";

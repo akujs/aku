@@ -35,6 +35,9 @@ export type PendingPrompt =
 	  }
 	| { type: "confirm"; options: CliConfirmOptions; respond(r: CliPromptResponse<unknown>): void };
 
+/**
+ * An error captured during CLI command execution.
+ */
 export type CapturedError = {
 	error: Error;
 	isExpected: boolean;

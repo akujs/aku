@@ -1,14 +1,9 @@
 import type { Mock } from "bun:test";
 import { mock } from "bun:test";
-import { createCliTestHarness } from "../cli/cli-test-harness.ts";
-import type { Configuration } from "../core/contracts/Configuration.ts";
-import { createApplication } from "../core/createApplication.ts";
 import type { BaseController, ControllerContext, FunctionController } from "../http/Controller.ts";
 import { type ControllerReturn } from "../http/Controller.ts";
 import { BaseMiddleware, type ClassMiddleware } from "../http/Middleware.ts";
 import { ResourceController } from "../http/ResourceController.ts";
-import { Router } from "../http/Router.ts";
-import type { IntegrationContext } from "../integrations/IntegrationContext.ts";
 
 export class MockController extends ResourceController {
 	override handle: Mock<BaseController["handle"]>;
@@ -70,72 +65,6 @@ export const controllerContext = (
 	meta: {},
 });
 
-/**
- * Create an integration context for testing with configurable behavior.
- *
- * @param options Configuration options
- * @param options.request Extract headers and requestUrl from a Request object
- * @param options.headers Custom header map for testing
- * @param options.cookies Custom cookie map for testing
- * @param options.requestUrl Override the requestUrl
- */
-export const mockIntegrationContext = (options?: {
-	request?: Request | undefined;
-	headers?: Record<string, string> | undefined;
-	cookies?: Record<string, string> | undefined;
-	requestUrl?: string | undefined;
-}): IntegrationContext => {
-	// Determine requestUrl
-	let requestUrl: URL | undefined;
-	if (options?.requestUrl) {
-		requestUrl = new URL(options.requestUrl);
-	} else if (options?.request) {
-		requestUrl = new URL(options.request.url);
-	}
-
-	// Determine header handling
-	let getRequestHeader: (name: string) => string | null;
-	let getRequestHeaderNames: () => IterableIterator<string>;
-
-	if (options?.request) {
-		// Extract from Request object
-		getRequestHeader = (name: string) => options.request!.headers.get(name);
-		getRequestHeaderNames = () => options.request!.headers.keys();
-	} else if (options?.headers) {
-		// Use custom header map
-		getRequestHeader = (name: string) => options.headers![name] ?? null;
-		getRequestHeaderNames = () => Object.keys(options.headers!)[Symbol.iterator]();
-	} else {
-		// Default: return null/empty
-		getRequestHeader = () => null;
-		getRequestHeaderNames = () => [][Symbol.iterator]();
-	}
-
-	// Determine cookie handling
-	let getCookie: (name: string) => string | null;
-	let getCookieNames: () => string[];
-
-	if (options?.cookies) {
-		getCookie = (name: string) => options.cookies![name] ?? null;
-		getCookieNames = () => Object.keys(options.cookies!);
-	} else {
-		getCookie = () => null;
-		getCookieNames = () => [];
-	}
-
-	return {
-		context: "test",
-		requestUrl,
-		getCookie,
-		getCookieNames,
-		deleteCookie: () => {},
-		setCookie: null,
-		getRequestHeader,
-		getRequestHeaderNames,
-		addKeepAliveTask: () => {},
-	};
-};
-
 interface MockMiddlewareFunction {
 	(name: string): ClassMiddleware;
 	log: string[];
@@ -153,7 +82,7 @@ interface MockMiddlewareFunction {
  * @example
  * const M1 = mockMiddleware("M1");
  * router.register(get("/test", controller, { middleware: M1 }));
- * await handle("/test");
+ * await request("/test");
  * expect(mockMiddleware.log).toEqual(["M1"]);
  *
  * @example
@@ -202,28 +131,3 @@ export const mockMiddleware: MockMiddlewareFunction = Object.assign(
 		},
 	},
 );
-
-export const createTestApplication = <RouteParams extends Record<string, string> = {}>(
-	config: Configuration<RouteParams> = {},
-) => {
-	const app = createApplication({
-		...config,
-		devMode: { autoRefresh: false, ...config.devMode },
-	});
-
-	const container = app.container;
-	const router = container.get(Router);
-
-	const handle = async (url: string, method = "GET") => {
-		if (url.startsWith("//")) {
-			url = "https:" + url;
-		} else if (url.startsWith("/")) {
-			url = "https://example.com" + url;
-		}
-		return await app.handleRequest(new Request(url, { method }), mockIntegrationContext());
-	};
-
-	const cli = createCliTestHarness(app);
-
-	return { app, container, router, handle, cli };
-};
