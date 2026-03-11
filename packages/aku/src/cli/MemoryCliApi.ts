@@ -52,7 +52,7 @@ export class MemoryCliApi extends BaseClass implements CliApi, CliErrorHandler {
 			error: normalised,
 			isExpected: normalised instanceof CliExitError,
 		});
-		return 1;
+		return normalised instanceof CliExitError ? normalised.exitCode : 1;
 	}
 
 	get lastError(): CapturedError | null {

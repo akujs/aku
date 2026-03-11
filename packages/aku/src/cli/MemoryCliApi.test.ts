@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { CliExitError } from "./cli-errors.ts";
 import { MemoryCliApi } from "./MemoryCliApi.ts";
 
 describe(MemoryCliApi, () => {
@@ -83,6 +84,19 @@ describe(MemoryCliApi, () => {
 		expect(cli.nextPrompt({ timeout: 50 })).rejects.toThrow(
 			"Timed out after 50ms waiting for a prompt",
 		);
+	});
+
+	test("handleError returns the exit code from CliExitError", () => {
+		const cli = new MemoryCliApi();
+
+		expect(cli.handleError(new CliExitError("fail", 2), cli)).toBe(2);
+		expect(cli.handleError(new CliExitError("fail", 42), cli)).toBe(42);
+	});
+
+	test("handleError returns 1 for unexpected errors", () => {
+		const cli = new MemoryCliApi();
+
+		expect(cli.handleError(new Error("unexpected"), cli)).toBe(1);
 	});
 
 	test("sequential prompts work", async () => {
