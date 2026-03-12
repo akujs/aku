@@ -279,6 +279,16 @@ describe(helpCommand.handler, () => {
 		`);
 	});
 
+	test("shows not-found error for unknown subcommand in a known group", async () => {
+		const { cli } = createTestApplication({ providers: [GroupedTestProvider] });
+
+		const exitCode = await cli.run(["help", "db", "migrat"]);
+
+		expect(exitCode).toBe(1);
+		expect(cli.lastError).toBeDefined();
+		expect(cli.lastError!.error.message).toContain("not found");
+	});
+
 	test("help greet --format invalid errors", async () => {
 		const { cli } = createTestApplication({ providers: [TestProvider] });
 

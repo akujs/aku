@@ -6,7 +6,7 @@ import {
 	select as inquirerSelect,
 } from "@inquirer/prompts";
 import wrapAnsi from "wrap-ansi";
-import { BaseClass } from "../utils.ts";
+import { BaseClass, withoutUndefinedValues } from "../utils.ts";
 import type {
 	CliApi,
 	CliConfirmOptions,
@@ -150,26 +150,23 @@ export class CliApiImpl extends BaseClass implements CliApi {
 	}
 
 	async select<V>(options: CliSelectOptions<V>): Promise<CliPromptResponse<V>> {
-		const choices = options.options.map((opt) => {
-			const choice: { name: string; value: V; description?: string } = {
-				name: opt.label,
-				value: opt.value,
-			};
-			if (opt.note !== undefined) {
-				choice.description = opt.note;
-			}
-			return choice;
-		});
-
-		const config: Parameters<typeof inquirerSelect<V>>[0] = {
-			message: options.prompt,
-			choices,
-		};
-		if (options.initialValue !== undefined) {
-			config.default = options.initialValue;
-		}
-
-		return this.#withEscapeCancel((ctx) => inquirerSelect(config, ctx));
+		return this.#withEscapeCancel((ctx) =>
+			inquirerSelect(
+				withoutUndefinedValues({
+					message: options.prompt,
+					choices: options.options.map((opt) =>
+						withoutUndefinedValues({
+							name: opt.label,
+							value: opt.value,
+							description: opt.note,
+							short: opt.selectedLabel,
+						}),
+					),
+					default: options.initialValue,
+				}),
+				ctx,
+			),
+		);
 	}
 
 	async input<T = string>(options: CliInputOptions<T>): Promise<CliPromptResponse<T>> {

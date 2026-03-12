@@ -76,7 +76,7 @@ export class CommandHandler extends BaseClass {
 
 	#rewriteHelpFlag(args: string[]): string[] {
 		if (!args.includes("--help")) return args;
-		const nonFlagArgs = args.filter((arg) => !arg.startsWith("-"));
-		return nonFlagArgs.length > 0 ? ["help", ...nonFlagArgs] : ["help"];
+		const rest = args.filter((arg) => arg !== "--help");
+		return ["help", ...rest];
 	}
 }

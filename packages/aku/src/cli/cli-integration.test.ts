@@ -272,6 +272,24 @@ describe("--help flag handling", () => {
 		  Try "aku list" for a list of available commands, or "aku help <command>" for help with a specific command."
 		`);
 	});
+
+	test("--help with --format flag passes format to help command", async () => {
+		class TestProvider extends ServiceProvider {
+			override get commands() {
+				return [greetCommand];
+			}
+		}
+
+		const { cli: helpCli } = createTestApplication({ providers: [TestProvider] });
+		const helpExitCode = await helpCli.run(["help", "greet", "--format", "json"]);
+
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+		const exitCode = await cli.run(["greet", "--help", "--format", "json"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toBe(helpCli.output);
+		expect(helpExitCode).toBe(0);
+	});
 });
 
 describe("help on validation failure", () => {

@@ -81,9 +81,9 @@ class HelpCommandHandler extends BaseCommand {
 			return;
 		}
 
-		// If the first arg matches a group name, show list for that group
+		// If the first arg matches a group name and no further args, show list for that group
 		const groupNames = this.#registry.getGroupNames();
-		if (groupNames.includes(args.command[0])) {
+		if (groupNames.includes(args.command[0]) && args.command.length === 1) {
 			if (args.format) {
 				cli.raw(
 					formatMachineCommandList(args.command[0], this.#registry, args.format, args.pretty),

@@ -99,6 +99,7 @@ export class CommandRegistry extends BaseClass {
 	getGroupNames(): string[] {
 		const groups = new Set<string>();
 		for (const cmd of this.#commands.values()) {
+			if (cmd.hidden) continue;
 			const prefix = this.#getGroupPrefix(cmd.name);
 			if (prefix) {
 				groups.add(prefix);

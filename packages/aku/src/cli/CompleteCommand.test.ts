@@ -68,6 +68,16 @@ describe(getCompletions, () => {
 		expect(result).toEqual(["migrate"]);
 	});
 
+	test("hidden grouped commands do not surface their group name", () => {
+		const reg = createRegistry([
+			{ name: "db migrate", hidden: true },
+			{ name: "db seed", hidden: true },
+			{ name: "serve" },
+		]);
+		const result = complete(reg, "aku ");
+		expect(result).toEqual(["serve"]);
+	});
+
 	test("completes flags for a known command", () => {
 		const reg = createRegistry([
 			{

@@ -150,9 +150,13 @@ function validateValues(defs: ProcessedDef[], values: Record<string, unknown>): 
 		throw new CliExitError(`Unknown option: --${unknownOption}`);
 	}
 
-	const missingValue = namedDefs.find(
-		(def) => values[def.argumentName] === true && def.type !== "boolean",
-	);
+	const missingValue = namedDefs.find((def) => {
+		if (def.type === "boolean") return false;
+		const value = values[def.argumentName];
+		if (value === true) return true;
+		if (Array.isArray(value) && value.includes(true)) return true;
+		return false;
+	});
 	if (missingValue) {
 		throw new CliExitError(`Option '--${missingValue.argumentName}' requires a value`);
 	}
@@ -226,7 +230,7 @@ function mapNamed(
 				}
 				result[def.name] = [];
 			} else if (Array.isArray(value)) {
-				result[def.name] = value.map((v) => convertValue(v, def.type));
+				result[def.name] = value.map((v) => convertValue(v, def.type, def.argumentName));
 			}
 			continue;
 		}
@@ -239,15 +243,20 @@ function mapNamed(
 			continue;
 		}
 
-		result[def.name] = convertValue(value, def.type);
+		result[def.name] = convertValue(value, def.type, def.argumentName);
 	}
 }
 
-function convertValue(value: unknown, type: "string" | "number"): string | number {
+function convertValue(
+	value: unknown,
+	type: "string" | "number",
+	argumentName?: string,
+): string | number {
 	if (type === "number") {
 		const num = Number(value);
 		if (Number.isNaN(num)) {
-			throw new CliExitError(`Invalid number: "${String(value)}"`);
+			const prefix = argumentName ? `Option --${argumentName} requires` : "Expected";
+			throw new CliExitError(`${prefix} a number, not "${String(value)}"`);
 		}
 		return num;
 	}

@@ -128,4 +128,16 @@ x           Third item
 "
 `);
 	});
+
+	test("produces sane output at very small widths", () => {
+		const result = twoColumnTable({ rows: [["key", "value"]], width: 5 });
+		expect(result).toBeDefined();
+		expect(result.length).toBeGreaterThan(0);
+	});
+
+	test("produces sane output at width of zero", () => {
+		const result = twoColumnTable({ rows: [["key", "value"]], width: 0 });
+		expect(result).toBeDefined();
+		expect(result.length).toBeGreaterThan(0);
+	});
 });

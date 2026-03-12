@@ -110,6 +110,7 @@ function extractAppOption(args: string[]): ExtractedAppOption {
 				i++; // Skip the next argument
 				continue;
 			}
+			throw new CliExitError("Option '--app' requires a value. Usage: --app=./path/to/app.ts");
 		}
 
 		remainingArgs.push(arg);

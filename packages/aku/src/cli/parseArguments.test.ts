@@ -379,6 +379,18 @@ describe(parseArguments, () => {
 				"Option '--port' requires a value",
 			);
 		});
+
+		test("throws for string array option without value", () => {
+			expect(() => parseArguments(["--ids"], { ids: { type: "string", array: true } })).toThrow(
+				"requires a value",
+			);
+		});
+
+		test("throws for number array option without value", () => {
+			expect(() => parseArguments(["--ids"], { ids: { type: "number", array: true } })).toThrow(
+				"requires a value",
+			);
+		});
 	});
 
 	describe("number arguments", () => {
@@ -406,13 +418,19 @@ describe(parseArguments, () => {
 
 		test("throws for invalid number format (positional)", () => {
 			expect(() => parseArguments(["abc"], { count: requiredNumberPositional })).toThrow(
-				'Invalid number: "abc"',
+				'Expected a number, not "abc"',
 			);
 		});
 
 		test("throws for invalid number format (named)", () => {
 			expect(() => parseArguments(["--port", "abc"], { port: optionalNumber })).toThrow(
-				'Invalid number: "abc"',
+				'Option --port requires a number, not "abc"',
+			);
+		});
+
+		test("numeric conversion error includes argument name", () => {
+			expect(() => parseArguments(["--port", "abc"], { port: optionalNumber })).toThrow(
+				`Option --port requires a number, not "abc"`,
 			);
 		});
 
