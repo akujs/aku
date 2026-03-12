@@ -36,6 +36,7 @@ export class DevModeWatchService extends BaseClass {
 		}
 		globalThis.__akuWatchService = this;
 
+		// eslint-disable-next-line no-restricted-globals -- fallback only, not worth abstracting
 		const paths = this.#config.devMode?.autoRefreshPaths ?? [process.cwd()];
 
 		if (paths.length === 0) {

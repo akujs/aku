@@ -4,17 +4,17 @@ import { ApplicationImpl } from "../core/ApplicationImpl.ts";
 import { CliApiImpl } from "./CliApiImpl.ts";
 import { CliExitError } from "./cli-errors.ts";
 import { writeCrashDumpAndExit } from "./crash-dump.ts";
+import { type ProcessApi, realProcessApi } from "./process-api.ts";
 
 /**
  * Entry point for CLI execution
  */
-export async function runCli(): Promise<never> {
-	process.on("uncaughtException", (error) => writeCrashDumpAndExit(error));
-	process.on("unhandledRejection", (reason) => writeCrashDumpAndExit(reason));
+export async function runCli(proc: ProcessApi = realProcessApi): Promise<void> {
+	proc.onUnhandledError((error) => writeCrashDumpAndExit(error, proc));
 
-	const args = process.argv.slice(2);
-	const cwd = process.cwd();
-	const cli = new CliApiImpl();
+	const args = proc.argv();
+	const cwd = proc.cwd();
+	const cli = new CliApiImpl(proc);
 
 	let exitCode: number;
 
@@ -22,14 +22,14 @@ export async function runCli(): Promise<never> {
 		const { appPath, remainingArgs } = extractAppOption(args);
 		const entryFile = findAppFile(cwd, appPath);
 
-		let module;
+		let module: Record<string, unknown>;
 		try {
-			module = await import(entryFile);
+			module = (await proc.importModule(entryFile)) as Record<string, unknown>;
 		} catch (error) {
-			process.stderr.write(
-				`Error: Failed to load app file ${appPath ?? entryFile}:\n${String(error)}\n`,
-			);
-			process.exit(1);
+			proc.stderr(`Error: Failed to load app file ${appPath ?? entryFile}:\n${String(error)}\n`);
+			proc.cleanup();
+			proc.exit(1);
+			return;
 		}
 
 		if (!module.app) {
@@ -44,14 +44,16 @@ export async function runCli(): Promise<never> {
 		exitCode = await module.app.handleCommand(remainingArgs, cli);
 	} catch (error) {
 		if (error instanceof CliExitError) {
-			process.stderr.write(`Error: ${error.message}\n`);
+			proc.stderr(`Error: ${error.message}\n`);
 			exitCode = error.exitCode;
 		} else {
-			writeCrashDumpAndExit(error);
+			writeCrashDumpAndExit(error, proc);
+			return;
 		}
 	}
 
-	process.exit(exitCode);
+	proc.cleanup();
+	proc.exit(exitCode);
 }
 
 function findAppFile(cwd: string, appPath?: string): string {

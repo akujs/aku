@@ -11,7 +11,8 @@
     "prefer-node-protocol": "error",
     "no-unused-private-class-members": "error",
     "no-console": "error",
-    "no-debugger": "error"
+    "no-debugger": "error",
+    "no-restricted-globals": ["error", { "name": "process", "message": "Use ProcessApi instead of the process global" }]
   },
   "overrides": [
     {
@@ -34,7 +35,8 @@
         "typescript/unbound-method": "off",
         "no-restricted-imports": "off",
         "no-eval": "off",
-        "no-console": "off"
+        "no-console": "off",
+        "no-restricted-globals": "off"
       }
     }
   ]

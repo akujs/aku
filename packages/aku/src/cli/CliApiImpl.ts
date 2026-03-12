@@ -20,20 +20,28 @@ import type {
 	CliUlOptions,
 	CliUnorderedListItem,
 } from "./contracts/CliApi.ts";
+import { type ProcessApi, realProcessApi } from "./process-api.ts";
 import { twoColumnTable } from "./two-column-table.ts";
 
 export class CliApiImpl extends BaseClass implements CliApi {
+	#proc: ProcessApi;
+
+	constructor(proc: ProcessApi = realProcessApi) {
+		super();
+		this.#proc = proc;
+	}
+
 	get columns(): number {
-		const env = process.env.COLUMNS;
+		const env = this.#proc.getEnv("COLUMNS");
 		if (env) {
 			const parsed = parseInt(env, 10);
 			if (parsed > 0) return parsed;
 		}
-		return Math.min(process.stdout.columns || 80, 120);
+		return Math.min(this.#proc.stdoutColumns(), 120);
 	}
 
 	get isInteractive(): boolean {
-		return !!process.stdin.isTTY;
+		return this.#proc.stdinIsTty();
 	}
 
 	async #withEscapeCancel<T>(
@@ -45,7 +53,7 @@ export class CliApiImpl extends BaseClass implements CliApi {
 				controller.abort();
 			}
 		};
-		process.stdin.on("keypress", onKeypress);
+		this.#proc.onKeypress(onKeypress);
 		try {
 			const value = await fn({ signal: controller.signal });
 			return { success: true, value };
@@ -58,32 +66,32 @@ export class CliApiImpl extends BaseClass implements CliApi {
 			}
 			throw error;
 		} finally {
-			process.stdin.removeListener("keypress", onKeypress);
+			this.#proc.offKeypress(onKeypress);
 		}
 	}
 
 	raw(text: string): void {
-		process.stdout.write(text);
+		this.#proc.stdout(text);
 	}
 
 	p(text: string): void {
 		const width = this.columns;
 		const wrapped = wrapAnsi(text, width, { hard: true });
-		process.stdout.write(wrapped + "\n\n");
+		this.#proc.stdout(wrapped + "\n\n");
 	}
 
 	br(): void {
-		process.stdout.write("\n");
+		this.#proc.stdout("\n");
 	}
 
 	h1(text: string): void {
 		const styled = styleText("bold", text.toUpperCase());
-		process.stdout.write("\n" + styled + "\n\n");
+		this.#proc.stdout("\n" + styled + "\n\n");
 	}
 
 	h2(text: string): void {
 		const styled = styleText("underline", text);
-		process.stdout.write(styled + "\n");
+		this.#proc.stdout(styled + "\n");
 	}
 
 	dl(options: CliDlOptions): void {
@@ -103,7 +111,7 @@ export class CliApiImpl extends BaseClass implements CliApi {
 			leftColor: "blue",
 			indent: "  ",
 		});
-		process.stdout.write(output + "\n");
+		this.#proc.stdout(output + "\n");
 	}
 
 	ul(options: CliUlOptions): void {
@@ -123,7 +131,7 @@ export class CliApiImpl extends BaseClass implements CliApi {
 			leftColor: "blue",
 			indent: "  ",
 		});
-		process.stdout.write(output + "\n");
+		this.#proc.stdout(output + "\n");
 	}
 
 	ol(options: CliOlOptions): void {
@@ -146,7 +154,7 @@ export class CliApiImpl extends BaseClass implements CliApi {
 			leftColor: "blue",
 			indent: "  ",
 		});
-		process.stdout.write(output + "\n");
+		this.#proc.stdout(output + "\n");
 	}
 
 	async select<V>(options: CliSelectOptions<V>): Promise<CliPromptResponse<V>> {
@@ -195,7 +203,7 @@ export class CliApiImpl extends BaseClass implements CliApi {
 					const parsed = options.parse(response.value);
 					return { success: true, value: parsed };
 				} catch (parseError) {
-					process.stdout.write((parseError as Error).message + "\n");
+					this.#proc.stdout((parseError as Error).message + "\n");
 					continue;
 				}
 			}

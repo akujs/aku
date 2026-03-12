@@ -1,105 +1,90 @@
-import { beforeEach, describe, expect, spyOn, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { CliApiImpl } from "./CliApiImpl.ts";
+import { MemoryProcessApi } from "./MemoryProcessApi.ts";
 
 describe(CliApiImpl, () => {
-	let stdout: string;
-	let cli: CliApiImpl;
-
-	beforeEach(() => {
-		stdout = "";
-		delete process.env.COLUMNS;
-		spyOn(process.stdout, "write").mockImplementation((str) => {
-			stdout += str;
-			return true;
+	function setup(options?: { stdoutColumns?: number; env?: Record<string, string> }) {
+		const proc = new MemoryProcessApi({
+			stdoutColumns: options?.stdoutColumns ?? 60,
+			env: options?.env,
 		});
-		// Mock terminal width for consistent tests
-		Object.defineProperty(process.stdout, "columns", { value: 60, configurable: true });
-		cli = new CliApiImpl();
-	});
+		const cli = new CliApiImpl(proc);
+		return { proc, cli };
+	}
 
 	describe("columns", () => {
-		test("uses process.stdout.columns when COLUMNS env var is not set", () => {
-			delete process.env.COLUMNS;
-			Object.defineProperty(process.stdout, "columns", { value: 100, configurable: true });
+		test("uses stdoutColumns when COLUMNS env var is not set", () => {
+			const { cli } = setup({ stdoutColumns: 100 });
 
 			expect(cli.columns).toBe(100);
 		});
 
-		test("caps process.stdout.columns at 120", () => {
-			delete process.env.COLUMNS;
-			Object.defineProperty(process.stdout, "columns", { value: 200, configurable: true });
+		test("caps stdoutColumns at 120", () => {
+			const { cli } = setup({ stdoutColumns: 200 });
 
 			expect(cli.columns).toBe(120);
 		});
 
-		test("falls back to 80 when stdout has no columns", () => {
-			delete process.env.COLUMNS;
-			Object.defineProperty(process.stdout, "columns", { value: 0, configurable: true });
+		test("passes through stdoutColumns value directly", () => {
+			const { cli } = setup({ stdoutColumns: 42 });
 
-			expect(cli.columns).toBe(80);
+			expect(cli.columns).toBe(42);
 		});
 
-		test("COLUMNS env var overrides process.stdout.columns", () => {
-			process.env.COLUMNS = "40";
-			Object.defineProperty(process.stdout, "columns", { value: 100, configurable: true });
+		test("COLUMNS env var overrides stdoutColumns", () => {
+			const { cli } = setup({ stdoutColumns: 100, env: { COLUMNS: "40" } });
 
 			expect(cli.columns).toBe(40);
 		});
 
 		test("COLUMNS env var is not capped at 120", () => {
-			process.env.COLUMNS = "200";
+			const { cli } = setup({ env: { COLUMNS: "200" } });
 
 			expect(cli.columns).toBe(200);
 		});
 
 		test("ignores invalid COLUMNS env var", () => {
-			process.env.COLUMNS = "not-a-number";
-			Object.defineProperty(process.stdout, "columns", { value: 90, configurable: true });
+			const { cli } = setup({ stdoutColumns: 90, env: { COLUMNS: "not-a-number" } });
 
 			expect(cli.columns).toBe(90);
 		});
 	});
 
 	test("p() outputs wrapped text with trailing blank line", () => {
+		const { proc, cli } = setup();
+
 		cli.p("Hello world");
 
-		expect(stdout).toMatchInlineSnapshot(`
-"Hello world
-
-"
-`);
+		expect(proc.state).toEqual({ stdout: ["Hello world\n\n"] });
 	});
 
 	test("br() outputs empty line", () => {
+		const { proc, cli } = setup();
+
 		cli.br();
 
-		expect(stdout).toMatchInlineSnapshot(`
-"
-"
-`);
+		expect(proc.state).toEqual({ stdout: ["\n"] });
 	});
 
 	test("h1() renders bold with line breaks above and below", () => {
+		const { proc, cli } = setup();
+
 		cli.h1("My Title");
 
-		expect(stdout).toMatchInlineSnapshot(`
-"
-\x1B[1mMY TITLE\x1B[22m
-
-"
-`);
+		expect(proc.state).toEqual({ stdout: ["\n\x1B[1mMY TITLE\x1B[22m\n\n"] });
 	});
 
 	test("h2() renders underlined with line break below", () => {
+		const { proc, cli } = setup();
+
 		cli.h2("My Subtitle");
 
-		expect(stdout).toMatchInlineSnapshot(`
-"\x1B[4mMy Subtitle\x1B[24m
-"
-`);
+		expect(proc.state).toEqual({ stdout: ["\x1B[4mMy Subtitle\x1B[24m\n"] });
 	});
 
 	test("dl() formats as aligned table with blue labels", () => {
+		const { proc, cli } = setup();
+
 		cli.dl({
 			items: [
 				{ label: "short", definition: "First item" },
@@ -108,7 +93,7 @@ describe(CliApiImpl, () => {
 			],
 		});
 
-		expect(stdout).toMatchInlineSnapshot(`
+		expect(proc.state.stdout?.join("")).toMatchInlineSnapshot(`
 "  \x1B[34mshort      \x1B[39m  First item
   \x1B[34mmuch-longer\x1B[39m  Second item
   \x1B[34mmid        \x1B[39m  Third item
@@ -118,12 +103,14 @@ describe(CliApiImpl, () => {
 	});
 
 	test("dl() with title outputs title first", () => {
+		const { proc, cli } = setup();
+
 		cli.dl({
 			title: "Options:",
 			items: [["--help", "Show help"]],
 		});
 
-		expect(stdout).toMatchInlineSnapshot(`
+		expect(proc.state.stdout?.join("")).toMatchInlineSnapshot(`
 "Options:
 
   \x1B[34m--help\x1B[39m  Show help
@@ -133,17 +120,21 @@ describe(CliApiImpl, () => {
 	});
 
 	test("dl() with empty array outputs nothing", () => {
+		const { proc, cli } = setup();
+
 		cli.dl({ items: [] });
 
-		expect(stdout).toBe("");
+		expect(proc.state).toEqual({});
 	});
 
 	test("ul() formats as bullet list with blue bullets", () => {
+		const { proc, cli } = setup();
+
 		cli.ul({
 			items: ["Apples", "Bananas", "Cherries"],
 		});
 
-		expect(stdout).toMatchInlineSnapshot(`
+		expect(proc.state.stdout?.join("")).toMatchInlineSnapshot(`
 "  \x1B[34m-\x1B[39m  Apples
   \x1B[34m-\x1B[39m  Bananas
   \x1B[34m-\x1B[39m  Cherries
@@ -153,12 +144,14 @@ describe(CliApiImpl, () => {
 	});
 
 	test("ul() with title outputs title first", () => {
+		const { proc, cli } = setup();
+
 		cli.ul({
 			title: "Fruits:",
 			items: ["Apples", "Pears"],
 		});
 
-		expect(stdout).toMatchInlineSnapshot(`
+		expect(proc.state.stdout?.join("")).toMatchInlineSnapshot(`
 "Fruits:
 
   \x1B[34m-\x1B[39m  Apples
@@ -169,11 +162,13 @@ describe(CliApiImpl, () => {
 	});
 
 	test("ol() formats as numbered list with blue numbers", () => {
+		const { proc, cli } = setup();
+
 		cli.ol({
 			items: ["First", "Second", "Third"],
 		});
 
-		expect(stdout).toMatchInlineSnapshot(`
+		expect(proc.state.stdout?.join("")).toMatchInlineSnapshot(`
 "  \x1B[34m1.\x1B[39m  First
   \x1B[34m2.\x1B[39m  Second
   \x1B[34m3.\x1B[39m  Third
@@ -183,6 +178,8 @@ describe(CliApiImpl, () => {
 	});
 
 	test("ol() supports custom list numbers", () => {
+		const { proc, cli } = setup();
+
 		cli.ol({
 			items: [
 				{ listNumber: 2, label: "Exactly-once delivery" },
@@ -191,7 +188,7 @@ describe(CliApiImpl, () => {
 			],
 		});
 
-		expect(stdout).toMatchInlineSnapshot(`
+		expect(proc.state.stdout?.join("")).toMatchInlineSnapshot(`
 "  \x1B[34m2.\x1B[39m  Exactly-once delivery
   \x1B[34m1.\x1B[39m  Deterministic ordering
   \x1B[34m2.\x1B[39m  Exactly-once delivery
@@ -201,12 +198,14 @@ describe(CliApiImpl, () => {
 	});
 
 	test("ol() with title outputs title first", () => {
+		const { proc, cli } = setup();
+
 		cli.ol({
 			title: "Steps:",
 			items: ["Do this", "Then that"],
 		});
 
-		expect(stdout).toMatchInlineSnapshot(`
+		expect(proc.state.stdout?.join("")).toMatchInlineSnapshot(`
 "Steps:
 
   \x1B[34m1.\x1B[39m  Do this
@@ -217,6 +216,8 @@ describe(CliApiImpl, () => {
 	});
 
 	test("combined output", () => {
+		const { proc, cli } = setup();
+
 		cli.h1("Available commands");
 		cli.dl({
 			items: [
@@ -225,7 +226,7 @@ describe(CliApiImpl, () => {
 			],
 		});
 
-		expect(stdout).toMatchInlineSnapshot(`
+		expect(proc.state.stdout?.join("")).toMatchInlineSnapshot(`
 "
 \x1B[1mAVAILABLE COMMANDS\x1B[22m
 
