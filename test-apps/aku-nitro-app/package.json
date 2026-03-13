@@ -4,7 +4,9 @@
 	"scripts": {
 		"build": "nitro build",
 		"dev": "nitro dev",
-		"preview": "node .output/server/index.mjs"
+		"preview": "node .output/server/index.mjs",
+		"check": "bun test integration/",
+		"test:integration": "bun test integration/"
 	},
 	"devDependencies": {
 		"h3": "^1.15.4",

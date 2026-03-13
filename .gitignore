@@ -5,3 +5,5 @@ yarn-debug.log*
 yarn-error.log*
 *.tsbuildinfo
 coverage
+.vercel
+.env.local

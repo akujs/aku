@@ -1,6 +1,4 @@
-export default defineEventHandler((event) => {
-	const path = getRouterParam(event, 'path');
-	const url = getRequestURL(event);
+import { makeEventHandler } from "@akujs/aku/integrations/nitro";
+import { app } from "../../aku/app";
 
-	return `A catch all path here ${path} and URL is ${url}!`;
-});
+export default makeEventHandler(app);
