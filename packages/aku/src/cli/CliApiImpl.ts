@@ -228,7 +228,7 @@ const normaliseDefinitionListItem = (
 	item: CliDefinitionListItem,
 ): { label: string; definition: string } => {
 	if (Array.isArray(item)) {
-		return { label: item[0], definition: item[1] };
+		return { label: item[0] ?? "", definition: item[1] ?? "" };
 	}
 	if (typeof item === "string") {
 		return { label: item, definition: "" };

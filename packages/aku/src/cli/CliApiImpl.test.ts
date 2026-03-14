@@ -127,6 +127,28 @@ describe(CliApiImpl, () => {
 		expect(proc.state).toEqual({});
 	});
 
+	test("dl() accepts string[] items", () => {
+		const { proc, cli } = setup();
+		const items: string[] = ["label", "definition"];
+
+		cli.dl({ items: [items] });
+
+		expect(proc.state.stdout?.join("")).toContain("label");
+		expect(proc.state.stdout?.join("")).toContain("definition");
+	});
+
+	test("dl() treats missing array elements as empty strings", () => {
+		const { proc, cli } = setup();
+
+		cli.dl({
+			items: [["label-only"], [], ["a", "b", "extra-ignored"]],
+		});
+
+		const output = proc.state.stdout?.join("");
+		expect(output).toContain("label-only");
+		expect(output).not.toContain("undefined");
+	});
+
 	test("ul() formats as bullet list with blue bullets", () => {
 		const { proc, cli } = setup();
 
