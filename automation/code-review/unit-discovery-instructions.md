@@ -1,164 +1,97 @@
 # Unit Discovery Instructions
 
-You are a sub-agent responsible for analysing a codebase and breaking it into review units. You will produce a set of unit files that other agents will use as their review briefs.
+You are a sub-agent, invoked by an orchestrator agent, responsible for analysing a codebase and breaking it into review units. You write a report detailing the review units and then stop, returning control to the orchestrator who will present the plan  to the user for approval before review agents begin work.
 
 ## Input
 
 You will receive:
 
-- A **review folder path** — the directory where you write your outputs (e.g. `automation/code-review/reviews/2025-03-15-14-30-http-refactor/`)
-- A **scope description** — an unambiguous description of the changes under review. This may be whole files, or specific parts of files
-- Access to the full codebase for context - if you need information that has not been provided to you, you may look it up
+- This file of instructions
+- A **scope of code** — what code to review. This may be a folder path, a set of files, or a git range
+- A **review folder path** to write the report to
+- Access to the full codebase for context
 
 ## Process
 
-### Step 1: Identify flows
+### 1. Identify flows
 
-Analyse the codebase within and around the scope of review to identify major flows.
+Analyse the codebase within the scope to identify major flows.
 
-A flow is a chain of operations triggered by an external input or event, where **data undergoes transformation or decision-making as it crosses file boundaries**, creating implicit contracts between files about data shape, state, or semantics. The flow has a meaningful lifecycle: it begins with an input, passes through processing stages in different files, and produces an outcome. Flows typically involve three or more files, but in some cases can involve only two files if it involves genuine handing off of responsibility from one system to another, rather than just calling a utility function.
+A flow is a chain of operations triggered by an external input or event, where **data undergoes transformation or decision-making as it crosses file boundaries**, creating implicit contracts between files about data shape, state, or semantics. It begins with an input, passes through processing stages in different files, and produces an outcome. Flows typically involve three or more files, but can involve two if there is genuine handing off of responsibility rather than just calling a utility.
 
-**Do NOT count as flows:**
+**Not flows:** utility calls, simple delegation, shared infrastructure.
 
-- A file calling a utility function in another file (the utility's contract is self-contained)
-- Simple delegation where A calls B and returns the result unchanged
-- Shared infrastructure like logging or configuration
+**Flows:** input → parse → validate → process → respond; event → state lookup → mutation → side effects; command → plan → execute → aggregate; and similar.
 
-**DO count as flows (non-exhaustive list):**
+When reviewing a diff rather than whole files: identify all flows that **pass through any changed file**. The flow is the unit of review even if only one function was altered.
 
-- External input → parsing → validation → processing → response
-- Event received → state lookup → state mutation → side effects
-- User command → plan construction → execution → result aggregation
-- Other similar patterns
+### 2. Determine file coverage
 
-For each flow, determine:
+For each file in a flow, assess whether it exists solely to participate in that flow. Files with no independent responsibility are **wholly covered** by the flow and do not need a separate file-based unit. Files that participate in a flow but also have independent responsibilities should still get their own file-based unit.
 
-- A short descriptive name (used as the unit filename, e.g. `flow-http-request-lifecycle`)
-- A one-line description of what the flow does
-- The list of files involved, and key symbols in each file
-- What data enters the flow, how it is transformed at each stage, and what comes out
-- The implicit contracts between files (assumptions each file makes about what adjacent files produce or consume)
+### 3. Group remaining files
 
-When reviewing a diff rather than whole files/folders: identify all flows in the module that **pass through any changed file**. The flow is the unit of review even if only one function in one file was altered — the purpose is to review that change in the context of the full flow.
+Group all files not wholly covered by a flow into file-based units:
 
-### Step 2: Determine file coverage by flows
+- **Large files >400 lines:** typically one unit per file.
+- **Related files** may be grouped if total is under ~800 lines and they are cohesive.
+- **Do not split a single class or cohesive abstraction across units.**
 
-For each file involved in a flow, assess whether the file exists solely to participate in that flow. If the file has no independent responsibility — its only purpose is to serve as a stage in this flow — mark it as **wholly covered** by the flow. These files do not need a separate file-based review unit.
+### 4. Write the units.md file
 
-Files that participate in a flow but also have independent responsibilities should still receive their own file-based review unit.
+You may do whatever analysis and internal reasoning you need, remembering information and storing data in temporary files if necessary. When you are finished, format a report using the output format below and write it to `{review-folder-path}/units.md`. Output a brief note to the orchestrator agent telling it that you have finished.
 
-### Step 3: Group remaining files into file-based units
+## Output format
 
-Take all files in the scope of review that are **not wholly covered** by a flow and group them into file-based review units.
+The output lists flows first, then file groups. Be dense — this is a working document for review agents, not prose.
 
-Guidelines for composing file-based review units:
+For each file, the **To review** annotation describes what the review agent should focus on: specific methods, line ranges, or "Whole file". For flows, each file also has a **Role** describing its part in the flow.
 
-- **Large files >400 lines:** one review unit per file.
-- **Small related files** (e.g. a type file, its implementation, and its helpers) may be grouped into one unit if the total is under ~800 lines and the files are cohesive — they implement the same feature or abstraction.
-- **Do not split a single class or cohesive abstraction across units.** Keep code together that needs to be understood together.
+### Example output
 
-Give each unit a short descriptive name (used as the filename, e.g. `unit-route-helpers`).
-
-### Step 4: Annotate changes
-
-For every unit (flow or file-based), annotate each file with its change status:
-
-- **changed** — this file was modified in the diff. Include a description of what changed: line ranges, added/modified/deleted functions or methods, new exports, changed signatures, etc.
-- **context** — this file was not modified, but is included so the reviewer can understand the surrounding code. For flows, context files are stages in the flow that were not themselves changed. For file units, context files are closely related files that help the reviewer understand the changed code.
-
-When reviewing a whole module rather than a diff, all files are implicitly "changed" (everything is in scope for review). Omit change annotations and include an instruction to review the whole file.
-
-### Step 5: Assign criteria
-
-For each unit, list which criteria categories (from `automation/code-review/criteria/`) should be applied. The default is to include every criteria category. Omit a criteria only when it clearly does not apply — for example, concurrency criteria can be omitted for review units that contain no asynchronous code.
-
-### Step 6: Write output
-
-Write one markdown file per review unit to `{review-folder}/units/`.
-
-Naming convention:
-- Flow units: `flow-{descriptive-name}.md`
-- File units: `file-{descriptive-name}.md`
-
-After writing all unit files, return a **plan summary** to the orchestrator (not written to disk — returned as your response). The plan summary should contain, for each unit:
-
-- The unit name
-- Type: `flow` or `file`
-- A one-line description
-- The list of files (names only, not full details)
-- The list of assigned criteria
-- The file path to the unit file on disk
-
-This summary is what the orchestrator presents to the human for approval. It must be compact enough to scan quickly.
-
-## Unit file format
-
-### Flow unit
-
-```markdown
-# Flow: [Descriptive Name]
-
-## Description
-
-[One to three sentences describing what this flow does, what triggers it, and what the outcome is.]
-
-## Data Lifecycle
-
-[Describe what data enters the flow, how it is transformed at each stage, and what comes out. This is the core briefing that distinguishes a flow review from reading the same files independently.]
-
-## Files
-
-### 1. `path/to/first-file.ts` (changed)
-
-**Changes:** [Description of what was modified — e.g. "Lines 50-60: constraint checking logic rewritten to support wildcards", or "New method `resolveWithFallback` added".]
-
-**Role in flow:** [What this file does in the context of the flow — e.g. "Receives Request, searches route tree, returns RouteWithParams".]
-
-### 2. `path/to/second-file.ts` (context)
-
-**Role in flow:** [What this file does in the context of the flow.]
-
-### 3. `path/to/third-file.ts` (changed)
-
-**Changes:** [Description of changes.]
-
-**Role in flow:** [What this file does in the context of the flow.]
-
-## Implicit Contracts
-
-[Bullet list of assumptions each file makes about what adjacent files produce or consume. These are the things most likely to break when one file is changed without updating another. This is the highest-value section of a flow review brief — it tells the reviewer exactly where to look for integration issues.]
-
-## Criteria
-
-- [criteria-name-1]
-- [criteria-name-2]
 ```
+# Review Plan
 
-### File-based unit
+## Flows
 
-```markdown
-# Unit: [Descriptive Name]
+### Flow: HTTP Request Lifecycle
+Incoming request → route matching → middleware chain → handler → response serialisation.
 
-## Description
+Data lifecycle: `Request` enters at `server.ts:handleRequest`, gains `RouteMatch` from `router.ts:resolve`, is wrapped in `RequestContext` by `middleware.ts:buildContext`, handler receives context and returns `ResponseBody`, serialised by `response.ts:send`.
 
-[One to three sentences describing what this code does.]
+Implicit contracts:
+- `router.ts` assumes route patterns registered by `server.ts:register` are valid regexes
+- `middleware.ts` assumes `RouteMatch.params` keys match handler parameter names
+- `response.ts` assumes `ResponseBody.headers` are already validated
 
-## Files
+Files:
+- `src/server.ts` — Role: entry point, dispatches to router. To review: `handleRequest` (lines 45-120), `register` (lines 20-40)
+- `src/router.ts` — Role: matches URL to route, returns params. To review: whole file
+- `src/middleware.ts` — Role: builds context, runs middleware chain. To review: `buildContext` (lines 30-85)
+- `src/response.ts` — Role: serialises handler return value to HTTP response. To review: `send`, `serialiseBody`
 
-### `path/to/file.ts` (changed)
+### Flow: WebSocket Connection Upgrade
+HTTP upgrade request → protocol negotiation → connection registry → message pump.
 
-**Changes:** [Description of what was modified.]
+Data lifecycle: upgrade request enters at `server.ts:handleUpgrade`, `ws-handshake.ts` validates headers and negotiates protocol, `connection-registry.ts` tracks the socket, `message-pump.ts` manages read/write loops.
 
-### `path/to/related-file.ts` (context)
+Implicit contracts:
+- `ws-handshake.ts` assumes `Sec-WebSocket-Key` header is present (server.ts should reject before reaching handshake)
+- `message-pump.ts` assumes connection is fully established before first read
 
-[No changes section needed for context files.]
+Files:
+- `src/server.ts` — Role: detects upgrade, delegates. To review: `handleUpgrade` (lines 130-160)
+- `src/ws-handshake.ts` — Role: validates and completes handshake. To review: whole file
+- `src/connection-registry.ts` — Role: tracks active connections. To review: `add`, `remove`, `getAll`
+- `src/message-pump.ts` — Role: bidirectional message loop. To review: whole file
 
-## Criteria
+## File Groups
 
-- [criteria-name-1]
-- [criteria-name-2]
+### Config and Environment
+- `src/config.ts` — To review: whole file
+- `src/env.ts` — To review: `loadEnv`, `validateRequired`
+
+### Route Helpers
+- `src/route-helpers.ts` — To review: whole file
+- `src/route-types.ts` — To review: whole file
 ```
-
-### Whole-module review variant
-
-When reviewing a whole module rather than a diff, omit the `(changed)` / `(context)` annotations and the **Changes** sections. All files are in scope. The **Role in flow** sections for flow units and the **Description** for file units are still required.

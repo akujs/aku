@@ -8,6 +8,10 @@ Be selective. A review that reports 30 minor issues is less useful than one that
 
 ## What to look for
 
+You are looking at all cases where the code does not achieve its goal due to incorrectness or failure to handle edge cases.
+
+A non exhaustive list of examples follows. You may use your general knowledge of code correctness.
+
 ### Empty, null, and undefined inputs
 - How does the code handle empty strings, empty arrays, empty objects?
 - Are `null` and `undefined` treated consistently? Are there paths where one is handled but the other is not?

@@ -1,19 +1,26 @@
 # Review Agent Instructions
 
-You are an agent performing a narrow slice of a larger code review, you will be given:
+You are an agent performing a code review. You have multiple review units to work through, all reviewed against the same criteria. You will be given:
 
-- a review target name
-- a scope of code to review (either one or more whole files, or a process or flow implemented by a chain of functions or classes spanning several files)
+- this file containing general instructions
 - a path to a file containing a list of criteria to review against
-- an output path to a folder in which to write your findings and summary
+- The **review folder path**
 
 Your process:
 
 1. Read the criteria file
-2. Determine if the scope of code is small enough to review in one batch and read it, or read it in batches if necessary
-3. Produce the findings file
-4. Review the findings file according to "Findings file review process" and update it as required
-5. **Only once the findings file is complete** write the summary file
+2. Read `{review-folder}/units.md` to get the list of review units
+3. Create a to-do list of all units (flows and file groups) in the review plan
+4. For each unit in order:
+   a. Read the source files listed for that unit
+   b. Analyse the code against the criteria
+   c. Produce findings in the specified format
+   d. Mark the unit complete and move to the next
+5. Do not skip units. Do not combine units. Review each one individually.
+6. Review the findings file according to "Findings file review process" and update it as required
+7. **Only once the findings file is complete** write the summary file
+
+Produce findings for each unit under a separate top-level heading.
 
 Your output will be collated with the output from other agents and used as an input to agents that will investigate and fix issues identified.
 
@@ -21,11 +28,12 @@ Your output will be collated with the output from other agents and used as an in
 
 Your criteria file will specify a code for findings, use that in place of {CODE}.
 
-The findings file should be written to `{output-path}/{review-target-name}-findings.md`
+The findings file should be written to `{output-path}/{criteria-name}-findings.md`
 
-Produce one findings file in this format:
+As you complete each unit in the review plan, write findings for that unit to the findings file at `{review-folder}/{criteria-name}-findings.md`.
 
-    # Findings: [Review target name]
+```
+    # Findings: [Criteria name]
 
     ## {CODE}-001: [Short title]
 
@@ -46,6 +54,7 @@ Produce one findings file in this format:
     **Impact: Critical / Major / Minor / Informational / Uncertain** (justification)
 
     **Uncertain (optional):** If it's not clear whether this finding is a problem or not, mark it as uncertain - another agent will review it to determine whether it needs action.
+```
 
 You must always write a file, if there are no findings, write a with a note file saying that there are no findings.
 
@@ -86,7 +95,7 @@ Under the (justification) section, briefly explain why it merits the impact, e.g
 
 Do not write the summary file until after you have written the findings file and finished work on it.
 
-The summary file should be written to `{output-path}/{review-target-name}-summary.md`
+The summary file should be written to `{output-path}/{criteria-name}-summary.md`
 
 Be terse. Shorter is better. Soft limit of 200 words — ok to go over if there are many critical issues, but if you're exceeding the limit, compress by categorising: e.g. "7 Minor naming inconsistencies" rather than listing each one. Major findings should always be individually named even in categorised form.
 

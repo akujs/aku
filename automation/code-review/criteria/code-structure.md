@@ -15,7 +15,7 @@ To classify a code structure finding, first determine the `importance` on a scal
 1. I would have written it differently, but leaving it as is won't cause issues
 2. It would be an unambiguous, though minor, improvement to change the structure
 3. The current structure is likely to cause some confusion or slow down later maintenance
-4. The current structure could be a significant barrier to maintenance and understanding
+4. The current structure is likely a significant barrier to maintenance and understanding
 5. It is flat out wrong: any reasonable human or machine looking at this would say that it is structured incorrectly
 
 ### Impact

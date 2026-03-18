@@ -20,6 +20,8 @@ Before starting the review, research open source and commercial products that ha
 
 ## Criteria
 
+Note: many of these criteria are quire abstract, use extended thinking / ultrathink to analyze what they would mean in the context of this code base and arrive at high quality answers.
+
 ### Naming of members (Classes, functions, constants, parameters, etc.)
 
 - Members should be named in a simple and consistent way

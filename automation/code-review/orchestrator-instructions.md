@@ -2,43 +2,53 @@
 
 ## Invocation
 
-You will be invoked with a **scope of code** to review, which will either be a set of files, such as a path to a folder, or a git range such as "Differences between this branch and main". Take this description and convert it into a unambiguous format suitable to passing to sub-agents. If there is any ambiguity or uncertainty in the scope of code to review, stop and ask the user for clarification.
+You will be invoked with a **review scope description** to review, which will either be a set of files, such as a path to a folder, or a git range such as "Differences between this branch and main".
 
-## Phase 1: Target Analysis (sub-agent)
+Generate a name for the review in the format `YYYY-MM-DD--hh-mm-short-description` where short-description is a short, descriptive name for the review in kebab-case.
 
-Spawn a sub-agent to analyse the review target and propose a breakdown into **review units**.
+Create the folder `automation/code-review/reviews/{review-name}`, henceforth called the **review folder path**.
 
-The sub-agent follows the instructions in `automation/code-review/unit-discovery-instructions.md`. It writes one file per review unit to the review folder and returns a plan summary to the orchestrator.
+## Phase 1: Unit discovery (sub-agent)
+
+First, create the **scope of code** which is a checked and unambiguous version of the review scope description.
+
+For example if asked to review "all files in the cli folder that have changed since this branch was created" you might verify that there is a cli folder, and that we are on a branch other than main. If there is any doubt or ambiguity here, stop and ask for use it for clarification.
+
+Spawn a sub-agent to analyse the review target and produce a **review plan** — a text document listing flows and file groups.
+
+The sub-agent receives:
+
+- Instructions to follow the steps in `automation/code-review/unit-discovery-instructions.md`
+- The **scope of code** to review
+- The **review folder path**
+
+It will write the results of its discovery to `{review-folder-path}/units.md`
 
 ### Present plan to user
 
-Before proceeding, present the proposed review units to the user for approval. For each unit, show:
-- A short description (e.g. "Container dependency resolution", "HTTP request pipeline")
-- The file list
-- Which criteria categories will be run against it
+Present the plan to the user for approval. The user may approve, modify, or remove units. Do not proceed to Phase 2 until the plan is approved.
 
-The user may approve, modify, or remove units. Do not proceed to Phase 3 until the plan is approved.
+## Phase 2: Parallel Review
 
-## Phase 3: Parallel Review
-
-For each approved review unit, fan out specialist sub-agents — one per selected criteria category. Each sub-agent receives:
+Fan out one sub-agent per criteria file in `automation/code-review/criteria/`. Each sub-agent receives:
 - The file path `automation/code-review/review-agent-instructions.md` — the agent reads this for output format, severity definitions, and general instructions
-- A unique name identifying the review unit
 - Its assigned criteria file from `automation/code-review/criteria/`
-- The scope of code to review
+- The approved review plan (the text from Phase 1)
+- An output path for findings and summary files
 
-Each sub-agent returns a structured findings file and a summary.
+Each sub-agent works through all units in the plan as a batch, producing one findings file and one summary.
 
-## Phase 4: Assemble Report
+## Phase 3: Deduplicate (sub-agent)
 
-Read each sub-agent's summary. Do not re-read full findings files at this stage.
+Spawn a sub-agent to deduplicate findings across all criteria agents.
 
-### Deduplication
+The sub-agent receives:
 
-Multiple agents reviewing the same target from different perspectives may report the same underlying issue. Before assembling the report, identify duplicates by matching on code location and the core problem described. When duplicates exist, keep the version with the most thorough description and the highest-confidence severity assessment. Discard the others but note in the kept finding which other agents independently identified the same issue — independent rediscovery increases confidence.
+- Instructions to follow the steps in `automation/code-review/deduplication-agent-instructions.md`
+- The **review folder path**
 
-### Human Review Section
-Issues requiring human judgement, ordered by priority. Include design questions, ambiguous findings, and borderline cases. Link to sub-agent findings files for detail. Do not reproduce findings file content inline. Optimise for scannability — assume limited reviewer attention.
+It will write the deduplicated findings to `{review-folder-path}/findings.md`.
 
-### Machine-Actionable Section
-Discrete, well-specified issues suitable for automated fixing. Structured for programmatic consumption `[TODO: decide schema]`. Optimise for density and precision.
+## Phase 4: Determine Next Steps
+
+This section is still to be designed for the moment. Terminate when you reach this phase and report success to the user.
