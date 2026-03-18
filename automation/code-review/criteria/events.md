@@ -20,7 +20,7 @@ A good event tells a consumer *what happened* (or *what is about to happen*) wit
 - `Fix`: the change is clearly clearly required — e.g. there is a bug in causing an event not to be dispatched at the right time, or to be dispatched with incorrect data, or correcting clear documentation error
 - `Query`: the change affects the shape or semantics of an event class, or requires a judgement call about whether to proceed. All API changes are `Query` by default.
 
-## Criteria
+## Criteria part 1
 
 ### Coverage: are the right operations observable?
 
@@ -51,34 +51,47 @@ Each module should define an abstract base event class (e.g. `StorageEvent`, `Da
 Review for:
 
 - Does the module base event carry the right shared context? For example, `DatabaseEvent` carries transaction context; `StorageEvent` carries disk and path.
-- Is the hierarchy deep enough to be useful but shallow enough to be understandable? Three levels is typical: `AkuEvent` → module base → concrete event. Avoid deeper hierarchies unless there is a clear grouping benefit (the storage module's `OperationStartingEvent` / `OperationCompletedEvent` intermediate classes are justified because they share the phase-specific timing logic).
+- Is the hierarchy deep enough to be useful but shallow enough to be understandable? Three levels is typical: `AkuEvent` → module base → concrete event. Consider further groupings, but only if there is a benefit to the grouping.
 
 ### Event data: what to include
 
 - Events should carry enough data for consumers to act without needing to look things up elsewhere. For example, `QueryExecutedEvent` carries both the statement and the result.
 - Events should not carry mutable references to internal state that a listener could use to corrupt the dispatching code. Prefer readonly properties. Where a value like a `Response` body can only be consumed once, provide a clone method (as `RequestHandledEvent.cloneResponse()` does).
 - Avoid including data that is expensive to compute unless it is gated behind `dispatchIfHasListeners` with a lazy factory, or computed on demand via a getter.
+- If some of the data for an event is particularly expensive to produce, then it should be produced on demand using a method on the event, e.g. `RequestHandledEvent.cloneResponse()`. This allows consumers who only need the cheap properties to access the event without creating performance issues.
 
 ### Dispatch mechanism
 
 - Use `dispatch()` for events that are cheap to construct.
-- Use `dispatchIfHasListeners()` with a factory function for events that are expensive to construct, or where construction involves cloning or other allocation that should be avoided when nobody is listening. For example, `RequestHandledEvent` is dispatched this way because it wraps a `Response`.
-- Events should be dispatched at the right granularity. Dispatching inside a tight loop is a red flag — consider whether a single summary event after the loop would be more appropriate.
+- Use `dispatchIfHasListeners()` with a factory function for events that are expensive to construct, or where construction involves cloning or other allocation that should be avoided when nobody is listening.
+- Sometimes LLMs will create an event object unconditionally, then use `dispatchIfHasListeners()` with a closure to conditionally dispatch it, which totally defeats the purpose of the `dispatchIfHasListeners` method. If this has happened, flag it as an error.
 
 ### Side effects from listeners
 
 - By default, events are informational: listeners observe but do not influence the operation.
 - Where a listener *can* influence the outcome (e.g. `TransactionPreCommitEvent` where throwing aborts the transaction), this must be explicitly documented on the event class.
-- Review whether any dispatch sites inadvertently allow listener exceptions to disrupt normal control flow. If an event is purely observational, consider whether listener errors are caught appropriately.
+- However it is NOT required that event dispatch is robust to handlers throwing errors. When a handler throws an unexpected error, the expected behaviour is an error 500 caused by the error bubbling up to the top of the call stack.
+- If an event is dispatched in a manner where unexpected errors thrown from handlers won't buble up the call stack and may produce an uncaught exception or unhandled promise error (for example dispatching inside a setTimeout()), report this as an error.
 
 ### Documentation
 
 - Each concrete event class should have a doc comment that states when it is dispatched, in plain language.
 - Events that support listener-driven side effects must document this prominently.
-- The `phase` property (`"start"`, `"complete"`, `"fail"`) and `type` discriminant should be present and consistent with the naming conventions in the module.
 
-### Consistency across modules
+### Naming conventions for three-phase events
 
-- Do different modules follow the same structural patterns? If the storage module dispatches three-phase events for all I/O operations, the database module should follow the same pattern for its operations, and any new module that performs I/O should do likewise.
-- Are the abstract base classes structured consistently? (e.g. `OperationStartingEvent` always has `startTimestamp`; `OperationCompletedEvent` always has `timeTakenMs` derived from the starting event.)
-- Is the `type` discriminant string formatted consistently across modules? (e.g. `"file:write"`, `"query:execute"` — colon-separated `noun:verb` format.)
+These rules are extracted from the storage and database modules and should be followed by all new modules.
+
+- **Starting events**: named with a present participle (e.g. `FileWritingEvent`, `QueryExecutingEvent`, `TransactionExecutingEvent`)
+- **Completed events**: named with a past participle (e.g. `FileWrittenEvent`, `QueryExecutedEvent`, `TransactionExecutedEvent`)
+- **Failed events**: named with "Failed" (e.g. `StorageOperationFailedEvent`, `QueryFailedEvent`, `TransactionFailedEvent`)
+- **Special lifecycle events** that don't fit the three-phase pattern use descriptive names (e.g. `TransactionPreCommitEvent`, `TransactionRetryingEvent`)
+
+### Required properties for three-phase events
+
+- All events in a module must have a `type` discriminant: a readonly string literal in `noun:verb` format (e.g. `"file:write"`, `"query:execute"`, `"transaction:execute"`, `"directory:list"`). The noun identifies the resource and the verb identifies the operation. Related start/complete/fail events share the same `type` value.
+- All three-phase events must have a `phase` discriminant: `"start"`, `"complete"`, or `"fail"` as a const literal.
+- **Starting events** must have `readonly startTimestamp: number` initialised to `performance.now()` in the field declaration.
+- **Completed events** must have `readonly timeTakenMs: number` calculated as `performance.now() - startEvent.startTimestamp` in the constructor.
+- **Completed events** should hold a private reference (`#startEvent`) to the starting event and expose the starting event's input properties via getters, rather than copying them into separate fields.
+- **Failed events** must have `readonly timeTakenMs: number` (same calculation as completed) and an `error` property carrying the error that caused the failure.

@@ -40,20 +40,18 @@ A key question for each error path: **who is in the best position to decide what
 
 - Are there `catch` blocks that discard the error without logging, re-throwing, or dispatching an event? Empty catch blocks and catch blocks that only log at debug level are almost always wrong.
 - Are there error paths where a meaningful failure is silently converted to a default value (e.g. returning `null` or `undefined` instead of surfacing the error)?
-- Exception: it is acceptable to swallow errors during cleanup or teardown, where the primary error has already been captured and re-throwing would mask it.
+- When doing cleanup or tear-down while handling an error, if a second error occurs as a result of the tear-down, do not throw the second error as this will mask the first. Swallow the second error and document that this is to avoid masking the first.
 
 ### Error type correctness
 
-- Are errors thrown with the appropriate custom error class? Throwing a generic `Error` where a domain-specific subclass exists loses information that consumers may need to branch on.
+- Are errors thrown with the appropriate custom error class? Never throw `Error` or `AkuError` directly.
 - Are `instanceof` checks against the correct error type? A check against a base class where a specific subclass is intended could match errors that should not be caught.
 - Is there code that checks error properties (e.g. `error.code`, `error.message`) with string matching where an `instanceof` check against a well-defined error class would be more robust?
 
-### Error propagation through async boundaries
+### Errors from dependencies
 
-- Are errors from `await`ed promises caught and handled or propagated? An unhandled rejection in framework code is a bug.
-- In streaming or generator-based code, are errors propagated to the consumer of the stream rather than being silently dropped?
-- In event-dispatching code, are errors from event handlers caught and handled appropriately (so that a failing handler does not break the framework's internal flow)?
-- For fire-and-forget async operations, is there an explicit strategy for error handling (e.g. logging, event dispatch)?
+Our policy as a framework is to completely wrap the API of any dependency and this includes errors. Every time we call a dependency method that might throw an error, we must wrap it in a try catch and convert the error to an appropriate framework error.
+
 
 ### Control flow exceptions
 

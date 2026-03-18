@@ -21,3 +21,8 @@ You may use your knowledge of what a concurrency issue is. A non-exhaustive list
 - missing concurrency limits where the number of parallel operations could be large
 - async/sync ambiguity
 - using await on a value that can never be a promise
+- Error propagation through async boundaries
+  - Are errors from `await`ed promises caught and handled or propagated? An unhandled rejection in framework code is a bug.
+  - Are errors in setTimeout or similar callbacks handled appropriately? They must not be thrown from the handler where they will cause an unhandled error and potentially terminate the process.
+  - In streaming or generator-based code, are errors propagated to the consumer of the stream rather than being silently dropped?
+  - For fire-and-forget async operations, is there an explicit strategy for error handling (e.g. logging, event dispatch)?
