@@ -13,12 +13,12 @@ import { posix } from "./path-operations.ts";
 import type { StorageDiskImpl } from "./StorageDiskImpl.ts";
 import { StorageInvalidPathError } from "./storage-errors.ts";
 import {
-	DirectoryDeletedEvent,
-	DirectoryDeletingEvent,
-	DirectoryExistenceCheckedEvent,
-	DirectoryExistenceCheckingEvent,
-	DirectoryListedEvent,
-	DirectoryListingEvent,
+	StorageDirectoryDeletedEvent,
+	StorageDirectoryDeletingEvent,
+	StorageDirectoryExistenceCheckedEvent,
+	StorageDirectoryExistenceCheckingEvent,
+	StorageDirectoryListedEvent,
+	StorageDirectoryListingEvent,
 } from "./storage-events.ts";
 import { storageOperation } from "./storage-operation.ts";
 
@@ -59,8 +59,8 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 		return await storageOperation(
 			"directory:existence-check",
 			() => this.#endpoint.existsAnyUnderPrefix(this.path),
-			() => new DirectoryExistenceCheckingEvent(this.disk, this.path),
-			(start, exists) => new DirectoryExistenceCheckedEvent(start, exists),
+			() => new StorageDirectoryExistenceCheckingEvent(this.disk, this.path),
+			(start, exists) => new StorageDirectoryExistenceCheckedEvent(start, exists),
 			this.#dispatcher,
 			{ onNotFound: false },
 		);
@@ -74,8 +74,8 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 		return storageOperation(
 			"directory:list",
 			this.#listStreamingGenerator.bind(this),
-			() => new DirectoryListingEvent(this.disk, this.path, "all", false),
-			(start, count) => new DirectoryListedEvent(start, count),
+			() => new StorageDirectoryListingEvent(this.disk, this.path, "all", false),
+			(start, count) => new StorageDirectoryListedEvent(start, count),
 			this.#dispatcher,
 			{ onNotFound: emptyGenerator() },
 		);
@@ -105,8 +105,8 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 		return storageOperation(
 			"directory:list",
 			this.#filesStreamingGenerator.bind(this, recursive),
-			() => new DirectoryListingEvent(this.disk, this.path, "files", recursive),
-			(start, count) => new DirectoryListedEvent(start, count),
+			() => new StorageDirectoryListingEvent(this.disk, this.path, "files", recursive),
+			(start, count) => new StorageDirectoryListedEvent(start, count),
 			this.#dispatcher,
 			{ onNotFound: emptyGenerator() },
 		);
@@ -140,8 +140,8 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 		return storageOperation(
 			"directory:list",
 			this.#directoriesStreamingGenerator.bind(this),
-			() => new DirectoryListingEvent(this.disk, this.path, "directories", false),
-			(start, count) => new DirectoryListedEvent(start, count),
+			() => new StorageDirectoryListingEvent(this.disk, this.path, "directories", false),
+			(start, count) => new StorageDirectoryListedEvent(start, count),
 			this.#dispatcher,
 			{ onNotFound: emptyGenerator() },
 		);
@@ -160,8 +160,8 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 		await storageOperation(
 			"directory:delete",
 			() => this.#endpoint.deleteAllUnderPrefix(this.path),
-			() => new DirectoryDeletingEvent(this.disk, this.path),
-			(start) => new DirectoryDeletedEvent(start),
+			() => new StorageDirectoryDeletingEvent(this.disk, this.path),
+			(start) => new StorageDirectoryDeletedEvent(start),
 			this.#dispatcher,
 			{ onNotFound: undefined },
 		);

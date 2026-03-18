@@ -12,22 +12,22 @@ import { StorageDiskImpl } from "./StorageDiskImpl.ts";
 import { StorageFileImpl } from "./StorageFileImpl.ts";
 import { StorageInvalidPathError, StorageNotFoundError } from "./storage-errors.ts";
 import {
-	FileCopiedEvent,
-	FileCopyingEvent,
-	FileDeletedEvent,
-	FileDeletingEvent,
-	FileExistenceCheckedEvent,
-	FileExistenceCheckingEvent,
-	FileInfoRetrievedEvent,
-	FileInfoRetrievingEvent,
-	FileMovedEvent,
-	FileMovingEvent,
-	FileReadEvent,
-	FileReadingEvent,
-	FileUrlGeneratedEvent,
-	FileUrlGeneratingEvent,
-	FileWritingEvent,
-	FileWrittenEvent,
+	StorageFileCopiedEvent,
+	StorageFileCopyingEvent,
+	StorageFileDeletedEvent,
+	StorageFileDeletingEvent,
+	StorageFileExistenceCheckedEvent,
+	StorageFileExistenceCheckingEvent,
+	StorageFileInfoRetrievedEvent,
+	StorageFileInfoRetrievingEvent,
+	StorageFileMovedEvent,
+	StorageFileMovingEvent,
+	StorageFileReadEvent,
+	StorageFileReadingEvent,
+	StorageFileUrlGeneratedEvent,
+	StorageFileUrlGeneratingEvent,
+	StorageFileWritingEvent,
+	StorageFileWrittenEvent,
 } from "./storage-events.ts";
 
 describe(StorageFileImpl, () => {
@@ -621,8 +621,8 @@ describe(StorageFileImpl, () => {
 
 			await file.delete();
 
-			const startEvent = new FileDeletingEvent(eventDisk, "/test.txt");
-			const endEvent = new FileDeletedEvent(startEvent);
+			const startEvent = new StorageFileDeletingEvent(eventDisk, "/test.txt");
+			const endEvent = new StorageFileDeletedEvent(startEvent);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -631,8 +631,8 @@ describe(StorageFileImpl, () => {
 
 			await file.exists();
 
-			const startEvent = new FileExistenceCheckingEvent(eventDisk, "/test.txt");
-			const endEvent = new FileExistenceCheckedEvent(startEvent, false);
+			const startEvent = new StorageFileExistenceCheckingEvent(eventDisk, "/test.txt");
+			const endEvent = new StorageFileExistenceCheckedEvent(startEvent, false);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -643,8 +643,8 @@ describe(StorageFileImpl, () => {
 
 			const fetchResult = await file.get();
 
-			const startEvent = new FileReadingEvent(eventDisk, "/test.txt");
-			const endEvent = new FileReadEvent(startEvent, fetchResult.response);
+			const startEvent = new StorageFileReadingEvent(eventDisk, "/test.txt");
+			const endEvent = new StorageFileReadEvent(startEvent, fetchResult.response);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -655,8 +655,8 @@ describe(StorageFileImpl, () => {
 
 			const info = await file.info();
 
-			const startEvent = new FileInfoRetrievingEvent(eventDisk, "/test.txt");
-			const endEvent = new FileInfoRetrievedEvent(startEvent, info);
+			const startEvent = new StorageFileInfoRetrievingEvent(eventDisk, "/test.txt");
+			const endEvent = new StorageFileInfoRetrievedEvent(startEvent, info);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -666,8 +666,8 @@ describe(StorageFileImpl, () => {
 
 			const url = await file.url();
 
-			const startEvent = new FileUrlGeneratingEvent(eventDisk, "/test.txt", "url", {});
-			const endEvent = new FileUrlGeneratedEvent(startEvent, url);
+			const startEvent = new StorageFileUrlGeneratingEvent(eventDisk, "/test.txt", "url", {});
+			const endEvent = new StorageFileUrlGeneratedEvent(startEvent, url);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -677,10 +677,10 @@ describe(StorageFileImpl, () => {
 
 			const url = await file.signedUrl({ expires: "1d" });
 
-			const startEvent = new FileUrlGeneratingEvent(eventDisk, "/test.txt", "signed", {
+			const startEvent = new StorageFileUrlGeneratingEvent(eventDisk, "/test.txt", "signed", {
 				expires: "1d",
 			});
-			const endEvent = new FileUrlGeneratedEvent(startEvent, url);
+			const endEvent = new StorageFileUrlGeneratedEvent(startEvent, url);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -690,10 +690,10 @@ describe(StorageFileImpl, () => {
 
 			const url = await file.uploadUrl({ expires: "2d" });
 
-			const startEvent = new FileUrlGeneratingEvent(eventDisk, "/test.txt", "upload", {
+			const startEvent = new StorageFileUrlGeneratingEvent(eventDisk, "/test.txt", "upload", {
 				expires: "2d",
 			});
-			const endEvent = new FileUrlGeneratedEvent(startEvent, url);
+			const endEvent = new StorageFileUrlGeneratedEvent(startEvent, url);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -703,8 +703,8 @@ describe(StorageFileImpl, () => {
 			const data = "content";
 			await file.put({ data, mimeType: "text/plain" });
 
-			const startEvent = new FileWritingEvent(eventDisk, "/test.txt", data, "text/plain");
-			const endEvent = new FileWrittenEvent(startEvent);
+			const startEvent = new StorageFileWritingEvent(eventDisk, "/test.txt", data, "text/plain");
+			const endEvent = new StorageFileWrittenEvent(startEvent);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -716,8 +716,13 @@ describe(StorageFileImpl, () => {
 			const dest = eventDisk.file("dest.txt");
 			await source.copyTo(dest);
 
-			const startEvent = new FileCopyingEvent(eventDisk, "/source.txt", "event-test", "/dest.txt");
-			const endEvent = new FileCopiedEvent(startEvent);
+			const startEvent = new StorageFileCopyingEvent(
+				eventDisk,
+				"/source.txt",
+				"event-test",
+				"/dest.txt",
+			);
+			const endEvent = new StorageFileCopiedEvent(startEvent);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -729,8 +734,13 @@ describe(StorageFileImpl, () => {
 			const dest = eventDisk.file("dest.txt");
 			await source.moveTo(dest);
 
-			const startEvent = new FileMovingEvent(eventDisk, "/source.txt", "event-test", "/dest.txt");
-			const endEvent = new FileMovedEvent(startEvent);
+			const startEvent = new StorageFileMovingEvent(
+				eventDisk,
+				"/source.txt",
+				"event-test",
+				"/dest.txt",
+			);
+			const endEvent = new StorageFileMovedEvent(startEvent);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 	});

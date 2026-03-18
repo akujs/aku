@@ -7,6 +7,7 @@ export {
 } from "./errors-errors.ts";
 export {
 	BadEventExtension,
-	FooEvent,
-	GoodEvent,
+	BadPrefixEvent,
+	ErrorsFooEvent,
+	ErrorsGoodEvent,
 } from "./errors-events.ts";

@@ -18,14 +18,14 @@ export {
 	DatabaseEvent,
 	DatabaseOperationCompletedEvent,
 	DatabaseOperationStartingEvent,
-	QueryExecutedEvent,
-	QueryExecutingEvent,
-	QueryFailedEvent,
-	TransactionExecutedEvent,
-	TransactionExecutingEvent,
-	TransactionFailedEvent,
-	TransactionPreCommitEvent,
-	TransactionRetryingEvent,
+	DatabaseQueryExecutedEvent,
+	DatabaseQueryExecutingEvent,
+	DatabaseQueryFailedEvent,
+	DatabaseTransactionExecutedEvent,
+	DatabaseTransactionExecutingEvent,
+	DatabaseTransactionFailedEvent,
+	DatabaseTransactionPreCommitEvent,
+	DatabaseTransactionRetryingEvent,
 } from "./database-events.ts";
 export { DatabaseGrammar } from "./grammar/DatabaseGrammar.ts";
 // Query builder types representing different states of query construction

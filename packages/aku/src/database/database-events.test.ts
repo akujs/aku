@@ -7,12 +7,12 @@ import type { DatabaseClient } from "./DatabaseClient.ts";
 import { DatabaseClientImpl } from "./DatabaseClientImpl.ts";
 import { DatabaseQueryError } from "./database-errors.ts";
 import {
-	QueryExecutedEvent,
-	QueryExecutingEvent,
-	TransactionExecutedEvent,
-	type TransactionExecutingEvent,
-	TransactionFailedEvent,
-	TransactionPreCommitEvent,
+	DatabaseQueryExecutedEvent,
+	DatabaseQueryExecutingEvent,
+	DatabaseTransactionExecutedEvent,
+	type DatabaseTransactionExecutingEvent,
+	DatabaseTransactionFailedEvent,
+	DatabaseTransactionPreCommitEvent,
 } from "./database-events.ts";
 import { sql } from "./sql.ts";
 
@@ -93,7 +93,7 @@ describe("database events", () => {
 
 			await db.run(sql`SELECT 1`);
 
-			const endEvent = dispatcher.getEvents(QueryExecutedEvent)[0];
+			const endEvent = dispatcher.getEvents(DatabaseQueryExecutedEvent)[0];
 			expect(endEvent.timeTakenMs).toBe(75);
 		});
 	});
@@ -105,7 +105,7 @@ describe("database events", () => {
 			});
 
 			const events = dispatcher.getEvents();
-			const txId = (events[0] as TransactionExecutingEvent).transactionId;
+			const txId = (events[0] as DatabaseTransactionExecutingEvent).transactionId;
 
 			expect(events).toEqual([
 				expect.objectContaining({
@@ -156,7 +156,7 @@ describe("database events", () => {
 			).rejects.toThrow(testError);
 
 			const events = dispatcher.getEvents();
-			const txId = (events[0] as TransactionExecutingEvent).transactionId;
+			const txId = (events[0] as DatabaseTransactionExecutingEvent).transactionId;
 
 			expect(events).toEqual([
 				expect.objectContaining({
@@ -184,8 +184,8 @@ describe("database events", () => {
 			});
 
 			const events = dispatcher.getEvents();
-			const outerTxId = (events[0] as TransactionExecutingEvent).transactionId;
-			const innerTxId = (events[1] as TransactionExecutingEvent).transactionId;
+			const outerTxId = (events[0] as DatabaseTransactionExecutingEvent).transactionId;
+			const innerTxId = (events[1] as DatabaseTransactionExecutingEvent).transactionId;
 
 			expect(events.slice(0, 3)).toEqual([
 				expect.objectContaining({
@@ -217,7 +217,7 @@ describe("database events", () => {
 				mockCurrentTime(1250);
 			});
 
-			const executedEvent = dispatcher.getEvents(TransactionExecutedEvent)[0];
+			const executedEvent = dispatcher.getEvents(DatabaseTransactionExecutedEvent)[0];
 			expect(executedEvent.timeTakenMs).toBe(250);
 		});
 
@@ -231,7 +231,7 @@ describe("database events", () => {
 				}),
 			).rejects.toThrow();
 
-			const failedEvent = dispatcher.getEvents(TransactionFailedEvent)[0];
+			const failedEvent = dispatcher.getEvents(DatabaseTransactionFailedEvent)[0];
 			expect(failedEvent.timeTakenMs).toBe(100);
 		});
 
@@ -254,8 +254,8 @@ describe("database events", () => {
 			);
 
 			const events = dispatcher.getEvents();
-			const tx1Id = (events[0] as TransactionExecutingEvent).transactionId;
-			const tx2Id = (events[2] as TransactionExecutingEvent).transactionId;
+			const tx1Id = (events[0] as DatabaseTransactionExecutingEvent).transactionId;
+			const tx2Id = (events[2] as DatabaseTransactionExecutingEvent).transactionId;
 
 			expect(events).toEqual([
 				// Attempt 1: BEGIN fails (no rollback since transaction never started in DB)
@@ -366,7 +366,7 @@ describe("database events", () => {
 			// Extract the INSERT statements from executed queries
 			const inserts = dispatcher
 				.getEvents()
-				.filter((e): e is QueryExecutingEvent => e instanceof QueryExecutingEvent)
+				.filter((e): e is DatabaseQueryExecutingEvent => e instanceof DatabaseQueryExecutingEvent)
 				.map((e) => e.statement.toHumanReadableSql())
 				.filter((s) => s.startsWith("INSERT"));
 
@@ -418,7 +418,7 @@ describe("database events", () => {
 
 			const inserts = dispatcher
 				.getEvents()
-				.filter((e): e is QueryExecutingEvent => e instanceof QueryExecutingEvent)
+				.filter((e): e is DatabaseQueryExecutingEvent => e instanceof DatabaseQueryExecutingEvent)
 				.map((e) => e.statement.toHumanReadableSql())
 				.filter((s) => s.startsWith("INSERT"));
 
@@ -441,7 +441,7 @@ describe("database events", () => {
 		test("throwing from pre-commit listener rolls back the transaction", async () => {
 			const listenerError = new Error("listener abort");
 
-			dispatcher.addListener(TransactionPreCommitEvent, () => {
+			dispatcher.addListener(DatabaseTransactionPreCommitEvent, () => {
 				throw listenerError;
 			});
 
@@ -456,7 +456,7 @@ describe("database events", () => {
 			expect(rows).toEqual([]);
 
 			// Verify failed event was dispatched
-			expect(dispatcher.getEvents(TransactionFailedEvent)).toHaveLength(1);
+			expect(dispatcher.getEvents(DatabaseTransactionFailedEvent)).toHaveLength(1);
 		});
 	});
 });

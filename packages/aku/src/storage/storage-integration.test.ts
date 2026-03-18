@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createTestApplication } from "../testing/create-test-application.ts";
 import { memoryStorage } from "./adapters/memory/memoryStorage.ts";
 import { Storage } from "./contracts/Storage.ts";
-import { FileWrittenEvent } from "./storage-events.ts";
+import { StorageFileWrittenEvent } from "./storage-events.ts";
 
 describe("Storage integration with Application", () => {
 	test("storage integrates with application configuration and DI container", async () => {
@@ -25,11 +25,11 @@ describe("Storage integration with Application", () => {
 		expect(await uploadedFile.response.text()).toBe("content");
 
 		// Test that storage events are dispatched via app.events
-		const events: Array<FileWrittenEvent> = [];
-		app.events.addListener(FileWrittenEvent, (event) => events.push(event));
+		const events: Array<StorageFileWrittenEvent> = [];
+		app.events.addListener(StorageFileWrittenEvent, (event) => events.push(event));
 		await app.storage.file("event-test.txt").put("event data");
 		expect(events).toHaveLength(1);
-		expect(events[0]).toBeInstanceOf(FileWrittenEvent);
+		expect(events[0]).toBeInstanceOf(StorageFileWrittenEvent);
 	});
 
 	test("storage works without disks configured", async () => {

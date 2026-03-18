@@ -4,11 +4,11 @@ import { mockCurrentTime, resetMockTime } from "../testing/mock-time.ts";
 import type { StorageDisk } from "./contracts/Storage.ts";
 import { StorageInvalidPathError, StorageUnknownError } from "./storage-errors.ts";
 import {
-	FileDeletedEvent,
-	FileDeletingEvent,
-	FileReadingEvent,
-	FileWritingEvent,
-	FileWrittenEvent,
+	StorageFileDeletedEvent,
+	StorageFileDeletingEvent,
+	StorageFileReadingEvent,
+	StorageFileWritingEvent,
+	StorageFileWrittenEvent,
 } from "./storage-events.ts";
 import { storageOperation } from "./storage-operation.ts";
 
@@ -24,8 +24,8 @@ describe(storageOperation, () => {
 		const result = await storageOperation(
 			"file:read",
 			async () => "async success",
-			() => new FileReadingEvent(mockDisk, "/test.txt"),
-			(start) => new FileDeletedEvent(start),
+			() => new StorageFileReadingEvent(mockDisk, "/test.txt"),
+			(start) => new StorageFileDeletedEvent(start),
 			dispatcher,
 			{ onNotFound: "throw" },
 		);
@@ -44,8 +44,8 @@ describe(storageOperation, () => {
 				async () => {
 					throw originalError;
 				},
-				() => new FileDeletingEvent(mockDisk, "/test.txt"),
-				(start) => new FileDeletedEvent(start),
+				() => new StorageFileDeletingEvent(mockDisk, "/test.txt"),
+				(start) => new StorageFileDeletedEvent(start),
 				dispatcher,
 				{ onNotFound: "throw" },
 			);
@@ -67,8 +67,8 @@ describe(storageOperation, () => {
 				async () => {
 					throw originalError;
 				},
-				() => new FileWritingEvent(mockDisk, "/test.txt", "test data", "text/plain"),
-				(start) => new FileWrittenEvent(start),
+				() => new StorageFileWritingEvent(mockDisk, "/test.txt", "test data", "text/plain"),
+				(start) => new StorageFileWrittenEvent(start),
 				dispatcher,
 				{ onNotFound: "throw" },
 			);
@@ -91,8 +91,8 @@ describe(storageOperation, () => {
 				async () => {
 					throw "string error";
 				},
-				() => new FileDeletingEvent(mockDisk, "/test.txt"),
-				(start) => new FileDeletedEvent(start),
+				() => new StorageFileDeletingEvent(mockDisk, "/test.txt"),
+				(start) => new StorageFileDeletedEvent(start),
 				dispatcher,
 				{ onNotFound: "throw" },
 			);
@@ -114,8 +114,8 @@ describe(storageOperation, () => {
 			await storageOperation(
 				"file:delete",
 				async () => "success",
-				() => new FileReadingEvent(mockDisk, "/test.txt"), // Wrong event type
-				(start) => new FileDeletedEvent(start),
+				() => new StorageFileReadingEvent(mockDisk, "/test.txt"), // Wrong event type
+				(start) => new StorageFileDeletedEvent(start),
 				dispatcher,
 				{ onNotFound: "throw" },
 			);
@@ -135,7 +135,7 @@ describe(storageOperation, () => {
 		// Mock time to control timestamps
 		mockCurrentTime(2000);
 
-		let completedEvent: FileDeletedEvent | undefined;
+		let completedEvent: StorageFileDeletedEvent | undefined;
 
 		await storageOperation(
 			"file:delete",
@@ -144,9 +144,9 @@ describe(storageOperation, () => {
 				mockCurrentTime(2250);
 				return "success";
 			},
-			() => new FileDeletingEvent(mockDisk, "/test.txt"),
+			() => new StorageFileDeletingEvent(mockDisk, "/test.txt"),
 			(start) => {
-				completedEvent = new FileDeletedEvent(start);
+				completedEvent = new StorageFileDeletedEvent(start);
 				return completedEvent;
 			},
 			dispatcher,
@@ -168,8 +168,8 @@ describe(storageOperation, () => {
 				yield "first";
 				throw originalError;
 			},
-			() => new FileDeletingEvent(mockDisk, "/test.txt"),
-			(start) => new FileDeletedEvent(start),
+			() => new StorageFileDeletingEvent(mockDisk, "/test.txt"),
+			(start) => new StorageFileDeletedEvent(start),
 			dispatcher,
 			{ onNotFound: "throw" },
 		);

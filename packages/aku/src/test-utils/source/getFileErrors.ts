@@ -124,6 +124,16 @@ export function getFileErrors(file: SourceFile): string[] {
 				}
 
 				const moduleName = file.folder.basename;
+
+				if (exp.runtimeValue !== AkuEvent) {
+					const expectedPrefix = moduleName[0].toUpperCase() + moduleName.slice(1);
+					if (!exp.name.startsWith(expectedPrefix)) {
+						errors.push(
+							`${exp.name} in ${file.path} should start with "${expectedPrefix}" (the module name)`,
+						);
+					}
+				}
+
 				const expectedPath = `${moduleName}/${moduleName}-events.ts`;
 				if (!file.path.endsWith(expectedPath)) {
 					errors.push(

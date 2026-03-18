@@ -8,7 +8,7 @@ import {
 import type { DatabaseClient } from "../../DatabaseClient.ts";
 import { DatabaseClientImpl } from "../../DatabaseClientImpl.ts";
 import { DatabaseQueryError } from "../../database-errors.ts";
-import { TransactionRetryingEvent } from "../../database-events.ts";
+import { DatabaseTransactionRetryingEvent } from "../../database-events.ts";
 import { sql } from "../../sql.ts";
 import { PostgresDatabaseAdapter } from "./PostgresDatabaseAdapter.ts";
 import {
@@ -90,7 +90,7 @@ describe(PostgresDatabaseAdapter, () => {
 
 		await Promise.all([tx1Promise, tx2Promise]);
 
-		const retryEvents = dispatcher.getEvents(TransactionRetryingEvent);
+		const retryEvents = dispatcher.getEvents(DatabaseTransactionRetryingEvent);
 		expect(retryEvents).toHaveLength(1);
 		expect(retryEvents[0].error?.toString()).toInclude("55P03: could not obtain lock");
 
@@ -132,7 +132,7 @@ describe(PostgresDatabaseAdapter, () => {
 
 		await Promise.all([tx1Promise, tx2Promise]);
 
-		const retryEvents = dispatcher.getEvents(TransactionRetryingEvent);
+		const retryEvents = dispatcher.getEvents(DatabaseTransactionRetryingEvent);
 		expect(retryEvents).toHaveLength(1);
 		expect(retryEvents[0].error?.toString()).toInclude("40001: could not serialize access");
 
@@ -180,7 +180,7 @@ describe(PostgresDatabaseAdapter, () => {
 		await promise;
 
 		// One transaction must have been retried due to deadlock
-		const retryEvents = dispatcher.getEvents(TransactionRetryingEvent);
+		const retryEvents = dispatcher.getEvents(DatabaseTransactionRetryingEvent);
 		expect(retryEvents).toHaveLength(1);
 		expect(retryEvents[0].error?.toString()).toInclude("40P01: deadlock detected");
 	});

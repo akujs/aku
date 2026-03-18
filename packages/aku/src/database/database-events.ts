@@ -75,7 +75,7 @@ interface QueryEventInit extends DatabaseEventInit {
 /**
  * Dispatched before a query is executed
  */
-export class QueryExecutingEvent extends DatabaseOperationStartingEvent {
+export class DatabaseQueryExecutingEvent extends DatabaseOperationStartingEvent {
 	public readonly type = "query:execute" as const;
 	readonly statement: Statement;
 
@@ -88,12 +88,12 @@ export class QueryExecutingEvent extends DatabaseOperationStartingEvent {
 /**
  * Dispatched after a query has been successfully executed
  */
-export class QueryExecutedEvent extends DatabaseOperationCompletedEvent {
+export class DatabaseQueryExecutedEvent extends DatabaseOperationCompletedEvent {
 	public readonly type = "query:execute" as const;
-	readonly #startEvent: QueryExecutingEvent;
+	readonly #startEvent: DatabaseQueryExecutingEvent;
 	readonly result: StatementResult;
 
-	constructor(startEvent: QueryExecutingEvent, result: StatementResult) {
+	constructor(startEvent: DatabaseQueryExecutingEvent, result: StatementResult) {
 		super(startEvent);
 		this.#startEvent = startEvent;
 		this.result = result;
@@ -107,14 +107,14 @@ export class QueryExecutedEvent extends DatabaseOperationCompletedEvent {
 /**
  * Dispatched when a query fails
  */
-export class QueryFailedEvent extends DatabaseEvent {
+export class DatabaseQueryFailedEvent extends DatabaseEvent {
 	readonly phase = "fail" as const;
 	public readonly type = "query:execute" as const;
 	public readonly timeTakenMs: number;
 	readonly statement: Statement;
 	readonly error: unknown;
 
-	constructor(startEvent: QueryExecutingEvent, error: unknown) {
+	constructor(startEvent: DatabaseQueryExecutingEvent, error: unknown) {
 		super(startEvent);
 		this.timeTakenMs = performance.now() - startEvent.startTimestamp;
 		this.statement = startEvent.statement;
@@ -131,7 +131,7 @@ export interface TransactionEventInit extends DatabaseEventInit {
 /**
  * Dispatched before a transaction begins (before BEGIN or SAVEPOINT)
  */
-export class TransactionExecutingEvent extends DatabaseOperationStartingEvent {
+export class DatabaseTransactionExecutingEvent extends DatabaseOperationStartingEvent {
 	public readonly type = "transaction:execute" as const;
 	public override readonly transactionId: number;
 	public override readonly outerTransactionId: number;
@@ -149,10 +149,10 @@ export class TransactionExecutingEvent extends DatabaseOperationStartingEvent {
  * Dispatched before a transaction commits
  *
  * You can abort the transaction by throwing an error from this event handler.
- * To prevent this from resulting in an error 500 for the current request, your
- * application code will need to catch the error.
+ * This will result in an error 500 for the current request unless your
+ * application code catches the error.
  */
-export class TransactionPreCommitEvent extends DatabaseEvent {
+export class DatabaseTransactionPreCommitEvent extends DatabaseEvent {
 	public readonly type = "transaction:pre-commit" as const;
 	public override readonly transactionId: number;
 	public override readonly outerTransactionId: number;
@@ -169,13 +169,13 @@ export class TransactionPreCommitEvent extends DatabaseEvent {
 /**
  * Dispatched after a transaction has been successfully committed
  */
-export class TransactionExecutedEvent extends DatabaseOperationCompletedEvent {
+export class DatabaseTransactionExecutedEvent extends DatabaseOperationCompletedEvent {
 	public readonly type = "transaction:execute" as const;
 	public override readonly transactionId: number;
 	public override readonly outerTransactionId: number;
 	public override readonly transactionDepth: number;
 
-	constructor(executingEvent: TransactionExecutingEvent) {
+	constructor(executingEvent: DatabaseTransactionExecutingEvent) {
 		super(executingEvent);
 		this.transactionId = executingEvent.transactionId;
 		this.outerTransactionId = executingEvent.outerTransactionId;
@@ -186,7 +186,7 @@ export class TransactionExecutedEvent extends DatabaseOperationCompletedEvent {
 /**
  * Dispatched when a transaction fails and is rolled back
  */
-export class TransactionFailedEvent extends DatabaseEvent {
+export class DatabaseTransactionFailedEvent extends DatabaseEvent {
 	readonly phase = "fail" as const;
 	public readonly type = "transaction:execute" as const;
 	public override readonly transactionId: number;
@@ -195,7 +195,7 @@ export class TransactionFailedEvent extends DatabaseEvent {
 	public readonly timeTakenMs: number;
 	readonly error: unknown;
 
-	constructor(executingEvent: TransactionExecutingEvent, error: unknown) {
+	constructor(executingEvent: DatabaseTransactionExecutingEvent, error: unknown) {
 		super(executingEvent);
 		this.transactionId = executingEvent.transactionId;
 		this.outerTransactionId = executingEvent.outerTransactionId;
@@ -219,7 +219,7 @@ interface TransactionRetryEventInit extends DatabaseEventInit {
  * the next attempt started therefore the `transactionId` of the event will
  * be null.
  */
-export class TransactionRetryingEvent extends DatabaseEvent {
+export class DatabaseTransactionRetryingEvent extends DatabaseEvent {
 	public readonly type = "transaction:retry" as const;
 
 	/**

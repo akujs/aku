@@ -34,10 +34,9 @@ describe(getFileErrors, () => {
 
 		expect(errors).toMatchInlineSnapshot(`
 		  [
-		    "GoodEvent in errors/errors-events.ts should be exported twice in events-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: errors/errors-entry-point.ts",
-		    "FooEvent in errors/errors-events.ts ends with "Event" but does not extend AkuEvent",
-		    "FooEvent in errors/errors-events.ts should be exported twice in events-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: errors/errors-entry-point.ts",
+		    "ErrorsFooEvent in errors/errors-events.ts ends with "Event" but does not extend AkuEvent",
 		    "BadEventExtension in errors/errors-events.ts extends AkuEvent but does not end with "Event"",
+		    "BadPrefixEvent in errors/errors-events.ts should start with "Errors" (the module name)",
 		  ]
 		`);
 	});

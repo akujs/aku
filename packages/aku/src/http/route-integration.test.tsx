@@ -12,7 +12,7 @@ import { abort } from "./abort.ts";
 import type { ClassController, Controller } from "./Controller.ts";
 import { BaseController, type ControllerContext, type ControllerReturn } from "./Controller.ts";
 import { any, get, group, post, redirect } from "./helpers.ts";
-import { RequestHandledEvent } from "./http-events.ts";
+import { HttpRequestHandledEvent } from "./http-events.ts";
 import type { FunctionMiddleware } from "./Middleware.ts";
 import { BaseMiddleware } from "./Middleware.ts";
 import { MiddlewareSet } from "./MiddlewareSet.ts";
@@ -848,14 +848,14 @@ describe("status pages", () => {
 	});
 });
 
-test("RequestHandledEvent allows listeners to access responses", async () => {
+test("HttpRequestHandledEvent allows listeners to access responses", async () => {
 	let capturedContext: ControllerContext | undefined;
 	let capturedStatus: number | undefined;
 	let capturedHeaders: Headers | undefined;
 	let capturedBody: Promise<string> | undefined;
 
 	class TestListener extends BaseListener {
-		handle(event: RequestHandledEvent) {
+		handle(event: HttpRequestHandledEvent) {
 			capturedContext = event.context;
 			capturedStatus = event.status;
 			capturedHeaders = event.headers;
@@ -866,7 +866,7 @@ test("RequestHandledEvent allows listeners to access responses", async () => {
 		}
 	}
 
-	container.get(Dispatcher).addListener(RequestHandledEvent, TestListener);
+	container.get(Dispatcher).addListener(HttpRequestHandledEvent, TestListener);
 
 	router.register(
 		get("/test/{id}", (ctx) => {

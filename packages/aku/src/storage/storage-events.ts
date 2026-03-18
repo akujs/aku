@@ -87,17 +87,17 @@ export class StorageOperationFailedEvent extends StorageEvent {
 }
 
 /** Dispatched when a file read operation starts. */
-export class FileReadingEvent extends StorageOperationStartingEvent {
+export class StorageFileReadingEvent extends StorageOperationStartingEvent {
 	public readonly type = "file:read" as const;
 }
 
 /** Dispatched when a file has been successfully read. */
-export class FileReadEvent extends StorageOperationCompletedEvent {
+export class StorageFileReadEvent extends StorageOperationCompletedEvent {
 	public readonly type = "file:read" as const;
 	readonly #response: Response;
 	#headers?: Headers;
 
-	constructor(startEvent: FileReadingEvent, response: Response) {
+	constructor(startEvent: StorageFileReadingEvent, response: Response) {
 		super(startEvent);
 		this.#response = response;
 	}
@@ -122,39 +122,39 @@ export class FileReadEvent extends StorageOperationCompletedEvent {
 }
 
 /** Dispatched when checking if a file exists. */
-export class FileExistenceCheckingEvent extends StorageOperationStartingEvent {
+export class StorageFileExistenceCheckingEvent extends StorageOperationStartingEvent {
 	public readonly type = "file:existence-check" as const;
 }
 
 /** Dispatched when file existence check completes. */
-export class FileExistenceCheckedEvent extends StorageOperationCompletedEvent {
+export class StorageFileExistenceCheckedEvent extends StorageOperationCompletedEvent {
 	public readonly type = "file:existence-check" as const;
 	readonly exists: boolean;
 
-	constructor(startEvent: FileExistenceCheckingEvent, exists: boolean) {
+	constructor(startEvent: StorageFileExistenceCheckingEvent, exists: boolean) {
 		super(startEvent);
 		this.exists = exists;
 	}
 }
 
 /** Dispatched when retrieving file metadata. */
-export class FileInfoRetrievingEvent extends StorageOperationStartingEvent {
+export class StorageFileInfoRetrievingEvent extends StorageOperationStartingEvent {
 	public readonly type = "file:info-retrieve" as const;
 }
 
 /** Dispatched when file metadata has been retrieved. */
-export class FileInfoRetrievedEvent extends StorageOperationCompletedEvent {
+export class StorageFileInfoRetrievedEvent extends StorageOperationCompletedEvent {
 	public readonly type = "file:info-retrieve" as const;
 	readonly info: StorageFileInfo | null;
 
-	constructor(startEvent: FileInfoRetrievingEvent, info: StorageFileInfo | null) {
+	constructor(startEvent: StorageFileInfoRetrievingEvent, info: StorageFileInfo | null) {
 		super(startEvent);
 		this.info = info;
 	}
 }
 
 /** Dispatched when generating a URL for a file. */
-export class FileUrlGeneratingEvent extends StorageOperationStartingEvent {
+export class StorageFileUrlGeneratingEvent extends StorageOperationStartingEvent {
 	public readonly type = "file:url-generate" as const;
 	readonly urlType: "url" | "signed" | "upload";
 	readonly options: StorageFileSignedUrlOptions;
@@ -172,13 +172,13 @@ export class FileUrlGeneratingEvent extends StorageOperationStartingEvent {
 }
 
 /** Dispatched when a file URL has been generated. */
-export class FileUrlGeneratedEvent extends StorageOperationCompletedEvent {
+export class StorageFileUrlGeneratedEvent extends StorageOperationCompletedEvent {
 	public readonly type = "file:url-generate" as const;
 
-	readonly #startEvent: FileUrlGeneratingEvent;
+	readonly #startEvent: StorageFileUrlGeneratingEvent;
 	readonly url: string;
 
-	constructor(startEvent: FileUrlGeneratingEvent, url: string) {
+	constructor(startEvent: StorageFileUrlGeneratingEvent, url: string) {
 		super(startEvent);
 		this.#startEvent = startEvent;
 		this.url = url;
@@ -194,7 +194,7 @@ export class FileUrlGeneratedEvent extends StorageOperationCompletedEvent {
 }
 
 /** Dispatched when a file write operation starts. */
-export class FileWritingEvent extends StorageOperationStartingEvent {
+export class StorageFileWritingEvent extends StorageOperationStartingEvent {
 	public readonly type = "file:write" as const;
 	readonly data: StorageData;
 	readonly mimeType: string | null;
@@ -207,12 +207,12 @@ export class FileWritingEvent extends StorageOperationStartingEvent {
 }
 
 /** Dispatched when a file has been successfully written. */
-export class FileWrittenEvent extends StorageOperationCompletedEvent {
+export class StorageFileWrittenEvent extends StorageOperationCompletedEvent {
 	public readonly type = "file:write" as const;
 
-	readonly #startEvent: FileWritingEvent;
+	readonly #startEvent: StorageFileWritingEvent;
 
-	constructor(startEvent: FileWritingEvent) {
+	constructor(startEvent: StorageFileWritingEvent) {
 		super(startEvent);
 		this.#startEvent = startEvent;
 	}
@@ -227,17 +227,17 @@ export class FileWrittenEvent extends StorageOperationCompletedEvent {
 }
 
 /** Dispatched when a file deletion starts. */
-export class FileDeletingEvent extends StorageOperationStartingEvent {
+export class StorageFileDeletingEvent extends StorageOperationStartingEvent {
 	public readonly type = "file:delete" as const;
 }
 
 /** Dispatched when a file has been successfully deleted. */
-export class FileDeletedEvent extends StorageOperationCompletedEvent {
+export class StorageFileDeletedEvent extends StorageOperationCompletedEvent {
 	public readonly type = "file:delete" as const;
 }
 
 /** Dispatched when a file copy operation starts. */
-export class FileCopyingEvent extends StorageOperationStartingEvent {
+export class StorageFileCopyingEvent extends StorageOperationStartingEvent {
 	public readonly type = "file:copy" as const;
 	readonly destinationDiskName: string;
 	readonly destinationPath: string;
@@ -255,12 +255,12 @@ export class FileCopyingEvent extends StorageOperationStartingEvent {
 }
 
 /** Dispatched when a file has been successfully copied. */
-export class FileCopiedEvent extends StorageOperationCompletedEvent {
+export class StorageFileCopiedEvent extends StorageOperationCompletedEvent {
 	public readonly type = "file:copy" as const;
 
-	readonly #startEvent: FileCopyingEvent;
+	readonly #startEvent: StorageFileCopyingEvent;
 
-	constructor(startEvent: FileCopyingEvent) {
+	constructor(startEvent: StorageFileCopyingEvent) {
 		super(startEvent);
 		this.#startEvent = startEvent;
 	}
@@ -275,7 +275,7 @@ export class FileCopiedEvent extends StorageOperationCompletedEvent {
 }
 
 /** Dispatched when a file move operation starts. */
-export class FileMovingEvent extends StorageOperationStartingEvent {
+export class StorageFileMovingEvent extends StorageOperationStartingEvent {
 	public readonly type = "file:move" as const;
 	readonly destinationDiskName: string;
 	readonly destinationPath: string;
@@ -293,12 +293,12 @@ export class FileMovingEvent extends StorageOperationStartingEvent {
 }
 
 /** Dispatched when a file has been successfully moved. */
-export class FileMovedEvent extends StorageOperationCompletedEvent {
+export class StorageFileMovedEvent extends StorageOperationCompletedEvent {
 	public readonly type = "file:move" as const;
 
-	readonly #startEvent: FileMovingEvent;
+	readonly #startEvent: StorageFileMovingEvent;
 
-	constructor(startEvent: FileMovingEvent) {
+	constructor(startEvent: StorageFileMovingEvent) {
 		super(startEvent);
 		this.#startEvent = startEvent;
 	}
@@ -313,23 +313,23 @@ export class FileMovedEvent extends StorageOperationCompletedEvent {
 }
 
 /** Dispatched when checking if a directory exists. */
-export class DirectoryExistenceCheckingEvent extends StorageOperationStartingEvent {
+export class StorageDirectoryExistenceCheckingEvent extends StorageOperationStartingEvent {
 	public readonly type = "directory:existence-check" as const;
 }
 
 /** Dispatched when directory existence check completes. */
-export class DirectoryExistenceCheckedEvent extends StorageOperationCompletedEvent {
+export class StorageDirectoryExistenceCheckedEvent extends StorageOperationCompletedEvent {
 	public readonly type = "directory:existence-check" as const;
 	readonly exists: boolean;
 
-	constructor(startEvent: DirectoryExistenceCheckingEvent, exists: boolean) {
+	constructor(startEvent: StorageDirectoryExistenceCheckingEvent, exists: boolean) {
 		super(startEvent);
 		this.exists = exists;
 	}
 }
 
 /** Dispatched when a directory listing operation starts. */
-export class DirectoryListingEvent extends StorageOperationStartingEvent {
+export class StorageDirectoryListingEvent extends StorageOperationStartingEvent {
 	public readonly type = "directory:list" as const;
 	readonly list: "files" | "directories" | "all";
 	readonly recursive: boolean;
@@ -347,12 +347,12 @@ export class DirectoryListingEvent extends StorageOperationStartingEvent {
 }
 
 /** Dispatched when a directory has been successfully listed. */
-export class DirectoryListedEvent extends StorageOperationCompletedEvent {
+export class StorageDirectoryListedEvent extends StorageOperationCompletedEvent {
 	public readonly type = "directory:list" as const;
-	readonly #startEvent: DirectoryListingEvent;
+	readonly #startEvent: StorageDirectoryListingEvent;
 	readonly entryCount: number;
 
-	constructor(startEvent: DirectoryListingEvent, entryCount: number) {
+	constructor(startEvent: StorageDirectoryListingEvent, entryCount: number) {
 		super(startEvent);
 		this.#startEvent = startEvent;
 		this.entryCount = entryCount;
@@ -368,11 +368,11 @@ export class DirectoryListedEvent extends StorageOperationCompletedEvent {
 }
 
 /** Dispatched when a directory deletion starts. */
-export class DirectoryDeletingEvent extends StorageOperationStartingEvent {
+export class StorageDirectoryDeletingEvent extends StorageOperationStartingEvent {
 	public readonly type = "directory:delete" as const;
 }
 
 /** Dispatched when a directory has been successfully deleted. */
-export class DirectoryDeletedEvent extends StorageOperationCompletedEvent {
+export class StorageDirectoryDeletedEvent extends StorageOperationCompletedEvent {
 	public readonly type = "directory:delete" as const;
 }

@@ -13,14 +13,14 @@ import { StorageDiskImpl } from "./StorageDiskImpl.ts";
 import { StorageFileImpl } from "./StorageFileImpl.ts";
 import { StorageInvalidPathError } from "./storage-errors.ts";
 import {
-	DirectoryDeletedEvent,
-	DirectoryDeletingEvent,
-	DirectoryExistenceCheckedEvent,
-	DirectoryExistenceCheckingEvent,
-	DirectoryListedEvent,
-	DirectoryListingEvent,
-	FileWritingEvent,
-	FileWrittenEvent,
+	StorageDirectoryDeletedEvent,
+	StorageDirectoryDeletingEvent,
+	StorageDirectoryExistenceCheckedEvent,
+	StorageDirectoryExistenceCheckingEvent,
+	StorageDirectoryListedEvent,
+	StorageDirectoryListingEvent,
+	StorageFileWritingEvent,
+	StorageFileWrittenEvent,
 } from "./storage-events.ts";
 
 function getPaths(items: Array<{ path: string }>): string[] {
@@ -732,8 +732,8 @@ describe(StorageDirectoryImpl, () => {
 
 			const exists = await dir.exists();
 
-			const startEvent = new DirectoryExistenceCheckingEvent(eventDisk, "/subdir/");
-			const endEvent = new DirectoryExistenceCheckedEvent(startEvent, exists);
+			const startEvent = new StorageDirectoryExistenceCheckingEvent(eventDisk, "/subdir/");
+			const endEvent = new StorageDirectoryExistenceCheckedEvent(startEvent, exists);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -742,8 +742,8 @@ describe(StorageDirectoryImpl, () => {
 
 			await dir.list();
 
-			const startEvent = new DirectoryListingEvent(eventDisk, "/subdir/", "all", false);
-			const endEvent = new DirectoryListedEvent(startEvent, 4); // 2 dirs + 2 files
+			const startEvent = new StorageDirectoryListingEvent(eventDisk, "/subdir/", "all", false);
+			const endEvent = new StorageDirectoryListedEvent(startEvent, 4); // 2 dirs + 2 files
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -754,8 +754,8 @@ describe(StorageDirectoryImpl, () => {
 				// Consume the generator
 			}
 
-			const startEvent = new DirectoryListingEvent(eventDisk, "/subdir/", "all", false);
-			const endEvent = new DirectoryListedEvent(startEvent, 4); // 2 dirs + 2 files
+			const startEvent = new StorageDirectoryListingEvent(eventDisk, "/subdir/", "all", false);
+			const endEvent = new StorageDirectoryListedEvent(startEvent, 4); // 2 dirs + 2 files
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -764,8 +764,8 @@ describe(StorageDirectoryImpl, () => {
 
 			await dir.listFiles();
 
-			const startEvent = new DirectoryListingEvent(eventDisk, "/subdir/", "files", false);
-			const endEvent = new DirectoryListedEvent(startEvent, 2); // 2 immediate files
+			const startEvent = new StorageDirectoryListingEvent(eventDisk, "/subdir/", "files", false);
+			const endEvent = new StorageDirectoryListedEvent(startEvent, 2); // 2 immediate files
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -774,8 +774,8 @@ describe(StorageDirectoryImpl, () => {
 
 			await dir.listFiles({ recursive: true });
 
-			const startEvent = new DirectoryListingEvent(eventDisk, "/subdir/", "files", true);
-			const endEvent = new DirectoryListedEvent(startEvent, 6); // All 6 files recursively
+			const startEvent = new StorageDirectoryListingEvent(eventDisk, "/subdir/", "files", true);
+			const endEvent = new StorageDirectoryListedEvent(startEvent, 6); // All 6 files recursively
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -786,8 +786,8 @@ describe(StorageDirectoryImpl, () => {
 				// Consume the generator
 			}
 
-			const startEvent = new DirectoryListingEvent(eventDisk, "/subdir/", "files", true);
-			const endEvent = new DirectoryListedEvent(startEvent, 6);
+			const startEvent = new StorageDirectoryListingEvent(eventDisk, "/subdir/", "files", true);
+			const endEvent = new StorageDirectoryListedEvent(startEvent, 6);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -796,8 +796,13 @@ describe(StorageDirectoryImpl, () => {
 
 			await dir.listDirectories();
 
-			const startEvent = new DirectoryListingEvent(eventDisk, "/subdir/", "directories", false);
-			const endEvent = new DirectoryListedEvent(startEvent, 2); // 2 immediate directories
+			const startEvent = new StorageDirectoryListingEvent(
+				eventDisk,
+				"/subdir/",
+				"directories",
+				false,
+			);
+			const endEvent = new StorageDirectoryListedEvent(startEvent, 2); // 2 immediate directories
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -808,8 +813,13 @@ describe(StorageDirectoryImpl, () => {
 				// Consume the generator
 			}
 
-			const startEvent = new DirectoryListingEvent(eventDisk, "/subdir/", "directories", false);
-			const endEvent = new DirectoryListedEvent(startEvent, 2); // 2 immediate directories
+			const startEvent = new StorageDirectoryListingEvent(
+				eventDisk,
+				"/subdir/",
+				"directories",
+				false,
+			);
+			const endEvent = new StorageDirectoryListedEvent(startEvent, 2); // 2 immediate directories
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -818,8 +828,8 @@ describe(StorageDirectoryImpl, () => {
 
 			await dir.deleteAll();
 
-			const startEvent = new DirectoryDeletingEvent(eventDisk, "/subdir/");
-			const endEvent = new DirectoryDeletedEvent(startEvent);
+			const startEvent = new StorageDirectoryDeletingEvent(eventDisk, "/subdir/");
+			const endEvent = new StorageDirectoryDeletedEvent(startEvent);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -829,8 +839,13 @@ describe(StorageDirectoryImpl, () => {
 			const data = "content";
 			await dir.putFile({ data, mimeType: "text/plain", suggestedName: "test.txt" });
 
-			const startEvent = new FileWritingEvent(eventDisk, "/uploads/test.txt", data, "text/plain");
-			const endEvent = new FileWrittenEvent(startEvent);
+			const startEvent = new StorageFileWritingEvent(
+				eventDisk,
+				"/uploads/test.txt",
+				data,
+				"text/plain",
+			);
+			const endEvent = new StorageFileWrittenEvent(startEvent);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 	});
