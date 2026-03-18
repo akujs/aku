@@ -7,3 +7,4 @@ yarn-error.log*
 coverage
 aku-crash-*.log
 bundle-treemap.html
+tmp-*
