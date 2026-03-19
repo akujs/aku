@@ -4,10 +4,7 @@ import { type ProcessApi, realProcessApi } from "./process-api.ts";
 export function writeCrashDumpAndExit(error: unknown, proc: ProcessApi = realProcessApi): void {
 	const dump = {
 		timestamp: new Date().toISOString(),
-		error:
-			error instanceof Error
-				? { name: error.name, message: error.message, stack: error.stack }
-				: String(error),
+		error: serialiseError(error),
 		nodeVersion: proc.version(),
 		platform: proc.platform(),
 		cwd: proc.cwd(),
@@ -25,4 +22,19 @@ export function writeCrashDumpAndExit(error: unknown, proc: ProcessApi = realPro
 	}
 	proc.stderr("Please report this issue at: https://github.com/akujs/aku/issues\n");
 	proc.exit(1);
+}
+
+function serialiseError(error: unknown): unknown {
+	if (!(error instanceof Error)) {
+		return String(error);
+	}
+	const result: Record<string, unknown> = {
+		name: error.name,
+		message: error.message,
+		stack: error.stack,
+	};
+	if (error.cause !== undefined) {
+		result.cause = serialiseError(error.cause);
+	}
+	return result;
 }

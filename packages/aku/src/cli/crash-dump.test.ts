@@ -84,6 +84,61 @@ describe(writeCrashDumpAndExit, () => {
 		expect(stderrJoined).toContain('"message": "boom"');
 	});
 
+	test("crash dump includes error cause chain", () => {
+		const proc = new MemoryProcessApi();
+		const rootCause = new Error("root cause");
+		const midError = new Error("mid error", { cause: rootCause });
+		const topError = new Error("top error", { cause: midError });
+
+		writeCrashDumpAndExit(topError, proc);
+
+		const content = Object.values(proc.state.files!)[0];
+		const dump = JSON.parse(content);
+		dump.timestamp = "<timestamp>";
+		dump.error.stack = "<stack>";
+		dump.error.cause.stack = "<stack>";
+		dump.error.cause.cause.stack = "<stack>";
+
+		expect(dump.error).toMatchInlineSnapshot(`
+{
+  "cause": {
+    "cause": {
+      "message": "root cause",
+      "name": "Error",
+      "stack": "<stack>",
+    },
+    "message": "mid error",
+    "name": "Error",
+    "stack": "<stack>",
+  },
+  "message": "top error",
+  "name": "Error",
+  "stack": "<stack>",
+}
+`);
+	});
+
+	test("crash dump handles non-Error cause values", () => {
+		const proc = new MemoryProcessApi();
+		const error = new Error("wrapped", { cause: "string cause" });
+
+		writeCrashDumpAndExit(error, proc);
+
+		const content = Object.values(proc.state.files!)[0];
+		const dump = JSON.parse(content);
+		dump.timestamp = "<timestamp>";
+		dump.error.stack = "<stack>";
+
+		expect(dump.error).toMatchInlineSnapshot(`
+{
+  "cause": "string cause",
+  "message": "wrapped",
+  "name": "Error",
+  "stack": "<stack>",
+}
+`);
+	});
+
 	test("calls exit(1)", () => {
 		const proc = new MemoryProcessApi();
 
