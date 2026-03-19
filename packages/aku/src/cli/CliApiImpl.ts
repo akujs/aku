@@ -47,6 +47,9 @@ export class CliApiImpl extends BaseClass implements CliApi {
 	async #withEscapeCancel<T>(
 		fn: (context: { signal: AbortSignal }) => Promise<T>,
 	): Promise<CliPromptResponse<T>> {
+		if (!this.isInteractive) {
+			return { success: false };
+		}
 		const controller = new AbortController();
 		const onKeypress = (_ch: string, key: { name: string }) => {
 			if (key?.name === "escape") {

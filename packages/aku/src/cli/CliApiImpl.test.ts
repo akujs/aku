@@ -237,6 +237,35 @@ describe(CliApiImpl, () => {
 `);
 	});
 
+	describe("non-interactive mode", () => {
+		test("select() returns cancelled when not interactive", async () => {
+			const { cli } = setup();
+
+			const result = await cli.select({
+				prompt: "Pick one",
+				options: [{ label: "A", value: "a" }],
+			});
+
+			expect(result).toEqual({ success: false });
+		});
+
+		test("input() returns cancelled when not interactive", async () => {
+			const { cli } = setup();
+
+			const result = await cli.input({ prompt: "Enter something" });
+
+			expect(result).toEqual({ success: false });
+		});
+
+		test("confirm() returns cancelled when not interactive", async () => {
+			const { cli } = setup();
+
+			const result = await cli.confirm({ prompt: "Are you sure?", defaultValue: false });
+
+			expect(result).toEqual({ success: false });
+		});
+	});
+
 	test("combined output", () => {
 		const { proc, cli } = setup();
 

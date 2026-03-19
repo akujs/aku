@@ -4,7 +4,7 @@ import { MemoryCliApi } from "./MemoryCliApi.ts";
 
 describe(MemoryCliApi, () => {
 	test("nextPrompt returns a pending select prompt", async () => {
-		const cli = new MemoryCliApi();
+		const cli = new MemoryCliApi({ isInteractive: true });
 
 		const selectPromise = cli.select({
 			prompt: "Pick a colour",
@@ -32,7 +32,7 @@ describe(MemoryCliApi, () => {
 	});
 
 	test("nextPrompt returns a pending input prompt", async () => {
-		const cli = new MemoryCliApi();
+		const cli = new MemoryCliApi({ isInteractive: true });
 
 		const inputPromise = cli.input({ prompt: "Enter your name", required: true });
 
@@ -48,7 +48,7 @@ describe(MemoryCliApi, () => {
 	});
 
 	test("nextPrompt returns a pending confirm prompt", async () => {
-		const cli = new MemoryCliApi();
+		const cli = new MemoryCliApi({ isInteractive: true });
 
 		const confirmPromise = cli.confirm({ prompt: "Are you sure?", defaultValue: false });
 
@@ -64,7 +64,7 @@ describe(MemoryCliApi, () => {
 	});
 
 	test("respond with success: false simulates cancellation", async () => {
-		const cli = new MemoryCliApi();
+		const cli = new MemoryCliApi({ isInteractive: true });
 
 		const selectPromise = cli.select({
 			prompt: "Pick one",
@@ -86,6 +86,35 @@ describe(MemoryCliApi, () => {
 		);
 	});
 
+	describe("non-interactive mode", () => {
+		test("select() returns cancelled when not interactive", async () => {
+			const cli = new MemoryCliApi();
+
+			const result = await cli.select({
+				prompt: "Pick one",
+				options: [{ label: "A", value: "a" }],
+			});
+
+			expect(result).toEqual({ success: false });
+		});
+
+		test("input() returns cancelled when not interactive", async () => {
+			const cli = new MemoryCliApi();
+
+			const result = await cli.input({ prompt: "Enter something" });
+
+			expect(result).toEqual({ success: false });
+		});
+
+		test("confirm() returns cancelled when not interactive", async () => {
+			const cli = new MemoryCliApi();
+
+			const result = await cli.confirm({ prompt: "Are you sure?", defaultValue: false });
+
+			expect(result).toEqual({ success: false });
+		});
+	});
+
 	test("handleError returns the exit code from CliExitError", () => {
 		const cli = new MemoryCliApi();
 
@@ -100,7 +129,7 @@ describe(MemoryCliApi, () => {
 	});
 
 	test("sequential prompts work", async () => {
-		const cli = new MemoryCliApi();
+		const cli = new MemoryCliApi({ isInteractive: true });
 
 		const commandPromise = (async () => {
 			const r1 = await cli.select({

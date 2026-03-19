@@ -45,9 +45,14 @@ export type CapturedError = {
 
 export class MemoryCliApi extends BaseClass implements CliApi, CliErrorHandler {
 	columns = 80;
-	isInteractive = false;
+	isInteractive: boolean;
 	outputs: CliOutput[] = [];
 	errors: CapturedError[] = [];
+
+	constructor(options?: { isInteractive?: boolean | undefined }) {
+		super();
+		this.isInteractive = options?.isInteractive ?? false;
+	}
 
 	handleError(error: unknown, _cli: CliApi): number {
 		const normalised = error instanceof Error ? error : new Error(String(error), { cause: error });
@@ -156,6 +161,9 @@ export class MemoryCliApi extends BaseClass implements CliApi, CliErrorHandler {
 		type: PendingPrompt["type"],
 		options: CliSelectOptions<unknown> | CliInputOptions<unknown> | CliConfirmOptions,
 	): Promise<CliPromptResponse<unknown>> {
+		if (!this.isInteractive) {
+			return Promise.resolve({ success: false });
+		}
 		const { promise, resolve } = Promise.withResolvers<CliPromptResponse<unknown>>();
 
 		this.#pendingPrompt = {

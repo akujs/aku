@@ -92,7 +92,7 @@ export class CliTestHarness extends BaseClass {
 	constructor(app: Application) {
 		super();
 		this.#app = app;
-		this.#cli = new MemoryCliApi();
+		this.#cli = new MemoryCliApi({ isInteractive: true });
 		app.container.singletonInstance(CliErrorHandler, this.#cli);
 	}
 
