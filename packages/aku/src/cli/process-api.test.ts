@@ -1,4 +1,4 @@
-import { describe, expect, spyOn, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createTestDirectory } from "../testing/test-directories.ts";
@@ -89,6 +89,10 @@ describe("realProcessApi", () => {
 	});
 
 	describe("onUnhandledError", () => {
+		afterEach(() => {
+			realProcessApi.cleanup();
+		});
+
 		test("registers uncaughtException listener, cleanup removes it", () => {
 			const before = process.listenerCount("uncaughtException");
 			realProcessApi.onUnhandledError(() => {});
@@ -107,6 +111,10 @@ describe("realProcessApi", () => {
 	});
 
 	describe("onKeypress and offKeypress", () => {
+		afterEach(() => {
+			realProcessApi.cleanup();
+		});
+
 		test("onKeypress registers listener, offKeypress removes it", () => {
 			const before = process.stdin.listenerCount("keypress");
 			const handler = () => {};
