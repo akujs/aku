@@ -34,7 +34,10 @@ export class CommandHandler extends BaseClass {
 
 			if (resolved) {
 				const { definition, remainingArgs } = resolved;
-				const execute = this.#registry.resolve(definition.name)!;
+				const execute = this.#registry.resolve(definition.name);
+				if (!execute) {
+					throw new CliExitError(`Command "${definition.name}" could not be resolved.`);
+				}
 
 				let parsedArgs;
 				try {
