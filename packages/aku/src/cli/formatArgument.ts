@@ -57,12 +57,15 @@ export function buildUsageLine(definition: CommandDefinition): string {
 		const token = formatUsageToken(name, def);
 		if (token) tokens.push(token);
 	}
+	let hasOptionalNamed = false;
 	for (const [name, def] of named) {
 		const token = formatUsageToken(name, def);
-		if (token) tokens.push(token);
+		if (token) {
+			tokens.push(token);
+		} else {
+			hasOptionalNamed = true;
+		}
 	}
-
-	const hasOptionalNamed = named.some(([name, def]) => formatUsageToken(name, def) === null);
 	if (hasOptionalNamed) {
 		tokens.push("[options]");
 	}
