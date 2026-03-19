@@ -206,7 +206,9 @@ export class CliApiImpl extends BaseClass implements CliApi {
 					const parsed = options.parse(response.value);
 					return { success: true, value: parsed };
 				} catch (parseError) {
-					this.#proc.stdout((parseError as Error).message + "\n");
+					this.#proc.stdout(
+						(parseError instanceof Error ? parseError.message : String(parseError)) + "\n",
+					);
 					continue;
 				}
 			}
