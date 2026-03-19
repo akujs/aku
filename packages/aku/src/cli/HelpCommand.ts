@@ -12,7 +12,7 @@ import type {
 	InferArgs,
 } from "./cli-types.ts";
 import { defineCommand } from "./defineCommand.ts";
-import { formatUsageToken } from "./formatArgument.ts";
+import { buildUsageLine } from "./formatArgument.ts";
 import { formatOutput } from "./formatOutput.ts";
 import { formatMachineCommandList, outputHumanCommandList } from "./ListCommand.ts";
 import { outputHumanCommandHelp } from "./renderHelp.ts";
@@ -113,31 +113,12 @@ function formatMachineCommandHelp(
 	format: string,
 	pretty: boolean,
 ): string {
-	const schema = definition.args ?? {};
-	const entries = Object.entries(schema);
-
-	const positionals = entries.filter(([, def]) => def.positional);
-	const named = entries.filter(([, def]) => !def.positional);
-
-	// Build usage string using the same logic as outputHumanCommandHelp
-	const usageTokens: string[] = [`aku ${definition.name}`];
-	for (const [name, def] of positionals) {
-		const token = formatUsageToken(name, def);
-		if (token) usageTokens.push(token);
-	}
-	for (const [name, def] of named) {
-		const token = formatUsageToken(name, def);
-		if (token) usageTokens.push(token);
-	}
-	const hasOptionalNamed = named.some(([name, def]) => formatUsageToken(name, def) === null);
-	if (hasOptionalNamed) {
-		usageTokens.push("[options]");
-	}
+	const entries = Object.entries(definition.args ?? {});
 
 	const data = {
 		command: definition.name,
 		description: definition.description,
-		usage: usageTokens.join(" "),
+		usage: buildUsageLine(definition),
 		args: entries.map(([name, def]) => buildArgData(name, def)),
 	};
 

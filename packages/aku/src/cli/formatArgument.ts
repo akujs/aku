@@ -1,5 +1,5 @@
 import { kebabCase } from "../helpers/str/case.ts";
-import type { ArgumentDefinition } from "./cli-types.ts";
+import type { ArgumentDefinition, CommandDefinition } from "./cli-types.ts";
 
 export function formatUsageToken(name: string, def: ArgumentDefinition): string | null {
 	const effectivelyRequired = isEffectivelyRequired(def);
@@ -45,6 +45,29 @@ export function formatArgumentDetail(
 	}
 
 	return { label, description: parts.join(" ") };
+}
+
+export function buildUsageLine(definition: CommandDefinition): string {
+	const entries = Object.entries(definition.args ?? {});
+	const positionals = entries.filter(([, def]) => def.positional);
+	const named = entries.filter(([, def]) => !def.positional);
+
+	const tokens: string[] = [`aku ${definition.name}`];
+	for (const [name, def] of positionals) {
+		const token = formatUsageToken(name, def);
+		if (token) tokens.push(token);
+	}
+	for (const [name, def] of named) {
+		const token = formatUsageToken(name, def);
+		if (token) tokens.push(token);
+	}
+
+	const hasOptionalNamed = named.some(([name, def]) => formatUsageToken(name, def) === null);
+	if (hasOptionalNamed) {
+		tokens.push("[options]");
+	}
+
+	return tokens.join(" ");
 }
 
 function isEffectivelyRequired(def: ArgumentDefinition): boolean {
