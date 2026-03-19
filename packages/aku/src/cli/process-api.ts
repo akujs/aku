@@ -1,4 +1,4 @@
-/* eslint-disable no-restricted-globals -- this file is the ProcessApi implementation that wraps the process global */
+/* eslint-disable no-restricted-globals -- Human approved: this file is the ProcessApi implementation that wraps the process global */
 import { writeFileSync } from "node:fs";
 import { isAbsolute } from "node:path";
 
