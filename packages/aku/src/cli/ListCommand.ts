@@ -1,8 +1,7 @@
 import { inject } from "../container/inject.ts";
-import { findSimilar } from "../helpers/str/similarity.ts";
 import { BaseCommand } from "./Command.ts";
 import { CommandRegistry } from "./CommandRegistry.ts";
-import { CliExitError } from "./cli-errors.ts";
+import { throwNotFoundError } from "./cli-errors.ts";
 import type {
 	ArgumentSchema,
 	CommandDefinition,
@@ -70,16 +69,7 @@ class ListCommandHandler extends BaseCommand {
 		if (args.group) {
 			const groupNames = this.#registry.getGroupNames();
 			if (!groupNames.includes(args.group)) {
-				const similar = findSimilar(args.group, groupNames, {
-					threshold: 3,
-					maxResults: 6,
-				});
-				let message = `Command group "${args.group}" not found.`;
-				if (similar.length > 0) {
-					message += `\n\nDid you mean:\n${similar.map((s) => `  ${s}`).join("\n")}`;
-				}
-				message += `\n\nRun "aku list" to see available commands.`;
-				throw new CliExitError(message);
+				throwNotFoundError("Command group", args.group, groupNames);
 			}
 		}
 

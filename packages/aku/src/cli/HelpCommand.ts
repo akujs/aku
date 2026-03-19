@@ -1,9 +1,8 @@
 import { inject } from "../container/inject.ts";
-import { findSimilar } from "../helpers/str/similarity.ts";
 import { withoutUndefinedValues } from "../utils.ts";
 import { BaseCommand } from "./Command.ts";
 import { CommandRegistry } from "./CommandRegistry.ts";
-import { CliExitError } from "./cli-errors.ts";
+import { CliExitError, throwNotFoundError } from "./cli-errors.ts";
 import type {
 	ArgumentDefinition,
 	ArgumentSchema,
@@ -94,17 +93,7 @@ class HelpCommandHandler extends BaseCommand {
 			return;
 		}
 
-		const commandName = args.command.join(" ");
-		const similar = findSimilar(commandName, this.#registry.getCommandNames(), {
-			threshold: 3,
-			maxResults: 6,
-		});
-		let message = `Command "${commandName}" not found.`;
-		if (similar.length > 0) {
-			message += `\n\nDid you mean:\n${similar.map((s) => `  ${s}`).join("\n")}`;
-		}
-		message += `\n\nRun "aku list" to see available commands.`;
-		throw new CliExitError(message);
+		throwNotFoundError("Command", args.command.join(" "), this.#registry.getCommandNames());
 	}
 }
 
