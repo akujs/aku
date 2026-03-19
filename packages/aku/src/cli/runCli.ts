@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { ApplicationImpl } from "../core/ApplicationImpl.ts";
 import { CliApiImpl } from "./CliApiImpl.ts";
-import { CliExitError } from "./cli-errors.ts";
+import { CliExitError, handleCliError } from "./cli-errors.ts";
 import { writeCrashDumpAndExit } from "./crash-dump.ts";
 import { type ProcessApi, realProcessApi } from "./process-api.ts";
 
@@ -43,13 +43,7 @@ export async function runCli(proc: ProcessApi = realProcessApi): Promise<void> {
 
 		exitCode = await module.app.handleCommand(remainingArgs, cli);
 	} catch (error) {
-		if (error instanceof CliExitError) {
-			proc.stderr(`Error: ${error.message}\n`);
-			exitCode = error.exitCode;
-		} else {
-			writeCrashDumpAndExit(error, proc);
-			return;
-		}
+		exitCode = handleCliError(error, proc);
 	}
 
 	proc.cleanup();
