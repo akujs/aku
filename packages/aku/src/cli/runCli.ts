@@ -95,6 +95,9 @@ function extractAppOption(args: string[]): ExtractedAppOption {
 		// Handle --app=value format
 		if (arg.startsWith("--app=")) {
 			appPath = arg.slice(6);
+			if (!appPath) {
+				throw new CliExitError("Option '--app' requires a value. Usage: --app=./path/to/app.ts");
+			}
 			continue;
 		}
 

@@ -130,5 +130,18 @@ describe(runCli, () => {
 			expect(stderrJoined).toContain("Could not find app file");
 			expect(stderrJoined).toContain("aku/app.ts");
 		});
+
+		test("exits with error when --app= has empty value", async () => {
+			const proc = new MemoryProcessApi({
+				argv: ["--app="],
+				importModule: () => Promise.resolve({}),
+			});
+
+			await runCli(proc);
+
+			expect(proc.state.exit).toBe(1);
+			const stderrJoined = proc.state.stderr!.join("");
+			expect(stderrJoined).toContain("'--app' requires a value");
+		});
 	});
 });
