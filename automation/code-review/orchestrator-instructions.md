@@ -24,16 +24,12 @@ The sub-agent receives:
 
 It will write the results of its discovery to `{review-folder-path}/units.md`
 
-### Present plan to user
-
-Present the plan to the user for approval. The user may approve, modify, or remove units. Do not proceed to Phase 2 until the plan is approved.
-
 ## Phase 2: Parallel Review
 
 Fan out one sub-agent per criteria file in `automation/code-review/criteria/`. Each sub-agent receives:
 - The file path `automation/code-review/review-agent-instructions.md` — the agent reads this for output format, severity definitions, and general instructions
 - Its assigned criteria file from `automation/code-review/criteria/`
-- The approved review plan (the text from Phase 1)
+- The review plan (the text from Phase 1)
 - An output path for findings and summary files
 
 Each sub-agent works through all units in the plan as a batch, producing one findings file and one summary.

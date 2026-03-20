@@ -14,4 +14,4 @@ Read all findings files in the review folder. Identify duplicates by matching on
 
 When duplicates exist, keep the version with the most thorough description and the highest-confidence severity assessment. Note in the kept finding which other criteria agents independently identified the same issue — independent rediscovery increases confidence.
 
-Write a single deduplicated findings file to `{review-folder-path}/findings.md`, preserving the format of the original findings.
+Write a single deduplicated findings file to `{review-folder-path}/findings.md`, preserving the format of the original findings. Preserve the original issue codes (e.g. `ERROR-003`, `SECURITY-001`) — do not renumber or replace them with new codes.

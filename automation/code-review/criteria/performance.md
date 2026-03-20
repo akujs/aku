@@ -43,4 +43,3 @@ You may use your general knowledge of performance analysis. A non-exhaustive lis
 ### String handling
 
 - Are there patterns that build up large strings through repeated concatenation in a loop, where collecting parts and joining would be more appropriate?
-- Are regular expressions compiled inside loops or frequently called functions where they could be compiled once at module level?
