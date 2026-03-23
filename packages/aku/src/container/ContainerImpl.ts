@@ -506,25 +506,6 @@ export class ContainerImpl extends BaseClass implements Container {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	invoke<T extends object, K extends keyof T>(
-		object: T,
-		methodName: K,
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		...params: T[K] extends (...args: any) => any ? Parameters<T[K]> : never[]
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	): T[K] extends (...args: any) => any ? ReturnType<T[K]> : never {
-		return this.withInject(() => {
-			const o = object as Record<string, (...args: unknown[]) => unknown>;
-			const m = methodName as string;
-			if (!o[m]) {
-				throw new Error(`Method ${m} not found on object`);
-			}
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			return o[m](...params) as T[K] extends (...args: any) => any ? ReturnType<T[K]> : never;
-		});
-	}
-
 	construct<P extends unknown[], T>(impl: { new (...args: P): T }, ...args: P): T {
 		return this.withInject(() => new impl(...args));
 	}

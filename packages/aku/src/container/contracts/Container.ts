@@ -1,4 +1,4 @@
-import type { AnyFunction, MethodNames, NoArgConstructor } from "../../utils.ts";
+import type { NoArgConstructor } from "../../utils.ts";
 import type { KeyOrClass, TypeToken } from "../container-key.ts";
 import { createTypeToken } from "../container-key.ts";
 
@@ -394,30 +394,6 @@ export interface Container {
 	 * @returns The return value of the closure
 	 */
 	withInject<R>(closure: () => R): R;
-
-	/**
-	 * Invoke a method on an object in the context of the container, allowing
-	 * dependencies to be injected into the method.
-	 *
-	 * @param object The object containing the method
-	 * @param methodName The name of the method to call
-	 * @param params The parameters to pass to the method
-	 *
-	 * @example
-	 * class FooCreator {
-	 *   createFoo(name: string, helper = inject(Helper)): Foo {
-	 *     ...
-	 *   }
-	 * }
-	 * const creator = new FooCreator();
-	 * const result = container.invoke(creator, "createFoo", "myFoo");
-	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	invoke<T extends object, K extends MethodNames<T> & keyof T>(
-		object: T,
-		methodName: K,
-		...params: T[K] extends AnyFunction ? Parameters<T[K]> : never[]
-	): T[K] extends AnyFunction ? ReturnType<T[K]> : never;
 
 	/**
 	 * Construct an instance of a class in the context of the container, allowing

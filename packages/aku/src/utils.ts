@@ -130,10 +130,6 @@ export class ArrayMultiMap<K, V> extends MultiMap<K, V> {
 	}
 }
 
-export type MethodNames<T> = {
-	[K in keyof T]: T[K] extends Function ? K : never;
-}[keyof T];
-
 export type Prettify<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
 
 export type MakeUndefinedOptional<T> = {
@@ -141,9 +137,6 @@ export type MakeUndefinedOptional<T> = {
 } & {
 	[K in keyof T as undefined extends T[K] ? K : never]?: T[K];
 };
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type AnyFunction = (...args: any) => any;
 
 export type AnyConstructor<T = unknown> = abstract new (...args: never[]) => T;
 

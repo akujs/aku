@@ -617,48 +617,6 @@ test("binding resolution exception message includes build stack", () => {
 	);
 });
 
-test("invoke() with injected args", () => {
-	class Foo {
-		getDepName(dep = inject(Dep)) {
-			return dep.name;
-		}
-	}
-
-	const name = container.invoke(new Foo(), "getDepName");
-
-	expect(name).toBe("default");
-
-	expect(() => new Foo().getDepName()).toThrowErrorMatchingInlineSnapshot(
-		`"Dependencies that use inject() must be created by the container"`,
-	);
-});
-
-test("invoke() with required non-injected args", () => {
-	class Foo {
-		getDepName(mandatory: string, dep = inject(Dep)) {
-			return mandatory + dep.name;
-		}
-	}
-
-	// @ts-expect-error -- should be an error to omit the required arg
-	container.invoke(new Foo(), "getDepName");
-
-	const result = container.invoke(new Foo(), "getDepName", "prefix:");
-	expect(result).toBe("prefix:default");
-});
-
-test("invoke() with optional non-injected args", () => {
-	class Foo {
-		getDepName(optional = "not-provided:", dep = inject(Dep)) {
-			return optional + dep.name;
-		}
-	}
-
-	expect(container.invoke(new Foo(), "getDepName")).toBe("not-provided:default");
-
-	expect(container.invoke(new Foo(), "getDepName", "provided:")).toBe("provided:default");
-});
-
 test("construct() with required arg", () => {
 	class Foo {
 		constructor(
