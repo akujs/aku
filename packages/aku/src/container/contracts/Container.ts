@@ -406,9 +406,10 @@ export interface Container {
 	 * class Foo {
 	 *   constructor(private name: string, private dispatcher = inject(Dispatcher)) {}
 	 * }
-	 * const foo = container.construct(Foo, "myFoo");
+	 * const foo = container.new(Foo, "myFoo");
 	 */
-	construct<P extends unknown[], T>(cls: { new (...args: P): T }, ...args: P): T;
+	// biome-ignore format: Human approved: required to prevent biome removing quotes which are required around "new"
+	"new"<P extends unknown[], T>(cls: { new (...args: P): T }, ...args: P): T;
 }
 
 /***/

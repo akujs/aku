@@ -12,7 +12,7 @@ import type { MemoryStorageConfig } from "./MemoryStorageConfig.ts";
 export function memoryStorage(config: MemoryStorageConfig = {}): StorageAdapter {
 	return {
 		build(container) {
-			return container.construct(MemoryEndpoint, config);
+			return container.new(MemoryEndpoint, config);
 		},
 	};
 }

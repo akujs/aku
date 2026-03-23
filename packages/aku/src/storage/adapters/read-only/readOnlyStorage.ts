@@ -24,7 +24,7 @@ import type { ReadOnlyStorageConfig } from "./ReadOnlyStorageConfig.ts";
 export function readOnlyStorage(config: ReadOnlyStorageConfig): StorageAdapter {
 	return {
 		build(container) {
-			return container.construct(ReadOnlyEndpoint, config);
+			return container.new(ReadOnlyEndpoint, config);
 		},
 	};
 }

@@ -8,7 +8,7 @@ import type { FilesystemStorageConfig } from "./FilesystemStorageConfig.ts";
 export function filesystemStorage(config: FilesystemStorageConfig): StorageAdapter {
 	return {
 		build(container) {
-			return container.construct(FilesystemEndpoint, config);
+			return container.new(FilesystemEndpoint, config);
 		},
 	};
 }

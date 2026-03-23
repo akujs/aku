@@ -502,7 +502,7 @@ export class ContainerImpl extends BaseClass implements Container {
 		}
 	}
 
-	construct<P extends unknown[], T>(impl: { new (...args: P): T }, ...args: P): T {
+	new<P extends unknown[], T>(impl: { new (...args: P): T }, ...args: P): T {
 		return this.withInject(() => new impl(...args));
 	}
 }

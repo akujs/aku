@@ -617,7 +617,7 @@ test("binding resolution exception message includes build stack", () => {
 	);
 });
 
-test("construct() with required arg", () => {
+test("new() with required arg", () => {
 	class Foo {
 		constructor(
 			public mandatory: number,
@@ -625,16 +625,16 @@ test("construct() with required arg", () => {
 		) {}
 	}
 
-	const foo = container.construct(Foo, 42);
+	const foo = container.new(Foo, 42);
 
 	// @ts-expect-error -- should be an error not to provide a mandatory arg
-	container.construct(Foo);
+	container.new(Foo);
 
 	expect(foo.mandatory).toBe(42);
 	expect(foo.injected).toBeInstanceOf(Dep);
 });
 
-test("construct() with optional arg", () => {
+test("new() with optional arg", () => {
 	class Foo {
 		constructor(
 			public mandatory?: number,
@@ -642,11 +642,11 @@ test("construct() with optional arg", () => {
 		) {}
 	}
 
-	let foo = container.construct(Foo, 80);
+	let foo = container.new(Foo, 80);
 	expect(foo.mandatory).toBe(80);
 	expect(foo.injected).toBeInstanceOf(Dep);
 
-	foo = container.construct(Foo);
+	foo = container.new(Foo);
 	expect(foo.mandatory).toBeUndefined();
 	expect(foo.injected).toBeInstanceOf(Dep);
 });
