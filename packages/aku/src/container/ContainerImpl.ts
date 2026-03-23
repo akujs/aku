@@ -241,7 +241,7 @@ export class ContainerImpl extends BaseClass implements Container {
 	}
 
 	bound(type: KeyOrClass): boolean {
-		return this.#getActualBinding(type).kind !== "implicit";
+		return this.#getBinding(type).kind !== "implicit";
 	}
 
 	get<T>(type: KeyOrClass<T>): T {
@@ -261,7 +261,7 @@ export class ContainerImpl extends BaseClass implements Container {
 	}
 
 	#get<T>(type: KeyOrClass<T>): T | ContainerError {
-		const binding = this.#getConcreteBinding(type);
+		const binding = this.#getBinding(type);
 		type = binding.type as KeyOrClass<T>;
 
 		if (this.#buildStack.has(type)) {
@@ -369,11 +369,7 @@ export class ContainerImpl extends BaseClass implements Container {
 		return this.get(dependency);
 	}
 
-	#getConcreteBinding<T>(type: KeyOrClass<T>): ConcreteBinding | ImplicitBinding {
-		return this.#getActualBinding(type);
-	}
-
-	#getActualBinding<T>(type: KeyOrClass<T>): Binding {
+	#getBinding<T>(type: KeyOrClass<T>): Binding {
 		let binding = this.#bindings.get(type);
 		if (!binding) {
 			binding = {
@@ -386,12 +382,12 @@ export class ContainerImpl extends BaseClass implements Container {
 	}
 
 	resolved(type: KeyOrClass): boolean {
-		const binding = this.#getConcreteBinding(type);
+		const binding = this.#getBinding(type);
 		return !!(binding.resolved || (binding.kind === "concrete" && binding.instance !== undefined));
 	}
 
 	getLifecycle(type: KeyOrClass): Lifecycle {
-		const binding = this.#getConcreteBinding(type);
+		const binding = this.#getBinding(type);
 		return binding.kind === "concrete" ? binding.lifecycle : "transient";
 	}
 
@@ -408,7 +404,7 @@ export class ContainerImpl extends BaseClass implements Container {
 	}
 
 	extend<T>(type: KeyOrClass<T>, callback: ExtenderCallback<T>): void {
-		const binding = this.#getConcreteBinding(type);
+		const binding = this.#getBinding(type);
 		binding.extenders ??= [];
 		binding.extenders.push(callback as ExtenderCallback);
 
@@ -434,7 +430,7 @@ export class ContainerImpl extends BaseClass implements Container {
 	 * Apply all registered extenders for a given type to an instance
 	 */
 	#applyExtenders<T>(type: KeyOrClass<T>, instance: T): T {
-		const binding = this.#getConcreteBinding(type);
+		const binding = this.#getBinding(type);
 		if (binding.extenders) {
 			for (const extender of binding.extenders) {
 				instance = extender(instance, this) as T;
