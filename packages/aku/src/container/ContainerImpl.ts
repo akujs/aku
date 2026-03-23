@@ -9,7 +9,6 @@ import {
 	type NoArgConstructor,
 	SetMultiMap,
 } from "../utils.ts";
-import { ContextualBindingBuilder } from "./ContextualBindingBuilder.ts";
 import { getKeyName, type KeyOrClass, type TypeToken } from "./container-key.ts";
 import type { Lifecycle } from "./contracts/Container.ts";
 import { Container } from "./contracts/Container.ts";
@@ -23,16 +22,13 @@ type ScopeContext = {
 
 const scopeContext = new AsyncLocalStorage<ScopeContext>();
 
-export type FactoryFunction<T> = (container: Container) => {
+type FactoryFunction<T> = (container: Container) => {
 	[K in keyof T]: T[K];
 };
-
-type ContextualOverrides = Map<KeyOrClass, FactoryFunction<unknown>>;
 
 type AnyFactory = (container: Container) => unknown;
 
 type CommonBindingProperties = {
-	contextualOverrides?: ContextualOverrides;
 	extenders?: ExtenderCallback[];
 	resolvingCallbacks?: InstanceCallback<unknown>[];
 };
@@ -280,9 +276,8 @@ export class ContainerImpl extends BaseClass implements Container {
 		this.#buildStack.add(type);
 		const previousInjectHandler = _getInjectHandler();
 		try {
-			const needsContextualBuild = this.#hasContextualOverrides(binding);
 			_setInjectHandler(<TArg>(dependency: KeyOrClass<TArg>, optional: boolean) => {
-				return this.#getInjected(type, dependency, optional);
+				return this.#getInjected(dependency, optional) as TArg;
 			});
 
 			let factory: AnyFactory | undefined;
@@ -305,7 +300,7 @@ export class ContainerImpl extends BaseClass implements Container {
 						this.#fireResolvingCallbacks(type, instance);
 						return instance;
 					}
-				} else if (binding?.instance !== undefined && !needsContextualBuild) {
+				} else if (binding?.instance !== undefined) {
 					const instance = binding.instance as T;
 					this.#fireResolvingCallbacks(type, instance);
 					return instance;
@@ -353,7 +348,7 @@ export class ContainerImpl extends BaseClass implements Container {
 				// Store instance appropriately based on binding type
 				if (scopeInstances) {
 					scopeInstances.set(type, instance);
-				} else if (binding?.lifecycle === "singleton" && !needsContextualBuild) {
+				} else if (binding?.lifecycle === "singleton") {
 					binding.instance = instance;
 				}
 				binding.resolved = true;
@@ -370,53 +365,7 @@ export class ContainerImpl extends BaseClass implements Container {
 		}
 	}
 
-	#hasContextualOverrides(binding: Binding): boolean {
-		return !!binding.contextualOverrides;
-	}
-
-	#getContextualOverride(
-		context: KeyOrClass,
-		dependency: KeyOrClass,
-	): FactoryFunction<unknown> | null {
-		const ctxBinding = this.#getConcreteBinding(context);
-		const depBinding = this.#getConcreteBinding(dependency);
-
-		if (!ctxBinding.contextualOverrides) return null;
-
-		// direct overrides - this exact context needs this exact dependency
-		const override = ctxBinding.contextualOverrides.get(depBinding.type);
-		if (override) {
-			return override;
-		}
-
-		// Check stored class in dependency binding
-		if (depBinding.kind === "concrete" && depBinding.class) {
-			const classBinding = this.#getActualBinding(depBinding.class);
-			const directClassMatch = ctxBinding.contextualOverrides.get(classBinding.type);
-			if (directClassMatch) {
-				return directClassMatch;
-			}
-		}
-
-		return null;
-	}
-
-	#getInjected<T>(
-		context: KeyOrClass | undefined,
-		dependency: KeyOrClass<T>,
-		optional: boolean,
-	): T | NoValue {
-		if (context) {
-			// if we're calling a method on an object, we need to check for
-			// contextual overrides for the class of the object
-			const override = this.#getContextualOverride(context, dependency);
-			if (override != null) {
-				let instance = override(this) as T;
-				instance = this.#applyExtenders(dependency, instance);
-				this.#fireResolvingCallbacks(dependency, instance);
-				return instance;
-			}
-		}
+	#getInjected<T>(dependency: KeyOrClass<T>, optional: boolean): T | NoValue {
 		if (optional && !this.bound(dependency)) {
 			return NO_VALUE;
 		}
@@ -510,16 +459,6 @@ export class ContainerImpl extends BaseClass implements Container {
 		}
 	}
 
-	when(consumer: KeyOrClass | KeyOrClass[]): ContextualBindingBuilder {
-		return new ContextualBindingBuilder(this, (need, factory) => {
-			for (const type of arrayWrap(consumer)) {
-				const binding = this.#bindings.get(type) ?? this.#getConcreteBinding(type);
-				binding.contextualOverrides ??= new Map();
-				binding.contextualOverrides.set(need, factory);
-			}
-		});
-	}
-
 	#containerError(message: string, args: { omitTopOfBuildStack?: boolean } = {}): ContainerError {
 		const stackArray = Array.from(this.#buildStack);
 		return new ContainerError(message, {
@@ -563,7 +502,15 @@ export class ContainerImpl extends BaseClass implements Container {
 	}
 
 	withInject<R>(closure: () => R): R {
-		return this.#contextualInject(undefined, closure);
+		const previousInjectHandler = _getInjectHandler();
+		try {
+			_setInjectHandler(<TArg>(dependency: KeyOrClass<TArg>, optional: boolean) => {
+				return this.#getInjected(dependency, optional) as TArg;
+			});
+			return closure();
+		} finally {
+			_setInjectHandler(previousInjectHandler);
+		}
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -574,9 +521,7 @@ export class ContainerImpl extends BaseClass implements Container {
 		...params: T[K] extends (...args: any) => any ? Parameters<T[K]> : never[]
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	): T[K] extends (...args: any) => any ? ReturnType<T[K]> : never {
-		const consumer = (Object.getPrototypeOf(object) as object).constructor as KeyOrClass;
-
-		return this.#contextualInject(consumer, () => {
+		return this.withInject(() => {
 			const o = object as Record<string, (...args: unknown[]) => unknown>;
 			const m = methodName as string;
 			if (!o[m]) {
@@ -588,19 +533,7 @@ export class ContainerImpl extends BaseClass implements Container {
 	}
 
 	construct<P extends unknown[], T>(impl: { new (...args: P): T }, ...args: P): T {
-		return this.#contextualInject(impl, () => new impl(...args));
-	}
-
-	#contextualInject<R>(consumer: KeyOrClass | undefined, closure: () => R): R {
-		const previousInjectHandler = _getInjectHandler();
-		try {
-			_setInjectHandler(<TArg>(dependency: KeyOrClass<TArg>, optional: boolean) => {
-				return this.#getInjected(consumer, dependency, optional) as TArg;
-			});
-			return closure();
-		} finally {
-			_setInjectHandler(previousInjectHandler);
-		}
+		return this.withInject(() => new impl(...args));
 	}
 
 	tag<T>(keys: KeyOrClass<T> | KeyOrClass<T>[], tags: TypeToken<T> | TypeToken<T>[]): void {
@@ -637,9 +570,6 @@ const getPropertiesThatSurviveRebinding = (
 ): CommonBindingProperties => {
 	const common: CommonBindingProperties = {};
 	if (binding) {
-		if (binding.contextualOverrides !== undefined) {
-			common.contextualOverrides = binding.contextualOverrides;
-		}
 		if (binding.extenders !== undefined) {
 			common.extenders = binding.extenders;
 		}

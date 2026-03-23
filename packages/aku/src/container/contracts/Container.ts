@@ -1,5 +1,4 @@
 import type { AnyFunction, MethodNames, NoArgConstructor } from "../../utils.ts";
-import type { ContextualBindingBuilder } from "../ContextualBindingBuilder.ts";
 import type { KeyOrClass, TypeToken } from "../container-key.ts";
 import { createTypeToken } from "../container-key.ts";
 
@@ -51,8 +50,7 @@ export interface Container {
 	 * @param type a value to look up the binding by - a type token created with
 	 *            typeToken, or class object
 	 * @param options arguments to control how the value created:
-	 * @param options.class a class to instantiate. This will be used for
-	 *                      contextual binding. If the class has no required
+	 * @param options.class a class to instantiate. If the class has no required
 	 *                      arguments (default arguments e.g. dep =
 	 *                      inject(Dependency) are fine), it can also be used to
 	 *                      create an instance, otherwise a factory function is
@@ -407,13 +405,9 @@ export interface Container {
 	 * Invoke a method on an object in the context of the container, allowing
 	 * dependencies to be injected into the method.
 	 *
-	 * The method may declare injected arguments and contextual bindings can
-	 * be used to override the dependencies given to the object.
-	 *
 	 * @param object The object containing the method
 	 * @param methodName The name of the method to call
 	 * @param params The parameters to pass to the method
-	 * @returns The return value of the method
 	 *
 	 * @example
 	 * class FooCreator {
@@ -421,9 +415,6 @@ export interface Container {
 	 *     ...
 	 *   }
 	 * }
-	 * // optionally use contextual bindings to override the dependency
-	 * container.when(FooCreator).needs(Helper).give(CustomHelper);
-	 * // call a method on a Foo instance
 	 * const creator = new FooCreator();
 	 * const result = container.invoke(creator, "createFoo", "myFoo");
 	 */
@@ -435,23 +426,16 @@ export interface Container {
 	): T[K] extends AnyFunction ? ReturnType<T[K]> : never;
 
 	/**
-	 * Invoke a method on an object, allowing dependencies to be injected into
-	 * the method.
+	 * Construct an instance of a class in the context of the container, allowing
+	 * dependencies to be injected into the constructor.
 	 *
-	 * The method may declare injected dependencies and contextual bindings can
-	 * be used to override the dependencies given to the object.
-	 *
-	 * @param object The object containing the method
-	 * @param methodName The name of the method to call
-	 * @returns The return value of the method
+	 * @param cls The class to construct
+	 * @param args The arguments to pass to the constructor
 	 *
 	 * @example
 	 * class Foo {
 	 *   constructor(private name: string, private dispatcher = inject(Dispatcher)) {}
 	 * }
-	 * // optionally use contextual bindings to override the dependency
-	 * container.when(Foo).needs(Dispatcher).give(CustomDispatcher);
-	 * // create a Foo instance
 	 * const foo = container.construct(Foo, "myFoo");
 	 */
 	construct<P extends unknown[], T>(cls: { new (...args: P): T }, ...args: P): T;
@@ -478,28 +462,6 @@ export interface Container {
 	 * const reports = Array.from(container.tagged(reportTag));
 	 */
 	tagged<T>(tags: TypeToken<T> | TypeToken<T>[]): Generator<T, void, void>;
-
-	/**
-	 * Define a contextual binding.
-	 *
-	 * This allows you to override the value given to an object being created by
-	 * the container. The syntax is:
-	 *
-	 * ```
-	 * container.when(subject).needs(dependency).give(implementation)
-	 * ```
-	 *
-	 * - `subject`: the object being built
-	 * - `dependency`: the dependency requested by the subject
-	 * - `implementation`: the implementation to give, something that can be passed to container.get(implementation)
-	 *
-	 * @example
-	 * container
-	 *     .when(OrderProcessor)
-	 *     .needs(IPaymentGateway)
-	 *     .give(StripePaymentGateway)
-	 */
-	when(consumer: KeyOrClass | KeyOrClass[]): ContextualBindingBuilder;
 }
 
 /***/
