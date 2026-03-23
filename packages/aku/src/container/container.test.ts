@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, expectTypeOf, mock, spyOn, test } from "bun:test";
 import { asyncGate } from "../test-utils/async-gate.bun.ts";
 import { allowDefaultBindings, ContainerImpl } from "./ContainerImpl.ts";
-import type { KeyOrClass } from "./container-key.ts";
 import { createTypeToken } from "./container-key.ts";
 import type { Container } from "./contracts/Container.ts";
 import { inject, injectFactory, injectFactoryOptional, injectOptional } from "./inject.ts";
@@ -616,23 +615,6 @@ test("binding resolution exception message includes build stack", () => {
 	}).toThrowErrorMatchingInlineSnapshot(
 		`"Can't create an instance of [C] because no value or factory function was supplied (while building [A] -> [B])"`,
 	);
-});
-
-test("currently resolving", () => {
-	class Foo {
-		key: KeyOrClass | null;
-		constructor() {
-			this.key = container.currentlyResolving();
-		}
-	}
-
-	expect(new Foo().key).toBe(null);
-	expect(container.get(Foo).key).toBe(Foo);
-	const token = createTypeToken<Foo>();
-	container.bind(token, { factory: () => new Foo() });
-	expect(container.get(token).key).toBe(token);
-	container.bind(Foo);
-	expect(container.get(Foo).key).toBe(Foo);
 });
 
 test("invoke() with injected args", () => {

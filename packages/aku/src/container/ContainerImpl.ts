@@ -468,10 +468,6 @@ export class ContainerImpl extends BaseClass implements Container {
 		return this;
 	}
 
-	currentlyResolving(): KeyOrClass | null {
-		return Array.from(this.#buildStack).at(-1) ?? null;
-	}
-
 	onResolving<T>(type: KeyOrClass<T>, callback: InstanceCallback<T>): this {
 		this.#resolvingCallbacks.add(type, callback as InstanceCallback<unknown>);
 		return this;

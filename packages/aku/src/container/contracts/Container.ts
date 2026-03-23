@@ -370,12 +370,6 @@ export interface Container {
 	onRebinding<T>(type: KeyOrClass<T>, callback: InstanceCallback<T>): this;
 
 	/**
-	 * Get the type that the container is currently resolving or null if there is
-	 * no type being resolved.
-	 */
-	currentlyResolving(): KeyOrClass | null;
-
-	/**
 	 * Register a callback to be run after a type is resolved.
 	 *
 	 * The callback will be called when either:
