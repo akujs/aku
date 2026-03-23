@@ -34,7 +34,6 @@ type AnyFactory = (container: Container) => unknown;
 type CommonBindingProperties = {
 	contextualOverrides?: ContextualOverrides;
 	extenders?: ExtenderCallback[];
-	reverseAliases?: Set<KeyOrClass>;
 	resolvingCallbacks?: InstanceCallback<unknown>[];
 };
 
@@ -48,19 +47,13 @@ type ConcreteBinding = {
 	resolved?: boolean;
 } & CommonBindingProperties;
 
-type AliasBinding = {
-	kind: "alias";
-	type: KeyOrClass;
-	to: KeyOrClass;
-} & CommonBindingProperties;
-
 type ImplicitBinding = {
 	kind: "implicit";
 	type: KeyOrClass;
 	resolved?: boolean;
 } & CommonBindingProperties;
 
-type Binding = ConcreteBinding | AliasBinding | ImplicitBinding;
+type Binding = ConcreteBinding | ImplicitBinding;
 
 type BindArgsWithFactory<T> = {
 	class?: AnyConstructor<T>;
@@ -378,32 +371,7 @@ export class ContainerImpl extends BaseClass implements Container {
 	}
 
 	#hasContextualOverrides(binding: Binding): boolean {
-		if (binding.contextualOverrides) return true;
-
-		for (const aliasTo of this.#getAllAliasesTo(binding)) {
-			if (aliasTo.contextualOverrides) return true;
-		}
-
-		return false;
-	}
-
-	#getAllAliasesTo(binding: Binding): Set<AliasBinding> {
-		const aliases = new Set<AliasBinding>();
-		const add = (b: Binding) => {
-			if (b.reverseAliases) {
-				for (const fromKey of b.reverseAliases) {
-					const fromBinding = this.#bindings.get(fromKey);
-					if (fromBinding && fromBinding.kind === "alias") {
-						if (!aliases.has(fromBinding)) {
-							aliases.add(fromBinding);
-							add(fromBinding);
-						}
-					}
-				}
-			}
-		};
-		add(binding);
-		return aliases;
+		return !!binding.contextualOverrides;
 	}
 
 	#getContextualOverride(
@@ -415,45 +383,18 @@ export class ContainerImpl extends BaseClass implements Container {
 
 		if (!ctxBinding.contextualOverrides) return null;
 
-		const getOverride = (cb: Binding, db: Binding) => cb.contextualOverrides?.get(db.type);
-
 		// direct overrides - this exact context needs this exact dependency
-		const override = getOverride(ctxBinding, depBinding);
+		const override = ctxBinding.contextualOverrides.get(depBinding.type);
 		if (override) {
-			// the dependency has been directly overridden
 			return override;
-		}
-
-		// overrides on an alias to the dependency
-		for (const depAlias of this.#getAllAliasesTo(depBinding)) {
-			const override = getOverride(ctxBinding, depAlias);
-			if (override) {
-				return override;
-			}
-		}
-
-		// overrides on an alias to the context
-		for (const ctxAlias of this.#getAllAliasesTo(ctxBinding)) {
-			const override = getOverride(ctxAlias, depBinding);
-			if (override) {
-				return override;
-			}
 		}
 
 		// Check stored class in dependency binding
 		if (depBinding.kind === "concrete" && depBinding.class) {
 			const classBinding = this.#getActualBinding(depBinding.class);
-			const directClassMatch = getOverride(ctxBinding, classBinding);
+			const directClassMatch = ctxBinding.contextualOverrides.get(classBinding.type);
 			if (directClassMatch) {
 				return directClassMatch;
-			}
-
-			// Also check aliases to the stored class
-			for (const classAlias of this.#getAllAliasesTo(classBinding)) {
-				const aliasMatch = getOverride(ctxBinding, classAlias);
-				if (aliasMatch) {
-					return aliasMatch;
-				}
 			}
 		}
 
@@ -483,17 +424,7 @@ export class ContainerImpl extends BaseClass implements Container {
 	}
 
 	#getConcreteBinding<T>(type: KeyOrClass<T>): ConcreteBinding | ImplicitBinding {
-		const stack = new Set<KeyOrClass>();
-		let binding = this.#getActualBinding(type);
-		while (binding?.kind === "alias") {
-			if (stack.has(type)) {
-				throw this.#containerError(`Circular alias detected: ${formatKeyCycle(stack, type)}`);
-			}
-			stack.add(type);
-			type = binding.to as KeyOrClass<T>;
-			binding = this.#getActualBinding(type);
-		}
-		return binding;
+		return this.#getActualBinding(type);
 	}
 
 	#getActualBinding<T>(type: KeyOrClass<T>): Binding {
@@ -506,32 +437,6 @@ export class ContainerImpl extends BaseClass implements Container {
 			this.#bindings.set(type, binding);
 		}
 		return binding;
-	}
-
-	alias<T>({ to, from }: { to: KeyOrClass<T>; from: KeyOrClass<T> }): void {
-		if (to === from) {
-			throw this.#containerError(`${getKeyName(from)} is aliased to itself.`);
-		}
-
-		const existingFrom = this.#bindings.get(from);
-		if (existingFrom?.kind === "alias") {
-			const existingTo = this.#bindings.get(existingFrom.to);
-			if (existingTo) {
-				existingTo.reverseAliases?.delete(from);
-			}
-		}
-
-		const newBinding: AliasBinding = {
-			kind: "alias",
-			type: from,
-			to,
-			...getPropertiesThatSurviveRebinding(existingFrom),
-		};
-		this.#bindings.set(from, newBinding);
-
-		const toBinding = this.#getActualBinding(to);
-		toBinding.reverseAliases ??= new Set();
-		toBinding.reverseAliases.add(from);
 	}
 
 	resolved(type: KeyOrClass): boolean {
@@ -583,24 +488,12 @@ export class ContainerImpl extends BaseClass implements Container {
 	 * Apply all registered extenders for a given type to an instance
 	 */
 	#applyExtenders<T>(type: KeyOrClass<T>, instance: T): T {
-		const keyBinding = this.#getConcreteBinding(type);
-		const applied = new Set<Binding>();
-
-		const applyOnce = (b: Binding) => {
-			if (b.extenders && !applied.has(b)) {
-				applied.add(b);
-				for (const extender of b.extenders) {
-					instance = extender(instance, this) as T;
-				}
+		const binding = this.#getConcreteBinding(type);
+		if (binding.extenders) {
+			for (const extender of binding.extenders) {
+				instance = extender(instance, this) as T;
 			}
-		};
-
-		applyOnce(keyBinding);
-
-		for (const alias of this.#getAllAliasesTo(keyBinding)) {
-			applyOnce(alias);
 		}
-
 		return instance;
 	}
 
@@ -749,9 +642,6 @@ const getPropertiesThatSurviveRebinding = (
 		}
 		if (binding.extenders !== undefined) {
 			common.extenders = binding.extenders;
-		}
-		if (binding.reverseAliases !== undefined) {
-			common.reverseAliases = binding.reverseAliases;
 		}
 		if (binding.resolvingCallbacks !== undefined) {
 			common.resolvingCallbacks = binding.resolvingCallbacks;

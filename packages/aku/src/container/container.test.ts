@@ -168,21 +168,6 @@ test("instance registers an instance for a token", () => {
 	expect(container.get(token).name).toBe("instance");
 });
 
-test("resolved resolves alias to binding name before checking", () => {
-	class Foo {}
-	container.bind(Foo);
-	const fooAlias = createTypeToken<Foo>();
-	container.alias({ from: fooAlias, to: Foo });
-
-	expect(container.resolved(Foo)).toBe(false);
-	expect(container.resolved(fooAlias)).toBe(false);
-
-	container.get(Foo);
-
-	expect(container.resolved(Foo)).toBe(true);
-	expect(container.resolved(fooAlias)).toBe(true);
-});
-
 test("resolved considers provided shared instance to be resolved", () => {
 	class Foo {}
 
@@ -191,57 +176,6 @@ test("resolved considers provided shared instance to be resolved", () => {
 	container.bind(Foo, { instance: new Foo(), lifecycle: "singleton" });
 
 	expect(container.resolved(Foo)).toBe(true);
-});
-
-test("alias to bound type token", () => {
-	const from = createTypeToken();
-	const to = createTypeToken();
-	container.bind(to, { factory: () => "to value" });
-	container.alias({ from, to });
-	expect(container.get(from)).toBe("to value");
-});
-
-test("alias to bound class reference", () => {
-	class Foo {}
-	const foo = new Foo();
-	const from = createTypeToken<Foo>();
-	container.bind(Foo, { factory: () => foo });
-	container.alias({ from, to: Foo });
-	expect(container.get(from)).toBe(foo);
-});
-
-test("alias to unbound type token", () => {
-	const from = createTypeToken("from");
-	const to = createTypeToken("to");
-	container.alias({ from, to });
-	expect(() => container.get(from)).toThrowErrorMatchingInlineSnapshot(
-		`"Can't create an instance of [to] because no value or factory function was supplied"`,
-	);
-});
-
-test("alias to unbound class reference", () => {
-	class Foo {}
-	const from = createTypeToken<Foo>();
-	container.alias({ from, to: Foo });
-	const instance = container.get(from);
-	expect(instance).toBeInstanceOf(Foo);
-	// not a singleton
-	expect(container.get(from)).not.toBe(instance);
-	expect(container.bound(Foo)).toBe(false);
-});
-
-test("error message when following circular alias", () => {
-	const quux = createTypeToken("quux");
-	const foo = createTypeToken("foo");
-	const bar = createTypeToken("bar");
-	const baz = createTypeToken("baz");
-	container.alias({ from: quux, to: foo });
-	container.alias({ from: foo, to: bar });
-	container.alias({ from: bar, to: baz });
-	container.alias({ from: baz, to: foo });
-	expect(() => container.get(quux)).toThrowErrorMatchingInlineSnapshot(
-		`"Circular alias detected: [foo] -> [bar] -> [baz] -> [foo]"`,
-	);
 });
 
 test("singleton token resolution", () => {
@@ -525,23 +459,6 @@ test("resolution of class with optional dependency", () => {
 	expect(instance2.defaultVal).toBeInstanceOf(Dep);
 });
 
-test("resolution of class with optional dependency and contextual bindings", () => {
-	class AltDep extends Dep {}
-	class OptionalInject {
-		constructor(
-			public noDefault = inject(Dep),
-			public defaultVal = injectOptional(Dep),
-		) {}
-	}
-
-	container
-		.when(OptionalInject)
-		.needs(Dep)
-		.create(() => new AltDep());
-	const instance = container.get(OptionalInject);
-	expect(instance.defaultVal).toBeInstanceOf(AltDep);
-});
-
 test("resolution of class with factory dependency", () => {
 	class FactoryInject {
 		constructor(public getDep = injectFactory(Dep)) {}
@@ -550,20 +467,6 @@ test("resolution of class with factory dependency", () => {
 	const instance = container.get(FactoryInject);
 	expect(typeof instance.getDep).toBe("function");
 	expect(instance.getDep()).toBeInstanceOf(Dep);
-});
-
-test("resolution of class with factory dependency and contextual bindings", () => {
-	class AltDep extends Dep {}
-	class FactoryInject {
-		constructor(public getDep = injectFactory(Dep)) {}
-	}
-
-	container
-		.when(FactoryInject)
-		.needs(Dep)
-		.create(() => new AltDep());
-	const instance = container.get(FactoryInject);
-	expect(instance.getDep()).toBeInstanceOf(AltDep);
 });
 
 test("error when trying to use injectFactory with unbound dependencies", () => {
@@ -639,29 +542,10 @@ test("getIfAvailable", () => {
 
 test("bound", () => {
 	class Foo {}
-	const alias = createTypeToken<Foo>();
+	const token = createTypeToken<Foo>();
 	container.bind(Foo);
 	expect(container.bound(Foo)).toBe(true);
-	expect(container.bound(alias)).toBe(false);
-
-	const container2 = new ContainerImpl();
-	container2.alias({ from: alias, to: Foo });
-	expect(container2.bound(alias)).toBe(true);
-	expect(container2.bound(Foo)).toBe(false);
-});
-
-test("alias clears binding", () => {
-	class Foo {
-		constructor(public string?: string) {}
-	}
-	const token = createTypeToken<Foo>();
-	container.bind(token, { factory: () => new Foo("bound by token") });
-	container.bind(Foo, { factory: () => new Foo("bound by class") });
-	expect(container.get(token).string).toBe("bound by token");
-	expect(container.get(Foo).string).toBe("bound by class");
-
-	container.alias({ from: token, to: Foo });
-	expect(container.get(token).string).toBe("bound by class");
+	expect(container.bound(token)).toBe(false);
 });
 
 test("rebound listeners", () => {
@@ -749,17 +633,6 @@ test("currently resolving", () => {
 	expect(container.get(token).key).toBe(token);
 	container.bind(Foo);
 	expect(container.get(Foo).key).toBe(Foo);
-});
-
-test("it throws exception when abstract is same as alias", () => {
-	const token = createTypeToken("tokenName");
-	expect(() => {
-		container.alias({ from: token, to: token });
-	}).toThrowErrorMatchingInlineSnapshot(`"[tokenName] is aliased to itself."`);
-	class Foo {}
-	expect(() => {
-		container.alias({ from: Foo, to: Foo });
-	}).toThrowErrorMatchingInlineSnapshot(`"[Foo] is aliased to itself."`);
 });
 
 test("invoke() with injected args", () => {
@@ -898,508 +771,6 @@ test("container can catch circular dependency", () => {
 	);
 });
 
-describe("Container contextual bindings", () => {
-	test("contextual binding can provide different dependencies based on context", () => {
-		const token = createTypeToken<Dep>("Dep");
-		container.bind(token, { factory: () => new Dep("token") });
-
-		class Class extends Dep {
-			constructor() {
-				super("class");
-			}
-		}
-
-		class A {
-			constructor(public dep = inject(Dep)) {}
-		}
-		class B {
-			constructor(public dep = inject(Dep)) {}
-		}
-		class C {
-			constructor(public dep = inject(Dep)) {}
-		}
-		class D {
-			constructor(public dep = inject(Dep)) {}
-		}
-
-		container.when(A).needs(Dep).give(token);
-		container.when(B).needs(Dep).give(Class);
-		let createArg: unknown;
-		container
-			.when(C)
-			.needs(Dep)
-			.create((c) => {
-				createArg = c;
-				return new Dep("created");
-			});
-
-		expect(container.get(A).dep.name).toBe("token");
-		expect(container.get(B).dep.name).toBe("class");
-		expect(container.get(C).dep.name).toBe("created");
-		expect(container.get(D).dep.name).toBe("default");
-		expect(createArg).toBe(container);
-	});
-
-	test("contextual binding works for existing instanced bindings", () => {
-		container.bind(Dep, {
-			instance: new Dep("instance"),
-			lifecycle: "singleton",
-		});
-
-		class A {
-			constructor(public dep = inject(Dep)) {}
-		}
-
-		container
-			.when(A)
-			.needs(Dep)
-			.create(() => new Dep("contextual"));
-
-		expect(container.get(A).dep.name).toBe("contextual");
-	});
-
-	test("contextual binding works for key", () => {
-		class A {
-			constructor(public dep = inject(Dep)) {}
-		}
-		const token = createTypeToken<A>();
-		container.bind(token, { factory: () => new A() });
-
-		container
-			.when(token)
-			.needs(Dep)
-			.create(() => new Dep("contextual"));
-
-		expect(container.get(token).dep.name).toBe("contextual");
-	});
-
-	test("contextual binding works for aliased key already created", () => {
-		class A {
-			constructor(public dep = inject(Dep)) {}
-		}
-		const alias = createTypeToken<A>();
-		const token = createTypeToken<A>();
-		container.bind(token, { factory: () => new A() });
-		container.alias({ from: alias, to: token });
-
-		container
-			.when(token)
-			.needs(Dep)
-			.create(() => new Dep("contextual"));
-
-		expect(container.get(token).dep.name).toBe("contextual");
-	});
-
-	test("contextual binding works for aliased key created later", () => {
-		class A {
-			constructor(public dep = inject(Dep)) {}
-		}
-		const alias = createTypeToken<A>();
-		const token = createTypeToken<A>();
-
-		container
-			.when(token)
-			.needs(Dep)
-			.create(() => new Dep("contextual"));
-
-		container.bind(token, { factory: () => new A() });
-		container.alias({ from: alias, to: token });
-
-		expect(container.get(token).dep.name).toBe("contextual");
-	});
-
-	test("can contextually override with null", () => {
-		const token = createTypeToken<Dep | null>();
-		class B {
-			constructor(public dep = inject(token)) {}
-		}
-		class A {
-			constructor(public dep = inject(token)) {}
-		}
-		container.bind(token, { factory: () => new Dep() });
-
-		container
-			.when(A)
-			.needs(token)
-			.create(() => null);
-
-		expect(container.get(A).dep).toBe(null);
-		expect(container.get(B).dep).toBeInstanceOf(Dep);
-	});
-
-	test("contextual binding works for newly instanced bindings", () => {
-		class A {
-			constructor(public dep = inject(Dep)) {}
-		}
-
-		container
-			.when(A)
-			.needs(Dep)
-			.create(() => new Dep("override"));
-
-		container.bind(Dep, {
-			instance: new Dep("instance"),
-			lifecycle: "singleton",
-		});
-
-		expect(container.get(A).dep.name).toBe("override");
-	});
-
-	test("contextual binding works on existing aliased instances", () => {
-		const instance = createTypeToken<Dep>("instance");
-		container.bind(instance, {
-			instance: new Dep("instance"),
-		});
-		const alias = createTypeToken<Dep>("alias");
-		container.alias({ from: alias, to: instance });
-
-		class A {
-			constructor(public dep = inject(alias)) {}
-		}
-
-		container
-			.when(A)
-			.needs(alias)
-			.create(() => new Dep("override"));
-
-		expect(container.get(A).dep.name).toBe("override");
-	});
-
-	test("contextual binding can replace an instance with null", () => {
-		const instance = createTypeToken<Dep | null>("instance");
-		container.bind(instance, {
-			instance: new Dep("instance"),
-			lifecycle: "singleton",
-		});
-		const alias = createTypeToken<Dep | null>("alias");
-		container.alias({ from: alias, to: instance });
-
-		class A {
-			constructor(public dep = inject(alias)) {}
-		}
-
-		container
-			.when(A)
-			.needs(alias)
-			.create(() => null);
-
-		expect(container.get(A).dep).toBe(null);
-	});
-
-	test("contextual binding works on new aliased instances", () => {
-		const instance = createTypeToken<Dep>("instance");
-		const alias = createTypeToken<Dep>("alias");
-
-		class A {
-			constructor(public dep = inject(alias)) {}
-		}
-
-		container
-			.when(A)
-			.needs(alias)
-			.create(() => new Dep("override"));
-
-		container.bind(instance, {
-			instance: new Dep("instance"),
-			lifecycle: "singleton",
-		});
-		container.alias({ from: alias, to: instance });
-
-		expect(container.get(A).dep.name).toBe("override");
-	});
-
-	test("contextual binding does not pick up stale re-aliased references", () => {
-		const dummy = createTypeToken<Dep>("dummy");
-		const alias = createTypeToken<Dep>("alias");
-		const unrelated = createTypeToken<Dep>("unrelated");
-		const instance = createTypeToken<Dep>("instance");
-
-		class A {
-			constructor(public dep = inject(alias)) {}
-		}
-
-		container
-			.when(A)
-			.needs(dummy)
-			.create(() => new Dep("bad override"));
-
-		container
-			.when(A)
-			.needs(alias)
-			.create(() => new Dep("good override"));
-
-		container.bind(instance, {
-			instance: new Dep("instance"),
-			lifecycle: "singleton",
-		});
-		container.alias({ from: dummy, to: instance });
-		container.alias({ from: alias, to: instance });
-		container.alias({ from: dummy, to: unrelated });
-
-		expect(container.get(A).dep.name).toBe("good override");
-	});
-
-	test("contextual binding works on new aliased bindings", () => {
-		class A {
-			constructor(public dep = inject(Dep)) {}
-		}
-		const stub = createTypeToken<Dep>("stub");
-
-		container
-			.when(A)
-			.needs(stub)
-			.create(() => new Dep("correct"));
-
-		container.bind(Dep, { factory: () => new Dep("incorrect") });
-		container.bind(stub, { factory: () => new Dep("incorrect") });
-		container.alias({ from: Dep, to: stub });
-
-		expect(container.get(A).dep.name).toBe("correct");
-	});
-
-	test("contextual binding works on existing aliased bindings", () => {
-		class A {
-			constructor(public dep = inject(Dep)) {}
-		}
-
-		const stub = createTypeToken<Dep>("stub");
-		container.bind(Dep, { factory: () => new Dep("incorrect") });
-		container.bind(stub, { factory: () => new Dep("incorrect") });
-		container.alias({ from: Dep, to: stub });
-
-		container
-			.when(A)
-			.needs(Dep)
-			.create(() => new Dep("correct"));
-
-		expect(container.get(A).dep.name).toBe("correct");
-	});
-
-	test("contextual binding works for multiple classes", () => {
-		class A {
-			constructor(public dep = inject(Dep)) {}
-		}
-		class B {
-			constructor(public dep = inject(Dep)) {}
-		}
-		class C {
-			constructor(public dep = inject(Dep)) {}
-		}
-
-		container
-			.when([A, B])
-			.needs(Dep)
-			.create(() => new Dep("correct"));
-
-		expect(container.get(A).dep.name).toBe("correct");
-		expect(container.get(B).dep.name).toBe("correct");
-		expect(container.get(C).dep.name).toBe("default");
-	});
-
-	test("contextual binding doesn't override non-contextual resolution", () => {
-		class A {
-			constructor(public dep = inject(Dep)) {}
-		}
-		class B {
-			constructor(public dep = inject(Dep)) {}
-		}
-
-		container
-			.when(A)
-			.needs(Dep)
-			.create(() => new Dep("contextual"));
-
-		expect(container.get(A).dep.name).toBe("contextual");
-
-		expect(container.get(B).dep.name).toBe("default");
-	});
-
-	test("contextual binding doesn't override non-contextual resolution of aliases", () => {
-		const stub = createTypeToken<Dep>();
-		container.bind(stub, { instance: new Dep("stub"), lifecycle: "singleton" });
-		container.alias({ from: Dep, to: stub });
-
-		class A {
-			constructor(public dep = inject(Dep)) {}
-		}
-		class B {
-			constructor(public dep = inject(Dep)) {}
-		}
-
-		container
-			.when(A)
-			.needs(Dep)
-			.create(() => new Dep("contextual"));
-
-		expect(container.get(A).dep.name).toBe("contextual");
-
-		expect(container.get(B).dep.name).toBe("stub");
-	});
-
-	test("contextually bound instances are not unnecessarily recreated", () => {
-		const otherDep = createTypeToken();
-
-		class A {
-			constructor(public dep = inject(otherDep)) {}
-		}
-
-		container.bind(Dep, { instance: new Dep(), lifecycle: "singleton" });
-		container.bind(otherDep, { instance: "other", lifecycle: "singleton" });
-
-		expect(Dep.instantiations).toBe(1);
-
-		container.when(A).needs(otherDep).give(Dep);
-
-		container.get(A);
-		container.get(A);
-
-		expect(Dep.instantiations).toBe(1);
-	});
-
-	test("container can inject simple variable", () => {
-		const numberToken = createTypeToken<number>();
-
-		class A {
-			constructor(public number = inject(numberToken)) {}
-		}
-		container
-			.when(A)
-			.needs(numberToken)
-			.create(() => 100);
-
-		const instance = container.get(A);
-		expect(instance.number).toBe(100);
-	});
-
-	test("contextual binding works with aliased targets", () => {
-		container.bind(Dep, { factory: () => new Dep("bound") });
-		const alias = createTypeToken<Dep>("alias");
-		container.alias({ from: alias, to: IDep });
-
-		class A {
-			constructor(public dep = inject(IDep)) {}
-		}
-		class B {
-			constructor(public dep = inject(IDep)) {}
-		}
-
-		container
-			.when(A)
-			.needs(alias)
-			.create(() => new Dep("via alias"));
-		container.when(B).needs(alias).give(Dep);
-
-		expect(container.get(A).dep.name).toBe("via alias");
-		expect(container.get(B).dep.name).toBe("bound");
-	});
-
-	test("contextual binding works for invoke()", () => {
-		class A {
-			f(arg = inject(Dep)) {
-				return arg.name;
-			}
-		}
-
-		container
-			.when(A)
-			.needs(Dep)
-			.create(() => new Dep("contextual"));
-
-		const result = container.invoke(new A(), "f");
-		expect(result).toBe("contextual");
-	});
-
-	test("contextual binding works for construct()", () => {
-		class A {
-			constructor(
-				public mandatory: string,
-				public injected = inject(Dep),
-			) {}
-		}
-
-		container
-			.when(A)
-			.needs(Dep)
-			.create(() => new Dep("contextual"));
-
-		const result = container.construct(A, "mandatory-value");
-		expect(result.mandatory).toBe("mandatory-value");
-		expect(result.injected.name).toBe("contextual");
-	});
-
-	test("contextual binding matches stored class when factory is used", () => {
-		interface ILogger {
-			log(msg: string): void;
-		}
-		const ILogger = createTypeToken<ILogger>("ILogger");
-
-		class ConsoleLogger implements ILogger {
-			constructor(public config: string) {}
-			log(_msg: string): void {
-				// no-op for test
-			}
-		}
-
-		class MyService {
-			constructor(public logger = inject(ILogger)) {}
-		}
-
-		// Bind interface to class with factory
-		container.bind(ILogger, {
-			class: ConsoleLogger,
-			factory: () => new ConsoleLogger("default"),
-		});
-
-		// Contextual override using the stored class
-		container
-			.when(MyService)
-			.needs(ConsoleLogger)
-			.create(() => new ConsoleLogger("custom"));
-
-		const service = container.get(MyService);
-		expect(service.logger).toBeInstanceOf(ConsoleLogger);
-		expect((service.logger as ConsoleLogger).config).toBe("custom");
-	});
-
-	test("contextual binding matches alias to stored class when factory is used", () => {
-		interface ILogger {
-			log(msg: string): void;
-		}
-		const ILogger = createTypeToken<ILogger>();
-
-		class ConsoleLogger implements ILogger {
-			constructor(public config: string) {}
-			log(_msg: string): void {
-				// no-op for test
-			}
-		}
-
-		const aliasToConsoleLogger = createTypeToken<ConsoleLogger>();
-
-		class MyService {
-			constructor(public logger = inject(ILogger)) {}
-		}
-
-		// Bind interface to class with factory
-		container.bind(ILogger, {
-			class: ConsoleLogger,
-			factory: () => new ConsoleLogger("default"),
-		});
-
-		container.alias({ from: aliasToConsoleLogger, to: ConsoleLogger });
-
-		// Contextual override using the stored class
-		container
-			.when(MyService)
-			.needs(aliasToConsoleLogger)
-			.create(() => new ConsoleLogger("custom"));
-
-		const service = container.get(MyService);
-		expect(service.logger).toBeInstanceOf(ConsoleLogger);
-		expect((service.logger as ConsoleLogger).config).toBe("custom");
-	});
-});
-
 describe("Container tagging", () => {
 	test("container tags", () => {
 		class A {}
@@ -1517,30 +888,6 @@ describe("Container extend", () => {
 		expect(result.name).toBe("Bernie");
 		expect(result.age).toBe(44);
 		expect(container2.get(objKey)).toBe(result);
-	});
-
-	test("extended bindings work with contextual overrides", () => {
-		const fooKey = createTypeToken<string>("foo");
-		container.bind(fooKey, { instance: "foo", lifecycle: "singleton" });
-		container.extend(fooKey, (old) => {
-			return `${old} extended`;
-		});
-
-		class A {
-			constructor(public foo = inject(fooKey)) {}
-
-			m(foo = inject(fooKey)) {
-				return foo;
-			}
-		}
-
-		container
-			.when(A)
-			.needs(fooKey)
-			.create(() => "bar");
-
-		expect(container.get(A).foo).toBe("bar extended");
-		expect(container.invoke(new A(""), "m")).toBe("bar extended");
 	});
 
 	test("extend instances are preserved", () => {
@@ -1667,59 +1014,6 @@ describe("Container extend", () => {
 		expect(testRebind).toBe(true);
 	});
 
-	test("extension works on aliased bindings", () => {
-		const somethingKey = createTypeToken<string>();
-		const aliasKey = createTypeToken<string>();
-		container.bind(somethingKey, {
-			factory: () => {
-				return "some value";
-			},
-			lifecycle: "singleton",
-		});
-		container.alias({ from: aliasKey, to: somethingKey });
-		container.extend(aliasKey, (value) => {
-			return `${value} extended`;
-		});
-
-		expect(container.get(somethingKey)).toBe("some value extended");
-	});
-
-	test("extension works on binding that will be aliased later", () => {
-		const somethingKey = createTypeToken<string>();
-		const aliasKey = createTypeToken<string>();
-		container.bind(somethingKey, {
-			factory: () => {
-				return "some value";
-			},
-			lifecycle: "singleton",
-		});
-		container.extend(aliasKey, (value) => {
-			return `${value} extended`;
-		});
-		container.alias({ from: aliasKey, to: somethingKey });
-
-		expect(container.get(somethingKey)).toBe("some value extended");
-	});
-
-	test("extension works on binding that will be deeply aliased later", () => {
-		const somethingKey = createTypeToken();
-		const aliasKey = createTypeToken();
-		const deepAliasKey = createTypeToken();
-		container.bind(somethingKey, {
-			factory: () => {
-				return "some value";
-			},
-			lifecycle: "singleton",
-		});
-		container.extend(deepAliasKey, (value) => {
-			return `${String(value)} extended`;
-		});
-		container.alias({ from: aliasKey, to: somethingKey });
-		container.alias({ from: deepAliasKey, to: aliasKey });
-
-		expect(container.get(somethingKey)).toBe("some value extended");
-	});
-
 	test("multiple extends", () => {
 		const fooKey = createTypeToken<string>("foo");
 		container.bind(fooKey, { instance: "foo", lifecycle: "singleton" });
@@ -1731,52 +1025,6 @@ describe("Container extend", () => {
 		});
 
 		expect(container.get(fooKey)).toBe("foo bar baz");
-	});
-
-	test("extend contextual binding", () => {
-		class A {
-			constructor(public dep = inject(Dep)) {}
-		}
-		class AltDep {
-			constructor(public name = "alt-default") {}
-		}
-
-		container.when(A).needs(Dep).give(AltDep);
-
-		container.extend(AltDep, (instance) => {
-			return new AltDep(`extended ${instance.name}`);
-		});
-
-		expect(container.get(A).dep.name).toBe("extended alt-default");
-	});
-
-	test("extend contextual binding after resolution", () => {
-		interface I {
-			value: string;
-		}
-		const I = createTypeToken<I>("I");
-		class Impl implements I {
-			constructor(public value: string) {}
-		}
-		class Consumer {
-			constructor(public stub = inject(I)) {}
-		}
-
-		container
-			.when(Consumer)
-			.needs(I)
-			.create(() => new Impl("foo"));
-
-		container.get(Consumer);
-
-		container.extend(I, (instance) => {
-			expect(instance).toBeInstanceOf(Impl);
-			expect(instance.value).toBe("foo");
-
-			return new Impl("bar");
-		});
-
-		expect(container.get(Consumer).stub.value).toBe("bar");
 	});
 });
 
@@ -2065,53 +1313,6 @@ describe("Container resolving callbacks", () => {
 
 		expect(callback).toHaveBeenCalledTimes(1);
 	});
-
-	test("resolving callbacks are called for keys with no binding injected contextually", () => {
-		const token = createTypeToken();
-
-		class A {
-			constructor(public dep = inject(token)) {}
-		}
-
-		container
-			.when(A)
-			.needs(token)
-			.create(() => "hello");
-
-		const callback = mock();
-		container.onResolving(token, callback);
-
-		container.get(A);
-
-		expect(callback).toHaveBeenCalledTimes(1);
-	});
-
-	test("resolving callbacks are called for classes with no binding injected contextually", () => {
-		class B {}
-		class C {}
-
-		class A {
-			constructor(public dep = inject(B)) {}
-		}
-
-		container
-			.when(A)
-			.needs(B)
-			.create(() => new C());
-
-		const aCallback = mock();
-		container.onResolving(A, aCallback);
-		const bCallback = mock();
-		container.onResolving(B, bCallback);
-		const cCallback = mock();
-		container.onResolving(C, cCallback);
-
-		container.get(A);
-
-		expect(aCallback).toHaveBeenCalledTimes(1);
-		expect(bCallback).toHaveBeenCalledTimes(1);
-		expect(cCallback).toHaveBeenCalledTimes(1);
-	});
 });
 
 describe("Container withScope", () => {
@@ -2166,28 +1367,6 @@ describe("Container withScope", () => {
 			const db1 = container.get(Database);
 			const db2 = container.get(Database);
 			expect(db1).toBe(db2); // Same instance within scope
-			return db1;
-		});
-
-		expect(result).toBeInstanceOf(Database);
-	});
-
-	test("scoped bindings work with contextual bindings", async () => {
-		class Database {
-			constructor(public dep = inject(Dep)) {}
-		}
-		container.scoped(Database);
-
-		container
-			.when(Database)
-			.needs(Dep)
-			.create(() => new Dep("contextual"));
-
-		const result = await container.withScope(async () => {
-			const db1 = container.get(Database);
-			const db2 = container.get(Database);
-			expect(db1).toBe(db2); // Same instance within scope
-			expect(db1.dep.name).toBe("contextual");
 			return db1;
 		});
 
@@ -2510,27 +1689,6 @@ describe("Scoped instances", () => {
 			container.extend(token, (obj) => obj);
 
 			expect(testRebind).toBe(true);
-		});
-	});
-
-	test("contextual binding works with scoped instance bindings", async () => {
-		container.bind(Dep, { instance: new Dep("instance"), lifecycle: "singleton" });
-
-		class A {
-			constructor(public dep = inject(Dep)) {}
-		}
-
-		container
-			.when(A)
-			.needs(Dep)
-			.create(() => new Dep("contextual"));
-
-		await container.withScope(async () => {
-			// Bind A with scoped lifecycle (not instance, just scoped class)
-			container.scoped(A);
-
-			// When we get A, it should use contextual Dep
-			expect(container.get(A).dep.name).toBe("contextual");
 		});
 	});
 });

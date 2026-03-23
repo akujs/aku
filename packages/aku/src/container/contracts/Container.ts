@@ -325,12 +325,6 @@ export interface Container {
 	getIfAvailable<T>(type: KeyOrClass<T>): T | undefined;
 
 	/**
-	 * Alias a type to a different name. After setting up an alias,
-	 * `container.get(from)` will return the same value as `container.get(to)`
-	 */
-	alias<T>(args: { from: KeyOrClass<T>; to: KeyOrClass<T> }): void;
-
-	/**
 	 * Determine if the given type has been resolved.
 	 */
 	resolved(type: KeyOrClass): boolean;
