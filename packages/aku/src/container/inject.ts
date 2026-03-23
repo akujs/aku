@@ -135,7 +135,7 @@ function resolveOptional<T>(handler: InjectHandler, arg: KeyOrClass<T>): T | nul
 	if (result === NO_VALUE) {
 		result = null;
 	}
-	return (result ?? null) as T;
+	return result as T | null;
 }
 
 let _currentInjectHandler: InjectHandler | null = null;

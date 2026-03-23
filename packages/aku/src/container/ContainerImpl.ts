@@ -95,7 +95,7 @@ export class ContainerImpl extends BaseClass implements Container {
 
 		const previousBinding = this.#bindings.get(type);
 
-		if (ifNotBound && previousBinding) {
+		if (ifNotBound && previousBinding?.kind === "concrete") {
 			return;
 		}
 
@@ -121,7 +121,7 @@ export class ContainerImpl extends BaseClass implements Container {
 			);
 		}
 
-		if (!cls && !factory && !instance) {
+		if (!cls && !factory && instance === undefined) {
 			throw this.#containerError(
 				`Error binding ${getKeyName(type)}: Must provide class, factory, or instance`,
 			);

@@ -314,9 +314,7 @@ export interface Container {
 
 	/**
 	 * Get an instance of the given type from the container if available,
-	 * or null if the dependency is not bound or if it's scoped but no scope is active.
-	 *
-	 * @returns The instance if available, null otherwise
+	 * or undefined if the dependency is not bound or if it's scoped but no scope is active.
 	 */
 	getIfAvailable<T>(type: KeyOrClass<T>): T | undefined;
 
@@ -330,14 +328,11 @@ export interface Container {
 	 * independent instances within each scope.
 	 *
 	 * @param callback The async callback to execute within the scope
-	 * @returns The result of the callback
 	 */
 	withScope<T>(callback: () => T): T;
 
 	/**
 	 * Check if the container is currently executing within a scope.
-	 *
-	 * @returns True if currently inside a scope, false otherwise
 	 */
 	readonly hasScope: boolean;
 
@@ -360,7 +355,6 @@ export interface Container {
 	 * dependencies to be injected.
 	 *
 	 * @param closure The closure to call
-	 * @returns The return value of the closure
 	 */
 	withInject<R>(closure: () => R): R;
 

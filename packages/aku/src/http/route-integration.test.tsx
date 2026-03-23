@@ -413,7 +413,7 @@ describe("handler validation", () => {
 		expect(async () => {
 			await handle("/test");
 		}).toThrow(
-			"Controller for /test returned an object with a 'handle' method. This can happen if you have a controller that does not extend the Controller class.",
+			"Controller for /test returned an invalid value. Expected Response, JSX element, ConvertsToResponse, or null, but got: strings are not valid",
 		);
 	});
 
@@ -461,7 +461,7 @@ describe("handler validation", () => {
 		expect(async () => {
 			await handle("/item/456");
 		}).toThrow(
-			"Expected Response, JSX element, ConvertsToResponse, or null, but got: [object Object]",
+			"Controller NewableController for /item/{id} returned an object with a 'handle' method. This can happen if you have a controller that does not extend the BaseController class. Ensure that controller classes extend BaseController",
 		);
 	});
 });

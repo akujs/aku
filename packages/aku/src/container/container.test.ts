@@ -148,6 +148,12 @@ test("bindIf does register if service not registered yet", () => {
 	expect(container.get(name)).toBe("Bernie");
 });
 
+test("can bind a falsy instance value", () => {
+	const token = createTypeToken<number>();
+	container.bind(token, { instance: 0 });
+	expect(container.get(token)).toBe(0);
+});
+
 test("instance registers an instance of a class", () => {
 	container.bind(Dep, {
 		instance: new Dep("instance"),
@@ -187,6 +193,13 @@ test("singleton class resolution", () => {
 	const var1 = container.get(ContainerConcreteStub);
 	const var2 = container.get(ContainerConcreteStub);
 	expect(var1).toBe(var2);
+});
+
+test("ifNotBound is not affected by implicit bindings from bound()", () => {
+	class Foo {}
+	container.bound(Foo); // creates implicit binding in the map
+	container.singletonIf(Foo); // should still bind because implicit !== bound
+	expect(container.getLifecycle(Foo)).toBe("singleton");
 });
 
 test("singletonIf doesn't register if binding already registered", () => {
@@ -298,8 +311,11 @@ test("can bind an instance using a class with required args as a key", () => {
 		constructor(public value: string) {}
 	}
 
-	container.singletonInstance(Mandatory, new Mandatory("value"));
-	container.singletonInstanceIf(Mandatory, new Mandatory("value"));
+	container.singletonInstance(Mandatory, new Mandatory("first"));
+	expect(container.get(Mandatory).value).toBe("first");
+
+	container.singletonInstanceIf(Mandatory, new Mandatory("second"));
+	expect(container.get(Mandatory).value).toBe("first");
 });
 
 test("type error on attempting to use a class with mandatory args as an implementation", () => {
@@ -448,6 +464,18 @@ test("resolution of class with optional dependency", () => {
 	expect(instance2.defaultVal).toBeInstanceOf(Dep);
 });
 
+test("injectOptional preserves undefined from factory", () => {
+	const token = createTypeToken<string | undefined>("optional");
+	container.bind(token, { factory: () => undefined });
+
+	class Consumer {
+		constructor(public value = injectOptional(token)) {}
+	}
+
+	const instance = container.get(Consumer);
+	expect(instance.value).toBeUndefined();
+});
+
 test("resolution of class with factory dependency", () => {
 	class FactoryInject {
 		constructor(public getDep = injectFactory(Dep)) {}
@@ -527,6 +555,31 @@ test("getIfAvailable", () => {
 	container.withScope(() => {
 		expect(container.getIfAvailable(ScopedDep)).toBeInstanceOf(ScopedDep);
 	});
+});
+
+test("getIfAvailable throws on circular dependency", () => {
+	class A {
+		constructor(public b: unknown = inject(B)) {}
+	}
+	class B {
+		constructor(public a: unknown = inject(A)) {}
+	}
+	container.singleton(A);
+	container.singleton(B);
+
+	expect(() => container.getIfAvailable(A)).toThrow("Circular dependency detected");
+});
+
+test("getIfAvailable throws if transitive dependency is unavailable", () => {
+	const missing = createTypeToken("missing");
+	class A {
+		constructor(public dep = inject(missing)) {}
+	}
+	container.singleton(A);
+
+	expect(() => container.getIfAvailable(A)).toThrow(
+		"Can't create an instance of [missing] because no value or factory function was supplied",
+	);
 });
 
 test("bound", () => {
@@ -1312,6 +1365,55 @@ describe("Container sugar methods", () => {
 			lifecycle: "scoped",
 		});
 	});
+});
+
+test("bind rejects providing both factory and instance", () => {
+	const token = createTypeToken<string>();
+	expect(() => container.bind(token, { factory: () => "a", instance: "b" })).toThrow(
+		"Cannot provide both factory and instance",
+	);
+});
+
+test("bind rejects providing both class and instance", () => {
+	class Foo {}
+	expect(() => container.bind(Foo, { class: Foo, instance: new Foo() })).toThrow(
+		"Cannot provide both class and instance",
+	);
+});
+
+test("bind rejects instance with transient lifecycle", () => {
+	const token = createTypeToken<string>();
+	expect(() => container.bind(token, { instance: "hello", lifecycle: "transient" })).toThrow(
+		"an instance can not be provided for transient bindings",
+	);
+});
+
+test("scopedInstance throws outside scope", () => {
+	const token = createTypeToken<string>();
+	expect(() => container.scopedInstance(token, "value")).toThrow(
+		"scoped instances can only be bound while handling a request",
+	);
+});
+
+test("injectOptional throws outside container context", () => {
+	const token = createTypeToken<string>();
+	expect(() => injectOptional(token)).toThrow(
+		"Dependencies that use inject() must be created by the container",
+	);
+});
+
+test("injectFactory throws outside container context", () => {
+	const token = createTypeToken<string>();
+	expect(() => injectFactory(token)).toThrow(
+		"Dependencies that use inject() must be created by the container",
+	);
+});
+
+test("injectFactoryOptional throws outside container context", () => {
+	const token = createTypeToken<string>();
+	expect(() => injectFactoryOptional(token)).toThrow(
+		"Dependencies that use inject() must be created by the container",
+	);
 });
 
 // shared dependency class

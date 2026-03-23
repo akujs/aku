@@ -6,8 +6,8 @@ import { BaseClass } from "../utils.ts";
 import { ViewRenderer } from "../view/contracts/ViewRenderer.ts";
 import { isJsxElement } from "../view/view-types.ts";
 import { AbortException, abortExceptionKey } from "./abort.ts";
-import type { BaseController } from "./Controller.ts";
 import {
+	BaseController,
 	type Controller,
 	type ControllerContext,
 	type ControllerReturn,
@@ -151,10 +151,10 @@ export class RequestHandler extends BaseClass {
 			return this.#viewRenderer.renderResponse(result, { streaming: this.#streamResponses });
 		}
 
-		const hasHandleMethod = typeof (result as BaseController)?.handle !== "function";
+		const hasHandleMethod = typeof (result as BaseController)?.handle === "function";
 		if (hasHandleMethod) {
 			throw new Error(
-				`${controllerDescription(route.controller)} for ${route.path} returned an object with a 'handle' method. This can happen if you have a controller that does not extend the Controller class. Ensure that controller classes extend Controller`,
+				`${controllerDescription(route.controller)} for ${route.path} returned an object with a 'handle' method. This can happen if you have a controller that does not extend the ${BaseController.name} class. Ensure that controller classes extend ${BaseController.name}`,
 			);
 		}
 
