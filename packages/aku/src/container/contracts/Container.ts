@@ -439,29 +439,6 @@ export interface Container {
 	 * const foo = container.construct(Foo, "myFoo");
 	 */
 	construct<P extends unknown[], T>(cls: { new (...args: P): T }, ...args: P): T;
-
-	/**
-	 * Assign a set of tags to a given binding.
-	 *
-	 * @param keys The abstract types
-	 * @param tags The tags
-	 */
-	tag<T>(keys: KeyOrClass<T> | KeyOrClass<T>[], tags: TypeToken<T> | TypeToken<T>[]): void;
-
-	/**
-	 * Resolve all of the bindings for a given tag or tags.
-	 *
-	 * This method returns a generator so that you can iterate lazily over the
-	 * results and each service will not be created until required.
-	 *
-	 * @example
-	 * for (const report of container.tagged(reportTag)) {
-	 *     // process each report, lazily creating them
-	 * }
-	 * // eagerly create all reports
-	 * const reports = Array.from(container.tagged(reportTag));
-	 */
-	tagged<T>(tags: TypeToken<T> | TypeToken<T>[]): Generator<T, void, void>;
 }
 
 /***/

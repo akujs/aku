@@ -3,13 +3,11 @@ import { AkuError } from "../core/core-errors.ts";
 import {
 	type AnyConstructor,
 	ArrayMultiMap,
-	arrayWrap,
 	BaseClass,
 	getPrototypeChain,
 	type NoArgConstructor,
-	SetMultiMap,
 } from "../utils.ts";
-import { getKeyName, type KeyOrClass, type TypeToken } from "./container-key.ts";
+import { getKeyName, type KeyOrClass } from "./container-key.ts";
 import type { Lifecycle } from "./contracts/Container.ts";
 import { Container } from "./contracts/Container.ts";
 import { _getInjectHandler, _setInjectHandler } from "./inject.ts";
@@ -82,7 +80,6 @@ export type TypeCallback<T> = (type: KeyOrClass<T>, container: Container) => voi
 export class ContainerImpl extends BaseClass implements Container {
 	#bindings = new Map<KeyOrClass, Binding>();
 	#buildStack: Set<KeyOrClass> = new Set();
-	#tags = new SetMultiMap<KeyOrClass, KeyOrClass>();
 
 	#reboundCallbacks = new ArrayMultiMap<KeyOrClass, InstanceCallback<unknown>>();
 
@@ -534,18 +531,6 @@ export class ContainerImpl extends BaseClass implements Container {
 
 	construct<P extends unknown[], T>(impl: { new (...args: P): T }, ...args: P): T {
 		return this.withInject(() => new impl(...args));
-	}
-
-	tag<T>(keys: KeyOrClass<T> | KeyOrClass<T>[], tags: TypeToken<T> | TypeToken<T>[]): void {
-		this.#tags.addAll(tags, keys);
-	}
-
-	*tagged<T>(tags: TypeToken<T> | TypeToken<T>[]): Generator<T, void, void> {
-		for (const tag of arrayWrap(tags)) {
-			for (const type of this.#tags.get(tag)) {
-				yield this.get(type) as T;
-			}
-		}
 	}
 }
 
