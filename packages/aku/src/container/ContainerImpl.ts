@@ -20,10 +20,6 @@ type FactoryFunction<T> = (container: Container) => {
 
 type AnyFactory = (container: Container) => unknown;
 
-type CommonBindingProperties = {
-	extenders?: ExtenderCallback[];
-};
-
 type ConcreteBinding = {
 	kind: "concrete";
 	type: KeyOrClass;
@@ -31,14 +27,14 @@ type ConcreteBinding = {
 	factory?: AnyFactory;
 	lifecycle: Lifecycle;
 	instance?: unknown;
-	resolved?: boolean;
-} & CommonBindingProperties;
+	extenders?: ExtenderCallback[] | undefined;
+};
 
 type ImplicitBinding = {
 	kind: "implicit";
 	type: KeyOrClass;
-	resolved?: boolean;
-} & CommonBindingProperties;
+	extenders?: ExtenderCallback[] | undefined;
+};
 
 type Binding = ConcreteBinding | ImplicitBinding;
 
@@ -59,8 +55,6 @@ type BindArgsWithoutFactory<T> = {
 };
 
 type ExtenderCallback<T = unknown> = (instance: T, container: Container) => T;
-
-export type TypeCallback<T> = (type: KeyOrClass<T>, container: Container) => void;
 
 /**
  * The primary implementation of {@link Container}. Most applications use the
@@ -166,7 +160,7 @@ export class ContainerImpl extends BaseClass implements Container {
 			factory: factory as FactoryFunction<unknown>,
 			lifecycle,
 			instance,
-			...getPropertiesThatSurviveRebinding(previousBinding),
+			extenders: previousBinding?.extenders,
 		});
 	}
 
@@ -327,9 +321,6 @@ export class ContainerImpl extends BaseClass implements Container {
 				} else if (binding?.lifecycle === "singleton") {
 					binding.instance = instance;
 				}
-				binding.resolved = true;
-			} else if (binding.kind === "implicit") {
-				binding.resolved = true;
 			}
 
 			return instance;
@@ -356,11 +347,6 @@ export class ContainerImpl extends BaseClass implements Container {
 			this.#bindings.set(type, binding);
 		}
 		return binding;
-	}
-
-	resolved(type: KeyOrClass): boolean {
-		const binding = this.#getBinding(type);
-		return !!(binding.resolved || (binding.kind === "concrete" && binding.instance !== undefined));
 	}
 
 	getLifecycle(type: KeyOrClass): Lifecycle {
@@ -451,21 +437,6 @@ class ContainerError extends AkuError {
 		this.name = "ContainerError";
 	}
 }
-
-const getPropertiesThatSurviveRebinding = (
-	binding: Binding | undefined,
-): CommonBindingProperties => {
-	const common: CommonBindingProperties = {};
-	if (binding) {
-		if (binding.extenders !== undefined) {
-			common.extenders = binding.extenders;
-		}
-		if (binding.kind === "concrete" && binding.resolved) {
-			(common as ConcreteBinding).resolved = binding.resolved;
-		}
-	}
-	return common;
-};
 
 let defaultBindingWhitelist: AnyConstructor[] | null = null;
 

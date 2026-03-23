@@ -167,16 +167,6 @@ test("instance registers an instance for a token", () => {
 	expect(container.get(token).name).toBe("instance");
 });
 
-test("resolved considers provided shared instance to be resolved", () => {
-	class Foo {}
-
-	expect(container.resolved(Foo)).toBe(false);
-
-	container.bind(Foo, { instance: new Foo(), lifecycle: "singleton" });
-
-	expect(container.resolved(Foo)).toBe(true);
-});
-
 test("singleton token resolution", () => {
 	const token = createTypeToken<object>();
 	container.bind(token, {

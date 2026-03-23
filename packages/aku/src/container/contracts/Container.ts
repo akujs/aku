@@ -2,7 +2,7 @@ import type { NoArgConstructor } from "../../utils.ts";
 import type { KeyOrClass, TypeToken } from "../container-key.ts";
 import { createTypeToken } from "../container-key.ts";
 
-export type FactoryFunction<T> = (container: Container) => {
+type FactoryFunction<T> = (container: Container) => {
 	[K in keyof T]: T[K];
 };
 
@@ -319,11 +319,6 @@ export interface Container {
 	 * @returns The instance if available, null otherwise
 	 */
 	getIfAvailable<T>(type: KeyOrClass<T>): T | undefined;
-
-	/**
-	 * Determine if the given type has been resolved.
-	 */
-	resolved(type: KeyOrClass): boolean;
 
 	/**
 	 * Get the lifecycle associated with the given type.
