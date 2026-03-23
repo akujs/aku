@@ -24,8 +24,6 @@ export type BindArgsWithoutFactory<T> = {
 	ifNotBound?: boolean;
 };
 
-export type InstanceCallback<T> = (instance: T, container: Container) => void;
-
 /**
  * A type-safe Inversion of Control (IoC) container. Essentially a fancy map of
  * keys (class objects or type tokens) to values (instances of the types
@@ -361,30 +359,6 @@ export interface Container {
 	 *                 instance or create another instance of a compatible type.
 	 */
 	extend<T>(type: KeyOrClass<T>, callback: (instance: T, container: Container) => T): void;
-
-	/**
-	 * Register a listener to be called when a type is rebound
-	 *
-	 * @returns The container instance for chaining
-	 */
-	onRebinding<T>(type: KeyOrClass<T>, callback: InstanceCallback<T>): this;
-
-	/**
-	 * Register a callback to be run after a type is resolved.
-	 *
-	 * The callback will be called when either:
-	 *
-	 * 1. the type is used in `container.get(type)`
-	 * 2. an instance of the type or a subclass is returned from
-	 *    container.get()
-	 *
-	 * Since all values extend `Object` in javascript, you can register a
-	 * callback that fires when _any_ value is resolved using
-	 * `onResolving(Object, callback)`.
-	 *
-	 * @returns The container instance for chaining
-	 */
-	onResolving<T>(type: KeyOrClass<T>, callback: InstanceCallback<T>): this;
 
 	/**
 	 * Call a closure in the context of the container, allowing

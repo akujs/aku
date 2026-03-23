@@ -1,12 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { AkuError } from "../core/core-errors.ts";
-import {
-	type AnyConstructor,
-	ArrayMultiMap,
-	BaseClass,
-	getPrototypeChain,
-	type NoArgConstructor,
-} from "../utils.ts";
+import { type AnyConstructor, BaseClass, type NoArgConstructor } from "../utils.ts";
 import { getKeyName, type KeyOrClass } from "./container-key.ts";
 import type { Lifecycle } from "./contracts/Container.ts";
 import { Container } from "./contracts/Container.ts";
@@ -28,7 +22,6 @@ type AnyFactory = (container: Container) => unknown;
 
 type CommonBindingProperties = {
 	extenders?: ExtenderCallback[];
-	resolvingCallbacks?: InstanceCallback<unknown>[];
 };
 
 type ConcreteBinding = {
@@ -67,8 +60,6 @@ type BindArgsWithoutFactory<T> = {
 
 type ExtenderCallback<T = unknown> = (instance: T, container: Container) => T;
 
-export type InstanceCallback<T> = (instance: T, container: Container) => void;
-
 export type TypeCallback<T> = (type: KeyOrClass<T>, container: Container) => void;
 
 /**
@@ -80,10 +71,6 @@ export type TypeCallback<T> = (type: KeyOrClass<T>, container: Container) => voi
 export class ContainerImpl extends BaseClass implements Container {
 	#bindings = new Map<KeyOrClass, Binding>();
 	#buildStack: Set<KeyOrClass> = new Set();
-
-	#reboundCallbacks = new ArrayMultiMap<KeyOrClass, InstanceCallback<unknown>>();
-
-	#resolvingCallbacks = new ArrayMultiMap<KeyOrClass, InstanceCallback<unknown>>();
 
 	constructor() {
 		super();
@@ -181,10 +168,6 @@ export class ContainerImpl extends BaseClass implements Container {
 			instance,
 			...getPropertiesThatSurviveRebinding(previousBinding),
 		});
-
-		if (previousBinding) {
-			this.#rebound(type);
-		}
 	}
 
 	bindIf<T>(typeOrImpl: KeyOrClass<T>, impl?: NoArgConstructor<T>): void {
@@ -293,14 +276,10 @@ export class ContainerImpl extends BaseClass implements Container {
 					}
 
 					if (scopeInstances.has(type)) {
-						const instance = scopeInstances.get(type) as T;
-						this.#fireResolvingCallbacks(type, instance);
-						return instance;
+						return scopeInstances.get(type) as T;
 					}
 				} else if (binding?.instance !== undefined) {
-					const instance = binding.instance as T;
-					this.#fireResolvingCallbacks(type, instance);
-					return instance;
+					return binding.instance as T;
 				}
 				factory = binding.factory;
 
@@ -352,8 +331,6 @@ export class ContainerImpl extends BaseClass implements Container {
 			} else if (binding.kind === "implicit") {
 				binding.resolved = true;
 			}
-
-			this.#fireResolvingCallbacks(type, instance);
 
 			return instance;
 		} finally {
@@ -411,7 +388,6 @@ export class ContainerImpl extends BaseClass implements Container {
 		// If there's already a shared instance, apply the extender immediately
 		if (binding.kind === "concrete" && binding.instance !== undefined) {
 			binding.instance = callback(binding.instance as T, this);
-			this.#rebound(type);
 		} else if (binding.kind === "concrete" && binding.lifecycle === "scoped") {
 			// For scoped instances, apply to the instance in the current scope if it exists
 			const scopeInstances = scopeContext.getStore()?.instances;
@@ -419,10 +395,7 @@ export class ContainerImpl extends BaseClass implements Container {
 				const instance = scopeInstances.get(type) as T;
 				const extended = callback(instance, this);
 				scopeInstances.set(type, extended);
-				this.#rebound(type);
 			}
-		} else if (this.resolved(type)) {
-			this.#rebound(type);
 		}
 	}
 
@@ -439,55 +412,11 @@ export class ContainerImpl extends BaseClass implements Container {
 		return instance;
 	}
 
-	/**
-	 * Fire the "rebound" callbacks for the given type
-	 */
-	#rebound<T>(type: KeyOrClass<T>): void {
-		const callbacks = Array.from(this.#reboundCallbacks.get(type));
-		if (callbacks.length) {
-			const instance = this.get(type);
-			for (const callback of callbacks) {
-				callback(instance, this);
-			}
-		}
-	}
-
 	#containerError(message: string, args: { omitTopOfBuildStack?: boolean } = {}): ContainerError {
 		const stackArray = Array.from(this.#buildStack);
 		return new ContainerError(message, {
 			buildStack: args.omitTopOfBuildStack ? stackArray.slice(0, -1) : stackArray,
 		});
-	}
-
-	onRebinding<T>(type: KeyOrClass<T>, callback: InstanceCallback<T>): this {
-		this.#reboundCallbacks.add(type, callback as InstanceCallback<unknown>);
-		return this;
-	}
-
-	onResolving<T>(type: KeyOrClass<T>, callback: InstanceCallback<T>): this {
-		this.#resolvingCallbacks.add(type, callback as InstanceCallback<unknown>);
-		return this;
-	}
-
-	#fireResolvingCallbacks(type: KeyOrClass, instance: unknown): void {
-		const fireForType = (type: KeyOrClass) => {
-			const callbacks = this.#resolvingCallbacks.get(type);
-			if (callbacks) {
-				for (const callback of callbacks) {
-					callback(instance, this);
-				}
-			}
-		};
-
-		fireForType(type);
-
-		if (instance == null) return;
-
-		for (const constructor of getPrototypeChain(instance)) {
-			if (constructor !== type) {
-				fireForType(constructor);
-			}
-		}
 	}
 
 	withInject<R>(closure: () => R): R {
@@ -530,9 +459,6 @@ const getPropertiesThatSurviveRebinding = (
 	if (binding) {
 		if (binding.extenders !== undefined) {
 			common.extenders = binding.extenders;
-		}
-		if (binding.resolvingCallbacks !== undefined) {
-			common.resolvingCallbacks = binding.resolvingCallbacks;
 		}
 		if (binding.kind === "concrete" && binding.resolved) {
 			(common as ConcreteBinding).resolved = binding.resolved;
