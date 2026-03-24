@@ -1,8 +1,8 @@
-import type { PHCFields } from "./phc.ts";
+import type { HashPhcFields } from "./phc.ts";
 
 // Test vectors extracted from @phc/format library
 // Source: https://github.com/simonepri/phc-format/blob/master/test/fixtures/serialize-deserialize.js
-export const testVectors: Record<string, PHCFields> = {
+export const testVectors: Record<string, HashPhcFields> = {
 	"$argon2i$m=120,t=5000,p=2": {
 		id: "argon2i",
 		params: { m: 120, t: 5000, p: 2 },

@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
-import { type RetryOptions, withRetry } from "../helpers/async/retry.ts";
+import { type WithRetryOptions, withRetry } from "../helpers/async/retry.ts";
 import { abort } from "../http/abort.ts";
 import { BaseClass, type FifoLock, fifoLock, withoutUndefinedValues } from "../utils.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
@@ -182,7 +182,7 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 		// Retry only applies to root transactions - nested transactions use savepoints
 		// which cannot be meaningfully retried on concurrency errors
 		const retry = this.transactionDepth > 0 ? undefined : effectiveOptions.retry;
-		const retryOptions: RetryOptions =
+		const retryOptions: WithRetryOptions =
 			retry === true
 				? {}
 				: retry === false || retry == null

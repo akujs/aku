@@ -1,7 +1,7 @@
 /**
  * PHC string format fields
  */
-export interface PHCFields {
+export interface HashPhcFields {
 	/** Algorithm identifier (e.g., "scrypt", "argon2i") */
 	id: string;
 	/** Algorithm version (optional) */
@@ -18,7 +18,7 @@ export interface PHCFields {
  * Format PHC string from fields
  * Format: $id[$v=version]$params[$salt][$hash]
  */
-export function formatPhc(fields: PHCFields): string {
+export function hashFormatPhc(fields: HashPhcFields): string {
 	let result = `$${fields.id}`;
 
 	if (fields.version !== undefined) {
@@ -48,7 +48,7 @@ export function formatPhc(fields: PHCFields): string {
  * Parse PHC string into fields.
  *
  * @example
- * parsePhc("$argon2id$v=19$m=65536,t=2,p=1$U2FsdGVkX19zZG9uZw==$U2FsdGVkX19zZG9uZw==");
+ * hashParsePhc("$argon2id$v=19$m=65536,t=2,p=1$U2FsdGVkX19zZG9uZw==$U2FsdGVkX19zZG9uZw==");
  * // produces:
  *  {
  *    id: "argon2id",
@@ -58,7 +58,7 @@ export function formatPhc(fields: PHCFields): string {
  *    hash: (Buffer)
  *  }
  */
-export function parsePhc(phcString: string): PHCFields {
+export function hashParsePhc(phcString: string): HashPhcFields {
 	const parts = phcString.split("$");
 	if (parts.length < 3 || parts[0] !== "") {
 		throw new Error("Invalid PHC format");

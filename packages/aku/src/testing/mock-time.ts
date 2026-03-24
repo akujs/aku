@@ -25,7 +25,7 @@ let mockedTime: number | null = null;
  * new Date(); // Returns 2025-01-01T12:00:00Z
  * process.hrtime.bigint(); // Returns mocked time in nanoseconds
  * performance.now(); // Returns mocked time in milliseconds
- * durationStringToDate("1h"); // Returns 2025-01-01T13:00:00Z
+ * parseDurationStringAsDate("1h"); // Returns 2025-01-01T13:00:00Z
  */
 export function mockCurrentTime(date: Date | number = new Date("2020-01-01T00:00:00Z")): void {
 	mockedTime = typeof date === "number" ? date : new Date(date).getTime();
@@ -130,7 +130,7 @@ export function mockCurrentTime(date: Date | number = new Date("2020-01-01T00:00
  * Date.now(); // Returns actual current time
  * process.hrtime.bigint(); // Returns actual current time
  * performance.now(); // Returns actual current time
- * durationStringToDate("1h"); // Returns actual time + 1 hour
+ * parseDurationStringAsDate("1h"); // Returns actual time + 1 hour
  */
 export function resetMockTime(): void {
 	if (originalDate !== null) {

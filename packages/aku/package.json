@@ -32,33 +32,9 @@
       "types": "./dist/facades.d.ts",
       "default": "./dist/facades.mjs"
     },
-    "./helpers/async": {
-      "types": "./dist/helpers/async.d.ts",
-      "default": "./dist/helpers/async.mjs"
-    },
-    "./helpers/format": {
-      "types": "./dist/helpers/format.d.ts",
-      "default": "./dist/helpers/format.mjs"
-    },
-    "./helpers/hash": {
-      "types": "./dist/helpers/hash.d.ts",
-      "default": "./dist/helpers/hash.mjs"
-    },
-    "./helpers/headers": {
-      "types": "./dist/helpers/headers.d.ts",
-      "default": "./dist/helpers/headers.mjs"
-    },
-    "./helpers/mime": {
-      "types": "./dist/helpers/mime.d.ts",
-      "default": "./dist/helpers/mime.mjs"
-    },
-    "./helpers/str": {
-      "types": "./dist/helpers/str.d.ts",
-      "default": "./dist/helpers/str.mjs"
-    },
-    "./helpers/time": {
-      "types": "./dist/helpers/time.d.ts",
-      "default": "./dist/helpers/time.mjs"
+    "./helpers": {
+      "types": "./dist/helpers.d.ts",
+      "default": "./dist/helpers.mjs"
     },
     "./http": {
       "types": "./dist/http.d.ts",
@@ -152,7 +128,6 @@
     "rollup-plugin-visualizer": "^7.0.0",
     "tsdown": "0.20.0-beta.4",
     "typescript": "6.0.0-beta",
-    "@toon-format/toon": "2.1.0",
     "wrap-ansi": "9.0.2"
   },
   "peerDependencies": {

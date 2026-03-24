@@ -17,12 +17,12 @@
  * @throws Error if format is invalid or has duplicate components
  *
  * @example
- * durationStringToMs("1h") // 3600000
- * durationStringToMs("5d4h") // 446400000
- * durationStringToMs("1h30m15s") // 5415000
- * durationStringToMs("0ms") // 0
+ * parseDurationStringAsMs("1h") // 3600000
+ * parseDurationStringAsMs("5d4h") // 446400000
+ * parseDurationStringAsMs("1h30m15s") // 5415000
+ * parseDurationStringAsMs("0ms") // 0
  */
-export function durationStringToMs(duration: string): number {
+export function parseDurationStringAsMs(duration: string): number {
 	// Match any combination of duration components in any order
 	// Note: "ms" must come before "m" and "s" in the alternation
 	const pattern = /^(?:\d+(?:ms|y|w|d|h|m|s))+$/;
@@ -86,13 +86,13 @@ export function durationStringToMs(duration: string): number {
  * @throws Error if format is invalid or has duplicate components
  *
  * @example
- * durationStringToDate("1h") // Date 1 hour from now
- * durationStringToDate("1h", { inPast: true }) // Date 1 hour ago
- * durationStringToDate("1h", { relativeTo: new Date("2025-01-01") }) // 2025-01-01 plus 1 hour
- * durationStringToDate("1h", { relativeTo: new Date("2025-01-01"), inPast: true }) // 2025-01-01 minus 1 hour
- * durationStringToDate(new Date("2025-12-31")) // Date("2025-12-31")
+ * parseDurationStringAsDate("1h") // Date 1 hour from now
+ * parseDurationStringAsDate("1h", { inPast: true }) // Date 1 hour ago
+ * parseDurationStringAsDate("1h", { relativeTo: new Date("2025-01-01") }) // 2025-01-01 plus 1 hour
+ * parseDurationStringAsDate("1h", { relativeTo: new Date("2025-01-01"), inPast: true }) // 2025-01-01 minus 1 hour
+ * parseDurationStringAsDate(new Date("2025-12-31")) // Date("2025-12-31")
  */
-export function durationStringToDate(
+export function parseDurationStringAsDate(
 	duration: string | Date,
 	options?: { relativeTo?: Date; inPast?: boolean },
 ): Date {
@@ -101,7 +101,7 @@ export function durationStringToDate(
 		return new Date(duration);
 	}
 
-	const ms = durationStringToMs(duration);
+	const ms = parseDurationStringAsMs(duration);
 	const baseTime = options?.relativeTo?.getTime() ?? Date.now();
 	const multiplier = options?.inPast ? -1 : 1;
 	return new Date(baseTime + ms * multiplier);

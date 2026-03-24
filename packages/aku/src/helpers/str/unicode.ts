@@ -1,6 +1,6 @@
 import { mapObjectValues } from "../../utils.ts";
 import type { Replacer } from "./misc.ts";
-import { compileMultiReplace, multiReplace } from "./misc.ts";
+import { stringCompileMultiReplace, stringMultiReplace } from "./misc.ts";
 import { unicodeReplacements } from "./replacements.ts";
 
 /**
@@ -12,11 +12,11 @@ import { unicodeReplacements } from "./replacements.ts";
  * @param options.allowLatin1 - If true, preserve ISO-8859-1 characters like é
  *
  * @example
- * withoutMarks('Crème Brûlée') // 'Creme Brulee'
- * withoutMarks('café') // 'cafe'
- * withoutMarks('café', { allowLatin1: true }) // 'café' (é preserved as Latin1)
+ * stringWithoutMarks('Crème Brûlée') // 'Creme Brulee'
+ * stringWithoutMarks('café') // 'cafe'
+ * stringWithoutMarks('café', { allowLatin1: true }) // 'café' (é preserved as Latin1)
  */
-export function withoutMarks(value: string, options?: { allowLatin1?: boolean }): string {
+export function stringWithoutMarks(value: string, options?: { allowLatin1?: boolean }): string {
 	if (!options?.allowLatin1) {
 		return value.normalize("NFKD").replace(/\p{M}/gu, "");
 	}
@@ -50,10 +50,10 @@ export function withoutMarks(value: string, options?: { allowLatin1?: boolean })
  * transliterate('café', { allowLatin1: true }) // 'café' (é preserved as Latin1)
  */
 export function transliterate(value: string, options?: { allowLatin1?: boolean }): string {
-	unicodeReplacer ??= compileMultiReplace(unicodeReplacements);
+	unicodeReplacer ??= stringCompileMultiReplace(unicodeReplacements);
 	let result = unicodeReplacer(value);
 	result = result.replaceAll(/\p{Dash_Punctuation}/gu, "-");
-	result = withoutMarks(result, options);
+	result = stringWithoutMarks(result, options);
 	return result;
 }
 let unicodeReplacer: Replacer | undefined;
@@ -72,11 +72,11 @@ let unicodeReplacer: Replacer | undefined;
  * @param options.replacement - String to replace invalid characters with (default: "")
  *
  * @example
- * withoutComplexChars('café') // 'caf' (é removed)
- * withoutComplexChars('café', { allowLatin1: true }) // 'café' (é preserved)
- * withoutComplexChars('北京', { replacement: '?' }) // '??' (CJK replaced)
+ * stringWithoutComplexChars('café') // 'caf' (é removed)
+ * stringWithoutComplexChars('café', { allowLatin1: true }) // 'café' (é preserved)
+ * stringWithoutComplexChars('北京', { replacement: '?' }) // '??' (CJK replaced)
  */
-export function withoutComplexChars(
+export function stringWithoutComplexChars(
 	value: string,
 	options?: {
 		target?: "ascii" | "url" | "latin1" | "identifier";
@@ -138,11 +138,11 @@ export function slug(title: string, options: SlugOptions = {}): string {
 		}
 		replacements = mapObjectValues(replacements, (value) => ` ${value} `);
 
-		result = multiReplace(result, replacements);
+		result = stringMultiReplace(result, replacements);
 	}
 
 	result = transliterate(result);
-	result = withoutComplexChars(result);
+	result = stringWithoutComplexChars(result);
 	if (lowercase) {
 		result = result.toLowerCase();
 	}
@@ -153,5 +153,5 @@ export function slug(title: string, options: SlugOptions = {}): string {
 		.trim()
 		.replace(/\s+/g, separator);
 
-	return withoutComplexChars(result, { target: "url" });
+	return stringWithoutComplexChars(result, { target: "url" });
 }

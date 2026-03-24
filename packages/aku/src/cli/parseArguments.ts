@@ -1,6 +1,6 @@
 import { type ParseArgsOptionsConfig, parseArgs } from "node:util";
 import { kebabCase } from "../helpers/str/case.ts";
-import { ordinal } from "../helpers/str/misc.ts";
+import { formatOrdinal } from "../helpers/str/misc.ts";
 import { type Prettify, withoutUndefinedValues } from "../utils.ts";
 import { CliExitError } from "./cli-errors.ts";
 import type { ArgumentDefinition, ArgumentSchema, InferArgs } from "./cli-types.ts";
@@ -203,7 +203,7 @@ function mapPositionals(
 	if (remaining.length > 0) {
 		const index = positionals.length - remaining.length;
 		throw new CliExitError(
-			`Unexpected ${ordinal(index + 1)} positional argument ${JSON.stringify(remaining[0])}`,
+			`Unexpected ${formatOrdinal(index + 1)} positional argument ${JSON.stringify(remaining[0])}`,
 		);
 	}
 }

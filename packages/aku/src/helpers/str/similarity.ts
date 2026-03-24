@@ -116,7 +116,7 @@ export function levenshteinDistance(
  * @param options.threshold - Maximum edit distance to consider a match (default: 3)
  * @param options.maxResults - Maximum number of results to return (default: 3)
  */
-export function findSimilar(
+export function stringFindSimilar(
 	target: string,
 	candidates: string[],
 	options?: { threshold?: number | undefined; maxResults?: number | undefined },

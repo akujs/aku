@@ -1,4 +1,4 @@
-import type { RetryOptions } from "../../../helpers/async/retry.ts";
+import type { WithRetryOptions } from "../../../helpers/async/retry.ts";
 import type { SqliteTransactionMode } from "../../DatabaseClient.ts";
 
 /***/
@@ -44,7 +44,7 @@ export interface SqliteDatabaseAdapterConfig {
 	 * handlers are idempotent - e.g. they do not make any API calls that can't
 	 * be safely repeated.
 	 */
-	transactionRetry: boolean | number | RetryOptions;
+	transactionRetry: boolean | number | WithRetryOptions;
 
 	/**
 	 * Default SQLite transaction mode controlling when locks are acquired. Can

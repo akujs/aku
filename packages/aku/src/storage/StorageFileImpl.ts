@@ -1,6 +1,6 @@
 import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
 import { mimeGetTypeForExtension } from "../helpers/mime/mime.ts";
-import { durationStringToDate } from "../helpers/time/duration.ts";
+import { parseDurationStringAsDate } from "../helpers/time/duration.ts";
 import { BaseClass } from "../utils.ts";
 import type {
 	StorageData,
@@ -181,7 +181,7 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 			"file:url-generate",
 			() =>
 				this.#endpoint.getSignedDownloadUrl(this.path, {
-					expires: durationStringToDate(options?.expires ?? "100y"),
+					expires: parseDurationStringAsDate(options?.expires ?? "100y"),
 					downloadAs: options?.downloadAs,
 				}),
 			() => new StorageFileUrlGeneratingEvent(this.disk, this.path, "signed", options),
@@ -197,7 +197,7 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 			() =>
 				this.#endpoint.getTemporaryUploadUrl(
 					this.path,
-					durationStringToDate(options?.expires ?? "100y"),
+					parseDurationStringAsDate(options?.expires ?? "100y"),
 				),
 			() => new StorageFileUrlGeneratingEvent(this.disk, this.path, "upload", options),
 			(start, url) => new StorageFileUrlGeneratedEvent(start, url),

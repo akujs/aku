@@ -1,30 +1,30 @@
 import { describe, expect, test } from "bun:test";
-import { formatPhc, parsePhc } from "./phc.ts";
+import { hashFormatPhc, hashParsePhc } from "./phc.ts";
 import { testVectors } from "./phc-test-vectors.ts";
 
-describe(parsePhc, () => {
+describe(hashParsePhc, () => {
 	test.each(Object.entries(testVectors))("parses: %s", (phcString, expected) => {
-		const result = parsePhc(phcString);
+		const result = hashParsePhc(phcString);
 		expect(result).toEqual(expected);
 	});
 
 	test("throws on invalid format", () => {
-		expect(() => parsePhc("invalid")).toThrow("Invalid PHC format");
-		expect(() => parsePhc("$onlyid")).toThrow("Invalid PHC format");
-		expect(() => parsePhc("noLeadingDollar$id$params")).toThrow("Invalid PHC format");
+		expect(() => hashParsePhc("invalid")).toThrow("Invalid PHC format");
+		expect(() => hashParsePhc("$onlyid")).toThrow("Invalid PHC format");
+		expect(() => hashParsePhc("noLeadingDollar$id$params")).toThrow("Invalid PHC format");
 	});
 });
 
-describe(formatPhc, () => {
+describe(hashFormatPhc, () => {
 	test.each(Object.entries(testVectors))("formats: %s", (expected, fields) => {
-		const result = formatPhc(fields);
+		const result = hashFormatPhc(fields);
 		expect(result).toBe(expected);
 	});
 
 	test("removes base64 padding", () => {
 		// Create a buffer that would have padding (length not divisible by 3)
 		const salt = Buffer.from("test"); // "dGVzdA==" with padding, should become "dGVzdA"
-		const result = formatPhc({
+		const result = hashFormatPhc({
 			id: "test",
 			params: { x: 1 },
 			salt,
@@ -39,8 +39,8 @@ describe(formatPhc, () => {
 
 describe("PHC round-trip", () => {
 	test.each(Object.entries(testVectors))("round-trip: %s", (_phcString, fields) => {
-		const formatted = formatPhc(fields);
-		const parsed = parsePhc(formatted);
+		const formatted = hashFormatPhc(fields);
+		const parsed = hashParsePhc(formatted);
 
 		// Compare non-Buffer fields
 		expect(parsed.id).toBe(fields.id);

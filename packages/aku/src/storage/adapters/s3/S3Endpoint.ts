@@ -1,5 +1,5 @@
 import { S3Client, S3Errors } from "@bradenmacdonald/s3-lite-client";
-import { md5 } from "../../../helpers/hash/digest.ts";
+import { hashMd5 } from "../../../helpers/hash/digest.ts";
 import { BaseClass, withoutUndefinedValues } from "../../../utils.ts";
 import type {
 	StorageEndpoint,
@@ -325,7 +325,7 @@ async function deleteBatch(client: S3Client, bucket: string, keys: string[]): Pr
 	const payload = `<?xml version="1.0" encoding="UTF-8"?><Delete>${objects}</Delete>`;
 
 	const headers = new Headers();
-	headers.set("Content-MD5", md5(payload, "base64"));
+	headers.set("Content-MD5", hashMd5(payload, "base64"));
 
 	await client.makeRequest({
 		method: "POST",

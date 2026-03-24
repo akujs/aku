@@ -1,4 +1,4 @@
-import { sha256 } from "../../../helpers/hash/digest.ts";
+import { hashSha256 } from "../../../helpers/hash/digest.ts";
 import { BaseClass, describeType } from "../../../utils.ts";
 import type {
 	StorageEndpoint,
@@ -62,7 +62,7 @@ export class MemoryEndpoint extends BaseClass implements StorageEndpoint {
 		validatePath(path);
 		const binaryData = serialize(data);
 
-		const etag = sha256(binaryData);
+		const etag = hashSha256(binaryData);
 
 		this.#files.set(path, {
 			data: binaryData,

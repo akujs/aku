@@ -17,34 +17,33 @@ let poolOffset = 0;
  * @param length The length of the string to generate.
  * @param alphabet A string containing characters to use. Defaults to letters, numbers, underscore and hyphen.
  */
-export const random: (length: number, alphabet?: string) => string = mockable(function random(
-	length,
-	alphabet = DEFAULT_ALPHABET,
-): string {
-	if (!length) return "";
+export const randomString: (length: number, alphabet?: string) => string = mockable(
+	function randomString(length, alphabet = DEFAULT_ALPHABET): string {
+		if (!length) return "";
 
-	// Hat-tip nanoid for this line below
-	// First, a bitmask is necessary to generate the ID. The bitmask makes bytes
-	// values closer to the alphabet size. The bitmask calculates the closest
-	// `2^31 - 1` number, which exceeds the alphabet size.
-	// For example, the bitmask for the alphabet size 30 is 31 (00011111).
-	const mask = (2 << (31 - Math.clz32((alphabet.length - 1) | 1))) - 1;
+		// Hat-tip nanoid for this line below
+		// First, a bitmask is necessary to generate the ID. The bitmask makes bytes
+		// values closer to the alphabet size. The bitmask calculates the closest
+		// `2^31 - 1` number, which exceeds the alphabet size.
+		// For example, the bitmask for the alphabet size 30 is 31 (00011111).
+		const mask = (2 << (31 - Math.clz32((alphabet.length - 1) | 1))) - 1;
 
-	if (!pool) {
-		pool = new Uint8Array(new ArrayBuffer(POOL_SIZE));
-		crypto.getRandomValues(pool);
-	}
-	let id = "";
-	while (id.length < length) {
-		if (poolOffset >= POOL_SIZE) {
+		if (!pool) {
+			pool = new Uint8Array(new ArrayBuffer(POOL_SIZE));
 			crypto.getRandomValues(pool);
-			poolOffset = 0;
 		}
-		const byte = pool[poolOffset++];
-		id += alphabet[byte & mask] ?? "";
-	}
-	return id;
-});
+		let id = "";
+		while (id.length < length) {
+			if (poolOffset >= POOL_SIZE) {
+				crypto.getRandomValues(pool);
+				poolOffset = 0;
+			}
+			const byte = pool[poolOffset++];
+			id += alphabet[byte & mask] ?? "";
+		}
+		return id;
+	},
+);
 
 /**
  * Generate an ID using URL-safe characters (letters, numbers, underscore and
@@ -53,7 +52,7 @@ export const random: (length: number, alphabet?: string) => string = mockable(fu
 export const randomId: (length?: number) => string = mockable(function randomId(
 	length = 22,
 ): string {
-	return random(length);
+	return randomString(length);
 });
 
 /**
@@ -62,10 +61,10 @@ export const randomId: (length?: number) => string = mockable(function randomId(
 export const randomHex: (length: number) => string = mockable(function randomHex(
 	length: number,
 ): string {
-	return random(length, "0123456789abcdef");
+	return randomString(length, "0123456789abcdef");
 });
 
-interface PasswordOptions {
+interface RandomPasswordOptions {
 	length?: number;
 	letters?: boolean;
 	numbers?: boolean;
@@ -80,57 +79,56 @@ interface PasswordOptions {
  * @returns Random password
  *
  * @example
- * password() // 'aB3$xY9!mK2#pL8@qR5%nS7'
- * password({ length: 16, letters: true, numbers: true, symbols: false })
+ * randomPassword() // 'aB3$xY9!mK2#pL8@qR5%nS7'
+ * randomPassword({ length: 16, letters: true, numbers: true, symbols: false })
  */
-export const password: (options?: PasswordOptions) => string = mockable(function password(
-	options: PasswordOptions = {},
-): string {
-	const { length = 32, letters = true, numbers = true, symbols = true, spaces = false } = options;
+export const randomPassword: (options?: RandomPasswordOptions) => string = mockable(
+	function randomPassword(options: RandomPasswordOptions = {}): string {
+		const { length = 32, letters = true, numbers = true, symbols = true, spaces = false } = options;
 
-	const charSets: string[] = [];
+		const charSets: string[] = [];
 
-	if (letters) {
-		charSets.push("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
-	}
-	if (numbers) {
-		charSets.push("0123456789");
-	}
-	if (symbols) {
-		charSets.push("~!#$%^&*()-_.,<>?/\\{}[]|:;");
-	}
-	if (spaces) {
-		charSets.push(" ");
-	}
-
-	if (charSets.length === 0) {
-		throw new Error("At least one character type must be enabled");
-	}
-
-	// Ensure at least one character from each enabled set
-	let password = "";
-	for (const charSet of charSets) {
-		if (password.length < length) {
-			password += random(1, charSet);
+		if (letters) {
+			charSets.push("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
 		}
-	}
+		if (numbers) {
+			charSets.push("0123456789");
+		}
+		if (symbols) {
+			charSets.push("~!#$%^&*()-_.,<>?/\\{}[]|:;");
+		}
+		if (spaces) {
+			charSets.push(" ");
+		}
 
-	// Fill remaining length with random characters from all sets
-	const remaining = length - password.length;
+		if (charSets.length === 0) {
+			throw new Error("At least one character type must be enabled");
+		}
 
-	if (remaining > 0) {
-		const allChars = charSets.join("");
-		password += random(remaining, allChars);
-	}
+		// Ensure at least one character from each enabled set
+		let result = "";
+		for (const charSet of charSets) {
+			if (result.length < length) {
+				result += randomString(1, charSet);
+			}
+		}
 
-	return password;
-});
+		// Fill remaining length with random characters from all sets
+		const remaining = length - result.length;
+
+		if (remaining > 0) {
+			const allChars = charSets.join("");
+			result += randomString(remaining, allChars);
+		}
+
+		return result;
+	},
+);
 
 // Crockford Base32 alphabet (no I, L, O, U to avoid confusion)
 const ULID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const ULID_TIME_LENGTH = 10;
 const ULID_RANDOM_LENGTH = 16;
-const ULID_REGEX = /^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/;
 
 /**
  * Generate a ULID (Universally Unique Lexicographically Sortable Identifier)
@@ -139,10 +137,10 @@ const ULID_REGEX = /^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/;
  * @returns ULID string (26 characters)
  *
  * @example
- * ulid() // '01ARZ3NDEKTSV4RRFFQ69G5FAV'
- * ulid(new Date('2024-01-01')) // '01HN3...'
+ * randomUlid() // '01ARZ3NDEKTSV4RRFFQ69G5FAV'
+ * randomUlid(new Date('2024-01-01')) // '01HN3...'
  */
-export const ulid: (time?: Date | number) => string = mockable(function ulid(
+export const randomUlid: (time?: Date | number) => string = mockable(function randomUlid(
 	time: Date | number = Date.now(),
 ): string {
 	if (time instanceof Date) {
@@ -158,24 +156,10 @@ export const ulid: (time?: Date | number) => string = mockable(function ulid(
 		t = Math.floor(t / 32);
 	}
 
-	const randomStr = random(ULID_RANDOM_LENGTH, ULID_ALPHABET);
+	const randomStr = randomString(ULID_RANDOM_LENGTH, ULID_ALPHABET);
 
 	return timeStr + randomStr;
 });
-
-/**
- * Validate if a string is a valid ULID
- *
- * @param value - String to validate
- * @returns True if valid ULID
- *
- * @example
- * isUlid('01ARZ3NDEKTSV4RRFFQ69G5FAV') // true
- * isUlid('not-a-ulid') // false
- */
-export function isUlid(value: string): boolean {
-	return ULID_REGEX.test(value);
-}
 
 /**
  * Generate a UUID v4 (random)
@@ -183,9 +167,9 @@ export function isUlid(value: string): boolean {
  * @returns UUID v4 string
  *
  * @example
- * uuidV4() // '550e8400-e29b-41d4-a716-446655440000'
+ * randomUuidV4() // '550e8400-e29b-41d4-a716-446655440000'
  */
-export const uuidV4: () => string = mockable(function uuidV4(): string {
+export const randomUuidV4: () => string = mockable(function randomUuidV4(): string {
 	return crypto.randomUUID();
 });
 
@@ -200,9 +184,9 @@ export const uuidV4: () => string = mockable(function uuidV4(): string {
  * @returns UUID v7 string
  *
  * @example
- * uuid() // '018e5e0d-7a7d-7890-b123-456789abcdef'
+ * randomUuid() // '018e5e0d-7a7d-7890-b123-456789abcdef'
  */
-export const uuid: (time?: Date | number) => string = mockable(function uuid(
+export const randomUuid: (time?: Date | number) => string = mockable(function randomUuid(
 	time?: Date | number,
 ): string {
 	const timestamp = time instanceof Date ? time.getTime() : (time ?? Date.now());
@@ -238,32 +222,3 @@ export const uuid: (time?: Date | number) => string = mockable(function uuid(
 		toHex(bytes.slice(10))
 	);
 });
-
-/**
- * Validate if a string is a valid UUID
- *
- * @param value - String to validate
- * @param version - Optional UUID version to validate (1-8, or null for any)
- * @returns True if valid UUID
- *
- * @example
- * isUuid('550e8400-e29b-41d4-a716-446655440000') // true
- * isUuid('550e8400-e29b-41d4-a716-446655440000', 4) // true
- * isUuid('not-a-uuid') // false
- */
-export function isUuid(
-	value: unknown,
-	version?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null,
-): value is string {
-	if (typeof value !== "string") return false;
-
-	const uuidRegex = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
-	if (!uuidRegex.test(value)) return false;
-
-	if (version != null) {
-		const versionChar = value.charAt(14);
-		return versionChar === version.toString();
-	}
-
-	return true;
-}

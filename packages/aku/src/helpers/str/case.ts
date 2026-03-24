@@ -1,4 +1,4 @@
-import { withoutComplexChars } from "./unicode.ts";
+import { stringWithoutComplexChars } from "./unicode.ts";
 
 // From https://apastyle.apa.org/style-grammar-guidelines/capitalization/title-case
 const APA_MINOR_WORDS = [
@@ -219,7 +219,9 @@ export function snakeCase(str: string, options?: SnakeCaseOptions): string {
 	const locale = options?.locale ?? "en";
 	const caseStyle = options?.case ?? "lower";
 
-	let result = withoutComplexChars(splitWords(str, options).join("_"), { target: "identifier" });
+	let result = stringWithoutComplexChars(splitWords(str, options).join("_"), {
+		target: "identifier",
+	});
 
 	switch (caseStyle) {
 		case "upper":
@@ -286,7 +288,7 @@ function camelPascalHelper(
 			return word.charAt(0).toLocaleUpperCase(locale) + word.slice(1).toLocaleLowerCase(locale);
 		})
 		.join("");
-	return withoutComplexChars(joinedWords, { target: "identifier" });
+	return stringWithoutComplexChars(joinedWords, { target: "identifier" });
 }
 
 /**
