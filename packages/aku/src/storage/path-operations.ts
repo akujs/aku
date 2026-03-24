@@ -4,7 +4,7 @@ import { onResetAllMocks } from "../testing/mocks.ts";
 
 type PathOps = Pick<typeof nodePath, "normalize" | "join" | "dirname" | "basename" | "extname">;
 
-export const posix: PathOps = {
+const posix: PathOps = {
 	normalize: (...args) => nodePath.posix.normalize(...args),
 	join: (...args) => nodePath.posix.join(...args),
 	dirname: (...args) => nodePath.posix.dirname(...args),

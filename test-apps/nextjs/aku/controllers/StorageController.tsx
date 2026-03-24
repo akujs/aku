@@ -11,7 +11,8 @@ function jsonResponse(data: unknown, status = 200): Response {
 export class StorageController extends ResourceController {
 	async index() {
 		try {
-			const files = await app.storage.directory("/uploads").listFiles();
+			const uploads = app.storage.directory("uploads");
+			const files = await uploads.listFiles();
 			const fileData = files.map((f) => ({
 				name: f.path.split("/").pop(),
 				url: `/storage${f.path}`,
@@ -32,10 +33,10 @@ export class StorageController extends ResourceController {
 				return jsonResponse({ error: "No file provided" }, 400);
 			}
 
-			const path = `/uploads/${file.name}`;
-			await app.storage.file(path).put(file);
+			const storageFile = app.storage.directory("uploads").file(file.name);
+			await storageFile.put(file);
 
-			const info = await app.storage.file(path).info();
+			const info = await storageFile.info();
 			if (!info) {
 				return jsonResponse({ error: "Failed to save file" }, 500);
 			}
@@ -60,14 +61,14 @@ export class StorageController extends ResourceController {
 				abort.notFound();
 			}
 
-			const path = `/uploads/${resourceId}`;
-			const fileExists = await app.storage.file(path).exists();
+			const storageFile = app.storage.directory("uploads").file(resourceId);
+			const fileExists = await storageFile.exists();
 
 			if (!fileExists) {
 				abort.notFound();
 			}
 
-			const result = await app.storage.file(path).get();
+			const result = await storageFile.get();
 			return result.response;
 		} catch (error) {
 			console.error("Storage download error:", error);
@@ -82,8 +83,7 @@ export class StorageController extends ResourceController {
 			abort.notFound();
 		}
 
-		const path = `/uploads/${resourceId}`;
-		await app.storage.file(path).delete();
+		await app.storage.directory("uploads").file(resourceId).delete();
 
 		return jsonResponse({ success: true });
 	}

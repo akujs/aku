@@ -6,7 +6,7 @@ import { app } from "../app";
 import { Layout } from "../components/Layout";
 
 export const StoragePageController: Controller = async ({ url }) => {
-	const files = await app.storage.directory("/uploads").listFiles();
+	const files = await app.storage.directory("uploads").listFiles();
 	return <StoragePageView currentPath={url.pathname} files={files} />;
 };
 
@@ -15,8 +15,7 @@ export const StorageUploadController: Controller = async ({ request }) => {
 	const file = formData.get("file");
 
 	if (file && file instanceof File && file.size > 0) {
-		const path = `/uploads/${file.name}`;
-		await app.storage.file(path).put(file);
+		await app.storage.directory("uploads").file(file.name).put(file);
 	}
 	return redirect("/aku/storage");
 };
@@ -24,8 +23,7 @@ export const StorageUploadController: Controller = async ({ request }) => {
 export const StorageDeleteController: Controller = async ({ params }) => {
 	const { filename } = params;
 	if (filename) {
-		const path = `/uploads/${filename}`;
-		await app.storage.file(path).delete();
+		await app.storage.directory("uploads").file(filename).delete();
 	}
 	return redirect("/aku/storage");
 };
