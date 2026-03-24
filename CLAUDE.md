@@ -12,10 +12,9 @@ Before working on a task, we will agree a plan. Follow this plan closely. If the
 
 ## Build & Test Commands
 
-- **Run unit tests**: `bun check:test` (extra params can be added directly, e.g. `bun check:test file-pattern -t TestNamePattern`)
-- **Run type checking**: `bun check:ts`
-- **Run lint and format test**: `bun check:lint`
-- **Apply correct formatting to files**: `bun format` - IMPORTANT: always run checks (`bun check`) THEN format (`bun format`) after completing functionality changes
+- **Apply correct formatting to files**: `bun run format`
+- **Run all tests**: `bun check` (runs unit tests, typechecking, linting etc)
+    - To run unit tests only, run `bun check:test` - extra params can be added directly, e.g. `bun check:test file-pattern -t TestNamePattern`
 - If S3 tests fail with "XMinioStorageFull", restart MinIO: `docker compose down && docker compose up -d`
 
 # Coding guidelines

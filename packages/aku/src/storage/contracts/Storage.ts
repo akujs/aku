@@ -370,16 +370,20 @@ export interface StorageDirectoryOperations {
 	/**
 	 * Check if there are any files with this directory's prefix.
 	 *
-	 * NOTE: in Aku, directories are simply references to a common prefix
-	 * for files. There is no such thing as an empty directory. Checking if a
-	 * directory exists is equivalent to checking whether there are any files
-	 * with its prefix. When the last file is removed, the directory will
-	 * cease to exist.
+	 * NOTE: Aku storage is designed to work consistently across both
+	 * filesystems and object stores, and does not differentiate between empty
+	 * and non-existent directories. When the last file is removed, `exists()`
+	 * will return false, even on filesystems that support empty directories.
 	 */
 	exists(): Promise<boolean>;
 
 	/**
 	 * List direct child files and directories in alphabetical order.
+	 *
+	 * NOTE: Aku storage is designed to work consistently across both
+	 * filesystems and object stores, and does not differentiate between empty
+	 * and non-existent directories. Listing a non-existent directory will
+	 * return an empty list.
 	 */
 	list(): Promise<Array<StorageFile | StorageDirectory>>;
 
@@ -387,11 +391,21 @@ export interface StorageDirectoryOperations {
 	 * List direct child files and directories in alphabetical order.
 	 *
 	 * Stream results to avoid buffering the whole list in memory.
+	 *
+	 * NOTE: Aku storage is designed to work consistently across both
+	 * filesystems and object stores, and does not differentiate between empty
+	 * and non-existent directories. Listing a non-existent directory will
+	 * return an empty list.
 	 */
 	listStreaming(): AsyncGenerator<StorageFile | StorageDirectory, void>;
 
 	/**
 	 * List child files in alphabetical order. By default, only direct children are returned.
+	 *
+	 * NOTE: Aku storage is designed to work consistently across both
+	 * filesystems and object stores, and does not differentiate between empty
+	 * and non-existent directories. Listing a non-existent directory will
+	 * return an empty list.
 	 *
 	 * @param options.recursive - if true, include files in subdirectories in the results
 	 */
@@ -402,12 +416,22 @@ export interface StorageDirectoryOperations {
 	 *
 	 * Stream results to avoid buffering the whole list in memory.
 	 *
+	 * NOTE: Aku storage is designed to work consistently across both
+	 * filesystems and object stores, and does not differentiate between empty
+	 * and non-existent directories. Listing a non-existent directory will
+	 * return an empty list.
+	 *
 	 * @param options.recursive - if true, include files in subdirectories in the results
 	 */
 	listFilesStreaming(options?: { recursive?: boolean }): AsyncGenerator<StorageFile, void>;
 
 	/**
 	 * List direct child directories in alphabetical order.
+	 *
+	 * NOTE: Aku storage is designed to work consistently across both
+	 * filesystems and object stores, and does not differentiate between empty
+	 * and non-existent directories. Listing a non-existent directory will
+	 * return an empty list. Empty directories within this one will not be listed.
 	 */
 	listDirectories(): Promise<Array<StorageDirectory>>;
 
@@ -415,14 +439,24 @@ export interface StorageDirectoryOperations {
 	 * List direct child directories in alphabetical order.
 	 *
 	 * Stream results to avoid buffering the whole list in memory.
+	 *
+	 * NOTE: Aku storage is designed to work consistently across both
+	 * filesystems and object stores, and does not differentiate between empty
+	 * and non-existent directories. Listing a non-existent directory will
+	 * return an empty list. Empty directories within this one will not be
+	 * listed.
 	 */
 	listDirectoriesStreaming(): AsyncGenerator<StorageDirectory, void>;
 
 	/**
 	 * Delete all files within this directory, recursively.
 	 *
-	 * This is equivalent to deleting the directory, since in Aku there is
-	 * no concept of an empty directory.
+	 * This is equivalent to deleting the directory, since in Aku there is no
+	 * concept of an empty directory.
+	 *
+	 * NOTE: most storage backends are not transactional - if the delete
+	 * operation encounters a file it fails to delete, it will throw an error
+	 * and stop, but some files may already have been deleted.
 	 */
 	deleteAll(): Promise<void>;
 
