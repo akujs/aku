@@ -218,7 +218,7 @@ export interface Configuration<RouteParams extends Record<string, string> = {}> 
 export const Configuration: TypeToken<Configuration> =
 	createTypeToken<Configuration>("Configuration");
 
-export type EnvironmentChoice = "always" | "never" | "development" | "production";
+type EnvironmentChoice = "always" | "never" | "development" | "production";
 
 export function resolveEnvironmentChoice(
 	value: EnvironmentChoice | undefined,

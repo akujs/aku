@@ -2,14 +2,14 @@ import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
 import { arrayFromAsync, BaseClass } from "../utils.ts";
 import type { StorageDirectory, StorageEndpoint, StorageFile } from "./contracts/Storage.ts";
 import type { StorageDiskImpl } from "./StorageDiskImpl.ts";
-import { InvalidPathError } from "./storage-errors.ts";
+import { StorageInvalidPathError } from "./storage-errors.ts";
 import {
-	DirectoryDeletedEvent,
-	DirectoryDeletingEvent,
-	DirectoryExistenceCheckedEvent,
-	DirectoryExistenceCheckingEvent,
-	DirectoryListedEvent,
-	DirectoryListingEvent,
+	StorageDirectoryDeletedEvent,
+	StorageDirectoryDeletingEvent,
+	StorageDirectoryExistenceCheckedEvent,
+	StorageDirectoryExistenceCheckingEvent,
+	StorageDirectoryListedEvent,
+	StorageDirectoryListingEvent,
 } from "./storage-events.ts";
 import { storageOperation } from "./storage-operation.ts";
 
@@ -29,7 +29,7 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 	) {
 		super();
 		if (!path.startsWith("/") || !path.endsWith("/")) {
-			throw new InvalidPathError(path, "directory paths must start and end with a slash");
+			throw new StorageInvalidPathError(path, "directory paths must start and end with a slash");
 		}
 		this.disk = disk;
 		this.#endpoint = endpoint;
@@ -52,8 +52,8 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 		return await storageOperation(
 			"directory:existence-check",
 			() => this.#endpoint.existsAnyUnderPrefix(this.path),
-			() => new DirectoryExistenceCheckingEvent(this.disk, this.path),
-			(start, exists) => new DirectoryExistenceCheckedEvent(start, exists),
+			() => new StorageDirectoryExistenceCheckingEvent(this.disk, this.path),
+			(start, exists) => new StorageDirectoryExistenceCheckedEvent(start, exists),
 			this.#dispatcher,
 			{ onNotFound: false },
 		);
@@ -67,8 +67,8 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 		return storageOperation(
 			"directory:list",
 			this.#listStreamingGenerator.bind(this),
-			() => new DirectoryListingEvent(this.disk, this.path, "all", false),
-			(start, count) => new DirectoryListedEvent(start, count),
+			() => new StorageDirectoryListingEvent(this.disk, this.path, "all", false),
+			(start, count) => new StorageDirectoryListedEvent(start, count),
 			this.#dispatcher,
 			{ onNotFound: emptyGenerator() },
 		);
@@ -100,8 +100,8 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 		return storageOperation(
 			"directory:list",
 			this.#filesStreamingGenerator.bind(this, recursive),
-			() => new DirectoryListingEvent(this.disk, this.path, "files", recursive),
-			(start, count) => new DirectoryListedEvent(start, count),
+			() => new StorageDirectoryListingEvent(this.disk, this.path, "files", recursive),
+			(start, count) => new StorageDirectoryListedEvent(start, count),
 			this.#dispatcher,
 			{ onNotFound: emptyGenerator() },
 		);
@@ -135,8 +135,8 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 		return storageOperation(
 			"directory:list",
 			this.#directoriesStreamingGenerator.bind(this),
-			() => new DirectoryListingEvent(this.disk, this.path, "directories", false),
-			(start, count) => new DirectoryListedEvent(start, count),
+			() => new StorageDirectoryListingEvent(this.disk, this.path, "directories", false),
+			(start, count) => new StorageDirectoryListedEvent(start, count),
 			this.#dispatcher,
 			{ onNotFound: emptyGenerator() },
 		);
@@ -155,8 +155,8 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 		await storageOperation(
 			"directory:delete",
 			() => this.#endpoint.deleteAllUnderPrefix(this.path),
-			() => new DirectoryDeletingEvent(this.disk, this.path),
-			(start) => new DirectoryDeletedEvent(start),
+			() => new StorageDirectoryDeletingEvent(this.disk, this.path),
+			(start) => new StorageDirectoryDeletedEvent(start),
 			this.#dispatcher,
 			{ onNotFound: undefined },
 		);
@@ -164,7 +164,7 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 
 	directory(name: string): StorageDirectory {
 		if (name === "") {
-			throw new InvalidPathError(name, "directory name cannot be empty");
+			throw new StorageInvalidPathError(name, "directory name cannot be empty");
 		}
 		this.#validateName(name);
 		return this.disk.getOrCreateDirectory(`${this.path}${name}/`);
@@ -172,7 +172,7 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 
 	file(name: string): StorageFile {
 		if (name === "") {
-			throw new InvalidPathError(name, "file name cannot be empty");
+			throw new StorageInvalidPathError(name, "file name cannot be empty");
 		}
 		this.#validateName(name);
 		return this.disk.getOrCreateFile(`${this.path}${name}`);
@@ -180,16 +180,16 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 
 	#validateName(name: string): void {
 		if (name === "." || name === "..") {
-			throw new InvalidPathError(name, "path traversal segments are not allowed");
+			throw new StorageInvalidPathError(name, "path traversal segments are not allowed");
 		}
 		if (name.includes("/") || name.includes("\\")) {
-			throw new InvalidPathError(name, "name must be a single path segment without slashes");
+			throw new StorageInvalidPathError(name, "name must be a single path segment without slashes");
 		}
 		const invalidChars = this.#endpoint.invalidNameChars;
 		if (invalidChars) {
 			for (const char of name) {
 				if (invalidChars.includes(char)) {
-					throw InvalidPathError.forInvalidCharacters(`${this.path}${name}`, this.#endpoint);
+					throw StorageInvalidPathError.forInvalidCharacters(`${this.path}${name}`, this.#endpoint);
 				}
 			}
 		}

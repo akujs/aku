@@ -1,5 +1,5 @@
 /** @jsxRuntime automatic **/
-/** @jsxImportSource aku/view **/
+/** @jsxImportSource @akujs/aku/view **/
 import { describe, expectTypeOf, it } from "bun:test";
 import { createKey, type Key } from "./Key.ts";
 

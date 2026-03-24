@@ -87,6 +87,16 @@ export function getFileErrors(file: SourceFile): string[] {
 				}
 
 				const moduleName = file.folder.basename;
+
+				if (exp.runtimeValue !== AkuError) {
+					const expectedPrefix = moduleName[0].toUpperCase() + moduleName.slice(1);
+					if (!exp.name.startsWith(expectedPrefix)) {
+						errors.push(
+							`${exp.name} in ${file.path} should start with "${expectedPrefix}" (the module name)`,
+						);
+					}
+				}
+
 				const expectedPath = `${moduleName}/${moduleName}-errors.ts`;
 				if (!file.path.endsWith(expectedPath)) {
 					errors.push(
@@ -114,6 +124,16 @@ export function getFileErrors(file: SourceFile): string[] {
 				}
 
 				const moduleName = file.folder.basename;
+
+				if (exp.runtimeValue !== AkuEvent) {
+					const expectedPrefix = moduleName[0].toUpperCase() + moduleName.slice(1);
+					if (!exp.name.startsWith(expectedPrefix)) {
+						errors.push(
+							`${exp.name} in ${file.path} should start with "${expectedPrefix}" (the module name)`,
+						);
+					}
+				}
+
 				const expectedPath = `${moduleName}/${moduleName}-events.ts`;
 				if (!file.path.endsWith(expectedPath)) {
 					errors.push(
@@ -164,6 +184,24 @@ export function getFileErrors(file: SourceFile): string[] {
 			errors.push(
 				`File ${file.path} re-exports from parent directory "${exp.reexport.originalFile}". Files should only re-export from the current directory or subdirectories.`,
 			);
+		}
+
+		// Entry points should only re-export values from within their own top-level module
+		// (type-only re-exports are allowed since they don't create runtime coupling)
+		if (
+			file.isEntryPoint() &&
+			exp.reexport &&
+			typeof exp.runtimeValue !== "symbol" &&
+			exp.reexport.originalFile.startsWith("../")
+		) {
+			const topLevelModule = file.path.split("/")[0];
+			const resolvedPath = file.project.resolveImportPath(file.path, exp.reexport.originalFile);
+			const reexportModule = resolvedPath.split("/")[0];
+			if (topLevelModule !== reexportModule) {
+				errors.push(
+					`Entry point ${file.path} re-exports from outside its module ("${exp.reexport.originalFile}"). Entry points should only re-export from within the ${topLevelModule}/ module.`,
+				);
+			}
 		}
 
 		const checkPublicApiDoc = !exp.isPrimitive && !exp.reexport;

@@ -1,4 +1,4 @@
-import { UnsupportedFeatureError } from "../database-errors.ts";
+import { DatabaseUnsupportedFeatureError } from "../database-errors.ts";
 import { renderSqlFragments } from "../query-builder/statement-render.ts";
 import type { SqlFragments } from "../query-types.ts";
 import { DatabaseGrammar, identifier, type TransactionBeginOptions } from "./DatabaseGrammar.ts";
@@ -21,7 +21,7 @@ export class PostgresGrammar extends DatabaseGrammar {
 
 	protected override compileDistinctOn(columns: string[]): string {
 		if (columns.length === 0) {
-			throw new UnsupportedFeatureError("DISTINCT ON with empty column list", this.dialect);
+			throw new DatabaseUnsupportedFeatureError("DISTINCT ON with empty column list", this.dialect);
 		}
 		const quotedColumns = columns.map((col) => identifier(col)).join(", ");
 		return `DISTINCT ON (${quotedColumns})`;

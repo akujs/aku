@@ -6,9 +6,10 @@
     "source.fixAll.biome": "explicit"
   },
   "cSpell.words": [
-    "apa",
     "aku",
     "Aku",
+    "akujs",
+    "apa",
     "bitmask",
     "bouche",
     "bunfig",
@@ -33,6 +34,7 @@
     "sortable",
     "ulid",
     "ulids",
+    "Undefaulted",
     "unitless",
     "uuid",
     "vendored"

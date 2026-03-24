@@ -97,7 +97,7 @@ export function withoutComplexChars(
 	}
 }
 
-export interface SlugOptions {
+interface SlugOptions {
 	separator?: string;
 	replacements?: Record<string, string> | boolean;
 	lowercase?: boolean;

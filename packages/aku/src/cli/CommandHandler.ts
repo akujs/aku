@@ -1,11 +1,13 @@
 import { inject } from "../container/inject.ts";
 import { BaseClass } from "../utils.ts";
 import { CommandRegistry } from "./CommandRegistry.ts";
-import { CliExitError } from "./cli-errors.ts";
+import { CliExitError, throwNotFoundError } from "./cli-errors.ts";
 import type { CliApi } from "./contracts/CliApi.ts";
 import type { CliErrorHandler } from "./contracts/CliErrorHandler.ts";
 import { CliErrorHandler as CliErrorHandlerToken } from "./contracts/CliErrorHandler.ts";
+import { outputHumanCommandList } from "./ListCommand.ts";
 import { parseArguments } from "./parseArguments.ts";
+import { outputHumanCommandHelp } from "./renderHelp.ts";
 
 export class CommandHandler extends BaseClass {
 	#registry: CommandRegistry;
@@ -22,24 +24,51 @@ export class CommandHandler extends BaseClass {
 
 	async handle(args: string[], cli: CliApi): Promise<number> {
 		try {
-			const commandName = args[0] ?? "list";
-			const commandArgs = args.slice(1);
+			args = this.#rewriteHelpFlag(args);
 
-			const definition = this.#registry.getDefinition(commandName);
-
-			if (!definition) {
-				throw new CliExitError(
-					`Command "${commandName}" not found. Run "aku list" to see available commands.`,
-				);
+			if (args.length === 0) {
+				args = ["list"];
 			}
 
-			const command = this.#registry.resolve(commandName)!;
-			const parsedArgs = parseArguments(commandArgs, definition.args);
+			const resolved = this.#registry.resolveFromArgs(args);
 
-			await command.execute({ args: parsedArgs, cli });
-			return 0;
+			if (resolved) {
+				const { definition, remainingArgs } = resolved;
+				const execute = this.#registry.resolve(definition.name);
+				if (!execute) {
+					throw new CliExitError(`Command "${definition.name}" could not be resolved.`);
+				}
+
+				let parsedArgs;
+				try {
+					parsedArgs = parseArguments(remainingArgs, definition.args);
+				} catch (error) {
+					if (error instanceof CliExitError) {
+						outputHumanCommandHelp(definition, cli);
+					}
+					throw error;
+				}
+
+				await execute({ args: parsedArgs, cli });
+				return 0;
+			}
+
+			// Check if the first arg is a group name — show commands in that group
+			const groupNames = this.#registry.getGroupNames();
+			if (groupNames.includes(args[0])) {
+				outputHumanCommandList(args[0], this.#registry, cli);
+				return 0;
+			}
+
+			throwNotFoundError("Command", args[0], this.#registry.getCommandNames());
 		} catch (error) {
 			return this.#errorHandler.handleError(error, cli);
 		}
+	}
+
+	#rewriteHelpFlag(args: string[]): string[] {
+		if (!args.includes("--help")) return args;
+		const rest = args.filter((arg) => arg !== "--help");
+		return ["help", ...rest];
 	}
 }

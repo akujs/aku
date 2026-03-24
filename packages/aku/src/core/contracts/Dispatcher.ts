@@ -2,13 +2,13 @@ import type { TypeToken } from "../../container/container-key.ts";
 import { createTypeToken } from "../../container/container-key.ts";
 import type { AnyConstructor, NoArgConstructor } from "../../utils.ts";
 
-export type FunctionListener<T extends object> = (event: T) => void;
+type FunctionListener<T extends object> = (event: T) => void;
 
 export interface IClassListenerInstance<T extends object> {
 	handle(event: T): void;
 }
 
-export type ClassListener<T extends object> = NoArgConstructor<IClassListenerInstance<T>> & {
+type ClassListener<T extends object> = NoArgConstructor<IClassListenerInstance<T>> & {
 	isClassListener: true;
 };
 

@@ -24,7 +24,7 @@ export type JSXNode =
 	| undefined
 	| ((context: Context) => JSXNode | Promise<JSXNode>);
 
-export const JSXElementBrand: unique symbol = Symbol.for("aku.jsx.element");
+const JSXElementBrand: unique symbol = Symbol.for("aku.jsx.element");
 
 export interface JSXElement {
 	readonly [JSXElementBrand]: true;

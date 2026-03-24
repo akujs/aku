@@ -5,7 +5,7 @@ import type { SourceProject } from "./SourceProject.ts";
 /**
  * The suffix that identifies entry point files.
  */
-export const ENTRY_POINT_SUFFIX = "-entry-point.ts";
+const ENTRY_POINT_SUFFIX = "-entry-point.ts";
 
 /**
  * Check if a filename is an entry point file.

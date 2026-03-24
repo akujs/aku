@@ -9,23 +9,23 @@ export { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 export type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 export type { DatabaseClient } from "./DatabaseClient.ts";
 export {
-	ClientNotFoundError,
+	DatabaseClientNotFoundError,
 	DatabaseError,
-	QueryError,
-	UnsupportedFeatureError,
+	DatabaseQueryError,
+	DatabaseUnsupportedFeatureError,
 } from "./database-errors.ts";
 export {
 	DatabaseEvent,
 	DatabaseOperationCompletedEvent,
 	DatabaseOperationStartingEvent,
-	QueryExecutedEvent,
-	QueryExecutingEvent,
-	QueryFailedEvent,
-	TransactionExecutedEvent,
-	TransactionExecutingEvent,
-	TransactionFailedEvent,
-	TransactionPreCommitEvent,
-	TransactionRetryingEvent,
+	DatabaseQueryExecutedEvent,
+	DatabaseQueryExecutingEvent,
+	DatabaseQueryFailedEvent,
+	DatabaseTransactionExecutedEvent,
+	DatabaseTransactionExecutingEvent,
+	DatabaseTransactionFailedEvent,
+	DatabaseTransactionPreCommitEvent,
+	DatabaseTransactionRetryingEvent,
 } from "./database-events.ts";
 export { DatabaseGrammar } from "./grammar/DatabaseGrammar.ts";
 // Query builder types representing different states of query construction

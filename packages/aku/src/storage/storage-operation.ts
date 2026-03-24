@@ -1,5 +1,5 @@
 import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
-import { NotFoundError, StorageError, StorageUnknownError } from "./storage-errors.ts";
+import { StorageError, StorageNotFoundError, StorageUnknownError } from "./storage-errors.ts";
 import type { StorageOperationCompletedEvent } from "./storage-events.ts";
 import {
 	StorageOperationFailedEvent,
@@ -36,7 +36,7 @@ export function storageOperation<
 	}
 
 	const handleStorageError = (error: unknown): ReturnType<TFn> | void => {
-		if (options.onNotFound !== "throw" && error instanceof NotFoundError) {
+		if (options.onNotFound !== "throw" && error instanceof StorageNotFoundError) {
 			return options.onNotFound;
 		}
 

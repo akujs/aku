@@ -6,16 +6,13 @@ import { Container } from "../container/contracts/Container.ts";
 import { BaseListener } from "../core/BaseListener.ts";
 import { Configuration } from "../core/contracts/Configuration.ts";
 import { Dispatcher } from "../core/contracts/Dispatcher.ts";
-import {
-	createTestApplication,
-	MockController,
-	mockMiddleware,
-} from "../test-utils/http-test-utils.bun.ts";
+import { MockController, mockMiddleware } from "../test-utils/http.test-utils.ts";
+import { createTestApplication } from "../testing/create-test-application.ts";
 import { abort } from "./abort.ts";
 import type { ClassController, Controller } from "./Controller.ts";
 import { BaseController, type ControllerContext, type ControllerReturn } from "./Controller.ts";
 import { any, get, group, post, redirect } from "./helpers.ts";
-import { RequestHandledEvent } from "./http-events.ts";
+import { HttpRequestHandledEvent } from "./http-events.ts";
 import type { FunctionMiddleware } from "./Middleware.ts";
 import { BaseMiddleware } from "./Middleware.ts";
 import { MiddlewareSet } from "./MiddlewareSet.ts";
@@ -24,11 +21,11 @@ import { StatusPagesMiddleware } from "./StatusPagesMiddleware.ts";
 
 let container: Container;
 let router: Router;
-let handle: (url: string, method?: string) => Promise<Response>;
+let request: (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 let controller: MockController;
 
 beforeEach(() => {
-	({ container, router, handle } = createTestApplication());
+	({ container, router, request } = createTestApplication());
 	controller = new MockController();
 	// Bind the controller instance so routes using MockController class get this instance
 	container.bind(MockController, { instance: controller });
@@ -49,7 +46,7 @@ describe("controller execution", () => {
 
 		router.register(get("/test", TestController));
 
-		const response = await handle("/test");
+		const response = await request("/test");
 		expect(await response.text()).toBe("From controller class");
 	});
 
@@ -60,7 +57,7 @@ describe("controller execution", () => {
 
 		router.register(get("/jsx/{id}", jsxController));
 
-		const response = await handle("/jsx/123");
+		const response = await request("/jsx/123");
 		expect(await response.text()).toBe("<div>Hello from JSX, id: 123</div>");
 	});
 
@@ -80,13 +77,13 @@ describe("controller execution", () => {
 
 		router.register(get("/hello", InjectedController));
 
-		const response = await handle("/hello");
+		const response = await request("/hello");
 		expect(await response.text()).toBe("injected message");
 	});
 
 	test("handles async controller", async () => {
 		router.register(get("/async", MockController));
-		await handle("/async");
+		await request("/async");
 		expect(controller.handle).toHaveBeenCalledTimes(1);
 	});
 });
@@ -115,7 +112,7 @@ describe("middleware", () => {
 			}),
 		);
 
-		await handle("/test/foo");
+		await request("/test/foo");
 		expect(handleMock).toHaveBeenCalledTimes(1);
 	});
 
@@ -133,7 +130,7 @@ describe("middleware", () => {
 			}),
 		);
 
-		await handle("/test/foo");
+		await request("/test/foo");
 		expect(middleware).toHaveBeenCalledTimes(1);
 	});
 
@@ -155,7 +152,7 @@ describe("middleware", () => {
 			]),
 		);
 
-		await handle("/test");
+		await request("/test");
 		expect(mockMiddleware.beforeAfterLog).toEqual([
 			"m0:before",
 			"m1:before",
@@ -184,7 +181,7 @@ describe("middleware", () => {
 			),
 		);
 
-		await handle("/test");
+		await request("/test");
 		expect(mockMiddleware.log).toEqual(["M2"]);
 	});
 
@@ -198,7 +195,7 @@ describe("middleware", () => {
 		]);
 
 		router.register(outerRoutes);
-		await handle("/test");
+		await request("/test");
 
 		expect(mockMiddleware.log).toEqual(["M2", "M3"]);
 	});
@@ -213,7 +210,7 @@ describe("middleware", () => {
 		const outerRoutes = group({ middleware: [M1, M2] }, [innerRoutes]);
 
 		router.register(outerRoutes);
-		await handle("/test");
+		await request("/test");
 
 		expect(mockMiddleware.log).toEqual(["M2", "M1"]);
 	});
@@ -229,7 +226,7 @@ describe("middleware", () => {
 			]),
 		);
 
-		await handle("/test");
+		await request("/test");
 		expect(mockMiddleware.log).toEqual(["M3"]);
 	});
 
@@ -249,7 +246,7 @@ describe("middleware", () => {
 
 		router.register(route);
 
-		const response = await handle("/protected");
+		const response = await request("/protected");
 		expect(await response.text()).toBe("Unauthorized");
 		expect(controller.handle).not.toHaveBeenCalled();
 	});
@@ -281,7 +278,7 @@ describe("middleware", () => {
 
 		router.register(route);
 
-		const response = await handle("/test");
+		const response = await request("/test");
 		expect(await response.text()).toBe("Modified");
 	});
 
@@ -302,11 +299,11 @@ describe("middleware", () => {
 		router.register(routes);
 
 		mockMiddleware.reset();
-		await handle("/api/v1");
+		await request("/api/v1");
 		expect(mockMiddleware.log).toEqual(["GroupMiddleware", "v1"]);
 
 		mockMiddleware.reset();
-		await handle("/api/v2");
+		await request("/api/v2");
 		expect(mockMiddleware.log).toEqual(["GroupMiddleware", "v2"]);
 	});
 });
@@ -322,7 +319,7 @@ describe("middleware priority", () => {
 		const Logger = mockMiddleware("Logger");
 		const CORS = mockMiddleware("CORS");
 
-		({ container, router, handle } = createTestApplication({
+		({ container, router, request } = createTestApplication({
 			middlewarePriority: [Auth, RateLimit, Logger],
 		}));
 
@@ -339,7 +336,7 @@ describe("middleware priority", () => {
 			),
 		);
 
-		await handle("/test");
+		await request("/test");
 
 		// Priority middleware (Auth, RateLimit, Logger) execute first in priority order
 		// Non-priority middleware (CORS) follows in original relative order
@@ -378,8 +375,8 @@ describe("middleware priority", () => {
 		);
 
 		// Send two requests
-		await handle("/test");
-		await handle("/test");
+		await request("/test");
+		await request("/test");
 
 		// applyPriority should be called exactly once (during registration, for the shared MiddlewareSet)
 		expect(applyPrioritySpy).toHaveBeenCalledTimes(1);
@@ -401,7 +398,7 @@ describe("handler validation", () => {
 		router.register(get("/test", NotAController as unknown as ClassController));
 
 		expect(async () => {
-			await handle("/test");
+			await request("/test");
 		}).toThrow(
 			"Controller NotAController for /test is a class but does not extend Controller. Class-based handlers must extend the Controller class.",
 		);
@@ -411,7 +408,7 @@ describe("handler validation", () => {
 		router.register(get("/test", () => "strings are not valid" as unknown as ControllerReturn));
 
 		expect(async () => {
-			await handle("/test");
+			await request("/test");
 		}).toThrow(
 			"Controller for /test returned an invalid value. Expected Response, JSX element, ConvertsToResponse, or null, but got: strings are not valid",
 		);
@@ -424,7 +421,7 @@ describe("handler validation", () => {
 
 		router.register(get("/user/{id}", functionController));
 
-		const response = await handle("/user/123");
+		const response = await request("/user/123");
 		expect(response.status).toBe(200);
 		expect(await response.text()).toBe("Function controller, id: 123");
 	});
@@ -441,7 +438,7 @@ describe("handler validation", () => {
 
 		router.register(get("/item/{id}", NewableController as unknown as ClassController));
 
-		const response = await handle("/item/456");
+		const response = await request("/item/456");
 		expect(response.status).toBe(200);
 		expect(await response.text()).toBe("Newable controller, id: 456");
 	});
@@ -459,7 +456,7 @@ describe("handler validation", () => {
 		router.register(get("/item/{id}", NewableController as unknown as Controller));
 
 		expect(async () => {
-			await handle("/item/456");
+			await request("/item/456");
 		}).toThrow(
 			"Controller NewableController for /item/{id} returned an object with a 'handle' method. This can happen if you have a controller that does not extend the BaseController class. Ensure that controller classes extend BaseController",
 		);
@@ -477,7 +474,7 @@ describe("param access checking", () => {
 		}
 	}
 	test("throwOnInvalidParamAccess: 'always' throws even when development: false", async () => {
-		({ container, router, handle } = createTestApplication({
+		({ container, router, request } = createTestApplication({
 			development: false,
 			throwOnInvalidParamAccess: "always",
 		}));
@@ -485,25 +482,25 @@ describe("param access checking", () => {
 		router.register(get("/user/{id}", ControllerInvalidParam));
 
 		expect(async () => {
-			await handle("/user/123");
+			await request("/user/123");
 		}).toThrow('Route parameter "nonExistent" does not exist');
 	});
 
 	test("throwOnInvalidParamAccess: 'never' doesn't throw even when development: true", async () => {
-		({ container, router, handle } = createTestApplication({
+		({ container, router, request } = createTestApplication({
 			development: true,
 			throwOnInvalidParamAccess: "never",
 		}));
 
 		router.register(get("/user/{id}", ControllerInvalidParam));
 
-		const response = await handle("/user/123");
+		const response = await request("/user/123");
 		expect(response.status).toBe(200);
 		expect(await response.text()).toBe("ctx.params.nonExistent: undefined");
 	});
 
 	test("throwOnInvalidParamAccess: 'development' throws when development: true", async () => {
-		({ container, router, handle } = createTestApplication({
+		({ container, router, request } = createTestApplication({
 			development: true,
 			throwOnInvalidParamAccess: "development",
 		}));
@@ -511,45 +508,45 @@ describe("param access checking", () => {
 		router.register(get("/user/{id}", ControllerInvalidParam));
 
 		expect(async () => {
-			await handle("/user/123");
+			await request("/user/123");
 		}).toThrow('Route parameter "nonExistent" does not exist');
 	});
 
 	test("throwOnInvalidParamAccess: 'development' doesn't throw when development: false", async () => {
-		({ container, router, handle } = createTestApplication({
+		({ container, router, request } = createTestApplication({
 			development: false,
 			throwOnInvalidParamAccess: "development",
 		}));
 
 		router.register(get("/user/{id}", ControllerInvalidParam));
 
-		const response = await handle("/user/123");
+		const response = await request("/user/123");
 		expect(response.status).toBe(200);
 		expect(await response.text()).toBe("ctx.params.nonExistent: undefined");
 	});
 
 	test("throwOnInvalidParamAccess: undefined (default) throws when development: true", async () => {
-		({ container, router, handle } = createTestApplication({ development: true }));
+		({ container, router, request } = createTestApplication({ development: true }));
 
 		router.register(get("/user/{id}", ControllerInvalidParam));
 
 		expect(async () => {
-			await handle("/user/123");
+			await request("/user/123");
 		}).toThrow('Route parameter "nonExistent" does not exist');
 	});
 
 	test("throwOnInvalidParamAccess: undefined (default) throws when development: false", async () => {
-		({ container, router, handle } = createTestApplication({ development: false }));
+		({ container, router, request } = createTestApplication({ development: false }));
 
 		router.register(get("/user/{id}", ControllerInvalidParam));
 
 		expect(async () => {
-			await handle("/user/123");
+			await request("/user/123");
 		}).toThrow('Route parameter "nonExistent" does not exist');
 	});
 
 	test("valid param access works in all modes", async () => {
-		({ container, router, handle } = createTestApplication({
+		({ container, router, request } = createTestApplication({
 			development: true,
 			throwOnInvalidParamAccess: "always",
 		}));
@@ -562,13 +559,13 @@ describe("param access checking", () => {
 			}),
 		);
 
-		const response = await handle("/user/123");
+		const response = await request("/user/123");
 		expect(response.status).toBe(200);
 		expect(capturedId).toBe("123");
 	});
 
 	test("rawParams also throws when configured", async () => {
-		({ container, router, handle } = createTestApplication({ development: true }));
+		({ container, router, request } = createTestApplication({ development: true }));
 
 		router.register(
 			get("/user/{id}", (ctx: ControllerContext) => {
@@ -578,7 +575,7 @@ describe("param access checking", () => {
 		);
 
 		expect(async () => {
-			await handle("/user/123");
+			await request("/user/123");
 		}).toThrow('Route parameter "nonExistent" does not exist');
 	});
 });
@@ -591,14 +588,14 @@ describe("meta property", () => {
 	test("meta is passed to controller context", async () => {
 		router.register(get("/test", MockController, { meta: { foo: "bar", num: 42 } }));
 
-		await handle("/test");
+		await request("/test");
 		expect(controller.meta).toEqual({ foo: "bar", num: 42 });
 	});
 
 	test("meta is empty object when not specified", async () => {
 		router.register(get("/test", MockController));
 
-		await handle("/test");
+		await request("/test");
 		expect(controller.meta).toEqual({});
 	});
 });
@@ -612,7 +609,7 @@ describe("special routes", () => {
 		const route = any("/old", redirect("/new"));
 		router.register(route);
 
-		const response = await handle("/old");
+		const response = await request("/old");
 		expect(response.status).toBe(303);
 		expect(response.headers.get("Location")).toBe("/new");
 	});
@@ -621,7 +618,7 @@ describe("special routes", () => {
 		const route = post("/old-api", redirect("/new-api", { preserveHttpMethod: true }));
 		router.register(route);
 
-		const response = await handle("/old-api", "POST");
+		const response = await request("/old-api", { method: "POST" });
 		expect(response.status).toBe(307);
 		expect(response.headers.get("Location")).toBe("/new-api");
 	});
@@ -630,7 +627,7 @@ describe("special routes", () => {
 		const route = get("/dynamic", () => redirect("/target", { permanent: true }));
 		router.register(route);
 
-		const response = await handle("/dynamic");
+		const response = await request("/dynamic");
 		expect(response.status).toBe(301);
 		expect(response.headers.get("Location")).toBe("/target");
 	});
@@ -643,7 +640,7 @@ describe("ConvertsToResponse handling", () => {
 		}));
 		router.register(route);
 
-		const response = await handle("/custom");
+		const response = await request("/custom");
 		expect(response.status).toBe(201);
 		expect(await response.text()).toBe("custom");
 	});
@@ -654,7 +651,7 @@ describe("ConvertsToResponse handling", () => {
 		}));
 		router.register(route);
 
-		const response = await handle("/async");
+		const response = await request("/async");
 		expect(await response.text()).toBe("async");
 	});
 
@@ -664,7 +661,7 @@ describe("ConvertsToResponse handling", () => {
 		}));
 		router.register(route);
 
-		const response = await handle("/async");
+		const response = await request("/async");
 		expect(await response.text()).toBe("async");
 	});
 
@@ -674,7 +671,7 @@ describe("ConvertsToResponse handling", () => {
 		}));
 		router.register(route);
 
-		const response = await handle("/jsx");
+		const response = await request("/jsx");
 		expect(await response.text()).toContain("JSX from toResponse");
 	});
 
@@ -684,7 +681,7 @@ describe("ConvertsToResponse handling", () => {
 		}));
 		router.register(route);
 
-		const response = await handle("/null");
+		const response = await request("/null");
 		expect(response.status).toBe(200);
 		expect(await response.text()).toBe("");
 	});
@@ -697,7 +694,7 @@ describe("ConvertsToResponse handling", () => {
 		}));
 		router.register(route);
 
-		const response = await handle("/chained");
+		const response = await request("/chained");
 		expect(await response.text()).toBe("chained");
 	});
 
@@ -707,7 +704,7 @@ describe("ConvertsToResponse handling", () => {
 		}));
 		router.register(route);
 
-		const response = await handle("/promise");
+		const response = await request("/promise");
 		expect(await response.text()).toBe("promised");
 	});
 });
@@ -732,7 +729,7 @@ describe("status pages", () => {
 			}),
 		);
 
-		const response = await handle("/test");
+		const response = await request("/test");
 		expect(response.status).toBe(404);
 		const html = await response.text();
 		expect(html).toContain("<h1>404 Not Found</h1>");
@@ -753,7 +750,7 @@ describe("status pages", () => {
 			),
 		);
 
-		const response = await handle("/test");
+		const response = await request("/test");
 		expect(response.status).toBe(404);
 		const html = await response.text();
 		expect(html).toContain("<h1>404 Not Found</h1>");
@@ -767,7 +764,7 @@ describe("status pages", () => {
 			}),
 		);
 
-		const response = await handle("/test");
+		const response = await request("/test");
 		expect(response.status).toBe(404);
 		const html = await response.text();
 		expect(html).toContain("<h1>404 Not Found</h1>");
@@ -794,7 +791,7 @@ describe("status pages", () => {
 			}),
 		);
 
-		const response = await handle("/test");
+		const response = await request("/test");
 		expect(response.status).toBe(401);
 		const html = await response.text();
 		expect(html).toContain("<h1>Unauthorized</h1>");
@@ -815,7 +812,7 @@ describe("status pages", () => {
 	// 		}),
 	// 	);
 
-	// 	const response = await handle("/test");
+	// 	const response = await request("/test");
 	// 	expect(response.status).toBe(500);
 	// 	const text = await response.text();
 	// 	expect(text).toBe("Error page failed");
@@ -844,21 +841,21 @@ describe("status pages", () => {
 			}),
 		);
 
-		const response = await testApp.handle("/test");
+		const response = await testApp.request("/test");
 		expect(response.status).toBe(401);
 		const text = await response.text();
 		expect(text).toBe("Unauthorized"); // Plain text, not the custom page
 	});
 });
 
-test("RequestHandledEvent allows listeners to access responses", async () => {
+test("HttpRequestHandledEvent allows listeners to access responses", async () => {
 	let capturedContext: ControllerContext | undefined;
 	let capturedStatus: number | undefined;
 	let capturedHeaders: Headers | undefined;
 	let capturedBody: Promise<string> | undefined;
 
 	class TestListener extends BaseListener {
-		handle(event: RequestHandledEvent) {
+		handle(event: HttpRequestHandledEvent) {
 			capturedContext = event.context;
 			capturedStatus = event.status;
 			capturedHeaders = event.headers;
@@ -869,7 +866,7 @@ test("RequestHandledEvent allows listeners to access responses", async () => {
 		}
 	}
 
-	container.get(Dispatcher).addListener(RequestHandledEvent, TestListener);
+	container.get(Dispatcher).addListener(HttpRequestHandledEvent, TestListener);
 
 	router.register(
 		get("/test/{id}", (ctx) => {
@@ -880,7 +877,7 @@ test("RequestHandledEvent allows listeners to access responses", async () => {
 		}),
 	);
 
-	const response = await handle("/test/123");
+	const response = await request("/test/123");
 
 	expect(response.status).toBe(201);
 	expect(await response.text()).toBe("Hello 123");

@@ -1,4 +1,7 @@
 import { AkuError } from "../core/core-errors.ts";
+import { findSimilar } from "../helpers/str/similarity.ts";
+import { writeCrashDumpAndExit } from "./crash-dump.ts";
+import type { ProcessApi } from "./process-api.ts";
 
 /**
  * Error thrown by CLI commands to indicate that the command should exit. This
@@ -14,4 +17,26 @@ export class CliExitError extends AkuError {
 		super(message);
 		this.exitCode = exitCode;
 	}
+}
+
+export function handleCliError(error: unknown, proc: ProcessApi): number {
+	if (error instanceof CliExitError) {
+		proc.stderr(`Error: ${error.message}\n`);
+		return error.exitCode;
+	}
+	writeCrashDumpAndExit(error, proc);
+	return 1;
+}
+
+export function throwNotFoundError(itemType: string, name: string, candidates: string[]): never {
+	const similar = findSimilar(name, candidates, {
+		threshold: 3,
+		maxResults: 6,
+	});
+	let message = `${itemType} "${name}" not found.`;
+	if (similar.length > 0) {
+		message += `\n\nDid you mean:\n${similar.map((s) => `  ${s}`).join("\n")}`;
+	}
+	message += `\n\nRun "aku list" to see available commands.`;
+	throw new CliExitError(message);
 }

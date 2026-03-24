@@ -197,7 +197,7 @@ export interface StorageFile {
 	 *
 	 * Unlike the fetch() API, this method will only return a response on
 	 * success. On failure, an appropriate kind of error will be thrown, e.g.
-	 * NotFoundError or PermissionsError. So you do not need to check the
+	 * StorageNotFoundError or StoragePermissionsError. So you do not need to check the
 	 * response.ok property
 	 */
 	get(): Promise<StorageFileFetchResult>;
@@ -531,7 +531,7 @@ export interface StorageEndpoint {
 	/**
 	 * Read a file
 	 *
-	 * Should throw NotFoundError if the file does not exist, PermissionsError
+	 * Should throw StorageNotFoundError if the file does not exist, StoragePermissionsError
 	 * if the user doesn't have permission to read the file, or
 	 * StorageUnknownError in other cases.
 	 */
@@ -552,7 +552,7 @@ export interface StorageEndpoint {
 	/**
 	 * Write a file.
 	 *
-	 * Should throw PermissionsError if the user doesn't have permission to
+	 * Should throw StoragePermissionsError if the user doesn't have permission to
 	 * write the file, or StorageUnknownError in other cases.
 	 *
 	 * @param options.path - the full absolute path of the file to write starting with a slash.
@@ -562,7 +562,7 @@ export interface StorageEndpoint {
 	writeSingle(options: StorageEndpointWriteOptions): Promise<void>;
 
 	/**
-	 * Get information about a file. Should throw NotFoundError if the file does not exist.
+	 * Get information about a file. Should throw StorageNotFoundError if the file does not exist.
 	 */
 	getInfoSingle(path: string): Promise<StorageEndpointFileInfoResult>;
 
@@ -595,7 +595,7 @@ export interface StorageEndpoint {
 	getTemporaryUploadUrl(path: string, expires: Date): Promise<string>;
 
 	/**
-	 * Copy a file internally within this endpoint. Should throw NotFoundError if the source file does not exist.
+	 * Copy a file internally within this endpoint. Should throw StorageNotFoundError if the source file does not exist.
 	 *
 	 * @param options.source - source file path
 	 * @param options.destination - destination file path
@@ -603,7 +603,7 @@ export interface StorageEndpoint {
 	copy(options: StorageEndpointCopyMoveOptions): Promise<void>;
 
 	/**
-	 * Move a file internally within this endpoint. Should throw NotFoundError if the source file does not exist.
+	 * Move a file internally within this endpoint. Should throw StorageNotFoundError if the source file does not exist.
 	 *
 	 * @param options.source - source file path
 	 * @param options.destination - destination file path
@@ -613,7 +613,7 @@ export interface StorageEndpoint {
 	/**
 	 * Check if a file exists at the given path.
 	 *
-	 * If the file does not exist the implementation can either return false or throw a NotFoundError.
+	 * If the file does not exist the implementation can either return false or throw a StorageNotFoundError.
 	 */
 	existsSingle(path: string): Promise<boolean>;
 
@@ -651,7 +651,7 @@ export interface StorageEndpoint {
 	 * Delete a single file.
 	 *
 	 * If the file does not exist the implementation must either return normally
-	 * or throw a NotFoundError.
+	 * or throw a StorageNotFoundError.
 	 */
 	deleteSingle(path: string): Promise<void>;
 
@@ -659,7 +659,7 @@ export interface StorageEndpoint {
 	 * Delete all files under a prefix.
 	 *
 	 * If the prefix does not exist the implementation must either return normally
-	 * or throw a NotFoundError.
+	 * or throw a StorageNotFoundError.
 	 */
 	deleteAllUnderPrefix(prefix: string): Promise<void>;
 }

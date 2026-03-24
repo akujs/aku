@@ -1,5 +1,5 @@
 [test]
 
 exclude = ["**/dist/**"]
-preload = ["./src/test-utils/test-setup.bun.ts"]
+preload = ["./src/test-utils/test-setup.test-utils.ts"]
 timeout = 15000

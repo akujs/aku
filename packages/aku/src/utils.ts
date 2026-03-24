@@ -104,39 +104,7 @@ export class SetMultiMap<K, V> extends MultiMap<K, V> {
 
 const emptyIterable: Iterable<never> = Object.freeze([]);
 
-export class ArrayMultiMap<K, V> extends MultiMap<K, V> {
-	#map = new Map<K, V[]>();
-
-	add(key: K, value: V): void {
-		let set = this.#map.get(key);
-		if (!set) {
-			set = [];
-			this.#map.set(key, set);
-		}
-		set.push(value);
-	}
-
-	get(key: K): Iterable<V> {
-		const set = this.#map.get(key);
-		return set?.values() ?? emptyIterable;
-	}
-
-	deleteAll(key: K): void {
-		this.#map.delete(key);
-	}
-
-	clear(): void {
-		this.#map.clear();
-	}
-}
-
 export type Prettify<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
-
-export type MakeUndefinedOptional<T> = {
-	[K in keyof T as undefined extends T[K] ? never : K]: T[K];
-} & {
-	[K in keyof T as undefined extends T[K] ? K : never]?: T[K];
-};
 
 export type AnyConstructor<T = unknown> = abstract new (...args: never[]) => T;
 
@@ -168,7 +136,7 @@ export function getPrototypeChain(instanceOrClass: unknown): AnyConstructor[] {
 	return result;
 }
 
-export const plural = (word: string): string => word + "s";
+const plural = (word: string): string => word + "s";
 
 export const pluralCount = (count: number, word: string): string =>
 	count + " " + (count === 1 ? word : plural(word));

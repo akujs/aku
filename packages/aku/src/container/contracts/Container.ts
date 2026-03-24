@@ -8,7 +8,7 @@ type FactoryFunction<T> = (container: Container) => {
 
 export type Lifecycle = "transient" | "singleton" | "scoped";
 
-export type BindArgsWithFactory<T> = {
+type BindArgsWithFactory<T> = {
 	class?: new (...args: never[]) => T;
 	factory?: FactoryFunction<T>;
 	instance?: T;
@@ -16,7 +16,7 @@ export type BindArgsWithFactory<T> = {
 	ifNotBound?: boolean;
 };
 
-export type BindArgsWithoutFactory<T> = {
+type BindArgsWithoutFactory<T> = {
 	class: NoArgConstructor<T>;
 	factory?: never;
 	instance?: never;

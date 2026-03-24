@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import { ContainerImpl } from "../container/ContainerImpl.ts";
 import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
 import { DispatcherImpl } from "../core/DispatcherImpl.ts";
-import { expectError } from "../test-utils/error.bun.ts";
-import { mockDispatcher } from "../test-utils/internal-mocks.bun.ts";
+import { expectError } from "../test-utils/error.test-utils.ts";
+import { mockDispatcher } from "../test-utils/internal-mocks.test-utils.ts";
 import { mockCurrentTime } from "../testing/mock-time.ts";
 import { MemoryEndpoint } from "./adapters/memory/MemoryEndpoint.ts";
 import type { StorageDirectory, StorageEndpoint } from "./contracts/Storage.ts";
@@ -11,14 +11,14 @@ import { mockPlatformPaths } from "./path-operations.ts";
 import { StorageDirectoryImpl } from "./StorageDirectoryImpl.ts";
 import { StorageDiskImpl } from "./StorageDiskImpl.ts";
 import { StorageFileImpl } from "./StorageFileImpl.ts";
-import { InvalidPathError } from "./storage-errors.ts";
+import { StorageInvalidPathError } from "./storage-errors.ts";
 import {
-	DirectoryDeletedEvent,
-	DirectoryDeletingEvent,
-	DirectoryExistenceCheckedEvent,
-	DirectoryExistenceCheckingEvent,
-	DirectoryListedEvent,
-	DirectoryListingEvent,
+	StorageDirectoryDeletedEvent,
+	StorageDirectoryDeletingEvent,
+	StorageDirectoryExistenceCheckedEvent,
+	StorageDirectoryExistenceCheckingEvent,
+	StorageDirectoryListedEvent,
+	StorageDirectoryListingEvent,
 } from "./storage-events.ts";
 
 function getPaths(items: Array<{ path: string }>): string[] {
@@ -60,7 +60,7 @@ describe(StorageDirectoryImpl, () => {
 		test("throws when trailing slash is missing", () => {
 			expectError(
 				() => create("/path/to/dir"),
-				InvalidPathError,
+				StorageInvalidPathError,
 				(error) => {
 					expect(error.path).toBe("/path/to/dir");
 					expect(error.reason).toBe("directory paths must start and end with a slash");
@@ -69,7 +69,7 @@ describe(StorageDirectoryImpl, () => {
 		});
 
 		test("throws when leading slash is missing", () => {
-			expect(() => create("path/to/dir/")).toThrow(InvalidPathError);
+			expect(() => create("path/to/dir/")).toThrow(StorageInvalidPathError);
 		});
 
 		test('root path "/" is valid', () => {
@@ -251,7 +251,7 @@ describe(StorageDirectoryImpl, () => {
 			const dir = create("/parent/");
 			expectError(
 				() => dir.directory(""),
-				InvalidPathError,
+				StorageInvalidPathError,
 				(error) => {
 					expect(error.path).toBe("");
 					expect(error.reason).toBe("directory name cannot be empty");
@@ -261,15 +261,15 @@ describe(StorageDirectoryImpl, () => {
 
 		test("rejects slashes in directory name", () => {
 			const dir = create("/parent/");
-			expect(() => dir.directory("a/b")).toThrow(InvalidPathError);
-			expect(() => dir.directory("a\\b")).toThrow(InvalidPathError);
-			expect(() => dir.directory("/child")).toThrow(InvalidPathError);
+			expect(() => dir.directory("a/b")).toThrow(StorageInvalidPathError);
+			expect(() => dir.directory("a\\b")).toThrow(StorageInvalidPathError);
+			expect(() => dir.directory("/child")).toThrow(StorageInvalidPathError);
 		});
 
 		test("rejects '.' and '..' path traversal", () => {
 			const dir = create("/parent/");
-			expect(() => dir.directory(".")).toThrow(InvalidPathError);
-			expect(() => dir.directory("..")).toThrow(InvalidPathError);
+			expect(() => dir.directory(".")).toThrow(StorageInvalidPathError);
+			expect(() => dir.directory("..")).toThrow(StorageInvalidPathError);
 		});
 
 		test("throws when name has invalid chars for the endpoint", () => {
@@ -280,7 +280,7 @@ describe(StorageDirectoryImpl, () => {
 
 			expectError(
 				() => dir.directory("a<<b"),
-				InvalidPathError,
+				StorageInvalidPathError,
 				(error) => {
 					expect(error.path).toBe("/parent/a<<b");
 					expect(error.reason).toBe("memory adapter does not allow <> in names");
@@ -307,7 +307,7 @@ describe(StorageDirectoryImpl, () => {
 			const dir = create("/parent/");
 			expectError(
 				() => dir.file(""),
-				InvalidPathError,
+				StorageInvalidPathError,
 				(error) => {
 					expect(error.path).toBe("");
 					expect(error.reason).toBe("file name cannot be empty");
@@ -323,17 +323,17 @@ describe(StorageDirectoryImpl, () => {
 
 		test("rejects slashes in file name", () => {
 			const dir = create("/parent/");
-			expect(() => dir.file("a/b.txt")).toThrow(InvalidPathError);
-			expect(() => dir.file("a\\b.txt")).toThrow(InvalidPathError);
-			expect(() => dir.file("/test.txt")).toThrow(InvalidPathError);
-			expect(() => dir.file("subdir/")).toThrow(InvalidPathError);
-			expect(() => dir.file("subdir\\")).toThrow(InvalidPathError);
+			expect(() => dir.file("a/b.txt")).toThrow(StorageInvalidPathError);
+			expect(() => dir.file("a\\b.txt")).toThrow(StorageInvalidPathError);
+			expect(() => dir.file("/test.txt")).toThrow(StorageInvalidPathError);
+			expect(() => dir.file("subdir/")).toThrow(StorageInvalidPathError);
+			expect(() => dir.file("subdir\\")).toThrow(StorageInvalidPathError);
 		});
 
 		test("rejects '.' and '..' path traversal", () => {
 			const dir = create("/parent/");
-			expect(() => dir.file(".")).toThrow(InvalidPathError);
-			expect(() => dir.file("..")).toThrow(InvalidPathError);
+			expect(() => dir.file(".")).toThrow(StorageInvalidPathError);
+			expect(() => dir.file("..")).toThrow(StorageInvalidPathError);
 		});
 
 		test("throws when name has invalid chars for the endpoint", () => {
@@ -344,7 +344,7 @@ describe(StorageDirectoryImpl, () => {
 
 			expectError(
 				() => dir.file("my<<file>>:test.txt"),
-				InvalidPathError,
+				StorageInvalidPathError,
 				(error) => {
 					expect(error.path).toBe("/parent/my<<file>>:test.txt");
 				},
@@ -422,8 +422,8 @@ describe(StorageDirectoryImpl, () => {
 
 			const exists = await dir.exists();
 
-			const startEvent = new DirectoryExistenceCheckingEvent(eventDisk, "/subdir/");
-			const endEvent = new DirectoryExistenceCheckedEvent(startEvent, exists);
+			const startEvent = new StorageDirectoryExistenceCheckingEvent(eventDisk, "/subdir/");
+			const endEvent = new StorageDirectoryExistenceCheckedEvent(startEvent, exists);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -432,8 +432,8 @@ describe(StorageDirectoryImpl, () => {
 
 			await dir.list();
 
-			const startEvent = new DirectoryListingEvent(eventDisk, "/subdir/", "all", false);
-			const endEvent = new DirectoryListedEvent(startEvent, 4); // 2 dirs + 2 files
+			const startEvent = new StorageDirectoryListingEvent(eventDisk, "/subdir/", "all", false);
+			const endEvent = new StorageDirectoryListedEvent(startEvent, 4); // 2 dirs + 2 files
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -444,8 +444,8 @@ describe(StorageDirectoryImpl, () => {
 				// Consume the generator
 			}
 
-			const startEvent = new DirectoryListingEvent(eventDisk, "/subdir/", "all", false);
-			const endEvent = new DirectoryListedEvent(startEvent, 4); // 2 dirs + 2 files
+			const startEvent = new StorageDirectoryListingEvent(eventDisk, "/subdir/", "all", false);
+			const endEvent = new StorageDirectoryListedEvent(startEvent, 4); // 2 dirs + 2 files
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -454,8 +454,8 @@ describe(StorageDirectoryImpl, () => {
 
 			await dir.listFiles();
 
-			const startEvent = new DirectoryListingEvent(eventDisk, "/subdir/", "files", false);
-			const endEvent = new DirectoryListedEvent(startEvent, 2); // 2 immediate files
+			const startEvent = new StorageDirectoryListingEvent(eventDisk, "/subdir/", "files", false);
+			const endEvent = new StorageDirectoryListedEvent(startEvent, 2); // 2 immediate files
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -464,8 +464,8 @@ describe(StorageDirectoryImpl, () => {
 
 			await dir.listFiles({ recursive: true });
 
-			const startEvent = new DirectoryListingEvent(eventDisk, "/subdir/", "files", true);
-			const endEvent = new DirectoryListedEvent(startEvent, 6); // All 6 files recursively
+			const startEvent = new StorageDirectoryListingEvent(eventDisk, "/subdir/", "files", true);
+			const endEvent = new StorageDirectoryListedEvent(startEvent, 6); // All 6 files recursively
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -476,8 +476,8 @@ describe(StorageDirectoryImpl, () => {
 				// Consume the generator
 			}
 
-			const startEvent = new DirectoryListingEvent(eventDisk, "/subdir/", "files", true);
-			const endEvent = new DirectoryListedEvent(startEvent, 6);
+			const startEvent = new StorageDirectoryListingEvent(eventDisk, "/subdir/", "files", true);
+			const endEvent = new StorageDirectoryListedEvent(startEvent, 6);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -486,8 +486,13 @@ describe(StorageDirectoryImpl, () => {
 
 			await dir.listDirectories();
 
-			const startEvent = new DirectoryListingEvent(eventDisk, "/subdir/", "directories", false);
-			const endEvent = new DirectoryListedEvent(startEvent, 2); // 2 immediate directories
+			const startEvent = new StorageDirectoryListingEvent(
+				eventDisk,
+				"/subdir/",
+				"directories",
+				false,
+			);
+			const endEvent = new StorageDirectoryListedEvent(startEvent, 2); // 2 immediate directories
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -498,8 +503,13 @@ describe(StorageDirectoryImpl, () => {
 				// Consume the generator
 			}
 
-			const startEvent = new DirectoryListingEvent(eventDisk, "/subdir/", "directories", false);
-			const endEvent = new DirectoryListedEvent(startEvent, 2); // 2 immediate directories
+			const startEvent = new StorageDirectoryListingEvent(
+				eventDisk,
+				"/subdir/",
+				"directories",
+				false,
+			);
+			const endEvent = new StorageDirectoryListedEvent(startEvent, 2); // 2 immediate directories
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 
@@ -508,8 +518,8 @@ describe(StorageDirectoryImpl, () => {
 
 			await dir.deleteAll();
 
-			const startEvent = new DirectoryDeletingEvent(eventDisk, "/subdir/");
-			const endEvent = new DirectoryDeletedEvent(startEvent);
+			const startEvent = new StorageDirectoryDeletingEvent(eventDisk, "/subdir/");
+			const endEvent = new StorageDirectoryDeletedEvent(startEvent);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 	});

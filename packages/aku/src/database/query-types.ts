@@ -127,10 +127,6 @@ export interface Statement extends SqlFragments {
 	readonly prepare?: boolean | undefined;
 }
 
-export interface MutationResult {
-	rowsAffected: number;
-}
-
 export interface StatementResult {
 	rows: Row[];
 	rowsAffected: number;
@@ -188,7 +184,7 @@ interface StatementExecutionMethods {
 
 	/**
 	 * Execute the statement on the default client and return the first row.
-	 * Throws NotFoundError if no rows returned.
+	 * Throws via abort.notFound() if no rows returned.
 	 */
 	getFirstOrNotFound(): Promise<Row>;
 
@@ -645,14 +641,14 @@ interface AggregateMethods {
 
 interface ByIdMethods {
 	/**
-	 * Fetch a row by its id column, throwing QueryError if not found.
+	 * Fetch a row by its id column, throwing DatabaseQueryError if not found.
 	 *
 	 * Shorthand for `table.whereId(id).getFirstOrFail()`.
 	 */
 	getByIdOrFail(id: unknown): Promise<Row>;
 
 	/**
-	 * Fetch a row by its id column, throwing NotFoundError if not found.
+	 * Fetch a row by its id column, throwing via abort.notFound() if not found.
 	 *
 	 * Shorthand for `table.whereId(id).getFirstOrNotFound()`.
 	 */

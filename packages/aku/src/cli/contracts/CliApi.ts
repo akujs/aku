@@ -6,6 +6,25 @@ import { createTypeToken } from "../../container/container-key.ts";
  */
 export interface CliApi {
 	/**
+	 * The number of columns available for output. Determined by the `COLUMNS`
+	 * environment variable if set, otherwise `process.stdout.columns` capped
+	 * at 120, falling back to 80 when stdout is not a TTY.
+	 */
+	readonly columns: number;
+
+	/**
+	 * Whether the terminal is interactive (stdin is a TTY). When this is
+	 * `false`, input methods (`select`, `input`, `confirm`) will immediately
+	 * return a cancelled response (`{ success: false }`).
+	 */
+	readonly isInteractive: boolean;
+
+	/**
+	 * Write raw text to the output without formatting, word-wrapping, or extra blank lines.
+	 */
+	raw(text: string): void;
+
+	/**
 	 * Write a paragraph of text
 	 *
 	 * TODO: wrap with wrap-ansi, add wrap-ansi dev dependency using compatible version to @enquirer/prompts dependency
@@ -229,7 +248,7 @@ export type CliPromptResponse<V> =
 			success: false;
 	  };
 
-export type CliSelectChoice<V> = {
+type CliSelectChoice<V> = {
 	/**
 	 * Text to display for this item in the list of choices
 	 */

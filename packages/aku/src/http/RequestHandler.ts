@@ -15,7 +15,7 @@ import {
 	isClassController,
 } from "./Controller.ts";
 import { RequestLocals } from "./contracts/RequestLocals.ts";
-import { RequestHandledEvent } from "./http-events.ts";
+import { HttpRequestHandledEvent } from "./http-events.ts";
 import { throwOnMissingPropertyAccess } from "./params-access-checker.ts";
 import {
 	CurrentControllerContext,
@@ -109,8 +109,8 @@ export class RequestHandler extends BaseClass {
 			const response = await pipeline(ctx);
 
 			this.#dispatcher.dispatchIfHasListeners(
-				RequestHandledEvent,
-				() => new RequestHandledEvent(ctx, response),
+				HttpRequestHandledEvent,
+				() => new HttpRequestHandledEvent(ctx, response),
 			);
 
 			const abortException = locals.get(abortExceptionKey);

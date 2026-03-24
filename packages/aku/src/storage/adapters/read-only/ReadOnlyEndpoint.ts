@@ -10,7 +10,7 @@ import type {
 	StorageEndpointWriteOptions,
 } from "../../contracts/Storage.ts";
 import { Storage as StorageKey } from "../../contracts/Storage.ts";
-import { PermissionsError } from "../../storage-errors.ts";
+import { StoragePermissionsError } from "../../storage-errors.ts";
 import { WrappedEndpoint } from "../../storage-utils.ts";
 import type { ReadOnlyStorageConfig } from "./ReadOnlyStorageConfig.ts";
 
@@ -67,22 +67,22 @@ export class ReadOnlyEndpoint extends WrappedEndpoint implements StorageEndpoint
 	}
 
 	async writeSingle(options: StorageEndpointWriteOptions): Promise<void> {
-		throw new PermissionsError(options.path, 403, `"${this.name}" disk is read-only`);
+		throw new StoragePermissionsError(options.path, 403, `"${this.name}" disk is read-only`);
 	}
 
 	async copy(options: StorageEndpointCopyMoveOptions): Promise<void> {
-		throw new PermissionsError(options.source, 403, `"${this.name}" disk is read-only`);
+		throw new StoragePermissionsError(options.source, 403, `"${this.name}" disk is read-only`);
 	}
 
 	async move(options: StorageEndpointCopyMoveOptions): Promise<void> {
-		throw new PermissionsError(options.source, 403, `"${this.name}" disk is read-only`);
+		throw new StoragePermissionsError(options.source, 403, `"${this.name}" disk is read-only`);
 	}
 
 	async deleteSingle(path: string): Promise<void> {
-		throw new PermissionsError(path, 403, `"${this.name}" disk is read-only`);
+		throw new StoragePermissionsError(path, 403, `"${this.name}" disk is read-only`);
 	}
 
 	async deleteAllUnderPrefix(prefix: string): Promise<void> {
-		throw new PermissionsError(prefix, 403, `"${this.name}" disk is read-only`);
+		throw new StoragePermissionsError(prefix, 403, `"${this.name}" disk is read-only`);
 	}
 }

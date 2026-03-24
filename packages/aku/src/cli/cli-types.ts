@@ -1,15 +1,38 @@
-import type { MakeUndefinedOptional } from "../utils.ts";
+import type { CommandHandler } from "./Command.ts";
 import type { CliApi } from "./contracts/CliApi.ts";
 
-export interface ArgumentDefinition {
-	readonly type: "string" | "number" | "boolean";
-	readonly description?: string;
+interface ArgumentDefinitionBase {
+	readonly description?: string | undefined;
 	readonly positional?: boolean | undefined;
 	readonly required?: boolean | undefined;
-	readonly short?: string | undefined;
-	readonly array?: boolean | undefined;
-	readonly default?: string | number | boolean | string[] | number[] | undefined;
 }
+
+export type ArgumentDefinition =
+	| (ArgumentDefinitionBase & {
+			type: "string";
+			array?: false | undefined;
+			default?: string | undefined;
+	  })
+	| (ArgumentDefinitionBase & {
+			type: "string";
+			array: true;
+			default?: readonly string[] | undefined;
+	  })
+	| (ArgumentDefinitionBase & {
+			type: "number";
+			array?: false | undefined;
+			default?: number | undefined;
+	  })
+	| (ArgumentDefinitionBase & {
+			type: "number";
+			array: true;
+			default?: readonly number[] | undefined;
+	  })
+	| (ArgumentDefinitionBase & {
+			type: "boolean";
+			array?: false | undefined;
+			default?: undefined;
+	  });
 
 export interface ArgumentSchema {
 	readonly [name: string]: ArgumentDefinition;
@@ -20,8 +43,6 @@ type TypeMap = {
 	number: number;
 	boolean: boolean;
 };
-
-type NonEmptyArray<T> = [T, ...T[]];
 
 type BaseType<D extends ArgumentDefinition> = TypeMap[D["type"]];
 
@@ -34,18 +55,23 @@ type IsAlwaysPresent<D extends ArgumentDefinition> = D extends
 	: false;
 
 type InferArgType<D extends ArgumentDefinition> = D extends { array: true }
-	? D extends { required: true }
-		? NonEmptyArray<BaseType<D>>
-		: BaseType<D>[]
+	? BaseType<D>[]
 	: IsAlwaysPresent<D> extends true
 		? BaseType<D>
 		: BaseType<D> | undefined;
 
-export type InferArgs<S extends ArgumentSchema> = MakeUndefinedOptional<{
-	-readonly [K in keyof S]: InferArgType<S[K]>;
-}>;
+type InferArgsRaw<S extends ArgumentSchema> = { -readonly [K in keyof S]: InferArgType<S[K]> };
 
-export type CommandArgs<C extends { args: ArgumentSchema }> = InferArgs<C["args"]>;
+export type InferArgs<S extends ArgumentSchema> = {
+	[K in keyof InferArgsRaw<S> as undefined extends InferArgsRaw<S>[K]
+		? never
+		: K]: InferArgsRaw<S>[K];
+} & {
+	[K in keyof InferArgsRaw<S> as undefined extends InferArgsRaw<S>[K] ? K : never]?: Exclude<
+		InferArgsRaw<S>[K],
+		undefined
+	>;
+};
 
 /**
  * Context passed to command execute method.
@@ -56,19 +82,21 @@ export interface CommandExecuteContext<A = unknown> {
 }
 
 /**
- * Instance interface for a command.
+ * A definition for a CLI command, including its metadata and handler.
  */
-export interface Command<A = unknown> {
-	execute(context: CommandExecuteContext<A>): Promise<void>;
-}
-
-/**
- * A command for the CLI. This is the type of a command class, describing its
- * static properties.
- */
-export interface CommandDefinition<A = unknown> {
+export interface CommandDefinition {
 	readonly name: string;
 	readonly description: string;
 	readonly args?: ArgumentSchema | undefined;
-	new (): Command<A>;
+	readonly hidden?: boolean | undefined;
+	readonly handler: CommandHandler;
+}
+
+/**
+ * A definition for a command group, providing a description for a set of
+ * commands that share a common prefix.
+ */
+export interface CommandGroupDefinition {
+	readonly name: string;
+	readonly description: string;
 }

@@ -39,7 +39,11 @@ export class DatabaseError extends AkuError {
 	 * database lock that may be resolved by retrying the transaction.
 	 */
 	isConcurrencyError(): boolean {
-		if (this instanceof QueryError && this.code && CONCURRENCY_ERROR_CODES.includes(this.code)) {
+		if (
+			this instanceof DatabaseQueryError &&
+			this.code &&
+			CONCURRENCY_ERROR_CODES.includes(this.code)
+		) {
 			return true;
 		}
 		return CONCURRENCY_ERROR_MESSAGES.some((msg) => this.message.includes(msg));
@@ -49,7 +53,7 @@ export class DatabaseError extends AkuError {
 /**
  * Thrown when attempting to access a named database client that doesn't exist.
  */
-export class ClientNotFoundError extends DatabaseError {
+export class DatabaseClientNotFoundError extends DatabaseError {
 	readonly clientName: string;
 
 	constructor(clientName: string) {
@@ -62,7 +66,7 @@ export class ClientNotFoundError extends DatabaseError {
  * Thrown when attempting to use a feature that is not supported by the
  * current database dialect.
  */
-export class UnsupportedFeatureError extends DatabaseError {
+export class DatabaseUnsupportedFeatureError extends DatabaseError {
 	readonly feature: string;
 	readonly dialect: string;
 
@@ -76,7 +80,7 @@ export class UnsupportedFeatureError extends DatabaseError {
 /**
  * Thrown when a SQL query fails to execute.
  */
-export class QueryError extends DatabaseError {
+export class DatabaseQueryError extends DatabaseError {
 	/**
 	 * The SQL that was executed.
 	 */

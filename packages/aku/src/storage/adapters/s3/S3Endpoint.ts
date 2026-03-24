@@ -10,7 +10,11 @@ import type {
 	StorageEndpointSignedDownloadUrlOptions,
 	StorageEndpointWriteOptions,
 } from "../../contracts/Storage.ts";
-import { NotFoundError, PermissionsError, StorageUnknownError } from "../../storage-errors.ts";
+import {
+	StorageNotFoundError,
+	StoragePermissionsError,
+	StorageUnknownError,
+} from "../../storage-errors.ts";
 import type { S3StorageConfig } from "./S3StorageConfig.ts";
 
 export class S3Endpoint extends BaseClass implements StorageEndpoint {
@@ -363,11 +367,11 @@ function parseEndpoint(endpoint: string): {
 function convertError(error: unknown, path: string, operation: string): Error {
 	if (error instanceof S3Errors.ServerError) {
 		if (error.statusCode === 404) {
-			return new NotFoundError(path);
+			return new StorageNotFoundError(path);
 		}
 
 		if (error.statusCode === 403) {
-			return PermissionsError.forHttpError(path, error.statusCode);
+			return StoragePermissionsError.forHttpError(path, error.statusCode);
 		}
 	}
 

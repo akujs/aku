@@ -1,170 +1,353 @@
 import { describe, expect, test } from "bun:test";
 import { inject } from "../container/inject.ts";
 import { ServiceProvider } from "../core/ServiceProvider.ts";
-import { createTestApplication } from "../test-utils/http-test-utils.bun.ts";
+import { createTestApplication } from "../testing/create-test-application.ts";
+import { BaseCommand } from "./Command.ts";
 import { CliExitError } from "./cli-errors.ts";
-import type { ArgumentSchema, CommandArgs, CommandExecuteContext } from "./cli-types.ts";
+import type { ArgumentSchema, CommandExecuteContext, InferArgs } from "./cli-types.ts";
 import type { CliApi } from "./contracts/CliApi.ts";
 import { CliApi as CliApiToken } from "./contracts/CliApi.ts";
-import { CliErrorHandler } from "./contracts/CliErrorHandler.ts";
+import { defineCommand } from "./defineCommand.ts";
 import { MemoryCliApi } from "./MemoryCliApi.ts";
-import { MemoryCliErrorHandler } from "./MemoryCliErrorHandler.ts";
+
+const greetArgs = {
+	name: { type: "string", positional: true, description: "Name to greet" },
+} as const satisfies ArgumentSchema;
+
+const greetCommand = defineCommand({
+	name: "greet",
+	description: "Greet someone",
+	args: greetArgs,
+	handler: async ({ args, cli }: CommandExecuteContext<InferArgs<typeof greetArgs>>) => {
+		cli.p(`Hello, ${args.name ?? "world"}!`);
+	},
+});
+
+const failCommand = defineCommand({
+	name: "fail",
+	description: "A command that fails",
+	handler: async () => {
+		throw new CliExitError("Something went wrong");
+	},
+});
+
+const crashCommand = defineCommand({
+	name: "crash",
+	description: "A command that crashes",
+	handler: async () => {
+		throw new Error("Unexpected boom");
+	},
+});
+
+class InjectCommandHandler extends BaseCommand {
+	#cli: CliApi;
+
+	constructor(cli: CliApi = inject(CliApiToken)) {
+		super();
+		this.#cli = cli;
+	}
+
+	async execute({ cli }: CommandExecuteContext): Promise<void> {
+		injectedCli = this.#cli;
+		cli.p("done");
+	}
+}
+
+let injectedCli: CliApi | null = null;
+
+const injectTestCommand = defineCommand({
+	name: "inject-test",
+	description: "Test CLI injection",
+	handler: InjectCommandHandler,
+});
 
 describe("CLI command handling", () => {
 	test("executes registered command with args", async () => {
-		class GreetCommand {
-			static readonly name = "greet";
-			static readonly description = "Greet someone";
-			static readonly args = {
-				name: { type: "string", positional: true, description: "Name to greet" },
-			} as const satisfies ArgumentSchema;
-			async execute({
-				args,
-				cli,
-			}: CommandExecuteContext<CommandArgs<typeof GreetCommand>>): Promise<void> {
-				cli.p(`Hello, ${args.name ?? "world"}!`);
-			}
-		}
-
 		class TestProvider extends ServiceProvider {
 			override get commands() {
-				return [GreetCommand];
+				return [greetCommand];
 			}
 		}
 
-		const { app } = createTestApplication({ providers: [TestProvider] });
-		const cli = new MemoryCliApi();
+		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await app.handleCommand(["greet", "Alice"], cli);
+		const exitCode = await cli.run(["greet", "Alice"]);
 
 		expect(exitCode).toBe(0);
-		expect(cli.output).toContainEqual({ paragraph: "Hello, Alice!" });
+		expect(cli.output).toBe("Hello, Alice!");
 	});
 
 	test("exit code 1 for unknown command", async () => {
-		const errorHandler = new MemoryCliErrorHandler();
-		const { app, container } = createTestApplication();
-		container.singletonInstance(CliErrorHandler, errorHandler);
-		const cli = new MemoryCliApi();
+		const { cli } = createTestApplication();
 
-		const exitCode = await app.handleCommand(["nonexistent"], cli);
+		const exitCode = await cli.run(["nonexistent"]);
 
 		expect(exitCode).toBe(1);
-		expect(errorHandler.lastError).toBeDefined();
-		expect((errorHandler.lastError!.error as Error).message).toContain(
-			'Command "nonexistent" not found',
-		);
+		expect(cli.lastError).toBeDefined();
+		expect(cli.lastError!.error.message).toContain('Command "nonexistent" not found');
 	});
 
 	test("defaults to 'list' command when no command specified", async () => {
-		const { app } = createTestApplication();
-		const cli = new MemoryCliApi();
+		const { cli } = createTestApplication();
 
-		const exitCode = await app.handleCommand([], cli);
+		const exitCode = await cli.run([]);
 
 		expect(exitCode).toBe(0);
-		expect(cli.output).toContainEqual({ h1: "Available commands" });
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "# AVAILABLE COMMANDS
+
+		  completions: Get tab completion for aku commands in your shell
+		  help: Show help for a command
+		  list: List all available commands"
+		`);
 	});
 
 	test("handles CliExitError (expected errors)", async () => {
-		class FailCommand {
-			static readonly name = "fail";
-			static readonly description = "A command that fails";
-			async execute(): Promise<void> {
-				throw new CliExitError("Something went wrong");
-			}
-		}
-
 		class TestProvider extends ServiceProvider {
 			override get commands() {
-				return [FailCommand];
+				return [failCommand];
 			}
 		}
 
-		const errorHandler = new MemoryCliErrorHandler();
-		const { app, container } = createTestApplication({ providers: [TestProvider] });
-		container.singletonInstance(CliErrorHandler, errorHandler);
-		const cli = new MemoryCliApi();
+		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await app.handleCommand(["fail"], cli);
+		const exitCode = await cli.run(["fail"]);
 
 		expect(exitCode).toBe(1);
-		expect(errorHandler.lastError).toBeDefined();
-		expect(errorHandler.lastError!.isExpected).toBe(true);
-		expect((errorHandler.lastError!.error as Error).message).toBe("Something went wrong");
+		expect(cli.lastError).toBeDefined();
+		expect(cli.lastError!.isExpected).toBe(true);
+		expect(cli.lastError!.error.message).toBe("Something went wrong");
 	});
 
 	test("handles unexpected errors", async () => {
-		class CrashCommand {
-			static readonly name = "crash";
-			static readonly description = "A command that crashes";
-			async execute(): Promise<void> {
-				throw new Error("Unexpected boom");
-			}
-		}
-
 		class TestProvider extends ServiceProvider {
 			override get commands() {
-				return [CrashCommand];
+				return [crashCommand];
 			}
 		}
 
-		const errorHandler = new MemoryCliErrorHandler();
-		const { app, container } = createTestApplication({ providers: [TestProvider] });
-		container.singletonInstance(CliErrorHandler, errorHandler);
-		const cli = new MemoryCliApi();
+		const { cli } = createTestApplication({ providers: [TestProvider] });
 
-		const exitCode = await app.handleCommand(["crash"], cli);
+		const exitCode = await cli.run(["crash"]);
 
 		expect(exitCode).toBe(1);
-		expect(errorHandler.lastError).toBeDefined();
-		expect(errorHandler.lastError!.isExpected).toBe(false);
-		expect((errorHandler.lastError!.error as Error).message).toBe("Unexpected boom");
+		expect(cli.lastError).toBeDefined();
+		expect(cli.lastError!.isExpected).toBe(false);
+		expect(cli.lastError!.error.message).toBe("Unexpected boom");
 	});
 
 	test("CliApi is available via DI during command execution", async () => {
-		let injectedCli: CliApi | null = null;
-
-		class InjectCommand {
-			static readonly name = "inject-test";
-			static readonly description = "Test CLI injection";
-
-			#cli: CliApi;
-
-			constructor(cli: CliApi = inject(CliApiToken)) {
-				this.#cli = cli;
-			}
-
-			async execute({ cli }: CommandExecuteContext): Promise<void> {
-				injectedCli = this.#cli;
-				cli.p("done");
-			}
-		}
+		injectedCli = null;
 
 		class TestProvider extends ServiceProvider {
 			override get commands() {
-				return [InjectCommand];
+				return [injectTestCommand];
 			}
 		}
 
 		const { app } = createTestApplication({ providers: [TestProvider] });
-		const cli = new MemoryCliApi();
+		const memoryCli = new MemoryCliApi();
 
-		const exitCode = await app.handleCommand(["inject-test"], cli);
+		const exitCode = await app.handleCommand(["inject-test"], memoryCli);
 
 		expect(exitCode).toBe(0);
-		expect(injectedCli === cli).toBe(true);
+		expect(injectedCli === memoryCli).toBe(true);
 	});
 
-	test("throws when app is not bootstrapped", async () => {
-		const cli = new MemoryCliApi();
-
-		// Create a new app that hasn't been bootstrapped
+	test("handleCommand auto-bootstraps if not yet bootstrapped", async () => {
 		const { ApplicationImpl } = await import("../core/ApplicationImpl.ts");
-		const unbootedApp = new ApplicationImpl();
+		const app = new ApplicationImpl();
+		const memoryCli = new MemoryCliApi();
 
-		expect(() => unbootedApp.handleCommand(["test"], cli)).toThrow(
-			"Application must be bootstrapped",
-		);
+		const exitCode = await app.handleCommand(["list"], memoryCli);
+
+		expect(exitCode).toBe(0);
+	});
+});
+
+const hiddenCommand = defineCommand({
+	name: "secret",
+	description: "A hidden command",
+	hidden: true,
+	handler: async ({ cli }: CommandExecuteContext) => {
+		cli.p("secret executed");
+	},
+});
+
+describe("hidden commands", () => {
+	test("hidden command is callable by name", async () => {
+		class TestProvider extends ServiceProvider {
+			override get commands() {
+				return [hiddenCommand];
+			}
+		}
+
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+
+		const exitCode = await cli.run(["secret"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toBe("secret executed");
+	});
+});
+
+const requiredArgCommand = defineCommand({
+	name: "compile",
+	description: "Compile a file",
+	args: {
+		file: {
+			type: "string",
+			positional: true,
+			required: true,
+			description: "The file to compile",
+		},
+	} as const satisfies ArgumentSchema,
+	handler: async () => {},
+});
+
+describe("--help flag handling", () => {
+	test("--help flag rewrites to help command", async () => {
+		class TestProvider extends ServiceProvider {
+			override get commands() {
+				return [greetCommand];
+			}
+		}
+
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+
+		const exitCode = await cli.run(["greet", "--help"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "# AKU GREET
+
+		  Greet someone
+
+		  ## Usage
+
+		    aku greet [name]
+
+		  ## Arguments
+
+		  [name]: Name to greet (optional)"
+		`);
+	});
+
+	test("--help with other args still shows help", async () => {
+		class TestProvider extends ServiceProvider {
+			override get commands() {
+				return [greetCommand];
+			}
+		}
+
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+
+		const exitCode = await cli.run(["greet", "--help", "Alice"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "# AKU GREET
+
+		  Greet someone
+
+		  ## Usage
+
+		    aku greet [name]
+
+		  ## Arguments
+
+		  [name]: Name to greet (optional)"
+		`);
+	});
+
+	test("--help with no command shows general help message", async () => {
+		const { cli } = createTestApplication();
+
+		const exitCode = await cli.run(["--help"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "This is the command line interface for the Aku framework.
+
+		  Try "aku list" for a list of available commands, or "aku help <command>" for help with a specific command."
+		`);
+	});
+
+	test("--help with --format flag passes format to help command", async () => {
+		class TestProvider extends ServiceProvider {
+			override get commands() {
+				return [greetCommand];
+			}
+		}
+
+		const { cli: helpCli } = createTestApplication({ providers: [TestProvider] });
+		const helpExitCode = await helpCli.run(["help", "greet", "--format", "json"]);
+
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+		const exitCode = await cli.run(["greet", "--help", "--format", "json"]);
+
+		expect(exitCode).toBe(0);
+		expect(cli.output).toBe(helpCli.output);
+		expect(helpExitCode).toBe(0);
+	});
+});
+
+describe("help on validation failure", () => {
+	test("shows help output on validation failure for missing required arg", async () => {
+		class TestProvider extends ServiceProvider {
+			override get commands() {
+				return [requiredArgCommand];
+			}
+		}
+
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+
+		const exitCode = await cli.run(["compile"]);
+
+		expect(exitCode).toBe(1);
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "# AKU COMPILE
+
+		  Compile a file
+
+		  ## Usage
+
+		    aku compile <file>
+
+		  ## Arguments
+
+		  <file>: The file to compile (required)"
+		`);
+		expect(cli.lastError).toBeDefined();
+		expect(cli.lastError!.error.message).toContain("Missing required argument: file");
+	});
+
+	test("shows help output on validation failure for unknown option", async () => {
+		class TestProvider extends ServiceProvider {
+			override get commands() {
+				return [requiredArgCommand];
+			}
+		}
+
+		const { cli } = createTestApplication({ providers: [TestProvider] });
+
+		const exitCode = await cli.run(["compile", "main.ts", "--unknown"]);
+
+		expect(exitCode).toBe(1);
+		expect(cli.output).toMatchInlineSnapshot(`
+		  "# AKU COMPILE
+
+		  Compile a file
+
+		  ## Usage
+
+		    aku compile <file>
+
+		  ## Arguments
+
+		  <file>: The file to compile (required)"
+		`);
+		expect(cli.lastError).toBeDefined();
+		expect(cli.lastError!.error.message).toContain("Unknown option: --unknown");
 	});
 });

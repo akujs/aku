@@ -50,10 +50,10 @@ export const jsx: JSXFactory = (tag, props, key = notProvided): JSX.Element => {
 	}
 };
 
-/***/
+/** @alias */
 export const jsxs: JSXFactory = jsx;
 
-/***/
+/** @alias */
 export const jsxDEV: JSXFactory = jsx;
 
 /***/
