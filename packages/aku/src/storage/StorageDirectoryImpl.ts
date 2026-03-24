@@ -1,15 +1,6 @@
 import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
-import { parseAttributeHeader } from "../helpers/headers/attributes.ts";
 import { arrayFromAsync, BaseClass } from "../utils.ts";
-import type {
-	StorageData,
-	StorageDirectory,
-	StorageEndpoint,
-	StorageFile,
-	StorageFilePutPayload,
-} from "./contracts/Storage.ts";
-import { createFileName, mimeTypeFromFileName, sanitiseName } from "./file-names.ts";
-import { posix } from "./path-operations.ts";
+import type { StorageDirectory, StorageEndpoint, StorageFile } from "./contracts/Storage.ts";
 import type { StorageDiskImpl } from "./StorageDiskImpl.ts";
 import { InvalidPathError } from "./storage-errors.ts";
 import {
@@ -52,7 +43,9 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 		if (this.path === "/") {
 			return null;
 		}
-		return this.directory("..");
+		const withoutTrailing = this.path.slice(0, -1);
+		const parentPath = withoutTrailing.substring(0, withoutTrailing.lastIndexOf("/") + 1);
+		return this.disk.getOrCreateDirectory(parentPath);
 	}
 
 	async exists(): Promise<boolean> {
@@ -96,11 +89,13 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 		return this.disk.getOrCreateFile(absolutePath);
 	}
 
-	async listFiles(options?: { recursive?: boolean }): Promise<Array<StorageFile>> {
+	async listFiles(options?: { recursive?: boolean | undefined }): Promise<Array<StorageFile>> {
 		return arrayFromAsync(this.listFilesStreaming(options));
 	}
 
-	listFilesStreaming(options?: { recursive?: boolean }): AsyncGenerator<StorageFile, void> {
+	listFilesStreaming(options?: {
+		recursive?: boolean | undefined;
+	}): AsyncGenerator<StorageFile, void> {
 		const recursive = options?.recursive ?? false;
 		return storageOperation(
 			"directory:list",
@@ -167,98 +162,37 @@ export class StorageDirectoryImpl extends BaseClass implements StorageDirectory 
 		);
 	}
 
-	directory(path: string, options?: { onInvalid?: "convert" | "throw" }): StorageDirectory {
-		if (path === "") {
-			throw new InvalidPathError(path, "directory name cannot be empty");
+	directory(name: string): StorageDirectory {
+		if (name === "") {
+			throw new InvalidPathError(name, "directory name cannot be empty");
 		}
-		const parts = this.#splitAndSanitisePath(path, options?.onInvalid);
-		// Return self if path resolves to current directory (e.g. "/" or ".")
-		if (parts.every((p) => p === "")) {
-			return this;
-		}
-
-		let fullPath = posix.normalize(posix.join(this.path, parts.join("/")));
-
-		if (!fullPath.endsWith("/")) {
-			fullPath += "/";
-		}
-
-		return this.disk.getOrCreateDirectory(fullPath);
+		this.#validateName(name);
+		return this.disk.getOrCreateDirectory(`${this.path}${name}/`);
 	}
 
-	file(path: string, options?: { onInvalid?: "convert" | "throw" }): StorageFile {
-		if (path.endsWith("/") || path.endsWith("\\") || path === "") {
-			throw new InvalidPathError(path, "file name cannot be empty");
+	file(name: string): StorageFile {
+		if (name === "") {
+			throw new InvalidPathError(name, "file name cannot be empty");
 		}
-
-		const parts = this.#splitAndSanitisePath(path, options?.onInvalid);
-
-		const fullPath = posix.normalize(posix.join(this.path, parts.join("/")));
-
-		return this.disk.getOrCreateFile(fullPath);
+		this.#validateName(name);
+		return this.disk.getOrCreateFile(`${this.path}${name}`);
 	}
 
-	#splitAndSanitisePath(path: string, onInvalid: "convert" | "throw" = "convert"): string[] {
-		path = path.trim().replaceAll(/\s/g, "_");
-		const segments = path.replaceAll(/^[\\/]+|[\\/]$/g, "").split(/[\\/]+/g);
-
-		return segments.map((segment) => {
-			const sanitisedName = sanitiseName(segment, this.#endpoint.invalidNameChars);
-			if (onInvalid === "throw" && sanitisedName !== segment) {
-				const fullPath = posix.join(this.path, path);
-				throw InvalidPathError.forInvalidCharacters(fullPath, this.#endpoint);
-			}
-			return sanitisedName;
-		});
-	}
-
-	async putFile(
-		payload: (StorageFilePutPayload & { suggestedName?: string | undefined }) | File | Request,
-	): Promise<StorageFile> {
-		let data: StorageData | null | undefined;
-		let mimeType: string | null | undefined;
-		let suggestedName: string | null | undefined;
-
-		if (payload instanceof File) {
-			data = payload;
-			mimeType = payload.type;
-			suggestedName = payload.name?.trim();
-		} else if (payload instanceof Request) {
-			data = payload.body;
-			mimeType = payload.headers.get("Content-Type");
-
-			suggestedName = payload.headers.get("X-File-Name")?.trim();
-			if (!suggestedName) {
-				const contentDisposition = payload.headers.get("Content-Disposition");
-				if (contentDisposition) {
-					try {
-						suggestedName = parseAttributeHeader(contentDisposition).attributes.filename;
-					} catch {}
+	#validateName(name: string): void {
+		if (name === "." || name === "..") {
+			throw new InvalidPathError(name, "path traversal segments are not allowed");
+		}
+		if (name.includes("/") || name.includes("\\")) {
+			throw new InvalidPathError(name, "name must be a single path segment without slashes");
+		}
+		const invalidChars = this.#endpoint.invalidNameChars;
+		if (invalidChars) {
+			for (const char of name) {
+				if (invalidChars.includes(char)) {
+					throw InvalidPathError.forInvalidCharacters(`${this.path}${name}`, this.#endpoint);
 				}
 			}
-		} else {
-			data = payload.data;
-			mimeType = payload.mimeType;
-			suggestedName = payload.suggestedName;
 		}
-
-		mimeType ||= mimeTypeFromFileName(suggestedName ?? "");
-
-		const file = this.file(
-			sanitiseName(
-				createFileName(suggestedName, mimeType, this.#endpoint.supportsMimeTypes),
-				this.#endpoint.invalidNameChars,
-			),
-		);
-
-		if (data != null) {
-			await file.put({
-				data,
-				mimeType: mimeType ?? undefined,
-			});
-		}
-
-		return file;
 	}
 
 	protected override getToStringExtra(): string | undefined {

@@ -113,6 +113,41 @@ describe(StorageDiskImpl, () => {
 		});
 	});
 
+	describe("root", () => {
+		test("returns the root directory", () => {
+			const endpoint = new MemoryEndpoint({});
+			const disk = create("test-disk", endpoint);
+			expect(disk.root.path).toBe("/");
+			expect(disk.root.name).toBe("");
+			expect(disk.root.parent).toBe(null);
+		});
+
+		test("returns the same instance each time", () => {
+			const endpoint = new MemoryEndpoint({});
+			const disk = create("test-disk", endpoint);
+			expect(disk.root).toBe(disk.root);
+		});
+
+		test("is the parent of top-level files and directories", () => {
+			const endpoint = new MemoryEndpoint({});
+			const disk = create("test-disk", endpoint);
+			expect(disk.file("test.txt").parent).toBe(disk.root);
+			expect(disk.directory("subdir").parent).toBe(disk.root);
+		});
+
+		test("can be used for directory operations", async () => {
+			const endpoint = new MemoryEndpoint({
+				initialFiles: {
+					"/a.txt": "content a",
+					"/b.txt": "content b",
+				},
+			});
+			const disk = create("test-disk", endpoint);
+			const files = await disk.root.listFiles();
+			expect(files.map((f) => f.path)).toEqual(["/a.txt", "/b.txt"]);
+		});
+	});
+
 	describe("toString()", () => {
 		test("returns [StorageDiskImpl diskname]", () => {
 			const endpoint = new MemoryEndpoint({});

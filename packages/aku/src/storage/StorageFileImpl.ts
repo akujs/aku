@@ -1,4 +1,5 @@
 import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
+import { mimeGetTypeForExtension } from "../helpers/mime/mime.ts";
 import { durationStringToDate } from "../helpers/time/duration.ts";
 import { BaseClass } from "../utils.ts";
 import type {
@@ -14,7 +15,6 @@ import type {
 	StorageFileUploadUrlOptions,
 	StorageFileUrlOptions,
 } from "./contracts/Storage.ts";
-import { mimeTypeFromFileName } from "./file-names.ts";
 import type { StorageDiskImpl } from "./StorageDiskImpl.ts";
 import { InvalidPathError } from "./storage-errors.ts";
 import {
@@ -63,8 +63,8 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 	}
 
 	get parent(): StorageDirectory {
-		const dirName = this.path.substring(0, this.path.lastIndexOf("/"));
-		return this.disk.directory(dirName);
+		const parentPath = this.path.substring(0, this.path.lastIndexOf("/") + 1);
+		return this.disk.getOrCreateDirectory(parentPath);
 	}
 
 	async delete(): Promise<void> {
@@ -97,7 +97,7 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 
 				let mimeType = endpointResult.mimeType;
 				if (!mimeType || !this.#endpoint.supportsMimeTypes) {
-					mimeType = mimeTypeFromFileName(this.path) ?? "application/octet-stream";
+					mimeType = mimeGetTypeForExtension(this.path) ?? "application/octet-stream";
 				}
 
 				return {
@@ -148,7 +148,7 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 
 				let mimeType = endpointInfo.mimeType;
 				if (!mimeType || !this.#endpoint.supportsMimeTypes) {
-					mimeType = mimeTypeFromFileName(this.path) ?? "application/octet-stream";
+					mimeType = mimeGetTypeForExtension(this.path) ?? "application/octet-stream";
 				}
 
 				return {
@@ -215,7 +215,7 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 			mimeType = payload.type;
 		} else if (payload instanceof Request) {
 			if (payload.body == null) {
-				return;
+				throw new Error("Cannot put() a Request with a null body");
 			}
 			data = payload.body;
 			mimeType = payload.headers.get("Content-Type");
@@ -226,7 +226,7 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 			data = payload;
 		}
 
-		mimeType ||= mimeTypeFromFileName(this.path);
+		mimeType ||= mimeGetTypeForExtension(this.path);
 
 		await storageOperation(
 			"file:write",

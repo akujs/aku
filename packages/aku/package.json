@@ -44,6 +44,10 @@
       "types": "./dist/helpers/headers.d.ts",
       "default": "./dist/helpers/headers.mjs"
     },
+    "./helpers/mime": {
+      "types": "./dist/helpers/mime.d.ts",
+      "default": "./dist/helpers/mime.mjs"
+    },
     "./helpers/str": {
       "types": "./dist/helpers/str.d.ts",
       "default": "./dist/helpers/str.mjs"

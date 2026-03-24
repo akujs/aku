@@ -350,7 +350,7 @@ describe(StorageFileImpl, () => {
 
 	describe("put()", () => {
 		test("works with explicit data and mimetype", async () => {
-			const file = disk.file("dir/document.pdf");
+			const file = disk.directory("dir").file("document.pdf");
 			await file.put({ data: "content", mimeType: "application/pdf" });
 			const fetchResult = await file.get();
 			expect(fetchResult.response.headers.get("content-type")).toBe("application/pdf");
@@ -358,21 +358,21 @@ describe(StorageFileImpl, () => {
 		});
 
 		test("infers mimeType from file path when not provided in object", async () => {
-			const file = disk.file("dir/document.pdf");
+			const file = disk.directory("dir").file("document.pdf");
 			await file.put({ data: "content" });
 			const info = await file.info();
 			expect(info?.mimeType).toBe("application/pdf");
 		});
 
 		test("accepts direct string data and infers mimeType from path", async () => {
-			const file = disk.file("dir/document.html");
+			const file = disk.directory("dir").file("document.html");
 			await file.put("<!DOCTYPE html><html></html>");
 			const info = await file.info();
 			expect(info?.mimeType).toBe("text/html");
 		});
 
 		test("accepts direct Blob data and infers mimeType from path", async () => {
-			const file = disk.file("images/photo.png");
+			const file = disk.directory("images").file("photo.png");
 			const blob = new Blob(["binary data"]);
 			await file.put(blob);
 			const info = await file.info();
@@ -380,7 +380,7 @@ describe(StorageFileImpl, () => {
 		});
 
 		test("accepts direct ArrayBuffer and infers mimeType from path", async () => {
-			const file = disk.file("data/file.json");
+			const file = disk.directory("data").file("file.json");
 			const buffer = new ArrayBuffer(8);
 			await file.put(buffer);
 			const info = await file.info();
@@ -388,7 +388,7 @@ describe(StorageFileImpl, () => {
 		});
 
 		test("accepts direct Uint8Array and infers mimeType from path", async () => {
-			const file = disk.file("data/file.bin");
+			const file = disk.directory("data").file("file.bin");
 			const arr = new Uint8Array([1, 2, 3, 4]);
 			await file.put(arr);
 			const info = await file.info();
@@ -413,7 +413,7 @@ describe(StorageFileImpl, () => {
 		});
 
 		test("extracts mimeType from File and uses file path", async () => {
-			const file = disk.file("dir/document.pdf");
+			const file = disk.directory("dir").file("document.pdf");
 			const fileObj = new File(["content"], "document.pdf", { type: "application/pdf" });
 			await file.put(fileObj);
 			const info = await file.info();
@@ -421,7 +421,7 @@ describe(StorageFileImpl, () => {
 		});
 
 		test("infers from path when File has no type", async () => {
-			const file = disk.file("dir/document.pdf");
+			const file = disk.directory("dir").file("document.pdf");
 			const fileObj = new File(["content"], "document.pdf", { type: "" });
 			await file.put(fileObj);
 			const info = await file.info();
@@ -429,7 +429,7 @@ describe(StorageFileImpl, () => {
 		});
 
 		test("extracts Content-Type from Request", async () => {
-			const file = disk.file("uploads/document.pdf");
+			const file = disk.directory("uploads").file("document.pdf");
 			const request = new Request("http://example.com", {
 				method: "POST",
 				body: "data",
@@ -443,7 +443,7 @@ describe(StorageFileImpl, () => {
 		});
 
 		test("infers from path when Request has no Content-Type", async () => {
-			const file = disk.file("uploads/document.pdf");
+			const file = disk.directory("uploads").file("document.pdf");
 			const request = new Request("http://example.com", {
 				method: "POST",
 				body: "data",
@@ -451,6 +451,12 @@ describe(StorageFileImpl, () => {
 			await file.put(request);
 			const info = await file.info();
 			expect(info?.mimeType).toBe("application/pdf");
+		});
+
+		test("throws when Request has null body", async () => {
+			const file = disk.file("test.txt");
+			const request = new Request("http://example.com");
+			expect(file.put(request)).rejects.toThrow("Cannot put() a Request with a null body");
 		});
 	});
 

@@ -236,7 +236,7 @@ describe(scopedStorage, () => {
 		expect(await wrappedDisk.existsSingle("/other/file.txt")).toBe(true);
 	});
 
-	test("path normalization works with scoped storage", async () => {
+	test("parent cannot escape scoped prefix", async () => {
 		const storage = new StorageImpl(
 			{
 				disks: { scoped: scopedDisk },
@@ -248,20 +248,25 @@ describe(scopedStorage, () => {
 
 		const disk = storage.disk();
 
-		// Set up a file outside the scoped area in the wrapped disk
+		// Write a file outside the scope on the wrapped disk
 		await wrappedDisk.writeSingle({
 			path: "/secret.txt",
 			data: "secret-content",
 			mimeType: "text/plain",
 		});
 
-		// Path normalization stops at / (the root of the scoped disk, which is /videos/)
-		// So /../secret.txt normalizes to /secret.txt within the scope
-		// This accesses /videos/secret.txt on the wrapped disk, not /secret.txt
-		expect(await disk.file("/../../secret.txt").exists()).toBe(false);
-		expect(await disk.file("../../secret.txt").exists()).toBe(false);
-		expect(await disk.directory("/").file("secret.txt").exists()).toBe(false);
-		expect(await disk.directory("../../..").file("secret.txt").exists()).toBe(false);
+		// Navigating up via parent from the root returns null
+		expect(disk.directory("a").parent?.parent).toBe(null);
+
+		// A file at the root of the scoped disk — its parent is "/", which
+		// maps to /videos/ on the wrapped disk, not the true root
+		const rootFile = disk.file("test.txt");
+		const rootDir = rootFile.parent;
+		expect(rootDir.path).toBe("/");
+		expect(rootDir.parent).toBe(null);
+
+		// The scoped root cannot see files outside its prefix
+		expect(await rootDir.file("secret.txt").exists()).toBe(false);
 	});
 
 	test("forwards supportsMimeTypes from wrapped disk", () => {

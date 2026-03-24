@@ -11,7 +11,6 @@ import type {
 	StorageEndpointSignedDownloadUrlOptions,
 	StorageEndpointWriteOptions,
 } from "../../contracts/Storage.ts";
-import { joinSlashPaths } from "../../file-names.ts";
 import { type Dir, fsOps, type Stats } from "../../filesystem-operations.ts";
 import { platform } from "../../path-operations.ts";
 import { NotFoundError, PermissionsError, StorageUnknownError } from "../../storage-errors.ts";
@@ -349,4 +348,14 @@ async function withNodeErrors<T>(path: string, fn: () => Promise<T>): Promise<T>
 	} catch (error) {
 		throw convertNodeError(error, path);
 	}
+}
+
+function joinSlashPaths(a: string, b: string): string {
+	if (!a) return b;
+	if (!b) return a;
+
+	const aClean = a.endsWith("/") ? a.slice(0, -1) : a;
+	const bClean = b.startsWith("/") ? b.slice(1) : b;
+
+	return `${aClean}/${bClean}`;
 }

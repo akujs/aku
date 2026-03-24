@@ -19,8 +19,6 @@ import {
 	DirectoryExistenceCheckingEvent,
 	DirectoryListedEvent,
 	DirectoryListingEvent,
-	FileWritingEvent,
-	FileWrittenEvent,
 } from "./storage-events.ts";
 
 function getPaths(items: Array<{ path: string }>): string[] {
@@ -237,25 +235,13 @@ describe(StorageDirectoryImpl, () => {
 			expect(subdir.path).toBe("/parent/child/");
 		});
 
-		test("removes leading slash from child path", () => {
-			const dir = create("/parent/");
-			const subdir = dir.directory("/child");
-			expect(subdir.path).toBe("/parent/child/");
-		});
-
-		test("adds trailing slash if missing", () => {
+		test("adds trailing slash", () => {
 			const dir = create("/parent/");
 			const subdir = dir.directory("child");
 			expect(subdir.path).toEndWith("/");
 		});
 
-		test("creates nested directories from slash-separated path", () => {
-			const dir = create("/parent/");
-			const subdir = dir.directory("a/b/c");
-			expect(subdir.path).toBe("/parent/a/b/c/");
-		});
-
-		test("from root directory creates correct path with leading slash", () => {
+		test("from root directory creates correct path", () => {
 			const root = create("/");
 			const dir = root.directory("subdir");
 			expect(dir.path).toBe("/subdir/");
@@ -273,46 +259,27 @@ describe(StorageDirectoryImpl, () => {
 			);
 		});
 
-		test('returns same directory when passed "/" or "."', () => {
+		test("rejects slashes in directory name", () => {
 			const dir = create("/parent/");
-			expect(dir.directory("/").path).toBe(dir.path);
-			expect(dir.directory(".").path).toBe(dir.path);
+			expect(() => dir.directory("a/b")).toThrow(InvalidPathError);
+			expect(() => dir.directory("a\\b")).toThrow(InvalidPathError);
+			expect(() => dir.directory("/child")).toThrow(InvalidPathError);
 		});
 
-		test("sanitises each path segment individually", () => {
+		test("rejects '.' and '..' path traversal", () => {
+			const dir = create("/parent/");
+			expect(() => dir.directory(".")).toThrow(InvalidPathError);
+			expect(() => dir.directory("..")).toThrow(InvalidPathError);
+		});
+
+		test("throws when name has invalid chars for the endpoint", () => {
 			const sanitisingEndpoint = new MemoryEndpoint({
 				invalidNameChars: "<>",
 			});
 			const dir = create("/parent/", sanitisingEndpoint);
-			const subdir = dir.directory("a<<b/c>>d");
-			expect(subdir.path).toBe("/parent/a_b-1821dbf7/c_d-b01a45d3/");
-		});
-
-		test("converts when onInvalid is 'convert' or not provided", () => {
-			const sanitisingEndpoint = new MemoryEndpoint({
-				invalidNameChars: "<>",
-			});
-			const dir = create("/parent/", sanitisingEndpoint);
-
-			// Default behavior (no options)
-			const subdir1 = dir.directory("a<<b");
-			expect(subdir1.path).toBe("/parent/a_b-1821dbf7/");
-
-			// Explicit convert
-			const subdir2 = dir.directory("a<<b", { onInvalid: "convert" });
-			expect(subdir2.path).toBe("/parent/a_b-1821dbf7/");
-		});
-
-		test("throws when onInvalid is 'throw' and path has invalid chars", () => {
-			const sanitisingEndpoint = new MemoryEndpoint({
-				invalidNameChars: "<>",
-			});
-			const dir = create("/parent/", sanitisingEndpoint);
-
-			expect(() => dir.directory("a<<b", { onInvalid: "throw" })).toThrow(InvalidPathError);
 
 			expectError(
-				() => dir.directory("a<<b", { onInvalid: "throw" }),
+				() => dir.directory("a<<b"),
 				InvalidPathError,
 				(error) => {
 					expect(error.path).toBe("/parent/a<<b");
@@ -321,74 +288,10 @@ describe(StorageDirectoryImpl, () => {
 			);
 		});
 
-		describe("path normalization", () => {
-			test("removes '.' segments from paths", () => {
-				const dir = create("/parent/");
-				expect(dir.directory("./child").path).toBe("/parent/child/");
-				expect(dir.directory("a/./b").path).toBe("/parent/a/b/");
-				expect(dir.directory("./a/./b/./c").path).toBe("/parent/a/b/c/");
-			});
-
-			test("processes '..' segments to go up directories", () => {
-				const dir = create("/parent/child/");
-				expect(dir.directory("..").path).toBe("/parent/");
-				expect(dir.directory("../sibling").path).toBe("/parent/sibling/");
-			});
-
-			test("allows multiple '..' within bounds", () => {
-				const dir = create("/a/b/c/d/");
-				expect(dir.directory("../..").path).toBe("/a/b/");
-				expect(dir.directory("../../other").path).toBe("/a/b/other/");
-			});
-
-			test("normalizes complex paths", () => {
-				const dir = create("/parent/");
-				expect(dir.directory("a/b/../c/./d").path).toBe("/parent/a/c/d/");
-				expect(dir.directory("./a/../b").path).toBe("/parent/b/");
-			});
-
-			test("handles windows-style paths", () => {
-				const dir = create("/parent/");
-				expect(dir.directory("\\foo\\bar").path).toBe("/parent/foo/bar/");
-				expect(dir.directory("\\foo\\bar\\").path).toBe("/parent/foo/bar/");
-				expect(dir.directory("foo\\bar").path).toBe("/parent/foo/bar/");
-				expect(dir.directory("foo\\bar\\").path).toBe("/parent/foo/bar/");
-				expect(dir.file("\\foo\\bar").path).toBe("/parent/foo/bar");
-				expect(dir.file("foo\\bar").path).toBe("/parent/foo/bar");
-			});
-
-			test("stops at root with excessive '..'", () => {
-				const dir = create("/parent/child/");
-				// Trying to go above root just results in root
-				expect(dir.directory("../../..").path).toBe("/");
-				expect(dir.directory("../../../..").path).toBe("/");
-				expect(dir.directory("../../../../../../../../..").path).toBe("/");
-			});
-
-			test("stops at root when already at root", () => {
-				const root = create("/");
-				// From root, any amount of .. just stays at root
-				expect(root.directory("..").path).toBe("/");
-				expect(root.directory("../..").path).toBe("/");
-			});
-
-			test("handles complex paths with excessive traversal", () => {
-				const dir = create("/a/b/");
-
-				// These all result in root
-				expect(dir.directory("c/../../..").path).toBe("/");
-				expect(dir.directory("c/../../../..").path).toBe("/");
-				expect(dir.directory("c/../../../../../../../../..").path).toBe("/");
-			});
-
-			test("all '..' segments normalize to root or ancestor", () => {
-				const dir = create("/a/b/c/");
-
-				expect(dir.directory("..").path).toBe("/a/b/");
-				expect(dir.directory("../..").path).toBe("/a/");
-				expect(dir.directory("../../..").path).toBe("/");
-				expect(dir.directory("../../../..").path).toBe("/"); // Excess stops at /
-			});
+		test("allows whitespace if the endpoint allows it", () => {
+			const dir = create("/parent/");
+			const subdir = dir.directory("foo bar");
+			expect(subdir.path).toBe("/parent/foo bar/");
 		});
 	});
 
@@ -398,18 +301,6 @@ describe(StorageDirectoryImpl, () => {
 			const file = dir.file("test.txt");
 			expect(file.path).toBe("/parent/test.txt");
 			expect(file).toBeInstanceOf(StorageFileImpl);
-		});
-
-		test("removes leading slash from file path", () => {
-			const dir = create("/parent/");
-			const file = dir.file("/test.txt");
-			expect(file.path).toBe("/parent/test.txt");
-		});
-
-		test("converts spaces to underscores", () => {
-			const dir = create("/parent/");
-			const file = dir.directory(" foo\fbar ").file("  test \t.txt ");
-			expect(file.path).toBe("/parent/foo_bar/test__.txt");
 		});
 
 		test("throws when filename is empty", () => {
@@ -422,241 +313,48 @@ describe(StorageDirectoryImpl, () => {
 					expect(error.reason).toBe("file name cannot be empty");
 				},
 			);
-			expectError(
-				() => dir.file("subdir/"),
-				InvalidPathError,
-				(error) => {
-					expect(error.path).toBe("subdir/");
-					expect(error.reason).toBe("file name cannot be empty");
-				},
-			);
-			expectError(
-				() => dir.file("subdir\\"),
-				InvalidPathError,
-				(error) => {
-					expect(error.path).toBe("subdir\\");
-					expect(error.reason).toBe("file name cannot be empty");
-				},
-			);
 		});
 
-		test("from root directory creates correct path with leading slash", () => {
+		test("from root directory creates correct path", () => {
 			const root = create("/");
 			const file = root.file("test.txt");
 			expect(file.path).toBe("/test.txt");
 		});
 
-		test("sanitises invalid characters in filename", () => {
-			const sanitisingEndpoint = new MemoryEndpoint({
-				invalidNameChars: "<>:",
-			});
-			const dir = create("/parent/", sanitisingEndpoint);
-			const file = dir.file("my<<file>>:test.txt");
-			expect(file.path).toBe("/parent/my_file_test-cdcb6c02.txt");
+		test("rejects slashes in file name", () => {
+			const dir = create("/parent/");
+			expect(() => dir.file("a/b.txt")).toThrow(InvalidPathError);
+			expect(() => dir.file("a\\b.txt")).toThrow(InvalidPathError);
+			expect(() => dir.file("/test.txt")).toThrow(InvalidPathError);
+			expect(() => dir.file("subdir/")).toThrow(InvalidPathError);
+			expect(() => dir.file("subdir\\")).toThrow(InvalidPathError);
 		});
 
-		test("converts when onInvalid is 'convert' or not provided", () => {
-			const sanitisingEndpoint = new MemoryEndpoint({
-				invalidNameChars: "<>:",
-			});
-			const dir = create("/parent/", sanitisingEndpoint);
-
-			// Default behavior (no options)
-			const file1 = dir.file("my<<file>>:test.txt");
-			expect(file1.path).toBe("/parent/my_file_test-cdcb6c02.txt");
-
-			// Explicit convert
-			const file2 = dir.file("my<<file>>:test.txt", { onInvalid: "convert" });
-			expect(file2.path).toBe("/parent/my_file_test-cdcb6c02.txt");
+		test("rejects '.' and '..' path traversal", () => {
+			const dir = create("/parent/");
+			expect(() => dir.file(".")).toThrow(InvalidPathError);
+			expect(() => dir.file("..")).toThrow(InvalidPathError);
 		});
 
-		test("throws when onInvalid is 'throw' and filename has invalid chars", () => {
+		test("throws when name has invalid chars for the endpoint", () => {
 			const sanitisingEndpoint = new MemoryEndpoint({
 				invalidNameChars: "<>:",
 			});
 			const dir = create("/parent/", sanitisingEndpoint);
 
-			expect(() => dir.file("my<<file>>:test.txt", { onInvalid: "throw" })).toThrow(
+			expectError(
+				() => dir.file("my<<file>>:test.txt"),
 				InvalidPathError,
+				(error) => {
+					expect(error.path).toBe("/parent/my<<file>>:test.txt");
+				},
 			);
 		});
 
-		test("sanitises slashes in filename preserving path structure", () => {
-			const sanitisingEndpoint = new MemoryEndpoint({
-				invalidNameChars: "/",
-			});
-			const dir = create("/parent/", sanitisingEndpoint);
-			const file = dir.file("a/b/c");
-			expect(file.path).toBe("/parent/a/b/c");
-		});
-
-		describe("path normalization", () => {
-			test("removes '.' segments from file paths", () => {
-				const dir = create("/parent/");
-				expect(dir.file("./file.txt").path).toBe("/parent/file.txt");
-				expect(dir.file("subdir/./file.txt").path).toBe("/parent/subdir/file.txt");
-			});
-
-			test("processes '..' segments in file paths", () => {
-				const dir = create("/parent/child/");
-				expect(dir.file("../file.txt").path).toBe("/parent/file.txt");
-				expect(dir.file("../sibling/file.txt").path).toBe("/parent/sibling/file.txt");
-			});
-
-			test("normalizes complex file paths", () => {
-				const dir = create("/parent/");
-				expect(dir.file("a/b/../c/./file.txt").path).toBe("/parent/a/c/file.txt");
-			});
-
-			test("stops at root with excessive '..' like Unix (no errors)", () => {
-				const dir = create("/parent/");
-				// Excessive .. just results in file at root
-				expect(dir.file("../../file.txt").path).toBe("/file.txt");
-				expect(dir.file("../../../file.txt").path).toBe("/file.txt");
-			});
-
-			test("file at root with excessive '..'", () => {
-				const root = create("/");
-				// From root, .. just stays at root
-				expect(root.file("../file.txt").path).toBe("/file.txt");
-				expect(root.file("../../file.txt").path).toBe("/file.txt");
-			});
-		});
-	});
-
-	describe("putFile()", () => {
-		test("creates file from File object and extracts name and mime type", async () => {
-			const dir = create("/uploads/");
-			const fileObj = new File(["content"], "document", {
-				type: "text/html; charset=utf-8",
-			});
-			const file = await dir.putFile(fileObj);
-
-			expect(file.path).toBe("/uploads/document");
-			expect(await file.exists()).toBe(true);
-			const { response, originalMimeType } = await file.get();
-			expect(await response.text()).toBe("content");
-			expect(originalMimeType).toBe("text/html; charset=utf-8");
-		});
-
-		test("creates file from Request object and extracts metadata from headers", async () => {
-			const dir = create("/uploads/");
-			const request = new Request("http://example.com", {
-				method: "POST",
-				body: "content",
-				headers: {
-					"Content-Type": "text/html",
-					"X-File-Name": "request-file",
-				},
-			});
-			const file = await dir.putFile(request);
-
-			expect(file.path).toBe("/uploads/request-file");
-			const { response, originalMimeType } = await file.get();
-			expect(await response.text()).toBe("content");
-			expect(originalMimeType).toBe("text/html");
-		});
-
-		test("trims whitespace from File object name", async () => {
-			const dir = create("/uploads/");
-			const fileObj = new File(["content"], "  document.txt  ", {
-				type: "text/plain",
-			});
-			const file = await dir.putFile(fileObj);
-
-			expect(file.path).toBe("/uploads/document.txt");
-		});
-
-		test("trims whitespace from Request X-File-Name header", async () => {
-			const dir = create("/uploads/");
-			const request = new Request("http://example.com", {
-				method: "POST",
-				body: "content",
-				headers: {
-					"Content-Type": "text/plain",
-					"X-File-Name": "  request-file.txt  ",
-				},
-			});
-			const file = await dir.putFile(request);
-
-			expect(file.path).toBe("/uploads/request-file.txt");
-		});
-
-		test("takes basename when File name contains slashes", async () => {
-			const dir = create("/uploads/");
-			const fileObj = new File(["content"], "../../etc/passwd", {
-				type: "text/plain",
-			});
-			const file = await dir.putFile(fileObj);
-
-			expect(file.path).toBe("/uploads/passwd");
-		});
-
-		test("takes basename when Request X-File-Name contains slashes", async () => {
-			const dir = create("/uploads/");
-			const request = new Request("http://example.com", {
-				method: "POST",
-				body: "content",
-				headers: {
-					"Content-Type": "text/plain",
-					"X-File-Name": "/var/www/evil.php",
-				},
-			});
-			const file = await dir.putFile(request);
-
-			expect(file.path).toBe("/uploads/evil.php");
-		});
-
-		test("uses Content-Disposition filename when X-File-Name is not present", async () => {
-			const dir = create("/uploads/");
-			const request = new Request("http://example.com", {
-				method: "POST",
-				body: "content",
-				headers: {
-					"Content-Type": "text/plain",
-					"Content-Disposition": 'attachment; filename="download.txt"',
-				},
-			});
-			const file = await dir.putFile(request);
-
-			expect(file.path).toBe("/uploads/download.txt");
-		});
-
-		test("trims whitespace from Content-Disposition filename", async () => {
-			const dir = create("/uploads/");
-			const request = new Request("http://example.com", {
-				method: "POST",
-				body: "content",
-				headers: {
-					"Content-Type": "text/plain",
-					"Content-Disposition": 'attachment; filename="  download.txt  "',
-				},
-			});
-			const file = await dir.putFile(request);
-
-			expect(file.path).toBe("/uploads/download.txt");
-		});
-
-		test("generates random filename when no suggestedName provided", async () => {
-			const dir = create("/uploads/");
-			const file = await dir.putFile({
-				data: "content",
-				mimeType: "text/plain",
-			});
-
-			expect(file.path).toStartWith("/uploads/");
-			expect(file.path.length).toBeGreaterThan("/uploads/".length);
-		});
-
-		test("uses suggestedName from payload when provided", async () => {
-			const dir = create("/uploads/");
-			const file = await dir.putFile({
-				data: "content",
-				mimeType: "text/plain",
-				suggestedName: "custom.txt",
-			});
-
-			expect(file.path).toBe("/uploads/custom.txt");
+		test("allows whitespace if the endpoint allows it", () => {
+			const dir = create("/parent/");
+			const file = dir.file("foo bar.txt");
+			expect(file.path).toBe("/parent/foo bar.txt");
 		});
 	});
 
@@ -670,50 +368,42 @@ describe(StorageDirectoryImpl, () => {
 
 	describe("reference equality", () => {
 		test("directories preserve reference equality", async () => {
-			// Same path from same directory
+			// Same name from same directory
 			expect(disk.directory("foo")).toBe(disk.directory("foo"));
 
-			// Same path from different parent directories
-			expect(disk.directory("a/b")).toBe(disk.directory("a").directory("b"));
+			// Same path from chained calls
+			expect(disk.directory("a").directory("b")).toBe(disk.directory("a").directory("b"));
 
 			// Parent references
-			const dir = disk.directory("a/b/c");
+			const dir = disk.directory("a").directory("b").directory("c");
 			expect(dir.parent).toBe(dir.parent);
-			expect(dir.parent).toBe(disk.directory("a/b"));
+			expect(dir.parent).toBe(disk.directory("a").directory("b"));
 
 			// Root directory
-			expect(disk.directory("/")).toBe(disk.directory("."));
-			expect(disk.directory("a").parent).toBe(disk.directory("/"));
-
-			// Normalised paths
-			expect(disk.directory("a/b/../c")).toBe(disk.directory("a/c"));
+			expect(disk.directory("a").parent).toBe(disk.directory("a").parent);
 
 			// Entries from listing return cached instances
 			const subdir = disk.directory("subdir");
 			const listed = await subdir.listDirectories();
-			expect(listed[0]).toBe(disk.directory("subdir/a"));
+			expect(listed[0]).toBe(disk.directory("subdir").directory("a"));
 		});
 
 		test("files preserve reference equality", async () => {
-			// Same path from same directory
+			// Same name from same directory
 			expect(disk.file("foo.txt")).toBe(disk.file("foo.txt"));
 
 			// Same path from different parent directories
 			expect(disk.directory("a").file("b.txt")).toBe(disk.directory("a").file("b.txt"));
-			expect(disk.file("a/b.txt")).toBe(disk.directory("a").file("b.txt"));
 
 			// Parent directory of file
-			const file = disk.file("a/b/c.txt");
+			const file = disk.directory("a").directory("b").file("c.txt");
 			expect(file.parent).toBe(file.parent);
-			expect(file.parent).toBe(disk.directory("a/b"));
-
-			// Normalised paths
-			expect(disk.file("a/b/../c.txt")).toBe(disk.file("a/c.txt"));
+			expect(file.parent).toBe(disk.directory("a").directory("b"));
 
 			// Entries from listing return cached instances
 			const subdir = disk.directory("subdir");
 			const listed = await subdir.listFiles();
-			expect(listed[0]).toBe(disk.file("subdir/file1.txt"));
+			expect(listed[0]).toBe(disk.directory("subdir").file("file1.txt"));
 		});
 	});
 
@@ -820,17 +510,6 @@ describe(StorageDirectoryImpl, () => {
 
 			const startEvent = new DirectoryDeletingEvent(eventDisk, "/subdir/");
 			const endEvent = new DirectoryDeletedEvent(startEvent);
-			eventDispatcher.expectEvents([startEvent, endEvent]);
-		});
-
-		test("putFile() dispatches file:write events only", async () => {
-			const dir = eventDisk.directory("uploads");
-
-			const data = "content";
-			await dir.putFile({ data, mimeType: "text/plain", suggestedName: "test.txt" });
-
-			const startEvent = new FileWritingEvent(eventDisk, "/uploads/test.txt", data, "text/plain");
-			const endEvent = new FileWrittenEvent(startEvent);
 			eventDispatcher.expectEvents([startEvent, endEvent]);
 		});
 	});

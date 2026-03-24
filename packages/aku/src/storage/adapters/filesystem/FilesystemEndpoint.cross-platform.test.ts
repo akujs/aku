@@ -53,9 +53,9 @@ describe(FilesystemEndpoint, () => {
 			expect(fsOps.stat).toHaveBeenCalledWith("C:\\storage\\foo\\bar.txt");
 		});
 
-		test("Windows filesystem paths work when input to directory() and file() are windows paths", async () => {
+		test("chained directory and file calls produce correct Windows paths", async () => {
 			const { disk } = createDisk("C:\\storage\\");
-			const file = disk.directory("foo\\bar\\").file("quux\\baz.txt");
+			const file = disk.directory("foo").directory("bar").directory("quux").file("baz.txt");
 
 			await file.info();
 
@@ -143,7 +143,7 @@ describe(FilesystemEndpoint, () => {
 
 		test("directory.exists() converts POSIX storage path to Windows filesystem path", async () => {
 			const { disk } = createDisk("C:\\storage");
-			const dir = disk.directory("foo/bar");
+			const dir = disk.directory("foo").directory("bar");
 
 			await dir.exists();
 
@@ -153,7 +153,7 @@ describe(FilesystemEndpoint, () => {
 
 		test("directory.list() converts POSIX storage path to Windows filesystem path", async () => {
 			const { disk } = createDisk("C:\\storage");
-			const dir = disk.directory("foo/bar");
+			const dir = disk.directory("foo").directory("bar");
 
 			await dir.list();
 
@@ -163,7 +163,7 @@ describe(FilesystemEndpoint, () => {
 
 		test("directory.listFiles() converts POSIX storage path to Windows filesystem path", async () => {
 			const { disk } = createDisk("C:\\storage");
-			const dir = disk.directory("foo/bar");
+			const dir = disk.directory("foo").directory("bar");
 
 			await dir.listFiles();
 
@@ -173,7 +173,7 @@ describe(FilesystemEndpoint, () => {
 
 		test("directory.listFiles({recursive:true}) converts POSIX storage path to Windows filesystem path", async () => {
 			const { disk } = createDisk("C:\\storage");
-			const dir = disk.directory("foo/bar");
+			const dir = disk.directory("foo").directory("bar");
 
 			await dir.listFiles({ recursive: true });
 
@@ -183,7 +183,7 @@ describe(FilesystemEndpoint, () => {
 
 		test("directory.deleteAll() converts POSIX storage path to Windows filesystem path", async () => {
 			const { disk } = createDisk("C:\\storage");
-			const dir = disk.directory("foo/bar");
+			const dir = disk.directory("foo").directory("bar");
 
 			await dir.deleteAll();
 
