@@ -11,11 +11,13 @@
   },
   "scripts": {
     "changeset": "changeset",
-    "check": "bun run --cwd packages/aku check && bun run --cwd packages/aku build && bun run --cwd test-apps/nextjs check"
+    "check": "bun run --cwd packages/aku check && bun run --cwd packages/aku build && bun run --cwd test-apps/nextjs check",
+    "ci:version": "bun changeset version && bun update",
+    "ci:publish": "for dir in packages/*; do (cd \"$dir\" && bun pm pack && npm publish *.tgz --access public || true); done && bun changeset tag"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.5",
-    "@changesets/cli": "^2.29.8",
+    "@changesets/cli": "^2.30.0",
     "@types/bun": "1.3.6",
     "bun-types": "1.3.6"
   }
