@@ -203,7 +203,7 @@ describe("validation", () => {
 	});
 });
 
-import { MockController } from "../test-utils/http-test-utils.bun.ts";
+import { MockController } from "../test-utils/http.test-utils.ts";
 import { resource } from "./helpers.ts";
 import { ResourceController } from "./ResourceController.ts";
 

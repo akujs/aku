@@ -4,7 +4,7 @@ import type { ControllerContext } from "./Controller.ts";
 /**
  * Event dispatched after a request has been successfully handled.
  */
-export class RequestHandledEvent extends AkuEvent {
+export class HttpRequestHandledEvent extends AkuEvent {
 	readonly #response: Response;
 	#headers?: Headers;
 	readonly context: ControllerContext;

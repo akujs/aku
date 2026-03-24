@@ -6,7 +6,7 @@ import type {
 	DatabaseAdapterRunOptions,
 } from "../../DatabaseAdapter.ts";
 import type { TransactionOptions } from "../../DatabaseClient.ts";
-import { QueryError } from "../../database-errors.ts";
+import { DatabaseQueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { PostgresGrammar } from "../../grammar/PostgresGrammar.ts";
 import type { Row, StatementResult } from "../../query-types.ts";
@@ -80,7 +80,7 @@ interface PostgresError {
 	message?: string;
 }
 
-function makeQueryError(sql: string, cause: unknown): QueryError {
+function makeQueryError(sql: string, cause: unknown): DatabaseQueryError {
 	const error = cause as PostgresError;
-	return new QueryError(sql, error.message ?? String(cause), cause, error.code);
+	return new DatabaseQueryError(sql, error.message ?? String(cause), cause, error.code);
 }

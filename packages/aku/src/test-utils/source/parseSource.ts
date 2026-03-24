@@ -3,7 +3,7 @@
  */
 export const UNRESOLVED_TYPE: unique symbol = Symbol.for("aku:unresolved-type");
 
-export interface ExtractedStatement {
+interface ExtractedStatement {
 	docComment: string | null;
 	statement: string;
 }
@@ -182,20 +182,20 @@ export function extractStatements(content: string, keyword: string): ExtractedSt
 
 export type SourceKind = "const" | "function" | "class" | "type" | "reexport" | "local-alias";
 
-export interface DirectExport {
+interface DirectExport {
 	name: string;
 	kind: "const" | "function" | "class" | "type" | "local-alias";
 	docComment?: string;
 }
 
-export interface ReExport {
+interface ReExport {
 	exportedName: string;
 	originalName: string;
 	sourceModule: string;
 	isTypeOnly: boolean;
 }
 
-export type ParsedExport =
+type ParsedExport =
 	| ({ type: "direct"; source: string } & DirectExport)
 	| ({ type: "reexport"; source: string } & ReExport);
 

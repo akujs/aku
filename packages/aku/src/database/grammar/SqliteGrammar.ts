@@ -1,5 +1,5 @@
 import type { SqliteTransactionMode } from "../DatabaseClient.ts";
-import { UnsupportedFeatureError } from "../database-errors.ts";
+import { DatabaseUnsupportedFeatureError } from "../database-errors.ts";
 import { renderSqlFragments } from "../query-builder/statement-render.ts";
 import { bracketedCommaSeparatedFragments } from "../query-builder/statement-utils.ts";
 import type { JoinType, QueryParts, SqlFragments } from "../query-types.ts";
@@ -27,7 +27,7 @@ export class SqliteGrammar extends DatabaseGrammar {
 
 	override compileJoin(type: JoinType, clause: string): string {
 		if (type === "RIGHT JOIN" || type === "FULL OUTER JOIN") {
-			throw new UnsupportedFeatureError(type, "SQLite");
+			throw new DatabaseUnsupportedFeatureError(type, "SQLite");
 		}
 		return super.compileJoin(type, clause);
 	}

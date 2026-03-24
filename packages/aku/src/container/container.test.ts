@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, expectTypeOf, mock, spyOn, test } from "bun:test";
-import { asyncGate } from "../test-utils/async-gate.bun.ts";
+import { asyncGate } from "../test-utils/async-gate.test-utils.ts";
 import { allowDefaultBindings, ContainerImpl } from "./ContainerImpl.ts";
 import type { KeyOrClass } from "./container-key.ts";
 import { createTypeToken } from "./container-key.ts";

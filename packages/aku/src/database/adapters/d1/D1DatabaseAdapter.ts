@@ -5,7 +5,7 @@ import type {
 	DatabaseAdapterBatchOptions,
 	DatabaseAdapterRunOptions,
 } from "../../DatabaseAdapter.ts";
-import { QueryError } from "../../database-errors.ts";
+import { DatabaseQueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { SqliteGrammar } from "../../grammar/SqliteGrammar.ts";
 import type { Row, StatementResult } from "../../query-types.ts";
@@ -65,9 +65,9 @@ export class D1DatabaseAdapter extends BaseClass implements DatabaseAdapter<D1Da
 	}
 }
 
-function makeQueryError(sql: string, cause: unknown): QueryError {
+function makeQueryError(sql: string, cause: unknown): DatabaseQueryError {
 	const error = cause as Error;
 	const message = error.message ?? String(cause);
 
-	return new QueryError(sql, message, cause, "D1_ERROR");
+	return new DatabaseQueryError(sql, message, cause, "D1_ERROR");
 }

@@ -1,6 +1,6 @@
 /** @jsxImportSource . */
 import { expect, test } from "bun:test";
-import { render } from "../test-utils/view-test-utils.bun.ts";
+import { render } from "../test-utils/view.test-utils.ts";
 import { childrenToArray } from "./children.ts";
 import type { JSX, JSXNode } from "./view-types.ts";
 

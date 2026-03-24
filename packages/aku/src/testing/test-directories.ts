@@ -5,6 +5,7 @@ import * as path from "node:path";
 import { randomId } from "../helpers/str/random.ts";
 
 const AKU_TEST_ROOT = path.join(os.tmpdir(), "aku-test");
+// oxlint-disable-next-line no-restricted-globals
 const PID_FOLDER = path.join(AKU_TEST_ROOT, String(process.pid));
 
 let hasCleanedOrphans = false;
@@ -40,6 +41,7 @@ function isProcessAlive(pid: number): boolean {
 	}
 
 	try {
+		// oxlint-disable-next-line no-restricted-globals
 		process.kill(pid, 0);
 		return true;
 	} catch (e: unknown) {

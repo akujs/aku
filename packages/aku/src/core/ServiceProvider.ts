@@ -1,4 +1,4 @@
-import type { CommandDefinition } from "../cli/cli-types.ts";
+import type { CommandDefinition, CommandGroupDefinition } from "../cli/cli-types.ts";
 import type { Container } from "../container/contracts/Container.ts";
 import { BaseClass } from "../utils.ts";
 import type { Application } from "./contracts/Application.ts";
@@ -42,6 +42,14 @@ export abstract class ServiceProvider extends BaseClass {
 	 * Override this getter to register commands with the framework.
 	 */
 	get commands(): CommandDefinition[] {
+		return [];
+	}
+
+	/**
+	 * Command group definitions provided by this service provider.
+	 * Override this getter to provide descriptions for command groups.
+	 */
+	get commandGroups(): CommandGroupDefinition[] {
 		return [];
 	}
 }

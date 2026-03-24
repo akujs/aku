@@ -1,5 +1,5 @@
 import { pluralCount } from "../../utils.ts";
-import { QueryError } from "../database-errors.ts";
+import { DatabaseQueryError } from "../database-errors.ts";
 import type { SqlFragment, SqlFragments, StringOrFragment } from "../query-types.ts";
 
 export function getSqlFragmentsParams(statement: SqlFragments): unknown[] {
@@ -15,7 +15,7 @@ export function getSqlFragmentsParams(statement: SqlFragments): unknown[] {
 export function assertNoUndefinedParams(params: unknown[], sql: string): void {
 	const undefinedIndex = params.findIndex((p) => p === undefined);
 	if (undefinedIndex !== -1) {
-		throw new QueryError(
+		throw new DatabaseQueryError(
 			sql,
 			`Cannot bind undefined for parameter ${undefinedIndex + 1}. Use null for NULL values.`,
 			new Error("Undefined parameter"),

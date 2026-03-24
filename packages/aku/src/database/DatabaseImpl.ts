@@ -4,7 +4,7 @@ import type { Database } from "./contracts/Database.ts";
 import type { DatabaseAdapter, DatabaseConfig } from "./DatabaseAdapter.ts";
 import type { DatabaseClient, TransactionOptions } from "./DatabaseClient.ts";
 import { DatabaseClientImpl } from "./DatabaseClientImpl.ts";
-import { ClientNotFoundError } from "./database-errors.ts";
+import { DatabaseClientNotFoundError } from "./database-errors.ts";
 import type { QueryBuilder, Row, Statement, StatementResult } from "./query-types.ts";
 
 const DEFAULT_CLIENT_NAME = "default";
@@ -31,7 +31,7 @@ export class DatabaseImpl extends BaseClass implements Database {
 		}
 		const conn = this.#additionalClients.get(name);
 		if (!conn) {
-			throw new ClientNotFoundError(name);
+			throw new DatabaseClientNotFoundError(name);
 		}
 		return conn;
 	}

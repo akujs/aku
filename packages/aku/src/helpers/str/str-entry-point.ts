@@ -24,6 +24,7 @@ export {
 	uuid,
 	uuidV4,
 } from "./random.ts";
+export { findSimilar, levenshteinDistance } from "./similarity.ts";
 export {
 	slug,
 	transliterate,

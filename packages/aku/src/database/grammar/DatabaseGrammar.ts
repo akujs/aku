@@ -1,6 +1,6 @@
 import { arrayWrap, BaseClass } from "../../utils.ts";
 import type { TransactionOptions } from "../DatabaseClient.ts";
-import { DatabaseError, UnsupportedFeatureError } from "../database-errors.ts";
+import { DatabaseError, DatabaseUnsupportedFeatureError } from "../database-errors.ts";
 import type { SqlDialect } from "../query-builder/dialect.ts";
 import { quoteIdentifiers } from "../query-builder/quoteIdentifiers.ts";
 import {
@@ -155,7 +155,7 @@ export abstract class DatabaseGrammar extends BaseClass {
 	}
 
 	protected compileDistinctOn(_: string[]): string {
-		throw new UnsupportedFeatureError("DISTINCT ON", this.dialect);
+		throw new DatabaseUnsupportedFeatureError("DISTINCT ON", this.dialect);
 	}
 
 	compileStatementForUnion(statement: SqlFragments): Mergeable[] {

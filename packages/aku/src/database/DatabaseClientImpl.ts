@@ -5,17 +5,17 @@ import { abort } from "../http/abort.ts";
 import { BaseClass, type FifoLock, fifoLock, withoutUndefinedValues } from "../utils.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 import type { DatabaseClient, TransactionOptions } from "./DatabaseClient.ts";
-import { DatabaseError, QueryError } from "./database-errors.ts";
+import { DatabaseError, DatabaseQueryError } from "./database-errors.ts";
 import type { DatabaseEventInit, TransactionEventInit } from "./database-events.ts";
 import {
-	QueryExecutedEvent,
-	QueryExecutingEvent,
-	QueryFailedEvent,
-	TransactionExecutedEvent,
-	TransactionExecutingEvent,
-	TransactionFailedEvent,
-	TransactionPreCommitEvent,
-	TransactionRetryingEvent,
+	DatabaseQueryExecutedEvent,
+	DatabaseQueryExecutingEvent,
+	DatabaseQueryFailedEvent,
+	DatabaseTransactionExecutedEvent,
+	DatabaseTransactionExecutingEvent,
+	DatabaseTransactionFailedEvent,
+	DatabaseTransactionPreCommitEvent,
+	DatabaseTransactionRetryingEvent,
 } from "./database-events.ts";
 import { NO_OP_SENTINEL } from "./grammar/DatabaseGrammar.ts";
 import { QueryBuilderImpl } from "./query-builder/QueryBuilderImpl.ts";
@@ -59,14 +59,14 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 		return this.#withConnection((connection) => {
 			const ctx = this.#connectionStorage.getStore();
 			if (ctx?.committed) {
-				throw new QueryError(
+				throw new DatabaseQueryError(
 					statement.toHumanReadableSql(),
 					"the transaction has already been committed - probably an asynchronous operation was started and not awaited, and ran after the transaction finished",
 					undefined,
 				);
 			}
 			if (ctx?.isRunningNestedTransaction) {
-				throw new QueryError(
+				throw new DatabaseQueryError(
 					statement.toHumanReadableSql(),
 					"a nested transaction is active - probably an asynchronous operation was started and not awaited, and ran after the nested transaction started",
 					undefined,
@@ -80,8 +80,8 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 				return Promise.resolve({ rows: [], rowsAffected: 0 });
 			}
 
-			const startEvent = new QueryExecutingEvent(this.#getEventInit({ statement }));
-			this.#dispatcher.dispatchIfHasListeners(QueryExecutingEvent, () => startEvent);
+			const startEvent = new DatabaseQueryExecutingEvent(this.#getEventInit({ statement }));
+			this.#dispatcher.dispatchIfHasListeners(DatabaseQueryExecutingEvent, () => startEvent);
 			const params = getSqlFragmentsParams(expanded);
 			assertNoUndefinedParams(params, sqlString);
 
@@ -90,15 +90,15 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 			).then(
 				(result) => {
 					this.#dispatcher.dispatchIfHasListeners(
-						QueryExecutedEvent,
-						() => new QueryExecutedEvent(startEvent, result),
+						DatabaseQueryExecutedEvent,
+						() => new DatabaseQueryExecutedEvent(startEvent, result),
 					);
 					return result;
 				},
 				(error) => {
 					this.#dispatcher.dispatchIfHasListeners(
-						QueryFailedEvent,
-						() => new QueryFailedEvent(startEvent, error),
+						DatabaseQueryFailedEvent,
+						() => new DatabaseQueryFailedEvent(startEvent, error),
 					);
 					throw error;
 				},
@@ -200,9 +200,9 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 					const error = lastError;
 					const previousTransactionId = lastError.transactionId!;
 					this.#dispatcher.dispatchIfHasListeners(
-						TransactionRetryingEvent,
+						DatabaseTransactionRetryingEvent,
 						() =>
-							new TransactionRetryingEvent(
+							new DatabaseTransactionRetryingEvent(
 								this.#getEventInit({ attempt, previousTransactionId, error }),
 							),
 					);
@@ -274,7 +274,7 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 				// Enter the new transaction context before BEGIN so that errors
 				// during BEGIN are correctly associated with this transaction
 				return await this.#connectionStorage.run(ctx, async () => {
-					const executingEvent = new TransactionExecutingEvent(txEventInit);
+					const executingEvent = new DatabaseTransactionExecutingEvent(txEventInit);
 					this.#dispatcher.dispatch(executingEvent);
 
 					await execCtrl(
@@ -287,8 +287,8 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 						const result = await fn();
 
 						this.#dispatcher.dispatchIfHasListeners(
-							TransactionPreCommitEvent,
-							() => new TransactionPreCommitEvent(txEventInit),
+							DatabaseTransactionPreCommitEvent,
+							() => new DatabaseTransactionPreCommitEvent(txEventInit),
 						);
 
 						await execCtrl(
@@ -300,8 +300,8 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 						ctx.committed = true;
 
 						this.#dispatcher.dispatchIfHasListeners(
-							TransactionExecutedEvent,
-							() => new TransactionExecutedEvent(executingEvent),
+							DatabaseTransactionExecutedEvent,
+							() => new DatabaseTransactionExecutedEvent(executingEvent),
 						);
 
 						return result;
@@ -315,8 +315,8 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 						ctx.committed = true;
 
 						this.#dispatcher.dispatchIfHasListeners(
-							TransactionFailedEvent,
-							() => new TransactionFailedEvent(executingEvent, error),
+							DatabaseTransactionFailedEvent,
+							() => new DatabaseTransactionFailedEvent(executingEvent, error),
 						);
 						throw error;
 					}
@@ -347,7 +347,11 @@ export class DatabaseClientImpl extends BaseClass implements DatabaseClient {
 	async getFirstOrFail<T = Row>(statement: Statement): Promise<T> {
 		const result = await this.run(statement);
 		if (result.rows.length === 0) {
-			throw new QueryError(statement.toHumanReadableSql(), "Query returned no rows", undefined);
+			throw new DatabaseQueryError(
+				statement.toHumanReadableSql(),
+				"Query returned no rows",
+				undefined,
+			);
 		}
 		return result.rows[0] as T;
 	}
