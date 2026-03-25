@@ -37,4 +37,3 @@ export type {
 	RouteOptions,
 	Routes,
 } from "./router-types.ts";
-export { StatusPagesMiddleware } from "./StatusPagesMiddleware.ts";

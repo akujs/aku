@@ -15,7 +15,6 @@ import { IntegrationContext } from "../integrations/IntegrationContext.ts";
 import { Storage } from "../storage/contracts/Storage.ts";
 import { StorageServiceProvider } from "../storage/StorageServiceProvider.ts";
 import { BaseClass } from "../utils.ts";
-import { ViewServiceProvider } from "../view/ViewServiceProvider.ts";
 import { CoreServiceProvider } from "./CoreServiceProvider.ts";
 import type {
 	ServiceProviderReference,
@@ -31,7 +30,6 @@ import type { ServiceProvider } from "./ServiceProvider.ts";
 const DEFAULT_PROVIDERS = [
 	CoreServiceProvider,
 	HttpServiceProvider,
-	ViewServiceProvider,
 	StorageServiceProvider,
 	DatabaseServiceProvider,
 	DevelopmentServiceProvider,

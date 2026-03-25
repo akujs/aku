@@ -12,4 +12,3 @@ export { Headers } from "./http/contracts/Headers.ts";
 export { KeepAlive } from "./http/contracts/KeepAlive.ts";
 export { RequestLocals } from "./http/contracts/RequestLocals.ts";
 export { Storage } from "./storage/contracts/Storage.ts";
-export { ViewRenderer } from "./view/contracts/ViewRenderer.ts";

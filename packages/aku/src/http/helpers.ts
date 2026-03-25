@@ -16,7 +16,6 @@ import type {
 	RouteGroupOptions,
 	RouteOptions,
 	Routes,
-	StatusPages,
 } from "./router-types.ts";
 import {
 	validateDomainSyntax,
@@ -35,22 +34,6 @@ import {
 export function isIn(values: readonly string[]): ParamConstraint {
 	const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 	return new RegExp(`^(${values.map(escapeRegex).join("|")})$`);
-}
-
-function validateStatusPages(statusPages: StatusPages | undefined) {
-	if (!statusPages) return;
-
-	for (const [key, component] of Object.entries(statusPages)) {
-		if (!component) continue;
-
-		if (key === "4xx" || key === "5xx") continue;
-
-		if (/^[45]\d\d$/.test(key)) continue;
-
-		throw new Error(
-			`Invalid status identifier "${key}" in statusPages. Must be a number (400-599), "4xx", or "5xx".`,
-		);
-	}
 }
 
 function mergeObjects<T extends Record<string | number, unknown>>(
@@ -78,7 +61,6 @@ function createRoute<
 		where,
 		withoutMiddleware,
 		meta,
-		statusPages,
 	}: RouteOptions<Name, Path> & { domain?: Domain } = {},
 ): RouteMethodReturn<Path, Name, Domain> {
 	const methods = typeof method === "string" ? [method] : method;
@@ -91,8 +73,6 @@ function createRoute<
 	validateRoutePathSyntax(path);
 	validateDomainSyntax(domain);
 
-	validateStatusPages(statusPages);
-
 	const route: RouteDefinition = {
 		methods,
 		path,
@@ -103,7 +83,6 @@ function createRoute<
 		globalConstraints: parameterPatterns ?? null,
 		domainPattern: domain,
 		meta: meta ?? null,
-		statusPages: statusPages ?? null,
 	};
 
 	return [route] as RouteMethodReturn<Path, Name, Domain>;
@@ -315,7 +294,6 @@ export function group<
 		prefix,
 		where,
 		meta,
-		statusPages,
 	} = optionsOrChildren as RouteGroupOptions<string, string>;
 	const children = maybeChildren as Children;
 
@@ -332,7 +310,6 @@ export function group<
 	const mergedSets = new Set<MiddlewareSet>();
 
 	const groupMiddlewareSet = MiddlewareSet.createIfRequired(middleware, withoutMiddleware);
-	validateStatusPages(statusPages);
 
 	for (const childRoutes of children) {
 		for (const route of childRoutes) {
@@ -366,7 +343,6 @@ export function group<
 				globalConstraints: mergeObjects(parameterPatterns, route.globalConstraints),
 				domainPattern: domain ?? route.domainPattern,
 				meta: mergeObjects(meta, route.meta),
-				statusPages: mergeObjects(statusPages, route.statusPages),
 			});
 		}
 	}

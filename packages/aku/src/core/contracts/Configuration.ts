@@ -108,26 +108,6 @@ export interface Configuration<RouteParams extends Record<string, string> = {}> 
 	throwOnInvalidParamAccess?: EnvironmentChoice | undefined;
 
 	/**
-	 * Control when to use streaming responses for rendering.
-	 *
-	 * When enabled, responses are streamed to the client as content is generated,
-	 * which can improve time-to-first-byte. When disabled, the entire response is
-	 * buffered before sending.
-	 *
-	 * Note: When streaming responses, the headers will be sent before the
-	 * whole response is generated, so template components cannot set headers
-	 * and cookies.
-	 *
-	 * - 'always': Always use streaming responses
-	 * - 'never': Never use streaming, always buffer
-	 * - 'development': Stream only when development mode is enabled
-	 * - 'production': Stream only when development mode is disabled
-	 *
-	 * @default 'always'
-	 */
-	streamResponses?: EnvironmentChoice | undefined;
-
-	/**
 	 * Application URL configuration for generating absolute URLs
 	 *
 	 * URL generation follows this precedence (highest to lowest priority):

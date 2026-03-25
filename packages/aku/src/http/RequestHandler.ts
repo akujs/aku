@@ -3,8 +3,6 @@ import { inject } from "../container/inject.ts";
 import { Configuration, resolveEnvironmentChoice } from "../core/contracts/Configuration.ts";
 import { Dispatcher } from "../core/contracts/Dispatcher.ts";
 import { BaseClass } from "../utils.ts";
-import { ViewRenderer } from "../view/contracts/ViewRenderer.ts";
-import { isJsxElement } from "../view/view-types.ts";
 import { AbortException, abortExceptionKey } from "./abort.ts";
 import {
 	BaseController,
@@ -26,29 +24,20 @@ import {
 
 export class RequestHandler extends BaseClass {
 	#throwOnInvalidParam: boolean;
-	#streamResponses: boolean;
 	#container: Container;
-	#viewRenderer: ViewRenderer;
 	#dispatcher: Dispatcher;
 
 	constructor(
 		container: Container = inject(Container),
-		viewRenderer: ViewRenderer = inject(ViewRenderer),
 		dispatcher: Dispatcher = inject(Dispatcher),
 		config: Configuration = inject(Configuration),
 	) {
 		super();
 		this.#container = container;
-		this.#viewRenderer = viewRenderer;
 		this.#dispatcher = dispatcher;
 		const isDevelopment = !!config.development;
 		this.#throwOnInvalidParam = resolveEnvironmentChoice(
 			config.throwOnInvalidParamAccess,
-			"always",
-			isDevelopment,
-		);
-		this.#streamResponses = resolveEnvironmentChoice(
-			config.streamResponses,
 			"always",
 			isDevelopment,
 		);
@@ -147,10 +136,6 @@ export class RequestHandler extends BaseClass {
 			return this.#convertToResponse(route, result.toResponse());
 		}
 
-		if (isJsxElement(result)) {
-			return this.#viewRenderer.renderResponse(result, { streaming: this.#streamResponses });
-		}
-
 		const hasHandleMethod = typeof (result as BaseController)?.handle === "function";
 		if (hasHandleMethod) {
 			throw new Error(
@@ -159,7 +144,7 @@ export class RequestHandler extends BaseClass {
 		}
 
 		throw new Error(
-			`${controllerDescription(route.controller)} for ${route.path} returned an invalid value. Expected Response, JSX element, ConvertsToResponse, or null, but got: ${String(result)}`,
+			`${controllerDescription(route.controller)} for ${route.path} returned an invalid value. Expected Response, ConvertsToResponse, or null, but got: ${String(result)}`,
 		);
 	}
 }

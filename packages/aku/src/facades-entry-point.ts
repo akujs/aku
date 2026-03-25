@@ -13,7 +13,6 @@ import { Headers as HeadersContract } from "./http/contracts/Headers.ts";
 import { KeepAlive as KeepAliveContract } from "./http/contracts/KeepAlive.ts";
 import { RequestLocals as RequestLocalsContract } from "./http/contracts/RequestLocals.ts";
 import { Storage as StorageContract } from "./storage/contracts/Storage.ts";
-import { ViewRenderer as ViewRendererContract } from "./view/contracts/ViewRenderer.ts";
 
 /**
  * Facade for CliApi
@@ -74,8 +73,3 @@ export const RequestLocals: RequestLocalsContract = createFacade(RequestLocalsCo
  * Facade for Storage
  */
 export const Storage: StorageContract = createFacade(StorageContract);
-
-/**
- * Facade for ViewRenderer
- */
-export const ViewRenderer: ViewRendererContract = createFacade(ViewRendererContract);

@@ -13,7 +13,6 @@
   "project": ["src/**/*.ts", "scripts/**/*.ts"],
   "ignore": [
     "src/test-utils/source/__fixtures__/**",
-    "src/view/jsx-dev-runtime/index.ts",
     "src/integrations/next-ambient.d.ts"
   ],
   "ignoreBinaries": ["biome"],

@@ -1,7 +1,6 @@
 import type { TypeToken } from "../container/container-key.ts";
 import { createTypeToken } from "../container/container-key.ts";
 import type { Prettify } from "../utils.ts";
-import type { Component } from "../view/Component.ts";
 import type { Controller } from "./Controller.ts";
 import { type ControllerContext } from "./Controller.ts";
 import type { MiddlewareReference } from "./Middleware.ts";
@@ -15,14 +14,6 @@ import type { ApiResourceAction, ResourceAction } from "./ResourceController.ts"
 export type Routes<Params extends Record<string, string> = {}> = readonly RouteDefinition[] & {
 	readonly __nameParamsMap?: Params; // Phantom type for type inference
 };
-
-type Status = number | "4xx" | "5xx";
-
-export type StatusPageComponent = Component<{
-	status: number;
-	statusText?: string | undefined;
-	error?: Error | undefined;
-}>;
 
 interface BaseRouteOptions<PathPart extends string> {
 	/**
@@ -79,15 +70,6 @@ interface BaseRouteOptions<PathPart extends string> {
 	 * get('/users', UserController, { meta: { action: 'list' } })
 	 */
 	meta?: Record<string, unknown> | undefined;
-
-	/**
-	 * Custom error page components to render for specific HTTP status codes.
-	 *
-	 * Status codes can be:
-	 * - Exact numbers (400-599): e.g. 404, 500
-	 * - Either '4xx' or '5xx' to handle any number in that range
-	 */
-	statusPages?: StatusPages | undefined;
 }
 
 /**
@@ -142,8 +124,6 @@ export type ParamConstraint = BuiltInRouteConstraint | RegExp | ((value: string)
 
 type ParamConstraints = Record<string, ParamConstraint | undefined>;
 
-export type StatusPages = Partial<Record<Status, StatusPageComponent>>;
-
 export interface RouteDefinition {
 	methods: readonly string[];
 	path: string;
@@ -154,7 +134,6 @@ export interface RouteDefinition {
 	globalConstraints: ParamConstraints | null;
 	domainPattern?: string | undefined;
 	meta: Record<string, unknown> | null;
-	statusPages: StatusPages | null;
 }
 
 export const CurrentRouteDefinition: TypeToken<RouteDefinition> =

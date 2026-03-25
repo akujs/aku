@@ -1,4 +1,3 @@
-/** @jsxImportSource ../view */
 import { beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { ContainerImpl } from "../container/ContainerImpl.ts";
 import { createTypeToken } from "../container/container-key.ts";
@@ -8,7 +7,6 @@ import { Configuration } from "../core/contracts/Configuration.ts";
 import { Dispatcher } from "../core/contracts/Dispatcher.ts";
 import { MockController, mockMiddleware } from "../test-utils/http.test-utils.ts";
 import { createTestApplication } from "../testing/create-test-application.ts";
-import { abort } from "./abort.ts";
 import type { ClassController, Controller } from "./Controller.ts";
 import { BaseController, type ControllerContext, type ControllerReturn } from "./Controller.ts";
 import { any, get, group, post, redirect } from "./helpers.ts";
@@ -17,7 +15,6 @@ import type { FunctionMiddleware } from "./Middleware.ts";
 import { BaseMiddleware } from "./Middleware.ts";
 import { MiddlewareSet } from "./MiddlewareSet.ts";
 import { Router } from "./Router.ts";
-import { StatusPagesMiddleware } from "./StatusPagesMiddleware.ts";
 
 let container: Container;
 let router: Router;
@@ -48,17 +45,6 @@ describe("controller execution", () => {
 
 		const response = await request("/test");
 		expect(await response.text()).toBe("From controller class");
-	});
-
-	test("controller can return JSX", async () => {
-		const jsxController = (ctx: ControllerContext) => {
-			return <div>Hello from JSX, id: {ctx.params.id}</div>;
-		};
-
-		router.register(get("/jsx/{id}", jsxController));
-
-		const response = await request("/jsx/123");
-		expect(await response.text()).toBe("<div>Hello from JSX, id: 123</div>");
 	});
 
 	test("controller class can use dependency injection", async () => {
@@ -410,7 +396,7 @@ describe("handler validation", () => {
 		expect(async () => {
 			await request("/test");
 		}).toThrow(
-			"Controller for /test returned an invalid value. Expected Response, JSX element, ConvertsToResponse, or null, but got: strings are not valid",
+			"Controller for /test returned an invalid value. Expected Response, ConvertsToResponse, or null, but got: strings are not valid",
 		);
 	});
 
@@ -665,16 +651,6 @@ describe("ConvertsToResponse handling", () => {
 		expect(await response.text()).toBe("async");
 	});
 
-	test("toResponse returning JSX element", async () => {
-		const route = get("/jsx", () => ({
-			toResponse: () => <div>JSX from toResponse</div>,
-		}));
-		router.register(route);
-
-		const response = await request("/jsx");
-		expect(await response.text()).toContain("JSX from toResponse");
-	});
-
 	test("toResponse returning null", async () => {
 		const route = get("/null", () => ({
 			toResponse: () => null,
@@ -706,145 +682,6 @@ describe("ConvertsToResponse handling", () => {
 
 		const response = await request("/promise");
 		expect(await response.text()).toBe("promised");
-	});
-});
-
-// ============================================================================
-// Status Pages
-// ============================================================================
-
-describe("status pages", () => {
-	const NotFoundPage = ({ status }: { status: number }) => (
-		<div>
-			<h1>404 Not Found</h1>
-			<p>Status: {status}</p>
-		</div>
-	);
-
-	test("renders custom 404 page with correct status", async () => {
-		router.register(
-			get("/test", () => new Response("Not Found", { status: 404 }), {
-				middleware: StatusPagesMiddleware,
-				statusPages: { 404: NotFoundPage },
-			}),
-		);
-
-		const response = await request("/test");
-		expect(response.status).toBe(404);
-		const html = await response.text();
-		expect(html).toContain("<h1>404 Not Found</h1>");
-		expect(html).toContain("<p>Status: 404</p>");
-	});
-
-	test("AbortException triggers status page", async () => {
-		router.register(
-			get(
-				"/test",
-				() => {
-					return abort.notFound("Resource not found");
-				},
-				{
-					middleware: StatusPagesMiddleware,
-					statusPages: { 404: NotFoundPage },
-				},
-			),
-		);
-
-		const response = await request("/test");
-		expect(response.status).toBe(404);
-		const html = await response.text();
-		expect(html).toContain("<h1>404 Not Found</h1>");
-	});
-
-	test("Response with error status triggers status page", async () => {
-		router.register(
-			get("/test", () => new Response("Not Found", { status: 404 }), {
-				middleware: StatusPagesMiddleware,
-				statusPages: { 404: NotFoundPage },
-			}),
-		);
-
-		const response = await request("/test");
-		expect(response.status).toBe(404);
-		const html = await response.text();
-		expect(html).toContain("<h1>404 Not Found</h1>");
-	});
-
-	test("middleware throws abort triggers status page", async () => {
-		class AuthMiddleware extends BaseMiddleware {
-			handle(_ctx: ControllerContext) {
-				return abort.unauthorized("Not authorized");
-			}
-		}
-
-		const UnauthorizedPage = ({ status }: { status: number }) => (
-			<div>
-				<h1>Unauthorized</h1>
-				<p>Status: {status}</p>
-			</div>
-		);
-
-		router.register(
-			get("/test", () => new Response("OK"), {
-				middleware: [AuthMiddleware, StatusPagesMiddleware],
-				statusPages: { 401: UnauthorizedPage },
-			}),
-		);
-
-		const response = await request("/test");
-		expect(response.status).toBe(401);
-		const html = await response.text();
-		expect(html).toContain("<h1>Unauthorized</h1>");
-	});
-
-	// TODO restore this when we have sync and async response rendering, it currently doesn't work because abort is thrown asynchronously
-	// test("status page throws abort returns plain text", async () => {
-	// 	const { StatusPagesMiddleware, abort } = await import("./index");
-
-	// 	const ThrowingErrorPage = () => {
-	// 		return abort.internalServerError("Error page failed");
-	// 	};
-
-	// 	router.register(
-	// 		get("/test", () => new Response("Not Found", { status: 404 }), {
-	// 			middleware: StatusPagesMiddleware,
-	// 			statusPages: { 404: ThrowingErrorPage },
-	// 		}),
-	// 	);
-
-	// 	const response = await request("/test");
-	// 	expect(response.status).toBe(500);
-	// 	const text = await response.text();
-	// 	expect(text).toBe("Error page failed");
-	// });
-
-	test("Error thrown in middleware before StatusPagesMiddleware can catch it gets a default plaintext response", async () => {
-		class EarlyMiddleware extends BaseMiddleware {
-			handle() {
-				return abort.unauthorized();
-			}
-		}
-
-		const UnauthorizedPage = () => <h1>Custom Unauthorized</h1>;
-
-		// Create new test application with middleware priority
-		// EarlyMiddleware has higher priority, so it runs before (outermost) StatusPagesMiddleware
-		// When it throws, StatusPagesMiddleware never gets to catch it
-		const testApp = createTestApplication({
-			middlewarePriority: [EarlyMiddleware, StatusPagesMiddleware],
-		});
-
-		testApp.router.register(
-			get("/test", () => new Response("OK"), {
-				middleware: [EarlyMiddleware, StatusPagesMiddleware],
-				statusPages: { 401: UnauthorizedPage },
-			}),
-		);
-
-		const response = await testApp.request("/test");
-		expect(response.status).toBe(401);
-		const text = await response.text();
-		expect(text).toBe("Unauthorized"); // Plain text, not the custom page
 	});
 });
 
