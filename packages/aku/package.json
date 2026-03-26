@@ -52,6 +52,10 @@
       "types": "./dist/integrations/next.d.ts",
       "default": "./dist/integrations/next.mjs"
     },
+    "./integrations/nitro": {
+      "types": "./dist/integrations/nitro.d.ts",
+      "default": "./dist/integrations/nitro.mjs"
+    },
     "./storage": {
       "types": "./dist/storage.d.ts",
       "default": "./dist/storage.mjs"
@@ -105,6 +109,7 @@
     "@types/node": "25.0.10",
     "@typescript/native-preview": "7.0.0-dev.20260223.1",
     "bun-types": "1.3.6",
+    "h3": "1.15.5",
     "knip": "5.51.0",
     "miniflare": "4.20260116.0",
     "next": "16.1.4",
@@ -119,6 +124,7 @@
   "peerDependencies": {
     "@cloudflare/workers-types": ">=4.20251202.0",
     "@electric-sql/pglite": ">=0.3.14",
+    "h3": ">=1.0.0",
     "next": ">=15.0.0",
     "postgres": ">=3.4.7"
   },
@@ -127,6 +133,9 @@
       "optional": true
     },
     "@electric-sql/pglite": {
+      "optional": true
+    },
+    "h3": {
       "optional": true
     },
     "next": {

@@ -5,6 +5,8 @@ yarn-debug.log*
 yarn-error.log*
 *.tsbuildinfo
 coverage
+.vercel
+.env.local
 aku-crash-*.log
 bundle-treemap.html
 tmp-*
