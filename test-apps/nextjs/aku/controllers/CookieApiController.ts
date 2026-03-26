@@ -20,7 +20,9 @@ export async function SetCookieController(c: Context): Promise<Response> {
 		secure: options.secure as boolean | undefined,
 		httpOnly: options.httpOnly as boolean | undefined,
 		maxAge: options.maxAge as number | undefined,
+		expires: options.expires ? new Date(options.expires as string) : undefined,
 		sameSite: options.sameSite as "Strict" | "Lax" | "None" | undefined,
+		partitioned: options.partitioned as boolean | undefined,
 	});
 
 	return c.json({

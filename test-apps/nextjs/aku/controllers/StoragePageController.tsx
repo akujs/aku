@@ -1,39 +1,40 @@
-/** @jsxImportSource @akujs/aku/view **/
-import { type Controller, redirect } from "@akujs/aku/http";
+/** @jsxImportSource hono/jsx **/
+import type { Context } from "hono";
+import type { FC } from "hono/jsx";
 import { StorageFile } from "@akujs/aku/storage";
-import type { Component } from "@akujs/aku/view";
 import { app } from "../app";
 import { Layout } from "../components/Layout";
 
-export const StoragePageController: Controller = async ({ url }) => {
+export async function StoragePageController(c: Context): Promise<Response> {
 	const files = await app.storage.directory("uploads").listFiles();
-	return <StoragePageView currentPath={url.pathname} files={files} />;
-};
+	const currentPath = new URL(c.req.url).pathname;
+	return c.html(<StoragePageView currentPath={currentPath} files={files} />);
+}
 
-export const StorageUploadController: Controller = async ({ request }) => {
-	const formData = await request.formData();
+export async function StorageUploadController(c: Context): Promise<Response> {
+	const formData = await c.req.raw.formData();
 	const file = formData.get("file");
 
 	if (file && file instanceof File && file.size > 0) {
 		await app.storage.directory("uploads").file(file.name).put(file);
 	}
-	return redirect("/aku/storage");
-};
+	return c.redirect("/aku/storage");
+}
 
-export const StorageDeleteController: Controller = async ({ params }) => {
-	const { filename } = params;
+export async function StorageDeleteController(c: Context): Promise<Response> {
+	const filename = c.req.param("filename");
 	if (filename) {
 		await app.storage.directory("uploads").file(filename).delete();
 	}
-	return redirect("/aku/storage");
-};
+	return c.redirect("/aku/storage");
+}
 
 interface StoragePageViewProps {
 	currentPath: string;
 	files: StorageFile[];
 }
 
-const StoragePageView: Component<StoragePageViewProps> = ({ currentPath, files }) => (
+const StoragePageView: FC<StoragePageViewProps> = ({ currentPath, files }) => (
 	<Layout currentPath={currentPath}>
 		<h2>Storage</h2>
 
@@ -65,7 +66,7 @@ const StoragePageView: Component<StoragePageViewProps> = ({ currentPath, files }
 	</Layout>
 );
 
-const FileCard: Component<{ file: StorageFile }> = async ({ file }) => (
+const FileCard: FC<{ file: StorageFile }> = async ({ file }) => (
 	<div style="border: 1px solid #ccc; padding: 10px; text-align: center;">
 		<img
 			src={await file.url()}

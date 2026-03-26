@@ -1,11 +1,11 @@
-/** @jsxImportSource @akujs/aku/view **/
-import type { Component, PropsWithChildren } from "@akujs/aku/view";
+/** @jsxImportSource hono/jsx **/
+import type { FC, PropsWithChildren } from "hono/jsx";
 
 interface LayoutProps extends PropsWithChildren {
 	currentPath: string;
 }
 
-export const Layout: Component<LayoutProps> = ({ children, currentPath }) => (
+export const Layout: FC<LayoutProps> = ({ children, currentPath }) => (
 	<html>
 		<head>
 			<title>Aku Test App</title>
@@ -36,7 +36,7 @@ interface NavLinkProps extends PropsWithChildren {
 	currentPath: string;
 }
 
-const NavLink: Component<NavLinkProps> = ({ href, currentPath, children }) => {
+const NavLink: FC<NavLinkProps> = ({ href, currentPath, children }) => {
 	const isActive = currentPath.startsWith(href);
 	return <a href={href}>{isActive ? <b>{children}</b> : children}</a>;
 };
