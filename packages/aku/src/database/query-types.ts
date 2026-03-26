@@ -183,12 +183,6 @@ interface StatementExecutionMethods {
 	getFirstOrFail(): Promise<Row>;
 
 	/**
-	 * Execute the statement on the default client and return the first row.
-	 * Throws via abort.notFound() if no rows returned.
-	 */
-	getFirstOrNotFound(): Promise<Row>;
-
-	/**
 	 * Execute the statement on the default client and return the first column
 	 * of the first row.
 	 */
@@ -646,13 +640,6 @@ interface ByIdMethods {
 	 * Shorthand for `table.whereId(id).getFirstOrFail()`.
 	 */
 	getByIdOrFail(id: unknown): Promise<Row>;
-
-	/**
-	 * Fetch a row by its id column, throwing via abort.notFound() if not found.
-	 *
-	 * Shorthand for `table.whereId(id).getFirstOrNotFound()`.
-	 */
-	getByIdOrNotFound(id: unknown): Promise<Row>;
 
 	/**
 	 * Fetch a row by its id column, returning null if not found.

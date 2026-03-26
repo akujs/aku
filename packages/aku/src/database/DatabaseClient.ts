@@ -181,12 +181,6 @@ export interface DatabaseClient {
 	getFirstOrFail<T = Row>(statement: Statement): Promise<T>;
 
 	/**
-	 * Execute a statement and return the first row.
-	 * Throws via abort.notFound() if no rows are returned.
-	 */
-	getFirstOrNotFound<T = Row>(statement: Statement): Promise<T>;
-
-	/**
 	 * Execute a statement and return the first column of the first row.
 	 * Throws DatabaseQueryError if no rows are returned.
 	 */

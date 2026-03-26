@@ -1,117 +1,84 @@
-import { expect, mock, spyOn, test } from "bun:test";
-import { controllerContext } from "../test-utils/http.test-utils.ts";
+import { describe, expect, test } from "bun:test";
 import { DevModeAutoRefreshMiddleware } from "./DevModeAutoRefreshMiddleware.ts";
 
-test("calls next middleware for non-SSE requests", async () => {
-	const middleware = new DevModeAutoRefreshMiddleware({});
-	const next = mock(() => new Response("OK"));
+describe(DevModeAutoRefreshMiddleware, () => {
+	test("handleSseRequest returns null for non-SSE requests", () => {
+		const middleware = new DevModeAutoRefreshMiddleware({});
 
-	const ctx = controllerContext();
-	await middleware.handle(ctx, next);
+		const result = middleware.handleSseRequest(new Request("http://example.com/page"));
 
-	expect(next).toHaveBeenCalledWith(ctx);
-});
+		expect(result).toBeNull();
+	});
 
-test("SSE endpoint returns correct headers", async () => {
-	const middleware = new DevModeAutoRefreshMiddleware({});
-	const next = mock(() => new Response("OK"));
+	test("handleSseRequest returns event stream for SSE requests", () => {
+		const middleware = new DevModeAutoRefreshMiddleware({});
 
-	const response = await middleware.handle(
-		controllerContext(new Request("http://example.com?__aku_dev_mode_refresh")),
-		next,
-	);
+		const response = middleware.handleSseRequest(
+			new Request("http://example.com?__aku_dev_mode_refresh"),
+		);
 
-	expect(next).not.toHaveBeenCalled();
-	expect(response).toBeInstanceOf(Response);
-	expect(response.headers.get("Content-Type")).toBe("text/event-stream");
-	expect(response.headers.get("Cache-Control")).toBe("no-cache");
-	expect(response.headers.get("Connection")).toBe("keep-alive");
-});
+		expect(response).toBeInstanceOf(Response);
+		expect(response!.headers.get("Content-Type")).toBe("text/event-stream");
+		expect(response!.headers.get("Cache-Control")).toBe("no-cache");
+		expect(response!.headers.get("Connection")).toBe("keep-alive");
+	});
 
-test("injects script into HTML response before </body>", async () => {
-	const middleware = new DevModeAutoRefreshMiddleware({});
-	const html = "<html><body><h1>Test</h1></body></html>";
-	const next = mock(
-		() =>
-			new Response(html, {
-				headers: { "Content-Type": "text/html" },
-			}),
-	);
+	test("injectScriptIfHtml injects script into HTML response before </body>", async () => {
+		const middleware = new DevModeAutoRefreshMiddleware({});
+		const html = "<html><body><h1>Test</h1></body></html>";
+		const response = new Response(html, {
+			headers: { "Content-Type": "text/html" },
+		});
 
-	const generateScriptSpy = spyOn(middleware as any, "generateScript");
-	generateScriptSpy.mockReturnValue("<script>MARKER</script>");
+		const result = middleware.injectScriptIfHtml(response);
+		const text = await result.text();
 
-	const response = await middleware.handle(controllerContext(), next);
+		expect(text).toContain("<script>");
+		expect(text).toContain("<h1>Test</h1>");
+		expect(text.indexOf("<script>")).toBeLessThan(text.indexOf("</body>"));
+	});
 
-	const result = await response.text();
+	test("injectScriptIfHtml injects script before </html> if no </body>", async () => {
+		const middleware = new DevModeAutoRefreshMiddleware({});
+		const html = "<html><h1>Test</h1></html>";
+		const response = new Response(html, {
+			headers: { "Content-Type": "text/html" },
+		});
 
-	expect(result).toContain("<script>MARKER</script>");
-	expect(result).toContain("<h1>Test</h1>");
-	expect(result.indexOf("<script>MARKER</script>")).toBeLessThan(result.indexOf("</body>"));
-});
+		const result = middleware.injectScriptIfHtml(response);
+		const text = await result.text();
 
-test("injects script into HTML response before </html> if no </body>", async () => {
-	const middleware = new DevModeAutoRefreshMiddleware({});
-	const html = "<html><h1>Test</h1></html>";
-	const next = mock(
-		() =>
-			new Response(html, {
-				headers: { "Content-Type": "text/html" },
-			}),
-	);
+		expect(text).toContain("<script>");
+		expect(text).toContain("<h1>Test</h1>");
+		expect(text.indexOf("<script>")).toBeLessThan(text.indexOf("</html>"));
+	});
 
-	const generateScriptSpy = spyOn(middleware as any, "generateScript");
-	generateScriptSpy.mockReturnValue("<script>MARKER</script>");
+	test("injectScriptIfHtml appends script at end if no closing tags", async () => {
+		const middleware = new DevModeAutoRefreshMiddleware({});
+		const html = "<h1>Test</h1>";
+		const response = new Response(html, {
+			headers: { "Content-Type": "text/html" },
+		});
 
-	const response = await middleware.handle(controllerContext(), next);
+		const result = middleware.injectScriptIfHtml(response);
+		const text = await result.text();
 
-	const result = await response.text();
+		expect(text).toContain("<script>");
+		expect(text).toContain("<h1>Test</h1>");
+		expect(text).toEndWith("</script>");
+	});
 
-	expect(result).toContain("<script>MARKER</script>");
-	expect(result).toContain("<h1>Test</h1>");
-	expect(result.indexOf("<script>MARKER</script>")).toBeLessThan(result.indexOf("</html>"));
-});
+	test("injectScriptIfHtml does not modify non-HTML responses", async () => {
+		const middleware = new DevModeAutoRefreshMiddleware({});
+		const json = JSON.stringify({ test: "data" });
+		const response = new Response(json, {
+			headers: { "Content-Type": "application/json" },
+		});
 
-test("injects script at end if no closing tags found", async () => {
-	const middleware = new DevModeAutoRefreshMiddleware({});
-	const html = "<h1>Test</h1>";
-	const next = mock(
-		() =>
-			new Response(html, {
-				headers: { "Content-Type": "text/html" },
-			}),
-	);
+		const result = middleware.injectScriptIfHtml(response);
+		const text = await result.text();
 
-	const generateScriptSpy = spyOn(middleware as any, "generateScript");
-	generateScriptSpy.mockReturnValue("<script>MARKER</script>");
-
-	const response = await middleware.handle(controllerContext(), next);
-
-	const result = await response.text();
-
-	expect(result).toContain("<script>MARKER</script>");
-	expect(result).toContain("<h1>Test</h1>");
-	expect(result).toEndWith("<script>MARKER</script>");
-});
-
-test("does not inject script into non-HTML responses", async () => {
-	const middleware = new DevModeAutoRefreshMiddleware({});
-	const json = JSON.stringify({ test: "data" });
-	const next = mock(
-		() =>
-			new Response(json, {
-				headers: { "Content-Type": "application/json" },
-			}),
-	);
-
-	const generateScriptSpy = spyOn(middleware as any, "generateScript");
-	generateScriptSpy.mockReturnValue("<script>MARKER</script>");
-
-	const response = await middleware.handle(controllerContext(), next);
-
-	const result = await response.text();
-
-	expect(result).not.toContain("<script>MARKER</script>");
-	expect(result).toBe(json);
-	expect(generateScriptSpy).not.toHaveBeenCalled();
+		expect(text).not.toContain("<script>");
+		expect(text).toBe(json);
+	});
 });

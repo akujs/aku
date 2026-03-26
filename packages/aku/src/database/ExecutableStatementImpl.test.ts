@@ -1,14 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { AbortException } from "../http/abort.ts";
 import { mockDispatcher } from "../test-utils/internal-mocks.test-utils.ts";
 import { createTestApplication } from "../testing/create-test-application.ts";
-import { mockIntegrationContext } from "../testing/mock-integration-context.ts";
 import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
-import { Database } from "./contracts/Database.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 import { DatabaseImpl } from "./DatabaseImpl.ts";
 import { DatabaseQueryError } from "./database-errors.ts";
-import { ExecutableStatementImpl } from "./ExecutableStatementImpl.ts";
 import { sql } from "./sql.ts";
 
 describe("Sql execution methods", () => {
@@ -54,31 +50,6 @@ describe("Sql execution methods", () => {
 	test("getColumn() returns first column array", async () => {
 		const names = await sql`SELECT name FROM test ORDER BY id`.getColumn();
 		expect(names).toEqual(["Alice", "Bob"]);
-	});
-});
-
-describe(ExecutableStatementImpl.prototype.getFirstOrNotFound, () => {
-	let adapter: DatabaseAdapter;
-
-	beforeEach(async () => {
-		adapter = sqliteDatabase({ path: ":memory:", transactionRetry: false });
-	});
-
-	afterEach(() => {
-		adapter.dispose();
-	});
-
-	test("throws AbortException when no rows", async () => {
-		const { app, container } = createTestApplication({ database: adapter });
-		const db = container.get(Database);
-
-		await db.run(sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`);
-
-		expect(
-			app.withIntegration(mockIntegrationContext(), () =>
-				sql`SELECT * FROM test`.getFirstOrNotFound(),
-			),
-		).rejects.toBeInstanceOf(AbortException);
 	});
 });
 

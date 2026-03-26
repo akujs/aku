@@ -23,10 +23,6 @@ export abstract class ExecutableStatementBase extends StatementImpl {
 		return this.getClient().getFirstOrFail<T>(this);
 	}
 
-	getFirstOrNotFound<T = Row>(): Promise<T> {
-		return this.getClient().getFirstOrNotFound<T>(this);
-	}
-
 	getScalar<T = unknown>(): Promise<T> {
 		return this.getClient().getScalar<T>(this);
 	}

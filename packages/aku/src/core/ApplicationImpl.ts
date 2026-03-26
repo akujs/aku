@@ -7,20 +7,15 @@ import type { Container } from "../container/contracts/Container.ts";
 import { Database } from "../database/contracts/Database.ts";
 import { DatabaseServiceProvider } from "../database/DatabaseServiceProvider.ts";
 import { DevelopmentServiceProvider } from "../development/DevelopmentServiceProvider.ts";
+import { DevModeAutoRefreshMiddleware } from "../development/DevModeAutoRefreshMiddleware.ts";
 import { HttpServiceProvider } from "../http/HttpServiceProvider.ts";
-import { RequestHandler } from "../http/RequestHandler.ts";
-import { Router } from "../http/Router.ts";
-import { RouteUrlGenerator } from "../http/RouteUrlGenerator.ts";
+import { HttpRequestHandledEvent } from "../http/http-events.ts";
 import { IntegrationContext } from "../integrations/IntegrationContext.ts";
 import { Storage } from "../storage/contracts/Storage.ts";
 import { StorageServiceProvider } from "../storage/StorageServiceProvider.ts";
 import { BaseClass } from "../utils.ts";
 import { CoreServiceProvider } from "./CoreServiceProvider.ts";
-import type {
-	ServiceProviderReference,
-	UrlOptionsNoParams,
-	UrlOptionsWithParams,
-} from "./contracts/Application.ts";
+import type { ServiceProviderReference } from "./contracts/Application.ts";
 import { Application } from "./contracts/Application.ts";
 import { Configuration } from "./contracts/Configuration.ts";
 import { Dispatcher } from "./contracts/Dispatcher.ts";
@@ -35,18 +30,15 @@ const DEFAULT_PROVIDERS = [
 	DevelopmentServiceProvider,
 ];
 
-export class ApplicationImpl<RouteParams extends Record<string, string> = {}>
-	extends BaseClass
-	implements Application<RouteParams>
-{
+export class ApplicationImpl extends BaseClass implements Application {
 	readonly container: Container;
 
-	#config: Configuration<RouteParams>;
+	#config: Configuration;
 	#serviceProvidersToBoot: ServiceProvider[] = [];
 	#registeredProviders = new Set<ServiceProviderReference>();
 	#hasBooted = false;
 
-	constructor(config: Configuration<RouteParams> = {}) {
+	constructor(config: Configuration = {}) {
 		super();
 		this.container = new ContainerImpl();
 		this.#config = config;
@@ -86,37 +78,37 @@ export class ApplicationImpl<RouteParams extends Record<string, string> = {}>
 		return this.container.get(Database);
 	}
 
-	url<N extends keyof RouteParams & string>(
-		name: N,
-		...args: RouteParams[N] extends never
-			? [] | [options?: UrlOptionsNoParams]
-			: [options: UrlOptionsWithParams<RouteParams[N]>]
-	): string {
-		this.bootstrap();
-		return this.container.get(RouteUrlGenerator).url(name, args[0]);
-	}
-
 	async handleRequest(request: Request, context: IntegrationContext): Promise<Response> {
 		this.bootstrap();
-		// Enrich context with requestUrl if not already provided
-		const enrichedContext: IntegrationContext = {
-			...context,
-			requestUrl: context.requestUrl ?? new URL(request.url),
-		};
 
-		return this.withIntegration(enrichedContext, async () => {
-			const router = this.container.get(Router);
-			const requestHandler = this.container.get(RequestHandler);
+		return this.withIntegration(context, async () => {
+			const autoRefreshEnabled =
+				this.#config.development && this.#config.devMode?.autoRefresh !== false;
 
-			const { match, methodMismatch } = router.lookup(request);
-
-			if (!match) {
-				return methodMismatch
-					? new Response("Method Not Allowed", { status: 405 })
-					: new Response("Not Found", { status: 404 });
+			if (autoRefreshEnabled) {
+				const devMode = this.container.get(DevModeAutoRefreshMiddleware);
+				const sseResponse = devMode.handleSseRequest(request);
+				if (sseResponse) {
+					return sseResponse;
+				}
 			}
 
-			return requestHandler.handle(match);
+			const handler = this.#config.handler;
+			if (!handler) {
+				return new Response("Not Found", { status: 404 });
+			}
+
+			let response = await handler(request);
+
+			if (autoRefreshEnabled) {
+				const devMode = this.container.get(DevModeAutoRefreshMiddleware);
+				response = devMode.injectScriptIfHtml(response);
+			}
+
+			const dispatcher = this.container.get(Dispatcher);
+			dispatcher.dispatch(new HttpRequestHandledEvent(request, response));
+
+			return response;
 		});
 	}
 

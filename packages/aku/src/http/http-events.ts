@@ -1,5 +1,4 @@
 import { AkuEvent } from "../core/core-events.ts";
-import type { ControllerContext } from "./Controller.ts";
 
 /**
  * Event dispatched after a request has been successfully handled.
@@ -7,11 +6,11 @@ import type { ControllerContext } from "./Controller.ts";
 export class HttpRequestHandledEvent extends AkuEvent {
 	readonly #response: Response;
 	#headers?: Headers;
-	readonly context: ControllerContext;
+	readonly request: Request;
 
-	constructor(context: ControllerContext, response: Response) {
+	constructor(request: Request, response: Response) {
 		super();
-		this.context = context;
+		this.request = request;
 		this.#response = response;
 	}
 

@@ -4,16 +4,7 @@ export const mockIntegrationContext = (options?: {
 	request?: Request | undefined;
 	headers?: Record<string, string> | undefined;
 	cookies?: Record<string, string> | undefined;
-	requestUrl?: string | undefined;
 }): IntegrationContext => {
-	// Determine requestUrl
-	let requestUrl: URL | undefined;
-	if (options?.requestUrl) {
-		requestUrl = new URL(options.requestUrl);
-	} else if (options?.request) {
-		requestUrl = new URL(options.request.url);
-	}
-
 	// Determine header handling
 	let getRequestHeader: (name: string) => string | null;
 	let getRequestHeaderNames: () => IterableIterator<string>;
@@ -46,7 +37,6 @@ export const mockIntegrationContext = (options?: {
 
 	return {
 		context: "test",
-		requestUrl,
 		getCookie,
 		getCookieNames,
 		deleteCookie: () => {},

@@ -1,8 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { AbortException } from "../http/abort.ts";
 import { mockDispatcher } from "../test-utils/internal-mocks.test-utils.ts";
 import { createTestApplication } from "../testing/create-test-application.ts";
-import { mockIntegrationContext } from "../testing/mock-integration-context.ts";
 import { sqliteDatabase } from "./adapters/sqlite/sqliteDatabase.ts";
 import type { DatabaseAdapter } from "./DatabaseAdapter.ts";
 import { DatabaseClientImpl } from "./DatabaseClientImpl.ts";
@@ -87,26 +85,6 @@ describe("DatabaseImpl", () => {
 		test("column() returns empty array when no rows", async () => {
 			const names = await db.getColumn(sql`SELECT name FROM test WHERE 0`);
 			expect(names).toEqual([]);
-		});
-
-		test("firstOrNotFound() returns first row when exists", async () => {
-			const { app } = createTestApplication({ database: adapter });
-
-			const row = await app.withIntegration(mockIntegrationContext(), () =>
-				db.getFirstOrNotFound(sql`SELECT * FROM test`),
-			);
-
-			expect(row.name).toBe("Alice");
-		});
-
-		test("firstOrNotFound() throws AbortException when no rows", async () => {
-			const { app } = createTestApplication({ database: adapter });
-
-			expect(
-				app.withIntegration(mockIntegrationContext(), () =>
-					db.getFirstOrNotFound(sql`SELECT * FROM test WHERE 0`),
-				),
-			).rejects.toBeInstanceOf(AbortException);
 		});
 	});
 

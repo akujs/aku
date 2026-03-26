@@ -87,10 +87,6 @@ export class DatabaseImpl extends BaseClass implements Database {
 		return this.#defaultClient.getFirstOrFail<T>(statement);
 	}
 
-	getFirstOrNotFound<T = Row>(statement: Statement): Promise<T> {
-		return this.#defaultClient.getFirstOrNotFound<T>(statement);
-	}
-
 	getScalar<T = unknown>(statement: Statement): Promise<T> {
 		return this.#defaultClient.getScalar<T>(statement);
 	}

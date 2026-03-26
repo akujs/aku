@@ -1,9 +1,8 @@
 import { inject } from "../container/inject.ts";
 import { Configuration } from "../core/contracts/Configuration.ts";
-import type { ControllerContext } from "../http/Controller.ts";
-import { BaseMiddleware, type MiddlewareNext } from "../http/Middleware.ts";
+import { BaseClass } from "../utils.ts";
 
-export class DevModeAutoRefreshMiddleware extends BaseMiddleware {
+export class DevModeAutoRefreshMiddleware extends BaseClass {
 	#reloadListeners = new Set<(reload: boolean) => void>();
 	#config: Configuration;
 
@@ -23,14 +22,15 @@ export class DevModeAutoRefreshMiddleware extends BaseMiddleware {
 		this.#reloadListeners.clear();
 	}
 
-	async handle(ctx: ControllerContext, next: MiddlewareNext): Promise<Response> {
-		const url = new URL(ctx.request.url);
-
+	handleSseRequest(request: Request): Response | null {
+		const url = new URL(request.url);
 		if (url.searchParams.has("__aku_dev_mode_refresh")) {
-			return this.#handleSSERequest();
+			return this.#handleSseResponse();
 		}
+		return null;
+	}
 
-		const response = await next(ctx);
+	injectScriptIfHtml(response: Response): Response {
 		const contentType = response.headers.get("Content-Type");
 		if (contentType?.includes("text/html")) {
 			return this.#injectScript(response);
@@ -38,7 +38,7 @@ export class DevModeAutoRefreshMiddleware extends BaseMiddleware {
 		return response;
 	}
 
-	#handleSSERequest(): Response {
+	#handleSseResponse(): Response {
 		const encoder = new TextEncoder();
 		let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 		let sendReload: ((reload: boolean) => void) | null = null;
@@ -79,7 +79,7 @@ export class DevModeAutoRefreshMiddleware extends BaseMiddleware {
 	}
 
 	#injectScript(response: Response): Response {
-		const script = this.generateScript();
+		const script = this.#generateScript();
 		const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
 
 		const body = response.body as ReadableStream<Uint8Array> | null;
@@ -140,7 +140,7 @@ export class DevModeAutoRefreshMiddleware extends BaseMiddleware {
 		});
 	}
 
-	private generateScript(): string {
+	#generateScript(): string {
 		return /*ts*/ `
 <script>
 (function() {

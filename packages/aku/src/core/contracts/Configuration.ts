@@ -1,13 +1,11 @@
 import type { TypeToken } from "../../container/container-key.ts";
 import { createTypeToken } from "../../container/container-key.ts";
-import type { MiddlewareReference } from "../../http/Middleware.ts";
-import type { MiddlewarePriorityBuilder } from "../../http/MiddlewarePriorityBuilder.ts";
 import type { ServiceProviderReference } from "./Application.ts";
 
 /**
  * The configuration supplied to createApplication().
  */
-export interface Configuration<RouteParams extends Record<string, string> = {}> {
+export interface Configuration {
 	/**
 	 * Enable development mode.
 	 *
@@ -22,39 +20,26 @@ export interface Configuration<RouteParams extends Record<string, string> = {}> 
 	development?: boolean | undefined;
 
 	/**
-	 * Route definitions for the application
+	 * A handler function that receives an HTTP request and returns a response.
+	 *
+	 * This is the main entry point for handling HTTP requests. The handler is
+	 * called within a DI scope, so scoped services like `Cookies`, `Headers`,
+	 * and `RequestLocals` are available.
+	 *
+	 * @example
+	 * handler: (request) => new Response("hello")
+	 *
+	 * @example
+	 * // With Hono:
+	 * const hono = new Hono();
+	 * handler: hono.fetch
 	 */
-	routes?: Routes<RouteParams>;
+	handler?: ((request: Request) => Response | Promise<Response>) | undefined;
 
 	/**
 	 * Service providers to register with the application.
 	 */
 	providers?: Array<ServiceProviderReference>;
-
-	/**
-	 * Configure middleware execution priority.
-	 *
-	 * Middleware in the priority list will be moved to the front of the
-	 * middleware list and execute in the specified order, regardless of the order
-	 * they're assigned to routes.
-	 *
-	 * Can be:
-	 * - An array of middleware classes (replaces default priority)
-	 * - A function that receives a builder to modify the default priority
-	 *
-	 * @example
-	 * // Replace default priority
-	 * middlewarePriority: [Auth, RateLimit, Logger]
-	 *
-	 * @example
-	 * // Modify default priority
-	 * middlewarePriority: (builder) => {
-	 *   builder.addBefore(SetupTenant, Auth);
-	 *   builder.addAfter(CustomLogger, Session);
-	 *   builder.remove(DefaultRateLimit);
-	 * }
-	 */
-	middlewarePriority?: MiddlewareReference[] | ((builder: MiddlewarePriorityBuilder) => void);
 
 	/**
 	 * Development mode options
@@ -94,18 +79,6 @@ export interface Configuration<RouteParams extends Record<string, string> = {}> 
 		 */
 		autoRefreshHeartbeatMs?: number;
 	};
-
-	/**
-	 * Control when to throw errors on accessing non-existent route parameters.
-	 *
-	 * - 'always': Always throw when accessing invalid parameters
-	 * - 'never': Never throw, return undefined (production-like behavior)
-	 * - 'development': Throw only when development mode is enabled
-	 * - 'production': Throw only when development mode is disabled
-	 *
-	 * @default 'always'
-	 */
-	throwOnInvalidParamAccess?: EnvironmentChoice | undefined;
 
 	/**
 	 * Application URL configuration for generating absolute URLs
@@ -198,27 +171,6 @@ export interface Configuration<RouteParams extends Record<string, string> = {}> 
 export const Configuration: TypeToken<Configuration> =
 	createTypeToken<Configuration>("Configuration");
 
-type EnvironmentChoice = "always" | "never" | "development" | "production";
-
-export function resolveEnvironmentChoice(
-	value: EnvironmentChoice | undefined,
-	defaultValue: EnvironmentChoice,
-	isDevelopment: boolean,
-): boolean {
-	const choice = value ?? defaultValue;
-	switch (choice) {
-		case "always":
-			return true;
-		case "never":
-			return false;
-		case "development":
-			return isDevelopment;
-		case "production":
-			return !isDevelopment;
-	}
-}
-
 // Re-imported types to avoid circular dependencies
 import type { DatabaseAdapter, DatabaseConfig } from "../../database/DatabaseAdapter.ts";
-import type { Routes } from "../../http/router-types.ts";
 import type { StorageAdapter, StorageEndpoint } from "../../storage/contracts/Storage.ts";

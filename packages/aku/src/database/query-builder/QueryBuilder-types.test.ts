@@ -9,7 +9,6 @@ const stubClient = {
 	getColumn: () => Promise.resolve([]),
 	getFirstOrNull: () => Promise.resolve(null),
 	getFirstOrFail: () => Promise.resolve({}),
-	getFirstOrNotFound: () => Promise.resolve({}),
 	getScalar: () => Promise.resolve(null),
 };
 
@@ -464,19 +463,16 @@ describe("placeholder arity", () => {
 describe("getByIdOrXXX()", () => {
 	test("available on QueryBuilder and return Promises", () => {
 		void table("").getByIdOrFail(1);
-		void table("").getByIdOrNotFound(1);
 		void table("").getByIdOrNull(1);
 	});
 
 	test("available after where()", () => {
 		void table("").where("").getByIdOrFail(1);
-		void table("").where("").getByIdOrNotFound(1);
 		void table("").where("").getByIdOrNull(1);
 	});
 
 	test("available after select()", () => {
 		void table("").select("").getByIdOrFail(1);
-		void table("").select("").getByIdOrNotFound(1);
 		void table("").select("").getByIdOrNull(1);
 	});
 

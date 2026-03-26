@@ -234,10 +234,6 @@ export class QueryBuilderImpl extends ExecutableStatementBase implements AnyQuer
 		return this.whereId(id).getFirstOrFail();
 	}
 
-	getByIdOrNotFound(id: unknown): Promise<Row> {
-		return this.whereId(id).getFirstOrNotFound();
-	}
-
 	getByIdOrNull(id: unknown): Promise<Row | null> {
 		return this.whereId(id).getFirstOrNull();
 	}
