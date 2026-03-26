@@ -2,9 +2,6 @@ export const arrayWrap = <T>(value: T | T[]): T[] => {
 	return Array.isArray(value) ? value : [value];
 };
 
-export const arrayWrapOptional = <T>(value: T | T[] | null | undefined): T[] =>
-	value == null ? [] : arrayWrap(value);
-
 export async function arrayFromAsync<T>(iterable: AsyncIterable<T>): Promise<T[]> {
 	const result: T[] = [];
 	for await (const item of iterable) {

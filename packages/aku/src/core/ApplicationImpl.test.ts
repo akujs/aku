@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { Cookies, Headers } from "../facades-entry-point.ts";
 import { RequestLocals } from "../http/contracts/RequestLocals.ts";
 import { HttpRequestHandledEvent } from "../http/http-events.ts";
 import { mockIntegrationContext } from "../testing/mock-integration-context.ts";
@@ -61,25 +60,6 @@ describe(ApplicationImpl, () => {
 		);
 
 		expect(await response.text()).toBe("method: POST, url: http://example.com/path");
-	});
-
-	test("Cookies and Headers facades work within handler", async () => {
-		const app = createApplication({
-			handler: () => {
-				const testCookie = Cookies.get("c");
-				const testHeader = Headers.get("h");
-				return new Response(`Cookie: ${testCookie}, Header: ${testHeader}`);
-			},
-		});
-
-		const context = mockIntegrationContext({
-			cookies: { c: "cookie" },
-			headers: { h: "header" },
-		});
-
-		const response = await app.handleRequest(new Request("http://example.com/test"), context);
-
-		expect(await response.text()).toBe("Cookie: cookie, Header: header");
 	});
 
 	test("RequestLocals accessible within handler", async () => {

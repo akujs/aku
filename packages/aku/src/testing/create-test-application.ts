@@ -30,10 +30,7 @@ export interface TestApplication {
  * sending HTTP requests and running CLI commands.
  */
 export const createTestApplication = (config: Configuration = {}): TestApplication => {
-	const app = createApplication({
-		...config,
-		devMode: { autoRefresh: false, ...config.devMode },
-	});
+	const app = createApplication(config);
 
 	const container = app.container;
 

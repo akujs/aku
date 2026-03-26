@@ -74,6 +74,8 @@ function generateEventsFileContent(project: SourceProject): string {
 	return lines.join("\n") + "\n";
 }
 
+const FACADE_EXCLUSIONS = new Set(["CliApi", "CliErrorHandler", "Application"]);
+
 function generateFacadesFileContent(project: SourceProject): string {
 	const lines: string[] = ['import { createFacade } from "./core/facade.ts";'];
 
@@ -90,7 +92,7 @@ function generateFacadesFileContent(project: SourceProject): string {
 			(exp) => exp.kind === "const" && exp.name === expectedContractName && !exp.reexport,
 		);
 
-		if (contractExport) {
+		if (contractExport && !FACADE_EXCLUSIONS.has(contractExport.name)) {
 			const contractName = contractExport.name;
 			const contractAlias = `${contractName}Contract`;
 

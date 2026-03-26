@@ -6,8 +6,6 @@ import { ContainerImpl } from "../container/ContainerImpl.ts";
 import type { Container } from "../container/contracts/Container.ts";
 import { Database } from "../database/contracts/Database.ts";
 import { DatabaseServiceProvider } from "../database/DatabaseServiceProvider.ts";
-import { DevelopmentServiceProvider } from "../development/DevelopmentServiceProvider.ts";
-import { DevModeAutoRefreshMiddleware } from "../development/DevModeAutoRefreshMiddleware.ts";
 import { HttpServiceProvider } from "../http/HttpServiceProvider.ts";
 import { HttpRequestHandledEvent } from "../http/http-events.ts";
 import { IntegrationContext } from "../integrations/IntegrationContext.ts";
@@ -27,7 +25,6 @@ const DEFAULT_PROVIDERS = [
 	HttpServiceProvider,
 	StorageServiceProvider,
 	DatabaseServiceProvider,
-	DevelopmentServiceProvider,
 ];
 
 export class ApplicationImpl extends BaseClass implements Application {
@@ -82,28 +79,12 @@ export class ApplicationImpl extends BaseClass implements Application {
 		this.bootstrap();
 
 		return this.withIntegration(context, async () => {
-			const autoRefreshEnabled =
-				this.#config.development && this.#config.devMode?.autoRefresh !== false;
-
-			if (autoRefreshEnabled) {
-				const devMode = this.container.get(DevModeAutoRefreshMiddleware);
-				const sseResponse = devMode.handleSseRequest(request);
-				if (sseResponse) {
-					return sseResponse;
-				}
-			}
-
 			const handler = this.#config.handler;
 			if (!handler) {
 				return new Response("Not Found", { status: 404 });
 			}
 
-			let response = await handler(request);
-
-			if (autoRefreshEnabled) {
-				const devMode = this.container.get(DevModeAutoRefreshMiddleware);
-				response = devMode.injectScriptIfHtml(response);
-			}
+			const response = await handler(request);
 
 			const dispatcher = this.container.get(Dispatcher);
 			dispatcher.dispatch(new HttpRequestHandledEvent(request, response));
