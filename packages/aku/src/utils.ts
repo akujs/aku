@@ -136,12 +136,6 @@ export type MethodNames<T> = {
 
 export type Prettify<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
 
-export type MakeUndefinedOptional<T> = {
-	[K in keyof T as undefined extends T[K] ? never : K]: T[K];
-} & {
-	[K in keyof T as undefined extends T[K] ? K : never]?: T[K];
-};
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AnyFunction = (...args: any) => any;
 
@@ -175,7 +169,7 @@ export function getPrototypeChain(instanceOrClass: unknown): AnyConstructor[] {
 	return result;
 }
 
-export const plural = (word: string): string => word + "s";
+const plural = (word: string): string => word + "s";
 
 export const pluralCount = (count: number, word: string): string =>
 	count + " " + (count === 1 ? word : plural(word));

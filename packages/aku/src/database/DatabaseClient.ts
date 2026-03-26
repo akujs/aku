@@ -176,7 +176,7 @@ export interface DatabaseClient {
 
 	/**
 	 * Execute a statement and return the first row.
-	 * Throws QueryError if no rows are returned.
+	 * Throws DatabaseQueryError if no rows are returned.
 	 */
 	getFirstOrFail<T = Row>(statement: Statement): Promise<T>;
 
@@ -188,7 +188,7 @@ export interface DatabaseClient {
 
 	/**
 	 * Execute a statement and return the first column of the first row.
-	 * Throws QueryError if no rows are returned.
+	 * Throws DatabaseQueryError if no rows are returned.
 	 */
 	getScalar<T = unknown>(statement: Statement): Promise<T>;
 

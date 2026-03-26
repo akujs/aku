@@ -1,7 +1,7 @@
 import { ExecutableStatementImpl } from "./ExecutableStatementImpl.ts";
 import type { ExecutableStatementWithoutClient, StringOrFragment } from "./query-types.ts";
 
-export interface SqlApi {
+interface SqlApi {
 	(strings: TemplateStringsArray, ...values: unknown[]): ExecutableStatementWithoutClient;
 	raw(sqlString: string): ExecutableStatementWithoutClient;
 }

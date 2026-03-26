@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import type { Dispatcher } from "../core/contracts/Dispatcher.ts";
-import { expectError } from "../test-utils/error.bun.ts";
-import { mockDispatcher } from "../test-utils/internal-mocks.bun.ts";
-import { spyOnAll } from "../test-utils/spy-on-all.bun.ts";
+import { expectError } from "../test-utils/error.test-utils.ts";
+import { mockDispatcher } from "../test-utils/internal-mocks.test-utils.ts";
+import { spyOnAll } from "../test-utils/spy-on-all.test-utils.ts";
 import { resetAllMocks } from "../testing/mocks.ts";
 import { MemoryEndpoint } from "./adapters/memory/MemoryEndpoint.ts";
 import { memoryStorage } from "./adapters/memory/memoryStorage.ts";
@@ -10,8 +10,8 @@ import type { StorageAdapter, StorageDisk } from "./contracts/Storage.ts";
 import { StorageDiskImpl } from "./StorageDiskImpl.ts";
 import type { StorageEndpointBuilder } from "./StorageEndpointBuilder.ts";
 import { StorageImpl } from "./StorageImpl.ts";
-import { DiskNotFoundError } from "./storage-errors.ts";
-import { mockEndpointBuilder } from "./storage-test-utils.bun.ts";
+import { mockEndpointBuilder } from "./storage.test-utils.ts";
+import { StorageDiskNotFoundError } from "./storage-errors.ts";
 
 function createStorageImpl(
 	config: { disks?: Record<string, StorageAdapter>; defaultDisk?: string },
@@ -52,7 +52,7 @@ describe(StorageImpl, () => {
 		test("throws clear error when disk doesn't exist", () => {
 			expectError(
 				() => storage.disk("nonexistent"),
-				DiskNotFoundError,
+				StorageDiskNotFoundError,
 				(error) => {
 					expect(error.diskName).toBe("nonexistent");
 				},
@@ -66,7 +66,7 @@ describe(StorageImpl, () => {
 			});
 			expectError(
 				() => storageWithoutDefault.disk(),
-				DiskNotFoundError,
+				StorageDiskNotFoundError,
 				(error) => {
 					expect(error.diskName).toBe("local");
 				},
@@ -89,7 +89,7 @@ describe(StorageImpl, () => {
 
 		test("built disk not registered by name", () => {
 			const disk = storage.build(memoryStorage({}));
-			expect(() => storage.disk(disk.name)).toThrow(DiskNotFoundError);
+			expect(() => storage.disk(disk.name)).toThrow(StorageDiskNotFoundError);
 		});
 
 		test("multiple build() calls create independent disks", () => {

@@ -14,7 +14,7 @@ import type {
 import { DelegatesToDirectory } from "./DelegatesToDirectory.ts";
 import { StorageDiskImpl } from "./StorageDiskImpl.ts";
 import { StorageEndpointBuilder } from "./StorageEndpointBuilder.ts";
-import { DiskNotFoundError } from "./storage-errors.ts";
+import { StorageDiskNotFoundError } from "./storage-errors.ts";
 
 type StorageConfig = Pick<Configuration, "disks" | "defaultDisk">;
 
@@ -56,7 +56,7 @@ export class StorageImpl extends DelegatesToDirectory implements Storage {
 		const disk = this.#disks.get(name);
 
 		if (!disk) {
-			throw new DiskNotFoundError(name);
+			throw new StorageDiskNotFoundError(name);
 		}
 
 		return disk;

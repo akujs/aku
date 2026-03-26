@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createTestApplication } from "../../../test-utils/http-test-utils.bun.ts";
+import { createTestApplication } from "../../../testing/create-test-application.ts";
 import { createTestDirectory } from "../../../testing/test-directories.ts";
 import { mockPlatformPaths } from "../../path-operations.ts";
-import { PermissionsError } from "../../storage-errors.ts";
-import { mockEndpointBuilder } from "../../storage-test-utils.bun.ts";
+import { mockEndpointBuilder } from "../../storage.test-utils.ts";
+import { StoragePermissionsError } from "../../storage-errors.ts";
 import { filesystemStorage } from "../filesystem/filesystemStorage.ts";
 import { memoryStorage } from "../memory/memoryStorage.ts";
 import { readOnlyStorage } from "./readOnlyStorage.ts";
@@ -34,7 +34,7 @@ describe("read-only storage integration", () => {
 		const fetchResult = await file.get();
 		expect(await fetchResult.response.text()).toBe("existing content");
 
-		expect(file.put("new content")).rejects.toThrow(PermissionsError);
+		expect(file.put("new content")).rejects.toThrow(StoragePermissionsError);
 	});
 
 	test("with endpoint", async () => {
@@ -59,7 +59,7 @@ describe("read-only storage integration", () => {
 		const fetchResult = await file.get();
 		expect(await fetchResult.response.text()).toBe("existing content");
 
-		expect(file.put("new content")).rejects.toThrow(PermissionsError);
+		expect(file.put("new content")).rejects.toThrow(StoragePermissionsError);
 	});
 
 	test("prevents all write operations", async () => {
@@ -99,19 +99,19 @@ describe("read-only storage integration", () => {
 		]);
 
 		// Cannot write
-		expect(readonlyDisk.file("new.txt").put("content")).rejects.toThrow(PermissionsError);
+		expect(readonlyDisk.file("new.txt").put("content")).rejects.toThrow(StoragePermissionsError);
 
 		// Cannot delete
-		expect(readonlyDisk.file("source.txt").delete()).rejects.toThrow(PermissionsError);
+		expect(readonlyDisk.file("source.txt").delete()).rejects.toThrow(StoragePermissionsError);
 
 		// Cannot copy
 		expect(readonlyDisk.file("source.txt").copyTo(readonlyDisk.file("copy.txt"))).rejects.toThrow(
-			PermissionsError,
+			StoragePermissionsError,
 		);
 
 		// Cannot move
 		expect(readonlyDisk.file("source.txt").moveTo(readonlyDisk.file("moved.txt"))).rejects.toThrow(
-			PermissionsError,
+			StoragePermissionsError,
 		);
 
 		expect(await captureState()).toEqual(stateBefore);

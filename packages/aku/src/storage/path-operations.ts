@@ -12,7 +12,7 @@ export const posix: PathOps = {
 	extname: (...args) => nodePath.posix.extname(...args),
 };
 
-export const win32: PathOps = {
+const win32: PathOps = {
 	normalize: (...args) => nodePath.win32.normalize(...args),
 	join: (...args) => nodePath.win32.join(...args),
 	dirname: (...args) => nodePath.win32.dirname(...args),

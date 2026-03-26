@@ -20,7 +20,7 @@ export abstract class StorageError extends AkuError {
 /**
  * Thrown when a requested disk is not found in the storage configuration.
  */
-export class DiskNotFoundError extends StorageError {
+export class StorageDiskNotFoundError extends StorageError {
 	readonly diskName: string;
 
 	constructor(diskName: string) {
@@ -32,7 +32,7 @@ export class DiskNotFoundError extends StorageError {
 /**
  * Thrown when a path has an invalid format
  */
-export class InvalidPathError extends StorageError {
+export class StorageInvalidPathError extends StorageError {
 	readonly path: string;
 	readonly reason: string;
 
@@ -42,8 +42,8 @@ export class InvalidPathError extends StorageError {
 		this.reason = reason;
 	}
 
-	static forInvalidCharacters(path: string, endpoint: StorageEndpoint): InvalidPathError {
-		return new InvalidPathError(
+	static forInvalidCharacters(path: string, endpoint: StorageEndpoint): StorageInvalidPathError {
+		return new StorageInvalidPathError(
 			path,
 			`${endpoint.name} adapter does not allow ${endpoint.invalidNameChars} in names`,
 		);
@@ -53,7 +53,7 @@ export class InvalidPathError extends StorageError {
 /**
  * Thrown when a file is not found
  */
-export class NotFoundError extends StorageError {
+export class StorageNotFoundError extends StorageError {
 	readonly path: string;
 
 	constructor(path: string) {
@@ -65,7 +65,7 @@ export class NotFoundError extends StorageError {
 /**
  * Thrown when permission is denied for a filesystem operation
  */
-export class PermissionsError extends StorageError {
+export class StoragePermissionsError extends StorageError {
 	readonly path: string;
 	readonly code: number;
 	readonly errorName: string;
@@ -77,8 +77,8 @@ export class PermissionsError extends StorageError {
 		this.errorName = errorName;
 	}
 
-	static forHttpError(path: string, statusCode: number): PermissionsError {
-		return new PermissionsError(path, statusCode, STATUS_CODES[statusCode] ?? "Unknown");
+	static forHttpError(path: string, statusCode: number): StoragePermissionsError {
+		return new StoragePermissionsError(path, statusCode, STATUS_CODES[statusCode] ?? "Unknown");
 	}
 }
 

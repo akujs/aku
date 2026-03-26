@@ -5,7 +5,7 @@ import type {
 	DatabaseAdapterBatchOptions,
 	DatabaseAdapterRunOptions,
 } from "../../DatabaseAdapter.ts";
-import { QueryError } from "../../database-errors.ts";
+import { DatabaseQueryError } from "../../database-errors.ts";
 import type { DatabaseGrammar } from "../../grammar/DatabaseGrammar.ts";
 import { PostgresGrammar } from "../../grammar/PostgresGrammar.ts";
 import type { Row, StatementResult } from "../../query-types.ts";
@@ -73,10 +73,10 @@ interface PGLiteError {
 	code?: string;
 }
 
-function makeQueryError(sql: string, cause: unknown): QueryError {
+function makeQueryError(sql: string, cause: unknown): DatabaseQueryError {
 	const error = cause as PGLiteError;
 	const message = error.message ?? String(cause);
 	const code = error.code;
 
-	return new QueryError(sql, message, cause, code);
+	return new DatabaseQueryError(sql, message, cause, code);
 }

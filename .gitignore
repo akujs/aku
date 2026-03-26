@@ -7,3 +7,6 @@ yarn-error.log*
 coverage
 .vercel
 .env.local
+aku-crash-*.log
+bundle-treemap.html
+tmp-*

@@ -9,7 +9,7 @@ import type {
 	StorageEndpointSignedDownloadUrlOptions,
 	StorageEndpointWriteOptions,
 } from "../../contracts/Storage.ts";
-import { NotFoundError } from "../../storage-errors.ts";
+import { StorageNotFoundError } from "../../storage-errors.ts";
 import type { MemoryStorageConfig } from "./MemoryStorageConfig.ts";
 
 interface MemoryFile {
@@ -75,7 +75,7 @@ export class MemoryEndpoint extends BaseClass implements StorageEndpoint {
 		validatePath(path);
 		const file = this.#files.get(path);
 		if (!file) {
-			throw new NotFoundError(path);
+			throw new StorageNotFoundError(path);
 		}
 
 		return {
@@ -90,7 +90,7 @@ export class MemoryEndpoint extends BaseClass implements StorageEndpoint {
 		validatePath(path);
 		const file = this.#files.get(path);
 		if (!file) {
-			throw new NotFoundError(path);
+			throw new StorageNotFoundError(path);
 		}
 
 		return {
@@ -140,7 +140,7 @@ export class MemoryEndpoint extends BaseClass implements StorageEndpoint {
 		validatePath(options.destination);
 		const file = this.#files.get(options.source);
 		if (!file) {
-			throw new NotFoundError(options.source);
+			throw new StorageNotFoundError(options.source);
 		}
 
 		this.#files.set(options.destination, {
@@ -155,7 +155,7 @@ export class MemoryEndpoint extends BaseClass implements StorageEndpoint {
 		validatePath(options.destination);
 		const file = this.#files.get(options.source);
 		if (!file) {
-			throw new NotFoundError(options.source);
+			throw new StorageNotFoundError(options.source);
 		}
 
 		this.#files.set(options.destination, file);

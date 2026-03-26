@@ -1,3 +1,4 @@
+/* oxlint-disable no-restricted-globals */
 import { onResetAllMocks } from "./mocks.ts";
 
 let originalDate: DateConstructor | null = null;

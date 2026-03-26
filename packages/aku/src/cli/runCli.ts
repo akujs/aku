@@ -2,15 +2,19 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { ApplicationImpl } from "../core/ApplicationImpl.ts";
 import { CliApiImpl } from "./CliApiImpl.ts";
-import { CliExitError } from "./cli-errors.ts";
+import { CliExitError, handleCliError } from "./cli-errors.ts";
+import { writeCrashDumpAndExit } from "./crash-dump.ts";
+import { type ProcessApi, realProcessApi } from "./process-api.ts";
 
 /**
  * Entry point for CLI execution
  */
-export async function runCli(): Promise<never> {
-	const args = process.argv.slice(2);
-	const cwd = process.cwd();
-	const cli = new CliApiImpl();
+export async function runCli(proc: ProcessApi = realProcessApi): Promise<void> {
+	proc.onUnhandledError((error) => writeCrashDumpAndExit(error, proc));
+
+	const args = proc.argv();
+	const cwd = proc.cwd();
+	const cli = new CliApiImpl(proc);
 
 	let exitCode: number;
 
@@ -18,7 +22,16 @@ export async function runCli(): Promise<never> {
 		const { appPath, remainingArgs } = extractAppOption(args);
 		const entryFile = findAppFile(cwd, appPath);
 
-		const module = await import(entryFile);
+		let module: Record<string, unknown>;
+		try {
+			module = (await proc.importModule(entryFile)) as Record<string, unknown>;
+		} catch (error) {
+			proc.stderr(`Error: Failed to load app file ${appPath ?? entryFile}:\n${String(error)}\n`);
+			proc.cleanup();
+			proc.exit(1);
+			return;
+		}
+
 		if (!module.app) {
 			throw new CliExitError(
 				'Entry file must export "app": export const app = createApplication(...)',
@@ -30,14 +43,11 @@ export async function runCli(): Promise<never> {
 
 		exitCode = await module.app.handleCommand(remainingArgs, cli);
 	} catch (error) {
-		// Errors here are configuration errors (app not found, not exported, etc.)
-		// These don't need crash dumps - just a simple error message
-		const message = error instanceof CliExitError ? error.message : String(error);
-		process.stderr.write(`Error: ${message}\n`);
-		exitCode = 1;
+		exitCode = handleCliError(error, proc);
 	}
 
-	process.exit(exitCode);
+	proc.cleanup();
+	proc.exit(exitCode);
 }
 
 function findAppFile(cwd: string, appPath?: string): string {
@@ -85,6 +95,9 @@ function extractAppOption(args: string[]): ExtractedAppOption {
 		// Handle --app=value format
 		if (arg.startsWith("--app=")) {
 			appPath = arg.slice(6);
+			if (!appPath) {
+				throw new CliExitError("Option '--app' requires a value. Usage: --app=./path/to/app.ts");
+			}
 			continue;
 		}
 
@@ -96,6 +109,7 @@ function extractAppOption(args: string[]): ExtractedAppOption {
 				i++; // Skip the next argument
 				continue;
 			}
+			throw new CliExitError("Option '--app' requires a value. Usage: --app=./path/to/app.ts");
 		}
 
 		remainingArgs.push(arg);

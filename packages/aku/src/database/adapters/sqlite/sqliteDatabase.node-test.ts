@@ -4,7 +4,7 @@ import { test } from "node:test";
 import type { Dispatcher } from "../../../core/contracts/Dispatcher.ts";
 import { createTestDirectory } from "../../../testing/test-directories.ts";
 import { DatabaseClientImpl } from "../../DatabaseClientImpl.ts";
-import { QueryError } from "../../database-errors.ts";
+import { DatabaseQueryError } from "../../database-errors.ts";
 import { sql } from "../../sql.ts";
 import { SqliteDatabaseAdapter } from "./SqliteDatabaseAdapter.ts";
 
@@ -84,7 +84,7 @@ void test("readOnly prevents writes in Node.js", async () => {
 			connection: conn2,
 			prepare: undefined,
 		}),
-		"QueryError: SQLITE_READONLY (Attempt to write a readonly database)",
+		"DatabaseQueryError: SQLITE_READONLY (Attempt to write a readonly database)",
 	);
 	adapter2.releaseConnection(conn2);
 	adapter2.dispose();
@@ -128,7 +128,7 @@ void test("useWalMode=false disables WAL in Node.js", async () => {
 	adapter.dispose();
 });
 
-void test("QueryError captures error code in Node.js", async () => {
+void test("DatabaseQueryError captures error code in Node.js", async () => {
 	const testDir = createTestDirectory({ prefix: "sqlite-node-error-" });
 	const dbPath = join(testDir, "test.db");
 
@@ -160,7 +160,7 @@ void test("QueryError captures error code in Node.js", async () => {
 		});
 		assert.fail("Should have thrown");
 	} catch (e) {
-		assert.ok(e instanceof QueryError);
+		assert.ok(e instanceof DatabaseQueryError);
 		assert.strictEqual(e.code, "SQLITE_READONLY");
 		assert.strictEqual(e.errorNumber, 8);
 	}

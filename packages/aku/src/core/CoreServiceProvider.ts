@@ -1,9 +1,12 @@
 import { CommandHandler } from "../cli/CommandHandler.ts";
 import { CommandRegistry } from "../cli/CommandRegistry.ts";
+import { completeCommand } from "../cli/CompleteCommand.ts";
+import { completionsCommand } from "../cli/CompletionsCommand.ts";
 import type { CommandDefinition } from "../cli/cli-types.ts";
 import { CliErrorHandler } from "../cli/contracts/CliErrorHandler.ts";
 import { DefaultCliErrorHandler } from "../cli/DefaultCliErrorHandler.ts";
-import { ListCommand } from "../cli/ListCommand.ts";
+import { helpCommand } from "../cli/HelpCommand.ts";
+import { listCommand } from "../cli/ListCommand.ts";
 import { Dispatcher } from "./contracts/Dispatcher.ts";
 import { DispatcherImpl } from "./DispatcherImpl.ts";
 import { ServiceProvider } from "./ServiceProvider.ts";
@@ -17,6 +20,6 @@ export class CoreServiceProvider extends ServiceProvider {
 	}
 
 	override get commands(): CommandDefinition[] {
-		return [ListCommand];
+		return [helpCommand, listCommand, completionsCommand, completeCommand];
 	}
 }

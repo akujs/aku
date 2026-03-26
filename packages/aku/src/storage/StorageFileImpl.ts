@@ -16,24 +16,24 @@ import type {
 } from "./contracts/Storage.ts";
 import { mimeTypeFromFileName } from "./file-names.ts";
 import type { StorageDiskImpl } from "./StorageDiskImpl.ts";
-import { InvalidPathError } from "./storage-errors.ts";
+import { StorageInvalidPathError } from "./storage-errors.ts";
 import {
-	FileCopiedEvent,
-	FileCopyingEvent,
-	FileDeletedEvent,
-	FileDeletingEvent,
-	FileExistenceCheckedEvent,
-	FileExistenceCheckingEvent,
-	FileInfoRetrievedEvent,
-	FileInfoRetrievingEvent,
-	FileMovedEvent,
-	FileMovingEvent,
-	FileReadEvent,
-	FileReadingEvent,
-	FileUrlGeneratedEvent,
-	FileUrlGeneratingEvent,
-	FileWritingEvent,
-	FileWrittenEvent,
+	StorageFileCopiedEvent,
+	StorageFileCopyingEvent,
+	StorageFileDeletedEvent,
+	StorageFileDeletingEvent,
+	StorageFileExistenceCheckedEvent,
+	StorageFileExistenceCheckingEvent,
+	StorageFileInfoRetrievedEvent,
+	StorageFileInfoRetrievingEvent,
+	StorageFileMovedEvent,
+	StorageFileMovingEvent,
+	StorageFileReadEvent,
+	StorageFileReadingEvent,
+	StorageFileUrlGeneratedEvent,
+	StorageFileUrlGeneratingEvent,
+	StorageFileWritingEvent,
+	StorageFileWrittenEvent,
 } from "./storage-events.ts";
 import { storageOperation } from "./storage-operation.ts";
 
@@ -52,7 +52,7 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 		dispatcher: Dispatcher,
 	) {
 		if (!path.startsWith("/")) {
-			throw new InvalidPathError(path, "must start with a slash");
+			throw new StorageInvalidPathError(path, "must start with a slash");
 		}
 		super();
 		this.disk = disk;
@@ -71,8 +71,8 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 		await storageOperation(
 			"file:delete",
 			() => this.#endpoint.deleteSingle(this.path),
-			() => new FileDeletingEvent(this.disk, this.path),
-			(start) => new FileDeletedEvent(start),
+			() => new StorageFileDeletingEvent(this.disk, this.path),
+			(start) => new StorageFileDeletedEvent(start),
 			this.#dispatcher,
 			{ onNotFound: undefined },
 		);
@@ -82,8 +82,8 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 		return await storageOperation(
 			"file:existence-check",
 			() => this.#endpoint.existsSingle(this.path),
-			() => new FileExistenceCheckingEvent(this.disk, this.path),
-			(start, exists) => new FileExistenceCheckedEvent(start, exists),
+			() => new StorageFileExistenceCheckingEvent(this.disk, this.path),
+			(start, exists) => new StorageFileExistenceCheckedEvent(start, exists),
 			this.#dispatcher,
 			{ onNotFound: false },
 		);
@@ -116,8 +116,8 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 					}),
 				};
 			},
-			() => new FileReadingEvent(this.disk, this.path),
-			(start, result) => new FileReadEvent(start, result.response),
+			() => new StorageFileReadingEvent(this.disk, this.path),
+			(start, result) => new StorageFileReadEvent(start, result.response),
 			this.#dispatcher,
 			{ onNotFound: "throw" },
 		);
@@ -158,8 +158,8 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 					originalMimeType: endpointInfo.mimeType,
 				};
 			},
-			() => new FileInfoRetrievingEvent(this.disk, this.path),
-			(start, result) => new FileInfoRetrievedEvent(start, result),
+			() => new StorageFileInfoRetrievingEvent(this.disk, this.path),
+			(start, result) => new StorageFileInfoRetrievedEvent(start, result),
 			this.#dispatcher,
 			{ onNotFound: null },
 		);
@@ -169,8 +169,8 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 		return await storageOperation(
 			"file:url-generate",
 			() => this.#endpoint.getPublicDownloadUrl(this.path, { downloadAs: options?.downloadAs }),
-			() => new FileUrlGeneratingEvent(this.disk, this.path, "url", options),
-			(start, url) => new FileUrlGeneratedEvent(start, url),
+			() => new StorageFileUrlGeneratingEvent(this.disk, this.path, "url", options),
+			(start, url) => new StorageFileUrlGeneratedEvent(start, url),
 			this.#dispatcher,
 			{ onNotFound: "throw" },
 		);
@@ -184,8 +184,8 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 					expires: durationStringToDate(options?.expires ?? "100y"),
 					downloadAs: options?.downloadAs,
 				}),
-			() => new FileUrlGeneratingEvent(this.disk, this.path, "signed", options),
-			(start, url) => new FileUrlGeneratedEvent(start, url),
+			() => new StorageFileUrlGeneratingEvent(this.disk, this.path, "signed", options),
+			(start, url) => new StorageFileUrlGeneratedEvent(start, url),
 			this.#dispatcher,
 			{ onNotFound: "throw" },
 		);
@@ -199,8 +199,8 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 					this.path,
 					durationStringToDate(options?.expires ?? "100y"),
 				),
-			() => new FileUrlGeneratingEvent(this.disk, this.path, "upload", options),
-			(start, url) => new FileUrlGeneratedEvent(start, url),
+			() => new StorageFileUrlGeneratingEvent(this.disk, this.path, "upload", options),
+			(start, url) => new StorageFileUrlGeneratedEvent(start, url),
 			this.#dispatcher,
 			{ onNotFound: "throw" },
 		);
@@ -236,8 +236,8 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 					data,
 					mimeType,
 				}),
-			() => new FileWritingEvent(this.disk, this.path, data, mimeType),
-			(start) => new FileWrittenEvent(start),
+			() => new StorageFileWritingEvent(this.disk, this.path, data, mimeType),
+			(start) => new StorageFileWrittenEvent(start),
 			this.#dispatcher,
 			{ onNotFound: "throw" },
 		);
@@ -248,8 +248,14 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 			await storageOperation(
 				"file:copy",
 				() => this.#endpoint.copy({ source: this.path, destination: destination.path }),
-				() => new FileCopyingEvent(this.disk, this.path, destination.disk.name, destination.path),
-				(start) => new FileCopiedEvent(start),
+				() =>
+					new StorageFileCopyingEvent(
+						this.disk,
+						this.path,
+						destination.disk.name,
+						destination.path,
+					),
+				(start) => new StorageFileCopiedEvent(start),
 				this.#dispatcher,
 				{ onNotFound: "throw" },
 			);
@@ -269,8 +275,9 @@ export class StorageFileImpl extends BaseClass implements StorageFile {
 			await storageOperation(
 				"file:move",
 				() => this.#endpoint.move({ source: this.path, destination: destination.path }),
-				() => new FileMovingEvent(this.disk, this.path, destination.disk.name, destination.path),
-				(start) => new FileMovedEvent(start),
+				() =>
+					new StorageFileMovingEvent(this.disk, this.path, destination.disk.name, destination.path),
+				(start) => new StorageFileMovedEvent(start),
 				this.#dispatcher,
 				{ onNotFound: "throw" },
 			);

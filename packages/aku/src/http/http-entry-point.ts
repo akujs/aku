@@ -25,7 +25,7 @@ export {
 	redirect,
 	resource,
 } from "./helpers.ts";
-export { RequestHandledEvent } from "./http-events.ts";
+export { HttpRequestHandledEvent } from "./http-events.ts";
 export {
 	BaseMiddleware,
 	type MiddlewareNext,

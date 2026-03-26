@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { asyncGate } from "../../../test-utils/async-gate.bun.ts";
-import { type MockDispatcher, mockDispatcher } from "../../../test-utils/internal-mocks.bun.ts";
+import { asyncGate } from "../../../test-utils/async-gate.test-utils.ts";
+import {
+	type MockDispatcher,
+	mockDispatcher,
+} from "../../../test-utils/internal-mocks.test-utils.ts";
 import { createTestDirectory } from "../../../testing/test-directories.ts";
 import type { DatabaseClient } from "../../DatabaseClient.ts";
 import { DatabaseClientImpl } from "../../DatabaseClientImpl.ts";
-import { TransactionRetryingEvent } from "../../database-events.ts";
+import { DatabaseTransactionRetryingEvent } from "../../database-events.ts";
 import { sql } from "../../sql.ts";
 import { SqliteDatabaseAdapter } from "./SqliteDatabaseAdapter.ts";
 
@@ -224,7 +227,7 @@ describe("SqliteDatabase", () => {
 
 		await Promise.all([tx1Promise, tx2Promise]);
 
-		const retryEvents = dispatcher.getEvents(TransactionRetryingEvent);
+		const retryEvents = dispatcher.getEvents(DatabaseTransactionRetryingEvent);
 		expect(retryEvents).toHaveLength(1);
 		expect(retryEvents[0].error?.toString()).toInclude("SQLITE_BUSY: The database file is locked");
 
@@ -262,7 +265,7 @@ describe("SqliteDatabase", () => {
 		await tx1Gate.hasBlocked();
 
 		// When TX2's COMMIT fails and retry is triggered, release TX1 and signal TX2 to wait
-		dispatcher.addListener(TransactionRetryingEvent, () => {
+		dispatcher.addListener(DatabaseTransactionRetryingEvent, () => {
 			tx1Gate.release();
 			shouldWaitForTx1 = true;
 		});
@@ -284,7 +287,7 @@ describe("SqliteDatabase", () => {
 
 		await Promise.all([tx1Promise, tx2Promise]);
 
-		const retryEvents = dispatcher.getEvents(TransactionRetryingEvent);
+		const retryEvents = dispatcher.getEvents(DatabaseTransactionRetryingEvent);
 		expect(retryEvents).toHaveLength(1);
 		expect(retryEvents[0].error?.toString()).toInclude("SQLITE_BUSY: The database file is locked");
 
@@ -326,7 +329,7 @@ describe("SqliteDatabase", () => {
 
 		await Promise.all([tx1Promise, tx2Promise]);
 
-		const retryEvents = dispatcher.getEvents(TransactionRetryingEvent);
+		const retryEvents = dispatcher.getEvents(DatabaseTransactionRetryingEvent);
 		expect(retryEvents).toHaveLength(1);
 		expect(retryEvents[0].error?.toString()).toInclude("SQLITE_BUSY: The database file is locked");
 	});

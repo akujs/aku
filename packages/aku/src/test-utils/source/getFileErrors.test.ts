@@ -18,12 +18,12 @@ describe(getFileErrors, () => {
 
 		expect(errors).toMatchInlineSnapshot(`
 		  [
-		    "GoodError in errors/errors-errors.ts should be exported twice in errors-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: entry/errors-entry-point.ts, errors-entry-point.ts",
 		    "FooError in errors/errors-errors.ts ends with "Error" but does not extend AkuError",
-		    "FooError in errors/errors-errors.ts should be exported twice in errors-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: entry/errors-entry-point.ts, errors-entry-point.ts",
-		    "NotInRootErrorsError in errors/errors-errors.ts should be exported twice in errors-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: entry/errors-entry-point.ts",
-		    "NotInLocalErrorsError in errors/errors-errors.ts should be exported twice in errors-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: errors-entry-point.ts",
+		    "FooError in errors/errors-errors.ts should start with "Errors" (the module name)",
+		    "ErrorsNotInRootError in errors/errors-errors.ts should be exported twice in errors-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: errors/errors-entry-point.ts",
+		    "ErrorsNotInLocalError in errors/errors-errors.ts should be exported twice in errors-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: errors-entry-point.ts",
 		    "BadErrorExtension in errors/errors-errors.ts extends AkuError but does not end with "Error"",
+		    "BadPrefixError in errors/errors-errors.ts should start with "Errors" (the module name)",
 		  ]
 		`);
 	});
@@ -34,10 +34,9 @@ describe(getFileErrors, () => {
 
 		expect(errors).toMatchInlineSnapshot(`
 		  [
-		    "GoodEvent in errors/errors-events.ts should be exported twice in events-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: entry/errors-entry-point.ts",
-		    "FooEvent in errors/errors-events.ts ends with "Event" but does not extend AkuEvent",
-		    "FooEvent in errors/errors-events.ts should be exported twice in events-entry-point.ts and errors/errors-entry-point.ts, but the files exporting it are: entry/errors-entry-point.ts",
+		    "ErrorsFooEvent in errors/errors-events.ts ends with "Event" but does not extend AkuEvent",
 		    "BadEventExtension in errors/errors-events.ts extends AkuEvent but does not end with "Event"",
+		    "BadPrefixEvent in errors/errors-events.ts should start with "Errors" (the module name)",
 		  ]
 		`);
 	});
@@ -217,7 +216,7 @@ describe("public API doc comments", () => {
 	});
 
 	test("passes for entry point file with re-exports", () => {
-		const file = project.getFile("entry/entry-entry-point.ts");
+		const file = project.getFile("public-api/public-api-entry-point.ts");
 		const errors = getFileErrors(file);
 
 		expect(errors).toMatchInlineSnapshot(`[]`);
@@ -233,6 +232,19 @@ describe("public API doc comments", () => {
 		    "nonPublicDocumentedFunction in public-api/non-public-with-doc.ts is not part of the public API but has a doc comment. NOTE TO AI AGENTS: the default solution is to remove the comment, unless we're explaining something really important that's not clear from the name, in which case use // line comments.",
 		    "NonPublicDocumentedType in public-api/non-public-with-doc.ts is not part of the public API but has a doc comment. NOTE TO AI AGENTS: the default solution is to remove the comment, unless we're explaining something really important that's not clear from the name, in which case use // line comments.",
 		    "NonPublicDocumentedInterface in public-api/non-public-with-doc.ts is not part of the public API but has a doc comment. NOTE TO AI AGENTS: the default solution is to remove the comment, unless we're explaining something really important that's not clear from the name, in which case use // line comments.",
+		  ]
+		`);
+	});
+
+	test("detects entry point re-exporting from outside its module", () => {
+		const file = project.getFile(
+			"errors/bad-cross-module-reexport/bad-cross-module-reexport-entry-point.ts",
+		);
+		const errors = getFileErrors(file);
+
+		expect(errors).toMatchInlineSnapshot(`
+		  [
+		    "Entry point errors/bad-cross-module-reexport/bad-cross-module-reexport-entry-point.ts re-exports from outside its module ("../../public-api/documented.ts"). Entry points should only re-export from within the errors/ module.",
 		  ]
 		`);
 	});

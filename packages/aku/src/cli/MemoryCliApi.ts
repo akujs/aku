@@ -1,4 +1,5 @@
 import { BaseClass } from "../utils.ts";
+import { CliExitError } from "./cli-errors.ts";
 import type {
 	CliApi,
 	CliConfirmOptions,
@@ -9,8 +10,10 @@ import type {
 	CliSelectOptions,
 	CliUlOptions,
 } from "./contracts/CliApi.ts";
+import type { CliErrorHandler } from "./contracts/CliErrorHandler.ts";
 
 export type CliOutput =
+	| { raw: string }
 	| { paragraph: string }
 	| { h1: string }
 	| { h2: string }
@@ -19,46 +22,160 @@ export type CliOutput =
 	| { ul: CliUlOptions }
 	| { ol: CliOlOptions };
 
-export class MemoryCliApi extends BaseClass implements CliApi {
-	output: CliOutput[] = [];
+export type PendingPrompt =
+	| {
+			type: "select";
+			options: CliSelectOptions<unknown>;
+			respond(r: CliPromptResponse<unknown>): void;
+	  }
+	| {
+			type: "input";
+			options: CliInputOptions<unknown>;
+			respond(r: CliPromptResponse<unknown>): void;
+	  }
+	| { type: "confirm"; options: CliConfirmOptions; respond(r: CliPromptResponse<unknown>): void };
+
+/**
+ * An error captured during CLI command execution.
+ */
+export type CapturedError = {
+	error: Error;
+	isExpected: boolean;
+};
+
+export class MemoryCliApi extends BaseClass implements CliApi, CliErrorHandler {
+	columns = 80;
+	isInteractive: boolean;
+	outputs: CliOutput[] = [];
+	errors: CapturedError[] = [];
+
+	constructor(options?: { isInteractive?: boolean | undefined }) {
+		super();
+		this.isInteractive = options?.isInteractive ?? false;
+	}
+
+	handleError(error: unknown, _cli: CliApi): number {
+		const normalised = error instanceof Error ? error : new Error(String(error), { cause: error });
+		this.errors.push({
+			error: normalised,
+			isExpected: normalised instanceof CliExitError,
+		});
+		return normalised instanceof CliExitError ? normalised.exitCode : 1;
+	}
+
+	get lastError(): CapturedError | null {
+		return this.errors[this.errors.length - 1] ?? null;
+	}
+
+	reset(): void {
+		this.outputs = [];
+		this.errors = [];
+	}
+
+	#pendingPrompt: PendingPrompt | null = null;
+	#promptNotifier: PromiseWithResolvers<void> | null = null;
+
+	raw(text: string): void {
+		this.outputs.push({ raw: text });
+	}
 
 	p(text: string): void {
-		this.output.push({ paragraph: text });
+		this.outputs.push({ paragraph: text });
 	}
 
 	br(): void {
-		this.output.push({ br: true });
+		this.outputs.push({ br: true });
 	}
 
 	h1(text: string): void {
-		this.output.push({ h1: text });
+		this.outputs.push({ h1: text });
 	}
 
 	h2(text: string): void {
-		this.output.push({ h2: text });
+		this.outputs.push({ h2: text });
 	}
 
 	dl(options: CliDlOptions): void {
-		this.output.push({ dl: options });
+		this.outputs.push({ dl: options });
 	}
 
 	ul(options: CliUlOptions): void {
-		this.output.push({ ul: options });
+		this.outputs.push({ ul: options });
 	}
 
 	ol(options: CliOlOptions): void {
-		this.output.push({ ol: options });
+		this.outputs.push({ ol: options });
 	}
 
-	select<V>(_options: CliSelectOptions<V>): Promise<CliPromptResponse<V>> {
-		throw new Error("Not implemented");
+	select<V>(options: CliSelectOptions<V>): Promise<CliPromptResponse<V>> {
+		return this.#postPrompt("select", options) as Promise<CliPromptResponse<V>>;
 	}
 
-	input<T = string>(_options: CliInputOptions<T>): Promise<CliPromptResponse<T>> {
-		throw new Error("Not implemented");
+	input<T = string>(options: CliInputOptions<T>): Promise<CliPromptResponse<T>> {
+		return this.#postPrompt("input", options as CliInputOptions<unknown>) as Promise<
+			CliPromptResponse<T>
+		>;
 	}
 
-	confirm(_options: CliConfirmOptions): Promise<CliPromptResponse<boolean>> {
-		throw new Error("Not implemented");
+	confirm(options: CliConfirmOptions): Promise<CliPromptResponse<boolean>> {
+		return this.#postPrompt("confirm", options) as Promise<CliPromptResponse<boolean>>;
+	}
+
+	/**
+	 * Wait for a prompt to be posted by a command calling select(), input(), or confirm().
+	 *
+	 * @param options.timeout Maximum time to wait in milliseconds (default 2000)
+	 */
+	async nextPrompt(options?: { timeout?: number | undefined }): Promise<PendingPrompt> {
+		if (this.#pendingPrompt) {
+			const prompt = this.#pendingPrompt;
+			this.#pendingPrompt = null;
+			return prompt;
+		}
+
+		const timeout = options?.timeout ?? 2000;
+		this.#promptNotifier = Promise.withResolvers<void>();
+
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		try {
+			await Promise.race([
+				this.#promptNotifier.promise,
+				new Promise<never>((_, reject) => {
+					timer = setTimeout(
+						() => reject(new Error(`Timed out after ${timeout}ms waiting for a prompt`)),
+						timeout,
+					);
+				}),
+			]);
+		} finally {
+			clearTimeout(timer);
+			this.#promptNotifier = null;
+		}
+
+		const prompt = this.#pendingPrompt!;
+		this.#pendingPrompt = null;
+		return prompt;
+	}
+
+	#postPrompt(
+		type: PendingPrompt["type"],
+		options: CliSelectOptions<unknown> | CliInputOptions<unknown> | CliConfirmOptions,
+	): Promise<CliPromptResponse<unknown>> {
+		if (!this.isInteractive) {
+			return Promise.resolve({ success: false });
+		}
+		const { promise, resolve } = Promise.withResolvers<CliPromptResponse<unknown>>();
+
+		this.#pendingPrompt = {
+			type,
+			options,
+			respond: resolve,
+		} as PendingPrompt;
+
+		if (this.#promptNotifier) {
+			this.#promptNotifier.resolve();
+		}
+
+		return promise;
 	}
 }

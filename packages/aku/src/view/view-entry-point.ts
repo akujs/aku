@@ -10,5 +10,5 @@ export { jsFrom } from "./js-from.ts";
 export { Fragment } from "./jsx.ts";
 export { raw } from "./raw.ts";
 export { createStack } from "./stack.ts";
-export { RenderingError } from "./view-errors.ts";
+export { ViewRenderingError } from "./view-errors.ts";
 export type { Context, CSSProperties, JSX, Props, PropsWithChildren } from "./view-types.ts";
