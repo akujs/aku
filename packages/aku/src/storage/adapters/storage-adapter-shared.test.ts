@@ -45,27 +45,37 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 					mockEndpointBuilder(),
 				);
 				disk = storage.disk();
-				const files = [
-					["/existing.txt", "content", "text/plain"],
-					["/dir/textFile", "textual-data", "text/plain"],
-					["/dir/htmlFile", "html-data", "text/html"],
-					["/dir/nested/file3.txt", "3", "text/plain"],
-					["/dir/nested/deep/file4.txt", "4", "text/plain"],
-				];
-				for (const [path, content, mimeType] of files) {
-					await disk.file(path).put({ data: content, mimeType });
-				}
+				await disk.file("existing.txt").put({ data: "content", mimeType: "text/plain" });
+				await disk
+					.directory("dir")
+					.file("textFile")
+					.put({ data: "textual-data", mimeType: "text/plain" });
+				await disk
+					.directory("dir")
+					.file("htmlFile")
+					.put({ data: "html-data", mimeType: "text/html" });
+				await disk
+					.directory("dir")
+					.directory("nested")
+					.file("file3.txt")
+					.put({ data: "3", mimeType: "text/plain" });
+				await disk
+					.directory("dir")
+					.directory("nested")
+					.directory("deep")
+					.file("file4.txt")
+					.put({ data: "4", mimeType: "text/plain" });
 			});
 
 			test("file.exists()", async () => {
-				expect(await disk.file("/existing.txt").exists()).toBe(true);
-				expect(await disk.file("/nonexistent.txt").exists()).toBe(false);
+				expect(await disk.file("existing.txt").exists()).toBe(true);
+				expect(await disk.file("nonexistent.txt").exists()).toBe(false);
 			});
 
 			test("file.get()", async () => {
 				// Insert the text file first. We expect it to come out in
 				// alphabetical order, i.e. second, rather than insertion order.
-				const textFetchResult = await disk.file("/dir/textFile").get();
+				const textFetchResult = await disk.directory("dir").file("textFile").get();
 				expect(await textFetchResult.response.text()).toBe("textual-data");
 				expect(textFetchResult.size).toBe(12);
 				// If adapter doesn't support MIME types, files without extensions get octet-stream
@@ -76,7 +86,7 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 				expect(textFetchResult.response.headers.get("Content-Length")).toBe("12");
 				expect(textFetchResult.response.headers.get("Content-Type")).toBe(expectedTextMime);
 
-				const htmlFetchResult = await disk.file("/dir/htmlFile").get();
+				const htmlFetchResult = await disk.directory("dir").file("htmlFile").get();
 				expect(await htmlFetchResult.response.text()).toBe("html-data");
 				expect(htmlFetchResult.size).toBe(9);
 				const expectedHtmlMime = endpoint.supportsMimeTypes
@@ -87,7 +97,7 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 				expect(htmlFetchResult.response.headers.get("Content-Type")).toBe(expectedHtmlMime);
 
 				await expectError(
-					() => disk.file("/nonexistent.txt").get(),
+					() => disk.file("nonexistent.txt").get(),
 					StorageNotFoundError,
 					(error) => {
 						expect(error.path).toEndWith("/nonexistent.txt");
@@ -97,7 +107,7 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 
 			test("file.info()", async () => {
 				// Existing files
-				const info = await disk.file("/existing.txt").info();
+				const info = await disk.file("existing.txt").info();
 				expect(info).toEqual({
 					size: 7,
 					mimeType: "text/plain",
@@ -108,7 +118,7 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 
 				expect(info?.etag.length).toBeGreaterThan(10);
 
-				const htmlInfo = await disk.file("/dir/htmlFile").info();
+				const htmlInfo = await disk.directory("dir").file("htmlFile").info();
 				const expectedHtmlMime = endpoint.supportsMimeTypes
 					? "text/html"
 					: "application/octet-stream";
@@ -123,49 +133,49 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 				expect(info?.etag).not.toEqual(htmlInfo?.etag);
 
 				// Null on non-existent files
-				expect(await disk.file("/nonexistent.txt").info()).toBe(null);
+				expect(await disk.file("nonexistent.txt").info()).toBe(null);
 			});
 
 			test("file.url()", async () => {
-				const existingUrl = await disk.file("/existing.txt").url();
+				const existingUrl = await disk.file("existing.txt").url();
 				expect(existingUrl).toMatch(/^[a-z]+(-[a-z]+)*:/);
 
 				// Non-existent files must work
-				const nonExistingUrl = await disk.file("/nonexistent.txt").url();
+				const nonExistingUrl = await disk.file("nonexistent.txt").url();
 				expect(nonExistingUrl).toMatch(URL_REGEX);
 			});
 
 			test("file.signedUrl()", async () => {
-				const existingUrl = await storage.disk().file("/existing.txt").signedUrl({ expires: "1h" });
+				const existingUrl = await storage.disk().file("existing.txt").signedUrl({ expires: "1h" });
 				expect(existingUrl).toMatch(URL_REGEX);
 
 				// Non-existent files must work
 				const nonExistingUrl = await storage
 					.disk()
-					.file("/nonexistent.txt")
+					.file("nonexistent.txt")
 					.signedUrl({ expires: "1h" });
 				expect(nonExistingUrl).toMatch(URL_REGEX);
 			});
 
 			test("file.uploadUrl()", async () => {
-				const existingUrl = await storage.disk().file("/existing.txt").uploadUrl({ expires: "1h" });
+				const existingUrl = await storage.disk().file("existing.txt").uploadUrl({ expires: "1h" });
 				expect(existingUrl).toMatch(URL_REGEX);
 
 				// Non-existent files must work
 				const nonExistingUrl = await storage
 					.disk()
-					.file("/nonexistent.txt")
+					.file("nonexistent.txt")
 					.uploadUrl({ expires: "1h" });
 				expect(nonExistingUrl).toMatch(URL_REGEX);
 			});
 
 			test("directory.exists()", async () => {
-				expect(await disk.directory("/dir/").exists()).toBe(true);
-				expect(await disk.directory("/empty/").exists()).toBe(false);
+				expect(await disk.directory("dir").exists()).toBe(true);
+				expect(await disk.directory("empty").exists()).toBe(false);
 			});
 
 			test("directory.list()", async () => {
-				const entries = await disk.directory("/dir/").list();
+				const entries = await disk.directory("dir").list();
 				expect(entries.map((e) => e.path)).toEqual([
 					"/dir/htmlFile",
 					"/dir/nested/",
@@ -173,27 +183,27 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 				]);
 
 				// Shouldn't throw
-				await disk.directory("/non-existent/").list();
+				await disk.directory("non-existent").list();
 			});
 
 			test("directory.listFiles() - immediate only", async () => {
-				const files = await disk.directory("/dir/").listFiles();
+				const files = await disk.directory("dir").listFiles();
 				expect(files.map((f) => f.path)).toEqual(["/dir/htmlFile", "/dir/textFile"]);
 
 				// Shouldn't throw
-				await disk.directory("/non-existent/").listFiles();
+				await disk.directory("non-existent").listFiles();
 			});
 
 			test("directory.listFiles({ recursive: false })", async () => {
-				const files = await disk.directory("/dir/").listFiles({ recursive: false });
+				const files = await disk.directory("dir").listFiles({ recursive: false });
 				expect(files.map((f) => f.path)).toEqual(["/dir/htmlFile", "/dir/textFile"]);
 
 				// Shouldn't throw
-				await disk.directory("/non-existent/").listFiles({ recursive: false });
+				await disk.directory("non-existent").listFiles({ recursive: false });
 			});
 
 			test("directory.listFiles({ recursive: true })", async () => {
-				const files = await disk.directory("/dir/").listFiles({ recursive: true });
+				const files = await disk.directory("dir").listFiles({ recursive: true });
 				expect(files.map((f) => f.path)).toEqual([
 					"/dir/htmlFile",
 					"/dir/nested/deep/file4.txt",
@@ -202,15 +212,15 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 				]);
 
 				// Shouldn't throw
-				await disk.directory("/non-existent/").listFiles({ recursive: true });
+				await disk.directory("non-existent").listFiles({ recursive: true });
 			});
 
 			test("directory.listDirectories()", async () => {
-				const dirs = await disk.directory("/dir/").listDirectories();
+				const dirs = await disk.directory("dir").listDirectories();
 				expect(dirs.map((d) => d.path)).toEqual(["/dir/nested/"]);
 
 				// Shouldn't throw
-				await disk.directory("/non-existent/").listDirectories();
+				await disk.directory("non-existent").listDirectories();
 			});
 
 			test("endpoint.listEntries() returns relative paths for /dir/", async () => {
@@ -278,7 +288,7 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 
 			describe("file.put() and file.delete()", async () => {
 				test("with text data", async () => {
-					const file = disk.file("/test.txt");
+					const file = disk.file("test.txt");
 
 					await file.put({ data: "content1", mimeType: "text/plain" });
 					expect(await file.exists()).toBe(true);
@@ -293,12 +303,12 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 					// Deleting non-existent file is OK
 					await file.delete();
 					// Deleting file that never existed is OK
-					await disk.file("/never-existed").delete();
+					await disk.file("never-existed").delete();
 				});
 
 				test("with binary data", async () => {
 					const data = new Uint8Array([1, 2, 3]);
-					const file = disk.file("/test.bin");
+					const file = disk.file("test.bin");
 					await file.put({ data, mimeType: "application/octet-stream" });
 					expect(await file.exists()).toBe(true);
 
@@ -311,16 +321,16 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 
 			describe("file.copyTo()", () => {
 				test("same disk", async () => {
-					const source = disk.file("/source.txt");
+					const source = disk.file("source.txt");
 					await source.put({ data: "content", mimeType: "text/plain" });
-					const dest = disk.file("/dest.txt");
+					const dest = disk.file("dest.txt");
 					await source.copyTo(dest);
 					expect(await source.exists()).toBe(true);
 					expect(await dest.exists()).toBe(true);
 
-					const missing = disk.file("/nonexistent.txt");
+					const missing = disk.file("nonexistent.txt");
 					await expectError(
-						() => missing.copyTo(disk.file("/dest2.txt")),
+						() => missing.copyTo(disk.file("dest2.txt")),
 						StorageNotFoundError,
 						(error) => {
 							expect(error.path).toEndWith("/nonexistent.txt");
@@ -329,17 +339,17 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 				});
 
 				test("cross-disk, same adapter", async () => {
-					const source = disk.file("/source.txt");
+					const source = disk.file("source.txt");
 					await source.put({ data: "content", mimeType: "text/plain" });
 					const disk2 = storage.build(await createEndpoint());
 
-					const dest = disk2.file("/dest.txt");
+					const dest = disk2.file("dest.txt");
 					await source.copyTo(dest);
 					expect(await dest.exists()).toBe(true);
 
-					const missing = disk.file("/nonexistent.txt");
+					const missing = disk.file("nonexistent.txt");
 					await expectError(
-						() => missing.copyTo(disk2.file("/dest2.txt")),
+						() => missing.copyTo(disk2.file("dest2.txt")),
 						StorageNotFoundError,
 						(error) => {
 							expect(error.path).toEndWith("/nonexistent.txt");
@@ -351,17 +361,17 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 					const memoryDisk = storage.build(new MemoryEndpoint({}));
 
 					// From memory adapter
-					const memorySource = memoryDisk.file("/source.txt");
+					const memorySource = memoryDisk.file("source.txt");
 					await memorySource.put({ data: "content", mimeType: "text/plain" });
-					const dest1 = disk.file("/dest.txt");
+					const dest1 = disk.file("dest.txt");
 					await memorySource.copyTo(dest1);
 					expect(await memorySource.exists()).toBe(true);
 					expect(await dest1.exists()).toBe(true);
 
 					// To memory adapter
-					const source = disk.file("/source.txt");
+					const source = disk.file("source.txt");
 					await source.put({ data: "content", mimeType: "text/plain" });
-					const memoryDest = memoryDisk.file("/dest2.txt");
+					const memoryDest = memoryDisk.file("dest2.txt");
 					await source.copyTo(memoryDest);
 					expect(await source.exists()).toBe(true);
 					expect(await memoryDest.exists()).toBe(true);
@@ -370,16 +380,16 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 
 			describe("file.moveTo()", () => {
 				test("same disk", async () => {
-					const source = disk.file("/source.txt");
+					const source = disk.file("source.txt");
 					await source.put({ data: "content", mimeType: "text/plain" });
-					const dest = disk.file("/dest.txt");
+					const dest = disk.file("dest.txt");
 					await source.moveTo(dest);
 					expect(await dest.exists()).toBe(true);
 					expect(await source.exists()).toBe(false);
 
-					const missing = disk.file("/nonexistent.txt");
+					const missing = disk.file("nonexistent.txt");
 					await expectError(
-						() => missing.moveTo(disk.file("/dest2.txt")),
+						() => missing.moveTo(disk.file("dest2.txt")),
 						StorageNotFoundError,
 						(error) => {
 							expect(error.path).toEndWith("/nonexistent.txt");
@@ -388,18 +398,18 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 				});
 
 				test("cross-disk, same adapter", async () => {
-					const source = disk.file("/source.txt");
+					const source = disk.file("source.txt");
 					await source.put({ data: "content", mimeType: "text/plain" });
 					const disk2 = storage.build(await createEndpoint());
 
-					const dest = disk2.file("/dest.txt");
+					const dest = disk2.file("dest.txt");
 					await source.moveTo(dest);
 					expect(await dest.exists()).toBe(true);
 					expect(await source.exists()).toBe(false);
 
-					const missing = disk.file("/nonexistent.txt");
+					const missing = disk.file("nonexistent.txt");
 					await expectError(
-						() => missing.moveTo(disk2.file("/dest2.txt")),
+						() => missing.moveTo(disk2.file("dest2.txt")),
 						StorageNotFoundError,
 						(error) => {
 							expect(error.path).toEndWith("/nonexistent.txt");
@@ -411,17 +421,17 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 					const memoryDisk = storage.build(new MemoryEndpoint({}));
 
 					// From memory adapter
-					const memorySource = memoryDisk.file("/source.txt");
+					const memorySource = memoryDisk.file("source.txt");
 					await memorySource.put({ data: "content", mimeType: "text/plain" });
-					const dest1 = disk.file("/dest.txt");
+					const dest1 = disk.file("dest.txt");
 					await memorySource.moveTo(dest1);
 					expect(await dest1.exists()).toBe(true);
 					expect(await memorySource.exists()).toBe(false);
 
 					// To memory adapter
-					const source = disk.file("/source.txt");
+					const source = disk.file("source.txt");
 					await source.put({ data: "content", mimeType: "text/plain" });
-					const memoryDest = memoryDisk.file("/dest2.txt");
+					const memoryDest = memoryDisk.file("dest2.txt");
 					await source.moveTo(memoryDest);
 					expect(await memoryDest.exists()).toBe(true);
 					expect(await source.exists()).toBe(false);
@@ -429,13 +439,16 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 			});
 
 			test("directory.deleteAll()", async () => {
-				const dir = disk.directory("/subdir/");
+				const dir = disk.directory("subdir");
 
 				await dir.file("file1.txt").put({ data: "1", mimeType: "text/plain" });
 				await dir.file("file2.txt").put({ data: "2", mimeType: "text/plain" });
-				await dir.directory("nested/").file("file3.txt").put({ data: "3", mimeType: "text/plain" });
-				await disk.file("/rootfile.txt").put({ data: "X", mimeType: "text/plain" });
-				await disk.file("/otherdir/sibling.txt").put({ data: "X", mimeType: "text/plain" });
+				await dir.directory("nested").file("file3.txt").put({ data: "3", mimeType: "text/plain" });
+				await disk.file("rootfile.txt").put({ data: "X", mimeType: "text/plain" });
+				await disk
+					.directory("otherdir")
+					.file("sibling.txt")
+					.put({ data: "X", mimeType: "text/plain" });
 
 				expect(await dir.exists()).toBe(true);
 				await dir.deleteAll();
@@ -450,27 +463,7 @@ describe.each(adapterConfigs)("$name", ({ createEndpoint, requiresDocker = false
 				// Can delete already deleted directory
 				await dir.deleteAll();
 				// Can delete directory that never existed
-				await disk.directory("/non-existent/").deleteAll();
-			});
-
-			test("directory.putFile()", async () => {
-				const dir = disk.directory("/uploads/");
-
-				const file = await dir.putFile({
-					data: "content",
-					mimeType: "text/plain",
-					suggestedName: "test.txt",
-				});
-
-				expect(await file.exists()).toBe(true);
-				expect(file.path).toBe("/uploads/test.txt");
-
-				// can overwrite
-				await dir.putFile({
-					data: "content",
-					mimeType: "text/plain",
-					suggestedName: "test.txt",
-				});
+				await disk.directory("non-existent").deleteAll();
 			});
 		});
 	});

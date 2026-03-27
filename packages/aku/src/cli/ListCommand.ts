@@ -20,7 +20,7 @@ const listArgs = {
 	},
 	format: {
 		type: "string",
-		description: "Output format (json or toon)",
+		description: "Output format (json)",
 	},
 	pretty: {
 		type: "boolean",

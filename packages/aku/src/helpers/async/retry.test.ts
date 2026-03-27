@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { mock, resetAllMocks } from "../../testing/mocks.js";
-import { type RetryOptions, withRetry } from "./retry.js";
+import { type WithRetryOptions, withRetry } from "./retry.js";
 import { sleep } from "./sleep.js";
 
 afterEach(() => {
@@ -122,7 +122,7 @@ interface TestRetryResult {
 }
 
 async function testRetry(
-	options: RetryOptions,
+	options: WithRetryOptions,
 	attemptsUntilSuccess = Infinity,
 	returnValue = "success",
 ): Promise<TestRetryResult> {

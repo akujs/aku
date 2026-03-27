@@ -1,10 +1,6 @@
-import { afterEach, describe, expect, expectTypeOf, test } from "bun:test";
-import { Cookies, Headers } from "../facades-entry-point.ts";
-import type { ControllerContext } from "../http/Controller.ts";
-import { BaseController } from "../http/Controller.ts";
-import { get, group } from "../http/helpers.ts";
-import type { Routes } from "../http/router-types.ts";
-import { MockController, mockMiddleware } from "../test-utils/http.test-utils.ts";
+import { afterEach, describe, expect, test } from "bun:test";
+import { RequestLocals } from "../http/contracts/RequestLocals.ts";
+import { HttpRequestHandledEvent } from "../http/http-events.ts";
 import { mockIntegrationContext } from "../testing/mock-integration-context.ts";
 import { ApplicationImpl } from "./ApplicationImpl.ts";
 import type { Application, ServiceProviderReference } from "./contracts/Application.ts";
@@ -12,13 +8,14 @@ import { Dispatcher } from "./contracts/Dispatcher.ts";
 import { createApplication } from "./createApplication.ts";
 import { DispatcherImpl } from "./DispatcherImpl.ts";
 import { setFacadeApplication } from "./facade.ts";
+import { createKey } from "./Key.ts";
 import { ServiceProvider } from "./ServiceProvider.ts";
 
 afterEach(() => {
 	setFacadeApplication(null);
 });
 
-describe("ApplicationImpl", () => {
+describe(ApplicationImpl, () => {
 	test("events getter uses container resolution", () => {
 		const app = new ApplicationImpl();
 		app.bootstrap();
@@ -38,342 +35,109 @@ describe("ApplicationImpl", () => {
 		expect(events1).toBeInstanceOf(DispatcherImpl);
 	});
 
-	test("url() generates URLs for named routes", () => {
-		const routes = group({}, [
-			get("/users/{id}", MockController, { name: "users.show" }),
-			get("/posts/{postId}/comments/{commentId}", MockController, {
-				name: "posts.comments.show",
-			}),
-		]);
+	test("handleRequest calls configured handler and returns its response", async () => {
+		const app = createApplication({
+			handler: () => new Response("hello from handler"),
+		});
 
-		const app = new ApplicationImpl({ routes });
-		app.bootstrap();
-
-		expect(app.url("users.show", { params: { id: 123 } })).toBe("/users/123");
-		expect(app.url("posts.comments.show", { params: { postId: 42, commentId: 7 } })).toBe(
-			"/posts/42/comments/7",
-		);
-	});
-
-	test("url() is type-safe with route parameters", () => {
-		const routes = group({}, [
-			get("/users/{id}", MockController, { name: "users.show" }),
-			get("/posts", MockController, { name: "posts.index" }),
-		]);
-
-		const app = new ApplicationImpl({ routes });
-		app.bootstrap();
-
-		// These should compile (correct usage)
-		expect(app.url("users.show", { params: { id: 123 } })).toBe("/users/123");
-		expect(app.url("posts.index")).toBe("/posts");
-
-		// Type checking tests - these should cause TypeScript errors
-		// but are guarded to not run at runtime
-		if (false as boolean) {
-			// @ts-expect-error - Missing required parameter
-			app.url("users.show");
-
-			// @ts-expect-error - Invalid route name
-			app.url("nonexistent.route");
-
-			// @ts-expect-error - Wrong parameter name
-			app.url("users.show", { params: { userId: 123 } });
-		}
-	});
-
-	test("url() with query params", () => {
-		const routes = get("/search", MockController, { name: "search" });
-		const app = new ApplicationImpl({ routes });
-		app.bootstrap();
-
-		// Basic query params
-		expect(app.url("search", { query: { q: "test" } })).toBe("/search?q=test");
-
-		// Multiple query value types: string, number, array
-		expect(app.url("search", { query: { q: "test", page: 1, tags: ["a", "b"] } })).toBe(
-			"/search?q=test&page=1&tags=a&tags=b",
+		const response = await app.handleRequest(
+			new Request("http://example.com/test"),
+			mockIntegrationContext(),
 		);
 
-		// null and undefined are omitted
-		expect(app.url("search", { query: { q: "test", filter: null, sort: undefined } })).toBe(
-			"/search?q=test",
+		expect(response.status).toBe(200);
+		expect(await response.text()).toBe("hello from handler");
+	});
+
+	test("handleRequest passes request to handler", async () => {
+		const app = createApplication({
+			handler: (request) => new Response(`method: ${request.method}, url: ${request.url}`),
+		});
+
+		const response = await app.handleRequest(
+			new Request("http://example.com/path", { method: "POST" }),
+			mockIntegrationContext(),
 		);
 
-		// URLSearchParams
-		const params = new URLSearchParams();
-		params.append("q", "test");
-		params.append("page", "2");
-		expect(app.url("search", { query: params })).toBe("/search?q=test&page=2");
-
-		// All param variations work for no-param routes
-		expect(app.url("search", { query: { q: "test" } })).toBe("/search?q=test");
-		expect(app.url("search", { params: undefined, query: { q: "test" } })).toBe("/search?q=test");
-		expect(app.url("search", { params: {}, query: { q: "test" } })).toBe("/search?q=test");
+		expect(await response.text()).toBe("method: POST, url: http://example.com/path");
 	});
 
-	test("url() with query params and route params", () => {
-		const routes = get("/users/{id}", MockController, { name: "users.show" });
-		const app = new ApplicationImpl({ routes });
-		app.bootstrap();
+	test("RequestLocals accessible within handler", async () => {
+		const testKey = createKey<string>({ displayName: "testKey" });
 
-		expect(app.url("users.show", { params: { id: 123 }, query: { tab: "profile" } })).toBe(
-			"/users/123?tab=profile",
+		const app = createApplication({
+			handler: () => {
+				const locals = app.container.get(RequestLocals);
+				locals.set(testKey, "stored-value");
+				return new Response(locals.get(testKey));
+			},
+		});
+
+		const response = await app.handleRequest(
+			new Request("http://example.com/test"),
+			mockIntegrationContext(),
 		);
 
-		// @ts-expect-error
-		app.url("users.show", { params: { incorrect: 123 }, query: { tab: "profile" } });
+		expect(await response.text()).toBe("stored-value");
 	});
 
-	test("handles HTTP request", async () => {
-		class TestController extends BaseController {
-			handle() {
-				const testCookie = Cookies.get("c");
-				const testHeader = Headers.get("h");
-				return new Response(`Cookie: ${testCookie}, Header: ${testHeader}`);
-			}
-		}
-		const routes = get("/hello", TestController);
+	test("HttpRequestHandledEvent fires after handler returns", async () => {
+		let firedEvent: HttpRequestHandledEvent | undefined;
 
-		const app = createApplication({ routes });
-
-		const request = new Request("http://example.com/hello");
-		const context = mockIntegrationContext({
-			cookies: { c: "cookie" },
-			headers: { h: "header" },
+		const app = createApplication({
+			handler: () => new Response("event-test", { status: 201 }),
 		});
 
-		const response = await app.handleRequest(request, context);
-		expect(await response.text()).toBe("Cookie: cookie, Header: header");
+		app.events.addListener(HttpRequestHandledEvent, (event) => {
+			firedEvent = event;
+		});
+
+		const request = new Request("http://example.com/test");
+		await app.handleRequest(request, mockIntegrationContext());
+
+		expect(firedEvent).toBeInstanceOf(HttpRequestHandledEvent);
+		expect(firedEvent!.request).toBe(request);
+		expect(firedEvent!.status).toBe(201);
 	});
 
-	describe("middleware priority configuration", () => {
-		test("reorders middleware based on priority", async () => {
-			const M1 = mockMiddleware("M1");
-			const M2 = mockMiddleware("M2");
+	test("returns 404 when no handler is configured", async () => {
+		const app = createApplication({});
 
-			const app = new ApplicationImpl({
-				middlewarePriority: [M2, M1],
-				routes: get("/test", MockController, { middleware: [M1, M2] }),
-			});
+		const response = await app.handleRequest(
+			new Request("http://example.com/test"),
+			mockIntegrationContext(),
+		);
 
-			app.bootstrap();
-			mockMiddleware.reset();
-
-			await app.handleRequest(new Request("http://example.com/test"), mockIntegrationContext());
-
-			expect(mockMiddleware.log).toEqual(["M2", "M1"]);
-		});
+		expect(response.status).toBe(404);
+		expect(await response.text()).toBe("Not Found");
 	});
 
-	describe("router configuration", () => {
-		// These tests are here to ensure that the router configuration is passed
-		// through to the router instance. They are not intended to test the
-		// functionality of the router itself.
-		class ControllerInvalidParam extends BaseController {
-			handle(ctx: ControllerContext) {
-				return new Response(`ctx.params.nonExistent: ${ctx.params.nonExistent}`);
-			}
-		}
-
-		test("config flows from app to router - invalid param access throws by default", async () => {
-			const app = new ApplicationImpl({
-				devMode: { autoRefresh: false },
-				routes: get("/user/{id}", ControllerInvalidParam),
-			});
-
-			app.bootstrap();
-			expect(async () => {
-				await app.handleRequest(
-					new Request("http://example.com/user/123"),
-					mockIntegrationContext(),
-				);
-			}).toThrow('Route parameter "nonExistent" does not exist');
+	test("handler errors propagate to caller", async () => {
+		const app = createApplication({
+			handler: () => {
+				throw new Error("handler boom");
+			},
 		});
 
-		test("config flows from app to router - invalid param access can be disabled", async () => {
-			const app = new ApplicationImpl({
-				development: false,
-				throwOnInvalidParamAccess: "never",
-				routes: get("/user/{id}", ControllerInvalidParam),
-			});
-
-			app.bootstrap();
-			const response = await app.handleRequest(
-				new Request("http://example.com/user/123"),
-				mockIntegrationContext(),
-			);
-
-			expect(response.status).toBe(200);
-			expect(await response.text()).toBe("ctx.params.nonExistent: undefined");
-		});
+		expect(
+			app.handleRequest(new Request("http://example.com/test"), mockIntegrationContext()),
+		).rejects.toThrow("handler boom");
 	});
 
-	describe("URL type inference", () => {
-		test("type inference: route without parameters", () => {
-			const routes = group({ namePrefix: "users." }, [
-				get("/users", MockController, { name: "index" }),
-			]);
-
-			// Should infer never for no params
-			expectTypeOf(routes).toEqualTypeOf<Routes<{ "users.index": never }>>();
-
-			// This should compile
-			const app = new ApplicationImpl({ routes });
-			app.bootstrap();
-			app.url("users.index");
+	test("async handler works", async () => {
+		const app = createApplication({
+			handler: async () => {
+				await Promise.resolve();
+				return new Response("async hello");
+			},
 		});
 
-		test("type inference: route with single parameter", () => {
-			const routes = group({ namePrefix: "users." }, [
-				get("/users/{id}", MockController, { name: "show" }),
-			]);
+		const response = await app.handleRequest(
+			new Request("http://example.com/test"),
+			mockIntegrationContext(),
+		);
 
-			// Should infer "id" param name
-			expectTypeOf(routes).toEqualTypeOf<Routes<{ "users.show": "id" }>>();
-
-			// These should compile
-			const app = new ApplicationImpl({ routes });
-			app.bootstrap();
-			app.url("users.show", { params: { id: "123" } });
-			app.url("users.show", { params: { id: 456 } });
-		});
-
-		test("type inference: route with multiple parameters", () => {
-			const routes = group({ namePrefix: "posts." }, [
-				get("/posts/{postId}/comments/{commentId}", MockController, {
-					name: "comments",
-				}),
-			]);
-
-			// Should infer both param names as union
-			expectTypeOf(routes).toEqualTypeOf<Routes<{ "posts.comments": "postId" | "commentId" }>>();
-
-			// This should compile
-			const app = new ApplicationImpl({ routes });
-			app.bootstrap();
-			app.url("posts.comments", { params: { postId: "1", commentId: "2" } });
-		});
-
-		test("type inference: multiple routes with different params", () => {
-			const routes = group({ namePrefix: "users." }, [
-				get("/users", MockController, { name: "index" }),
-				get("/users/{id}", MockController, { name: "show" }),
-				get("/users/{id}/posts/{postId}", MockController, { name: "posts" }),
-			]);
-
-			// Should infer all route names and their param unions
-			expectTypeOf(routes).toEqualTypeOf<
-				Routes<{
-					"users.index": never;
-					"users.show": "id";
-					"users.posts": "id" | "postId";
-				}>
-			>();
-
-			// All these should compile
-			const app = new ApplicationImpl({ routes });
-			app.bootstrap();
-			app.url("users.index");
-			app.url("users.show", { params: { id: "123" } });
-			app.url("users.posts", { params: { id: "1", postId: "2" } });
-		});
-
-		test("type inference: nested groups propagate name prefix", () => {
-			const userRoutes = group({ prefix: "/users", namePrefix: "users." }, [
-				get("/", MockController, { name: "index" }),
-				get("/{id}", MockController, { name: "show" }),
-			]);
-
-			const apiRoutes = group({ prefix: "/api", namePrefix: "api." }, [userRoutes]);
-
-			// Should infer prefixed names and params
-			expectTypeOf(apiRoutes).toEqualTypeOf<
-				Routes<{
-					"api.users.index": never;
-					"api.users.show": "id";
-				}>
-			>();
-
-			// These should compile
-			const app = new ApplicationImpl({ routes: apiRoutes });
-			app.bootstrap();
-			app.url("api.users.index");
-			app.url("api.users.show", { params: { id: "789" } });
-		});
-
-		test("type inference: mixed groups and routes", () => {
-			const postRoutes = group({ namePrefix: "posts." }, [
-				get("/posts", MockController, { name: "index" }),
-				get("/posts/{id}", MockController, { name: "show" }),
-			]);
-
-			const routes = group({ namePrefix: "admin." }, [
-				get("/dashboard", MockController, { name: "dashboard" }),
-				postRoutes,
-			]);
-
-			// Should merge both direct routes and nested group routes
-			expectTypeOf(routes).toEqualTypeOf<
-				Routes<{
-					"admin.dashboard": never;
-					"admin.posts.index": never;
-					"admin.posts.show": "id";
-				}>
-			>();
-
-			// All these should compile
-			const app = new ApplicationImpl({ routes });
-			app.bootstrap();
-			app.url("admin.dashboard");
-			app.url("admin.posts.index");
-			app.url("admin.posts.show", { params: { id: "123" } });
-		});
-	});
-
-	describe("URL generation integration", () => {
-		test("appUrl config flows through to URL generation", async () => {
-			class UrlController extends BaseController {
-				handle(): Response {
-					return new Response(app.url("test"));
-				}
-			}
-
-			const routes = get("/test", UrlController, { name: "test" });
-			const app = createApplication({
-				appUrl: {
-					overrideHost: "config.example.com:9000",
-					overrideProtocol: "https",
-				},
-				routes,
-			});
-
-			const request = new Request("http://localhost/test");
-			const response = await app.handleRequest(request, mockIntegrationContext());
-			expect(await response.text()).toBe("https://config.example.com:9000/test");
-		});
-
-		test("IntegrationContext headers flow through to URL generation", async () => {
-			class UrlController extends BaseController {
-				handle(): Response {
-					return new Response(app.url("test"));
-				}
-			}
-
-			const routes = get("/test", UrlController, { name: "test" });
-			const app = createApplication({ routes });
-
-			const request = new Request("http://localhost/test");
-			const context = mockIntegrationContext({
-				headers: {
-					"x-forwarded-proto": "https",
-					"x-forwarded-host": "proxy.example.com:8443",
-				},
-			});
-
-			const response = await app.handleRequest(request, context);
-			expect(await response.text()).toBe("https://proxy.example.com:8443/test");
-		});
+		expect(await response.text()).toBe("async hello");
 	});
 
 	describe("service providers", () => {

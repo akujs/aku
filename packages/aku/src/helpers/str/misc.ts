@@ -4,13 +4,13 @@ export type Replacer = (input: string) => string;
  * Format a number as an ordinal string (1st, 2nd, 3rd, etc.).
  *
  * @example
- * ordinal(1);   // "1st"
- * ordinal(2);   // "2nd"
- * ordinal(3);   // "3rd"
- * ordinal(11);  // "11th"
- * ordinal(21);  // "21st"
+ * formatOrdinal(1);   // "1st"
+ * formatOrdinal(2);   // "2nd"
+ * formatOrdinal(3);   // "3rd"
+ * formatOrdinal(11);  // "11th"
+ * formatOrdinal(21);  // "21st"
  */
-export function ordinal(n: number): string {
+export function formatOrdinal(n: number): string {
 	const abs = Math.abs(n);
 	const lastTwo = abs % 100;
 
@@ -38,10 +38,10 @@ export function ordinal(n: number): string {
  * Compiles the keys into a regular expression, which for large dictionaries is more efficient than using multiple replace calls.
  *
  * @example
- * const replace = compileMultiReplace({ a: "1", b: "2" });
+ * const replace = stringCompileMultiReplace({ a: "1", b: "2" });
  * console.log(replace("a + b")); // Output: "1 + 2"
  */
-export const compileMultiReplace = (replacements: Record<string, string>): Replacer => {
+export const stringCompileMultiReplace = (replacements: Record<string, string>): Replacer => {
 	const keys = Object.keys(replacements);
 	// Sort by length descending to match longer keys first
 	keys.sort((a, b) => b.length - a.length);
@@ -54,11 +54,11 @@ export const compileMultiReplace = (replacements: Record<string, string>): Repla
  * Replaces keys with their corresponding values in a string.
  *
  * If you'll be doing a replacement with the same dictionary multiple times it
- * is more efficient to use {@link compileMultiReplace}
+ * is more efficient to use {@link stringCompileMultiReplace}
  *
  * @example
- * multiReplace("a + b", { a: "1", b: "2" });  // Output: "1 + 2"
+ * stringMultiReplace("a + b", { a: "1", b: "2" });  // Output: "1 + 2"
  */
-export const multiReplace = (input: string, replacements: Record<string, string>): string => {
-	return compileMultiReplace(replacements)(input);
+export const stringMultiReplace = (input: string, replacements: Record<string, string>): string => {
+	return stringCompileMultiReplace(replacements)(input);
 };

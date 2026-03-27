@@ -16,11 +16,6 @@ export interface IntegrationContext {
 	readonly context: string;
 
 	/**
-	 * The request URL, used for URL generation fallback
-	 */
-	readonly requestUrl?: URL | null | undefined;
-
-	/**
 	 * A function to get a request header
 	 *
 	 * @param name The name of the header to retrieve, case-insensitive.

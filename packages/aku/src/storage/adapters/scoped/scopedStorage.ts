@@ -30,7 +30,7 @@ import type { ScopedStorageConfig } from "./ScopedStorageConfig.ts";
 export function scopedStorage(config: ScopedStorageConfig): StorageAdapter {
 	return {
 		build(container) {
-			return container.construct(ScopedEndpoint, config);
+			return container.new(ScopedEndpoint, config);
 		},
 	};
 }

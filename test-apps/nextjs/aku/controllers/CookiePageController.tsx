@@ -1,6 +1,6 @@
-/** @jsxImportSource @akujs/aku/view **/
-import type { Controller } from "@akujs/aku/http";
-import { raw } from "@akujs/aku/view";
+/** @jsxImportSource hono/jsx **/
+import type { Context } from "hono";
+import { raw } from "hono/html";
 import { readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
@@ -11,9 +11,10 @@ const __dirname = dirname(__filename);
 
 const clientScript = readFileSync(join(__dirname, "../public/client.js"), "utf-8");
 
-export const CookiePageController: Controller = ({ url }) => {
-	return <CookiePageView currentPath={url.pathname} />;
-};
+export function CookiePageController(c: Context): Response {
+	const currentPath = new URL(c.req.url).pathname;
+	return c.html(<CookiePageView currentPath={currentPath} />);
+}
 
 const CookiePageView = ({ currentPath }: { currentPath: string }) => (
 	<Layout currentPath={currentPath}>

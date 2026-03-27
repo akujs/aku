@@ -26,7 +26,12 @@ describe("Scoped storage integration", () => {
 		});
 
 		// Write nested path through scoped disk
-		await app.storage.file("a/b/c/nested.txt").put("nested content");
+		await app.storage
+			.directory("a")
+			.directory("b")
+			.directory("c")
+			.file("nested.txt")
+			.put("nested content");
 
 		// Verify file is in scoped location on real filesystem
 		const content = readFileSync(

@@ -49,6 +49,11 @@ export interface Storage extends StorageDirectoryOperations {
 export interface StorageDisk extends StorageDirectoryOperations {
 	readonly name: string;
 	readonly endpoint: StorageEndpoint;
+
+	/**
+	 * The root directory of this disk.
+	 */
+	readonly root: StorageDirectory;
 }
 
 interface SignUrlOptions {
@@ -236,7 +241,8 @@ export interface StorageFile {
 	 * Generate a signed URL to allow access to this file.
 	 *
 	 * Storage adapters may clamp the expiry range to an acceptable limit, for example s3
-	 * supports at most 7 days.
+	 * supports at most 7 days. If not provided, generates a link that does not expire, or
+	 * expires as far into the future as is allowed by the storage backend.
 	 *
 	 * @param options.downloadAs - The suggested filename for the file, for s3. Storage adapters that do not support suggested download names will ignore this option.
 	 * @param options.expires - A Date defining expiry time, or string in the format "1h" or "5d4h" representing a duration into the future
@@ -247,7 +253,8 @@ export interface StorageFile {
 	 * Generate a URL that clients can POST data to to upload file content.
 	 *
 	 * Storage adapters may clamp the expiry range to an acceptable limit, for example s3
-	 * supports at most 7 days.
+	 * supports at most 7 days. If not provided, generates a link that does not expire, or
+	 * expires as far into the future as is allowed by the storage backend.
 	 *
 	 * @param options.expires - A Date defining expiry time, or string in the format "1h" or "5d4h" representing a duration into the future
 	 */
@@ -257,19 +264,17 @@ export interface StorageFile {
 	 * Upload data to the file. If the file does not exist, it will be
 	 * created. If the file exists, it will be overwritten.
 	 *
-	 * The file already has a name (its path), so this method does not
-	 * accept a suggestedName. To upload a file with a suggested name that
-	 * may be sanitised, use directory.putFile() instead.
+	 * MIME type is determined in order of priority: explicit mimeType in payload,
+	 * Content-Type header (Request) or type property (File), then inferred from
+	 * the file path extension using the built-in MIME mappings. Use
+	 * `mimeGetExtensionForType` from `helpers/mime` to construct filenames with
+	 * correct extensions.
 	 *
 	 * @param payload - can be one of:
-	 *   - A source of binary data (string, Blob, ArrayBuffer, etc.) - mimeType will be inferred from the file path
-	 *   - An object with { data, mimeType? } - mimeType is optional and will be inferred from file path if not provided
+	 *   - A source of binary data (string, Blob, ArrayBuffer, etc.) - mimeType will be inferred from the file extension
+	 *   - An object with { data, mimeType? } - mimeType is optional and will be inferred from file extension if not provided
 	 *   - A File object - mimeType will be obtained from the File's type property
-	 *   - A Request object - mimeType will be obtained from the Content-Type header
-	 *
-	 * If you pass a File or Request object, the mimeType will be obtained
-	 * from the Content-Type header or File type property. Otherwise, if mimeType
-	 * is not explicitly provided, it will be inferred from the file path extension.
+	 *   - A Request object (must have a body) - mimeType will be obtained from the Content-Type header
 	 */
 	put(payload: StorageData | StorageFilePutPayload | File | Request): Promise<void>;
 
@@ -352,17 +357,13 @@ export interface StorageDirectory extends StorageDirectoryOperations {
 	readonly parent: StorageDirectory | null;
 }
 
-type FileSanitiseOptions = {
-	onInvalid?: "convert" | "throw";
-};
-
 /***/
 export type StorageFileListOptions = {
 	/**
 	 * Whether to list files recursively. If false, only immediate children
 	 * will be returned.
 	 */
-	recursive?: boolean;
+	recursive?: boolean | undefined;
 };
 
 /***/
@@ -370,16 +371,20 @@ export interface StorageDirectoryOperations {
 	/**
 	 * Check if there are any files with this directory's prefix.
 	 *
-	 * NOTE: in Aku, directories are simply references to a common prefix
-	 * for files. There is no such thing as an empty directory. Checking if a
-	 * directory exists is equivalent to checking whether there are any files
-	 * with its prefix. When the last file is removed, the directory will
-	 * cease to exist.
+	 * NOTE: Aku storage is designed to work consistently across both
+	 * filesystems and object stores, and does not differentiate between empty
+	 * and non-existent directories. When the last file is removed, `exists()`
+	 * will return false, even on filesystems that support empty directories.
 	 */
 	exists(): Promise<boolean>;
 
 	/**
 	 * List direct child files and directories in alphabetical order.
+	 *
+	 * NOTE: Aku storage is designed to work consistently across both
+	 * filesystems and object stores, and does not differentiate between empty
+	 * and non-existent directories. Listing a non-existent directory will
+	 * return an empty list.
 	 */
 	list(): Promise<Array<StorageFile | StorageDirectory>>;
 
@@ -387,27 +392,49 @@ export interface StorageDirectoryOperations {
 	 * List direct child files and directories in alphabetical order.
 	 *
 	 * Stream results to avoid buffering the whole list in memory.
+	 *
+	 * NOTE: Aku storage is designed to work consistently across both
+	 * filesystems and object stores, and does not differentiate between empty
+	 * and non-existent directories. Listing a non-existent directory will
+	 * return an empty list.
 	 */
 	listStreaming(): AsyncGenerator<StorageFile | StorageDirectory, void>;
 
 	/**
 	 * List child files in alphabetical order. By default, only direct children are returned.
 	 *
+	 * NOTE: Aku storage is designed to work consistently across both
+	 * filesystems and object stores, and does not differentiate between empty
+	 * and non-existent directories. Listing a non-existent directory will
+	 * return an empty list.
+	 *
 	 * @param options.recursive - if true, include files in subdirectories in the results
 	 */
-	listFiles(options?: { recursive?: boolean }): Promise<Array<StorageFile>>;
+	listFiles(options?: { recursive?: boolean | undefined }): Promise<Array<StorageFile>>;
 
 	/**
 	 * List child files in alphabetical order. By default, only direct children are returned.
 	 *
 	 * Stream results to avoid buffering the whole list in memory.
 	 *
+	 * NOTE: Aku storage is designed to work consistently across both
+	 * filesystems and object stores, and does not differentiate between empty
+	 * and non-existent directories. Listing a non-existent directory will
+	 * return an empty list.
+	 *
 	 * @param options.recursive - if true, include files in subdirectories in the results
 	 */
-	listFilesStreaming(options?: { recursive?: boolean }): AsyncGenerator<StorageFile, void>;
+	listFilesStreaming(options?: {
+		recursive?: boolean | undefined;
+	}): AsyncGenerator<StorageFile, void>;
 
 	/**
 	 * List direct child directories in alphabetical order.
+	 *
+	 * NOTE: Aku storage is designed to work consistently across both
+	 * filesystems and object stores, and does not differentiate between empty
+	 * and non-existent directories. Listing a non-existent directory will
+	 * return an empty list. Empty directories within this one will not be listed.
 	 */
 	listDirectories(): Promise<Array<StorageDirectory>>;
 
@@ -415,85 +442,54 @@ export interface StorageDirectoryOperations {
 	 * List direct child directories in alphabetical order.
 	 *
 	 * Stream results to avoid buffering the whole list in memory.
+	 *
+	 * NOTE: Aku storage is designed to work consistently across both
+	 * filesystems and object stores, and does not differentiate between empty
+	 * and non-existent directories. Listing a non-existent directory will
+	 * return an empty list. Empty directories within this one will not be
+	 * listed.
 	 */
 	listDirectoriesStreaming(): AsyncGenerator<StorageDirectory, void>;
 
 	/**
 	 * Delete all files within this directory, recursively.
 	 *
-	 * This is equivalent to deleting the directory, since in Aku there is
-	 * no concept of an empty directory.
+	 * This is equivalent to deleting the directory, since in Aku there is no
+	 * concept of an empty directory.
+	 *
+	 * NOTE: most storage backends are not transactional - if the delete
+	 * operation encounters a file it fails to delete, it will throw an error
+	 * and stop, but some files may already have been deleted.
 	 */
 	deleteAll(): Promise<void>;
 
 	/**
-	 * Return a directory reference by resolving a path relative to this
-	 * directory.
+	 * Return a reference to a direct child directory of this directory.
 	 *
-	 * You can descend multiple directories in one call with
-	 * directory("foo/bar/baz"). Windows-style paths like "foo\\bar\\baz" are
-	 * also supported, and are converted to forward slashes.
+	 * Only a single directory name is accepted, not a path. To descend
+	 * multiple levels, chain calls: `directory("a").directory("b")`.
 	 *
-	 * Paths are trimmed of leading and trailing whitespace and internal spaces
-	 * converted to underscores.
+	 * Throws `InvalidPathError` if the name contains `/`, `\`, `.`, `..`,
+	 * or characters that are invalid for the storage backend.
 	 *
-	 * By default, handles invalid filenames by generating a unique valid
-	 * filename. This can cause surprising results if you write files using this
-	 * API then try to read them using a different system. For example, if you
-	 * try to save a file called "test:file" to a filesystem that doesn't
-	 * support colons, the file will be saved as "test_file-3c5b0673" (3c5b0673
-	 * is a hash of the original name).
-	 *
-	 * @param options.onInvalid - "convert" to generate valid file names (the
-	 *                            default), or "error" to throw an error
-	 *
-	 * @param path - a directory name e.g. "pokemon" or path e.g.
-	 *               "pokemon/pikachu/images"
+	 * @param name - a single directory name e.g. "images"
 	 */
-	directory(path: string, options?: FileSanitiseOptions): StorageDirectory;
+	directory(name: string): StorageDirectory;
 
 	/**
-	 * Return a file reference by resolving a path relative to this directory.
+	 * Return a reference to a file that is a direct child of this directory.
 	 *
-	 * Slashes in the filename are interpreted as directory names, so
-	 * "foo/bar.txt" returns a file in the "foo" subdirectory. Windows-style paths
-	 * like "foo\\bar.txt" are also supported, and are converted to forward slashes.
+	 * Only a single file name is accepted, not a path. To access files in
+	 * subdirectories, use `directory("subdir").file("name.txt")`. Use
+	 * `mimeGetExtensionForType` from `helpers/mime` to construct filenames
+	 * with correct extensions for a given MIME type.
 	 *
-	 * Paths are trimmed of leading and trailing whitespace and internal spaces
-	 * converted to underscores.
+	 * Throws `InvalidPathError` if the name contains `/`, `\`, `.`, `..`,
+	 * or characters that are invalid for the storage backend.
 	 *
-	 * By default, handles invalid filenames by generating a unique valid
-	 * filename. This can cause surprising results if you write files using
-	 * this API then try to read them using a different system. For example,
-	 * if you try to save a file called "test:file" to a filesystem that
-	 * doesn't support colons, the file will be saved as
-	 * "test_file-3c5b0673" (3c5b0673 is a hash of the original name).
-	 *
-	 * @param options.onInvalid - "convert" to generate valid file names (the default), or "error" to throw an error
-	 *
-	 * @path a filename e.g. "image.png"
+	 * @param name - a single file name e.g. "image.png"
 	 */
-	file(path: string, options?: FileSanitiseOptions): StorageFile;
-
-	/**
-	 * Upload a file to this directory. The name may be changed to match the
-	 * rules of the storage disk, removing invalid characters and adding a
-	 * valid extension if required
-	 *
-	 * @param payload.data - a source of binary data
-	 * @param payload.mimeType - a valid mime type e.g. "image/png"
-	 * @param payload.suggestedName - optional suggested filename
-	 *
-	 * If you pass a File or Request object, the adapter will obtain a
-	 * suggested name from the X-File-Name header or "filename" attribute of
-	 * the Content-Disposition header, and a mimeType from the Content-Type header.
-	 * Names from File or Request objects are trimmed of whitespace.
-	 *
-	 * @returns The StorageFile object with the actual filename used
-	 */
-	putFile(
-		payload: (StorageFilePutPayload & { suggestedName?: string | undefined }) | File | Request,
-	): Promise<StorageFile>;
+	file(name: string): StorageFile;
 }
 
 /***/

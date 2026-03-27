@@ -2,9 +2,6 @@ export const arrayWrap = <T>(value: T | T[]): T[] => {
 	return Array.isArray(value) ? value : [value];
 };
 
-export const arrayWrapOptional = <T>(value: T | T[] | null | undefined): T[] =>
-	value == null ? [] : arrayWrap(value);
-
 export async function arrayFromAsync<T>(iterable: AsyncIterable<T>): Promise<T[]> {
 	const result: T[] = [];
 	for await (const item of iterable) {
@@ -104,40 +101,7 @@ export class SetMultiMap<K, V> extends MultiMap<K, V> {
 
 const emptyIterable: Iterable<never> = Object.freeze([]);
 
-export class ArrayMultiMap<K, V> extends MultiMap<K, V> {
-	#map = new Map<K, V[]>();
-
-	add(key: K, value: V): void {
-		let set = this.#map.get(key);
-		if (!set) {
-			set = [];
-			this.#map.set(key, set);
-		}
-		set.push(value);
-	}
-
-	get(key: K): Iterable<V> {
-		const set = this.#map.get(key);
-		return set?.values() ?? emptyIterable;
-	}
-
-	deleteAll(key: K): void {
-		this.#map.delete(key);
-	}
-
-	clear(): void {
-		this.#map.clear();
-	}
-}
-
-export type MethodNames<T> = {
-	[K in keyof T]: T[K] extends Function ? K : never;
-}[keyof T];
-
 export type Prettify<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type AnyFunction = (...args: any) => any;
 
 export type AnyConstructor<T = unknown> = abstract new (...args: never[]) => T;
 

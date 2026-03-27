@@ -3,7 +3,7 @@ import { sleep } from "./sleep.ts";
 /**
  * Options for `withRetry`.
  */
-export interface RetryOptions {
+export interface WithRetryOptions {
 	/**
 	 * Initial delay in ms before first retry.
 	 *
@@ -72,7 +72,7 @@ export async function withRetry<T>(
 		maxAttempts = 5,
 		jitterFactor = 1,
 		shouldRetry,
-	}: RetryOptions = {},
+	}: WithRetryOptions = {},
 ): Promise<T> {
 	let attempt = 0;
 

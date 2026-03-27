@@ -118,7 +118,7 @@ describe("Cookie API", () => {
     expect(setCookieHeader).toContain("Secure");
     expect(setCookieHeader).toContain("HttpOnly");
     expect(setCookieHeader).toContain("Max-Age=3600");
-    expect(setCookieHeader).toContain("SameSite=lax");
+    expect(setCookieHeader).toContain("SameSite=Lax");
   });
 
   test("sameSite strict option", async () => {
@@ -133,7 +133,7 @@ describe("Cookie API", () => {
     });
 
     const setCookieHeader = response.headers.get("set-cookie");
-    expect(setCookieHeader).toContain("SameSite=strict");
+    expect(setCookieHeader).toContain("SameSite=Strict");
   });
 
   test("sameSite none option with secure", async () => {
@@ -148,7 +148,7 @@ describe("Cookie API", () => {
     });
 
     const setCookieHeader = response.headers.get("set-cookie");
-    expect(setCookieHeader).toContain("SameSite=none");
+    expect(setCookieHeader).toContain("SameSite=None");
     expect(setCookieHeader).toContain("Secure");
   });
 

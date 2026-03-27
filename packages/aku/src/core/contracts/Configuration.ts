@@ -1,131 +1,32 @@
 import type { TypeToken } from "../../container/container-key.ts";
 import { createTypeToken } from "../../container/container-key.ts";
-import type { MiddlewareReference } from "../../http/Middleware.ts";
-import type { MiddlewarePriorityBuilder } from "../../http/MiddlewarePriorityBuilder.ts";
 import type { ServiceProviderReference } from "./Application.ts";
 
 /**
  * The configuration supplied to createApplication().
  */
-export interface Configuration<RouteParams extends Record<string, string> = {}> {
+export interface Configuration {
 	/**
-	 * Enable development mode.
+	 * A handler function that receives an HTTP request and returns a response.
 	 *
-	 * WARNING! This is insecure, reveals sensitive information, is slower, and
-	 * leaks memory. Never enable it in production. Among the effects are:
-	 * disabling secure cookies and required HTTPS, providing detailed error
-	 * messages in the browser that may contain sensitive information, and
-	 * retaining log messages in memory.
+	 * This is the main entry point for handling HTTP requests. The handler is
+	 * called within a DI scope, so scoped services like `RequestLocals` are
+	 * available.
 	 *
-	 * @default false
+	 * @example
+	 * handler: (request) => new Response("hello")
+	 *
+	 * @example
+	 * // With Hono:
+	 * const hono = new Hono();
+	 * handler: hono.fetch
 	 */
-	development?: boolean | undefined;
-
-	/**
-	 * Route definitions for the application
-	 */
-	routes?: Routes<RouteParams>;
+	handler?: ((request: Request) => Response | Promise<Response>) | undefined;
 
 	/**
 	 * Service providers to register with the application.
 	 */
 	providers?: Array<ServiceProviderReference>;
-
-	/**
-	 * Configure middleware execution priority.
-	 *
-	 * Middleware in the priority list will be moved to the front of the
-	 * middleware list and execute in the specified order, regardless of the order
-	 * they're assigned to routes.
-	 *
-	 * Can be:
-	 * - An array of middleware classes (replaces default priority)
-	 * - A function that receives a builder to modify the default priority
-	 *
-	 * @example
-	 * // Replace default priority
-	 * middlewarePriority: [Auth, RateLimit, Logger]
-	 *
-	 * @example
-	 * // Modify default priority
-	 * middlewarePriority: (builder) => {
-	 *   builder.addBefore(SetupTenant, Auth);
-	 *   builder.addAfter(CustomLogger, Session);
-	 *   builder.remove(DefaultRateLimit);
-	 * }
-	 */
-	middlewarePriority?: MiddlewareReference[] | ((builder: MiddlewarePriorityBuilder) => void);
-
-	/**
-	 * Development mode options
-	 */
-	devMode?: {
-		/**
-		 * Suppress automatic page refresh in development mode
-		 */
-		autoRefresh?: boolean;
-
-		/**
-		 * List of absolute file paths to folders to watch for changes. If undefined, `process.cwd()` will be used
-		 */
-		autoRefreshPaths?: string[];
-
-		/**
-		 * Regular expression to match against the full paths of any changed files
-		 * in `autoRefreshPaths`
-		 *
-		 * @default /\baku\b/i
-		 */
-		autoRefreshPathPattern?: RegExp;
-
-		/**
-		 * To avoid reloading while files are still being written, auto-refresh will
-		 * wait until this number of milliseconds before reloading the page.
-		 *
-		 * @default 300
-		 */
-		autoRefreshDebounceMs?: number;
-
-		/**
-		 * How often to send heartbeat messages over the SSE connection to keep it alive
-		 * through proxies and load balancers
-		 *
-		 * @default 15000 (15 seconds)
-		 */
-		autoRefreshHeartbeatMs?: number;
-	};
-
-	/**
-	 * Control when to throw errors on accessing non-existent route parameters.
-	 *
-	 * - 'always': Always throw when accessing invalid parameters
-	 * - 'never': Never throw, return undefined (production-like behavior)
-	 * - 'development': Throw only when development mode is enabled
-	 * - 'production': Throw only when development mode is disabled
-	 *
-	 * @default 'always'
-	 */
-	throwOnInvalidParamAccess?: EnvironmentChoice | undefined;
-
-	/**
-	 * Control when to use streaming responses for rendering.
-	 *
-	 * When enabled, responses are streamed to the client as content is generated,
-	 * which can improve time-to-first-byte. When disabled, the entire response is
-	 * buffered before sending.
-	 *
-	 * Note: When streaming responses, the headers will be sent before the
-	 * whole response is generated, so template components cannot set headers
-	 * and cookies.
-	 *
-	 * - 'always': Always use streaming responses
-	 * - 'never': Never use streaming, always buffer
-	 * - 'development': Stream only when development mode is enabled
-	 * - 'production': Stream only when development mode is disabled
-	 *
-	 * @default 'always'
-	 */
-	streamResponses?: EnvironmentChoice | undefined;
 
 	/**
 	 * Application URL configuration for generating absolute URLs
@@ -218,27 +119,6 @@ export interface Configuration<RouteParams extends Record<string, string> = {}> 
 export const Configuration: TypeToken<Configuration> =
 	createTypeToken<Configuration>("Configuration");
 
-type EnvironmentChoice = "always" | "never" | "development" | "production";
-
-export function resolveEnvironmentChoice(
-	value: EnvironmentChoice | undefined,
-	defaultValue: EnvironmentChoice,
-	isDevelopment: boolean,
-): boolean {
-	const choice = value ?? defaultValue;
-	switch (choice) {
-		case "always":
-			return true;
-		case "never":
-			return false;
-		case "development":
-			return isDevelopment;
-		case "production":
-			return !isDevelopment;
-	}
-}
-
 // Re-imported types to avoid circular dependencies
 import type { DatabaseAdapter, DatabaseConfig } from "../../database/DatabaseAdapter.ts";
-import type { Routes } from "../../http/router-types.ts";
 import type { StorageAdapter, StorageEndpoint } from "../../storage/contracts/Storage.ts";

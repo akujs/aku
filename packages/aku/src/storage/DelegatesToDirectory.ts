@@ -3,7 +3,6 @@ import type {
 	StorageDirectory,
 	StorageDirectoryOperations,
 	StorageFile,
-	StorageFilePutPayload,
 } from "./contracts/Storage.ts";
 
 export abstract class DelegatesToDirectory extends BaseClass implements StorageDirectoryOperations {
@@ -21,11 +20,13 @@ export abstract class DelegatesToDirectory extends BaseClass implements StorageD
 		return this.getDirectoryForDelegation().listStreaming();
 	}
 
-	async listFiles(options?: { recursive?: boolean }): Promise<Array<StorageFile>> {
+	async listFiles(options?: { recursive?: boolean | undefined }): Promise<Array<StorageFile>> {
 		return await this.getDirectoryForDelegation().listFiles(options);
 	}
 
-	listFilesStreaming(options?: { recursive?: boolean }): AsyncGenerator<StorageFile, void> {
+	listFilesStreaming(options?: {
+		recursive?: boolean | undefined;
+	}): AsyncGenerator<StorageFile, void> {
 		return this.getDirectoryForDelegation().listFilesStreaming(options);
 	}
 
@@ -41,17 +42,11 @@ export abstract class DelegatesToDirectory extends BaseClass implements StorageD
 		return await this.getDirectoryForDelegation().deleteAll();
 	}
 
-	directory(path: string): StorageDirectory {
-		return this.getDirectoryForDelegation().directory(path);
+	directory(name: string): StorageDirectory {
+		return this.getDirectoryForDelegation().directory(name);
 	}
 
-	file(path: string): StorageFile {
-		return this.getDirectoryForDelegation().file(path);
-	}
-
-	async putFile(
-		payload: (StorageFilePutPayload & { suggestedName?: string | undefined }) | File | Request,
-	): Promise<StorageFile> {
-		return await this.getDirectoryForDelegation().putFile(payload);
+	file(name: string): StorageFile {
+		return this.getDirectoryForDelegation().file(name);
 	}
 }

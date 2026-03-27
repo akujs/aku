@@ -39,7 +39,12 @@ describe("Filesystem storage integration", () => {
 		});
 
 		// Write file in nested path
-		await app.storage.file("a/b/c/nested.txt").put("nested content");
+		await app.storage
+			.directory("a")
+			.directory("b")
+			.directory("c")
+			.file("nested.txt")
+			.put("nested content");
 
 		// Verify nested structure exists on filesystem
 		const content = readFileSync(join(tempDir, "a", "b", "c", "nested.txt"), "utf-8");

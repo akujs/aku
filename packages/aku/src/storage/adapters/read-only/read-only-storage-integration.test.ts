@@ -54,7 +54,7 @@ describe("read-only storage integration", () => {
 			defaultDisk: "readonly",
 		});
 
-		const file = app.storage.file("/data.json");
+		const file = app.storage.file("data.json");
 
 		const fetchResult = await file.get();
 		expect(await fetchResult.response.text()).toBe("existing content");
@@ -131,7 +131,7 @@ describe("read-only storage integration", () => {
 		const localDisk = app.storage.disk("local");
 		await localDisk.file("file1.txt").put("content 1");
 		await localDisk.file("file2.txt").put("content 2");
-		await localDisk.file("subdir/file3.txt").put("content 3");
+		await localDisk.directory("subdir").file("file3.txt").put("content 3");
 
 		const readonlyDisk = app.storage.disk("readonly");
 
@@ -144,7 +144,7 @@ describe("read-only storage integration", () => {
 		expect(await readonlyDisk.file("nonexistent.txt").exists()).toBe(false);
 
 		// Test listing
-		const files = await readonlyDisk.directory("/").listFiles({ recursive: true });
+		const files = await readonlyDisk.listFiles({ recursive: true });
 		expect(files).toHaveLength(3);
 		expect(files.map((f) => f.path).sort()).toEqual([
 			"/file1.txt",

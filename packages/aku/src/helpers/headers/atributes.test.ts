@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import {
-	contentDisposition,
 	formatAttributeHeader,
+	formatContentDispositionHeader,
 	parseAttributeHeader,
-} from "./headers-entry-point.ts";
+} from "./attributes.ts";
 
-describe(contentDisposition, () => {
+describe(formatContentDispositionHeader, () => {
 	describe("with filename - success cases", () => {
 		test.each([
 			// Basic filenames
@@ -57,25 +57,30 @@ describe(contentDisposition, () => {
 				"attachment; filename=\"E%20£.pdf\"; filename*=UTF-8''%E2%82%AC%2520%C2%A3.pdf",
 			],
 		])("%s: %s", (_, input, expected) => {
-			expect(contentDisposition(input)).toBe(expected);
+			expect(formatContentDispositionHeader({ filename: input })).toBe(expected);
 		});
 	});
 
 	describe("with filename - error cases", () => {
 		test("should require a string", () => {
-			expect(() => contentDisposition(42 as unknown as string)).toThrow(/filename.*string/);
+			expect(() => formatContentDispositionHeader({ filename: 42 as unknown as string })).toThrow(
+				/filename.*string/,
+			);
 		});
 	});
 
 	describe("with fallback option", () => {
 		test("should require a string or Boolean", () => {
-			expect(() => contentDisposition("plans.pdf", { fallback: 42 as unknown as string })).toThrow(
-				/fallback.*string/,
-			);
+			expect(() =>
+				formatContentDispositionHeader({
+					filename: "plans.pdf",
+					fallback: 42 as unknown as string,
+				}),
+			).toThrow(/fallback.*string/);
 		});
 
 		test("should default to true", () => {
-			expect(contentDisposition("€ rates.pdf")).toBe(
+			expect(formatContentDispositionHeader({ filename: "€ rates.pdf" })).toBe(
 				"attachment; filename=\"E rates.pdf\"; filename*=UTF-8''%E2%82%AC%20rates.pdf",
 			);
 		});
@@ -101,13 +106,13 @@ describe(contentDisposition, () => {
 			],
 			["fallback=true keeps ISO-8859-1", "£ rates.pdf", true, 'attachment; filename="£ rates.pdf"'],
 		])("%s: %s", (_, input, fallback, expected) => {
-			expect(contentDisposition(input, { fallback })).toBe(expected);
+			expect(formatContentDispositionHeader({ filename: input, fallback })).toBe(expected);
 		});
 
 		test("should require ISO-8859-1 string for fallback", () => {
-			expect(() => contentDisposition("€ rates.pdf", { fallback: "€ rates.pdf" })).toThrow(
-				/fallback.*iso-8859-1/i,
-			);
+			expect(() =>
+				formatContentDispositionHeader({ filename: "€ rates.pdf", fallback: "€ rates.pdf" }),
+			).toThrow(/fallback.*iso-8859-1/i);
 		});
 
 		test.each([
@@ -131,7 +136,21 @@ describe(contentDisposition, () => {
 				"attachment; filename=\"EURO rates.pdf\"; filename*=UTF-8''%E2%82%AC%20rates.pdf",
 			],
 		])("%s: %s", (_, input, fallback, expected) => {
-			expect(contentDisposition(input, { fallback })).toBe(expected);
+			expect(formatContentDispositionHeader({ filename: input, fallback })).toBe(expected);
+		});
+	});
+
+	describe("with type option", () => {
+		test("defaults to attachment", () => {
+			expect(formatContentDispositionHeader({ filename: "foo.pdf" })).toBe(
+				'attachment; filename="foo.pdf"',
+			);
+		});
+
+		test("supports inline", () => {
+			expect(formatContentDispositionHeader({ filename: "foo.pdf", type: "inline" })).toBe(
+				'inline; filename="foo.pdf"',
+			);
 		});
 	});
 });

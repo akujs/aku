@@ -1,6 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, expectTypeOf, spyOn, test } from "bun:test";
 import { sleep } from "../../helpers/async/sleep.ts";
-import { abort } from "../../http/abort.ts";
 import { mockDispatcher } from "../../test-utils/internal-mocks.test-utils.ts";
 import { pgLiteSharedTestConfig } from "../adapters/pglite/pglite.test-utils.ts";
 import { sqliteMemorySharedTestConfig } from "../adapters/sqlite/sqlite.test-utils.ts";
@@ -1919,30 +1918,6 @@ describe.each(adapterConfigs)("mutations: $name", ({ dialect, createDatabase }) 
 			expect(table.getByIdOrFail(999)).rejects.toMatchInlineSnapshot(
 				`[DatabaseQueryError: Query returned no rows (query: SELECT * FROM "test_mutations" WHERE ( "id" = [$1: 999] ))]`,
 			);
-		});
-
-		test("getByIdOrNotFound() throws DatabaseQueryError when not found", async () => {
-			expect(table.getByIdOrFail(999)).rejects.toMatchInlineSnapshot(
-				`[DatabaseQueryError: Query returned no rows (query: SELECT * FROM "test_mutations" WHERE ( "id" = [$1: 999] ))]`,
-			);
-		});
-
-		test("getByIdOrNotFound() returns row when found", async () => {
-			await table.insert({ id: 1, name: "by_id_notfound", value: 100 }).run();
-
-			const row = await table.getByIdOrNotFound(1);
-			expectTypeOf(row).toEqualTypeOf<Row>();
-			expect(row).toEqual({ id: 1, name: "by_id_notfound", value: 100 });
-		});
-
-		test("getByIdOrNotFound() calls abort.notFound when not found", async () => {
-			const spy = spyOn(abort, "notFound");
-			try {
-				await table.getByIdOrNotFound(999);
-			} catch {
-				// Expected to throw
-			}
-			expect(spy).toHaveBeenCalled();
 		});
 
 		test("getByIdOrNull() returns row when found", async () => {

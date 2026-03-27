@@ -101,7 +101,7 @@ describe(DatabaseClientImpl, () => {
 			expect(result).toBe("success");
 		});
 
-		test("retry with custom RetryOptions", async () => {
+		test("retry with custom WithRetryOptions", async () => {
 			const delays: number[] = [];
 			mock(sleep, async (ms: number) => {
 				delays.push(ms);

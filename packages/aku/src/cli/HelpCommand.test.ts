@@ -222,32 +222,6 @@ describe(helpCommand.handler, () => {
 		);
 	});
 
-	test("help greet --format toon outputs TOON format", async () => {
-		const { cli } = createTestApplication({ providers: [TestProvider] });
-
-		const exitCode = await cli.run(["help", "greet", "--format", "toon"]);
-
-		expect(exitCode).toBe(0);
-		expect(cli.output).toMatchInlineSnapshot(`
-		  "command: greet
-		  description: Greet someone by name
-		  usage: "aku greet <name> [options]"
-		  args[2]{name,type,positional,required,description}:
-		    name,string,true,true,The person to greet
-		    verbose,boolean,false,false,Enable verbose output"
-		`);
-	});
-
-	test("help greet --format toon --pretty produces same output as --format toon", async () => {
-		const { cli: cli1 } = createTestApplication({ providers: [TestProvider] });
-		const { cli: cli2 } = createTestApplication({ providers: [TestProvider] });
-
-		await cli1.run(["help", "greet", "--format", "toon"]);
-		await cli2.run(["help", "greet", "--format", "toon", "--pretty"]);
-
-		expect(cli1.output).toBe(cli2.output);
-	});
-
 	test("help --format json errors (format requires a command name)", async () => {
 		const { cli } = createTestApplication({ providers: [TestProvider] });
 
@@ -297,8 +271,6 @@ describe(helpCommand.handler, () => {
 		expect(exitCode).toBe(1);
 		expect(cli.lastError).toBeDefined();
 		expect(cli.lastError!.isExpected).toBe(true);
-		expect(cli.lastError!.error.message).toBe(
-			'Unknown format: "invalid". Supported formats: json, toon',
-		);
+		expect(cli.lastError!.error.message).toBe('Unknown format: "invalid". Supported formats: json');
 	});
 });

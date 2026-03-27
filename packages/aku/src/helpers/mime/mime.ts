@@ -1,10 +1,6 @@
-import { sha256 } from "../helpers/hash/digest.ts";
-import { random } from "../helpers/str/random.ts";
-import { posix } from "./path-operations.ts";
-
-// MIME type and file name handling for storage operations. Based on Chrome's
+// MIME type lookup functions. Based on Chrome's built-in MIME type mappings.
 const mappings: Array<[string, string[]]> = [
-	// Chrome secondary mime mappings
+	// Chrome primary mime mappings
 	["video/webm", [".webm"]],
 	["audio/mpeg", [".mp3"]],
 	["video/mp4", [".mp4", ".m4v"]],
@@ -86,16 +82,9 @@ const mappings: Array<[string, string[]]> = [
 ];
 
 let mimeToExtensions: Map<string, string[]> | undefined;
-
-const getExtensionForMime = (mime: string | null | undefined): string | undefined => {
-	if (!mime) return undefined;
-	mimeToExtensions ??= new Map(mappings);
-	return mimeToExtensions.get(mime)?.[0];
-};
-
 let extensionToMime: Map<string, string> | undefined;
 
-const getMimeForExtension = (extension: string): string | undefined => {
+const ensureExtensionToMime = (): Map<string, string> => {
 	if (!extensionToMime) {
 		extensionToMime = new Map<string, string>();
 		for (const [mime, exts] of mappings) {
@@ -109,77 +98,25 @@ const getMimeForExtension = (extension: string): string | undefined => {
 			}
 		}
 	}
-	return extensionToMime.get(extension);
+	return extensionToMime;
 };
 
-export function mimeTypeFromFileName(nameOrPath: string): string | null {
-	const extension = posix.extname(nameOrPath.toLowerCase());
-	return getMimeForExtension(extension) ?? null;
+/**
+ * Get the MIME type for a file extension or filename (e.g. ".pdf", "pdf", "document.pdf").
+ * Case insensitive. Returns null if unknown.
+ */
+export function mimeGetTypeForExtension(extensionOrFilename: string): string | null {
+	const lower = extensionOrFilename.toLowerCase();
+	const dotIndex = lower.lastIndexOf(".");
+	const ext = dotIndex >= 0 ? lower.slice(dotIndex) : `.${lower}`;
+	return ensureExtensionToMime().get(ext) ?? null;
 }
 
-export function createFileName(
-	suggestedName: string | null | undefined,
-	mimeType: string | null,
-	supportsMimeTypes: boolean,
-): string {
-	let usedRandomId = false;
-	let name = posix.basename(suggestedName?.trim() ?? "");
-	if (!name) {
-		// Use all caps so that they're unique on case-insensitive filesystems
-		name = random(20, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-		usedRandomId = true;
-	}
-
-	const cleanMimeType = mimeType?.split(";")[0].trim().toLowerCase();
-
-	if (!supportsMimeTypes || usedRandomId) {
-		const expectedExtension = getExtensionForMime(cleanMimeType);
-		if (expectedExtension) {
-			const extension = posix.extname(name).toLowerCase();
-
-			if (extension) {
-				const currentMime = getMimeForExtension(extension);
-
-				if (currentMime !== cleanMimeType) {
-					name = name + expectedExtension;
-				}
-			} else {
-				name = name + expectedExtension;
-			}
-		}
-	}
-
-	return name;
-}
-
-export function sanitiseName(name: string, invalidChars: string): string {
-	const regex = new RegExp(`[${RegExp.escape(invalidChars)}]+`, "g");
-
-	if (!regex.test(name)) {
-		return name;
-	}
-
-	const replacement = invalidChars.includes("_") ? "" : "_";
-	const sanitised = name.replace(regex, replacement);
-
-	const hash = sha256(name);
-	const hashSuffix = `-${hash.slice(0, 8)}`;
-
-	const extension = posix.extname(sanitised);
-	if (extension) {
-		const nameWithoutExt = sanitised.slice(0, -extension.length);
-		return nameWithoutExt + hashSuffix + extension;
-	}
-
-	return sanitised + hashSuffix;
-}
-
-export function joinSlashPaths(a: string, b: string): string {
-	if (!a) return b;
-	if (!b) return a;
-
-	const aClean = a.endsWith("/") ? a.slice(0, -1) : a;
-	const bClean = b.startsWith("/") ? b.slice(1) : b;
-
-	return `${aClean}/${bClean}`;
+/**
+ * Get the canonical file extension for a MIME type (e.g. "application/pdf" -> ".pdf").
+ * Returns null if unknown.
+ */
+export function mimeGetExtensionForType(mimeType: string): string | null {
+	mimeToExtensions ??= new Map(mappings);
+	return mimeToExtensions.get(mimeType)?.[0] ?? null;
 }

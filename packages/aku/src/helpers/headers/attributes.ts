@@ -1,4 +1,4 @@
-import { transliterate, withoutComplexChars } from "../str/unicode.ts";
+import { stringWithoutComplexChars, transliterate } from "../str/unicode.ts";
 
 const NON_LATIN1_REGEXP = /[^\x20-\x7e\xa0-\xff]/g;
 
@@ -12,22 +12,6 @@ export interface HeaderValueWithAttributes {
 	 * Attributes from the header e.g. { filename: 'example.txt' }
 	 */
 	attributes: Record<string, string | undefined>;
-}
-
-/**
- * Generate a Content-Disposition "attachment" header
- *
- * @param filename
- * @param options.fallback either an ASCII file name to use as a fallback for clients that don't support unicode file names, or `false` to disable the default behaviour of automatically generating a fallback by stripping unicode characters
- */
-export function contentDisposition(
-	filename: string,
-	options?: {
-		fallback?: string | boolean;
-	},
-): string {
-	const params = createparams(filename, options?.fallback);
-	return format({ value: "attachment", attributes: params || {} });
 }
 
 /**
@@ -69,14 +53,14 @@ export function formatAttributeHeader(options: {
 }
 
 /**
- * Format Content-Disposition header.
+ * Format a Content-Disposition header with a filename parameter,
+ * using RFC 5987 encoding for unicode support.
  *
- * @param {object} options
- * @param {string} options.filename - Filename for the attachment
- * @param {string | boolean} [options.fallback=true] - Fallback handling
- * @param {string} [options.type='attachment'] - Disposition type
- * @return {string}
- * @public
+ * @param options.fallback - Either an ASCII file name to use as a fallback for
+ *   clients that don't support unicode file names, or `false` to disable the
+ *   default behaviour of automatically generating a fallback by stripping
+ *   unicode characters
+ * @param options.type - Disposition type, defaults to "attachment"
  */
 export function formatContentDispositionHeader(options: {
 	filename: string;
@@ -84,11 +68,8 @@ export function formatContentDispositionHeader(options: {
 	type?: string;
 }): string {
 	const { filename, fallback = true, type = "attachment" } = options;
-	return formatAttributeHeader({
-		value: type,
-		attributes: { filename },
-		fallbacks: { filename: fallback },
-	});
+	const params = createFilenameParams(filename, fallback);
+	return format({ value: type, attributes: params });
 }
 
 /**
@@ -349,23 +330,6 @@ function createFilenameParams(
 	return params;
 }
 
-// Create parameters object from filename and fallback (legacy wrapper).
-function createparams(
-	filename: string | undefined,
-	fallback: string | boolean | undefined,
-): Record<string, string> | undefined {
-	if (filename === undefined) {
-		return;
-	}
-
-	// fallback defaults to true
-	if (fallback === undefined) {
-		fallback = true;
-	}
-
-	return createFilenameParams(filename, fallback);
-}
-
 // Format object to header string.
 function format(obj: HeaderValueWithAttributes): string {
 	const attributes = obj.attributes;
@@ -434,7 +398,7 @@ function decodefield(str: string): string {
 function getlatin1(val: string): string {
 	// transliterate now includes withoutMarks with allowLatin1 option
 	let result = transliterate(val, { allowLatin1: true });
-	result = withoutComplexChars(result, { target: "latin1", replacement: "?" });
+	result = stringWithoutComplexChars(result, { target: "latin1", replacement: "?" });
 	return result;
 }
 

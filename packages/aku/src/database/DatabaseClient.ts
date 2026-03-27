@@ -1,4 +1,4 @@
-import type { RetryOptions } from "../helpers/async/retry.ts";
+import type { WithRetryOptions } from "../helpers/async/retry.ts";
 import type { QueryBuilder, Row, Statement, StatementResult } from "./query-types.ts";
 
 export type IsolationLevel = "read-committed" | "repeatable-read" | "serializable";
@@ -26,9 +26,9 @@ export interface TransactionOptions {
 	 * - `true` - retry with default options (5 attempts, 100ms starting delay)
 	 * - `false` - no retry (default)
 	 * - `number` - retry with that many max attempts
-	 * - `RetryOptions` - full control over retry behaviour, see the withRetry async helper
+	 * - `WithRetryOptions` - full control over retry behaviour, see the withRetry async helper
 	 */
-	retry?: boolean | number | RetryOptions | undefined;
+	retry?: boolean | number | WithRetryOptions | undefined;
 }
 
 /**
@@ -135,7 +135,7 @@ export interface DatabaseClient {
 	 *         - `true` - retry with default options (5 attempts, 100ms starting delay)
 	 *         - `false` - no retry (default)
 	 *         - `number` - retry with that many max attempts
-	 *         - `RetryOptions` - full control over retry behaviour, see the withRetry async helper
+	 *         - `WithRetryOptions` - full control over retry behaviour, see the withRetry async helper
 	 */
 	transaction<T>(fn: () => Promise<T>, options?: TransactionOptions): Promise<T>;
 
@@ -179,12 +179,6 @@ export interface DatabaseClient {
 	 * Throws DatabaseQueryError if no rows are returned.
 	 */
 	getFirstOrFail<T = Row>(statement: Statement): Promise<T>;
-
-	/**
-	 * Execute a statement and return the first row.
-	 * Throws via abort.notFound() if no rows are returned.
-	 */
-	getFirstOrNotFound<T = Row>(statement: Statement): Promise<T>;
 
 	/**
 	 * Execute a statement and return the first column of the first row.

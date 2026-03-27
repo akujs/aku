@@ -1,5 +1,5 @@
 import { AkuError } from "../core/core-errors.ts";
-import { findSimilar } from "../helpers/str/similarity.ts";
+import { stringFindSimilar } from "../helpers/str/similarity.ts";
 import { writeCrashDumpAndExit } from "./crash-dump.ts";
 import type { ProcessApi } from "./process-api.ts";
 
@@ -29,7 +29,7 @@ export function handleCliError(error: unknown, proc: ProcessApi): number {
 }
 
 export function throwNotFoundError(itemType: string, name: string, candidates: string[]): never {
-	const similar = findSimilar(name, candidates, {
+	const similar = stringFindSimilar(name, candidates, {
 		threshold: 3,
 		maxResults: 6,
 	});

@@ -32,29 +32,9 @@
       "types": "./dist/facades.d.ts",
       "default": "./dist/facades.mjs"
     },
-    "./helpers/async": {
-      "types": "./dist/helpers/async.d.ts",
-      "default": "./dist/helpers/async.mjs"
-    },
-    "./helpers/format": {
-      "types": "./dist/helpers/format.d.ts",
-      "default": "./dist/helpers/format.mjs"
-    },
-    "./helpers/hash": {
-      "types": "./dist/helpers/hash.d.ts",
-      "default": "./dist/helpers/hash.mjs"
-    },
-    "./helpers/headers": {
-      "types": "./dist/helpers/headers.d.ts",
-      "default": "./dist/helpers/headers.mjs"
-    },
-    "./helpers/str": {
-      "types": "./dist/helpers/str.d.ts",
-      "default": "./dist/helpers/str.mjs"
-    },
-    "./helpers/time": {
-      "types": "./dist/helpers/time.d.ts",
-      "default": "./dist/helpers/time.mjs"
+    "./helpers": {
+      "types": "./dist/helpers.d.ts",
+      "default": "./dist/helpers.mjs"
     },
     "./http": {
       "types": "./dist/http.d.ts",
@@ -83,18 +63,6 @@
     "./testing": {
       "types": "./dist/testing.d.ts",
       "default": "./dist/testing.mjs"
-    },
-    "./view/jsx-dev-runtime": {
-      "types": "./dist/view/jsx-dev-runtime.d.ts",
-      "default": "./dist/view/jsx-dev-runtime.mjs"
-    },
-    "./view/jsx-runtime": {
-      "types": "./dist/view/jsx-runtime.d.ts",
-      "default": "./dist/view/jsx-runtime.mjs"
-    },
-    "./view": {
-      "types": "./dist/view.d.ts",
-      "default": "./dist/view.mjs"
     }
   },
   "sideEffects": false,
@@ -141,8 +109,6 @@
     "@types/node": "25.0.10",
     "@typescript/native-preview": "7.0.0-dev.20260223.1",
     "bun-types": "1.3.6",
-    "csstype": "3.2.3",
-    "devalue": "5.6.2",
     "h3": "1.15.5",
     "knip": "5.51.0",
     "miniflare": "4.20260116.0",
@@ -153,7 +119,6 @@
     "rollup-plugin-visualizer": "^7.0.0",
     "tsdown": "0.20.0-beta.4",
     "typescript": "6.0.0-beta",
-    "@toon-format/toon": "2.1.0",
     "wrap-ansi": "9.0.2"
   },
   "peerDependencies": {

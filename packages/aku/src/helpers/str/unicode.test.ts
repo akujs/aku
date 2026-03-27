@@ -1,119 +1,121 @@
 import { describe, expect, test } from "bun:test";
-import { slug, transliterate, withoutComplexChars, withoutMarks } from "./unicode.ts";
+import { slug, stringWithoutComplexChars, stringWithoutMarks, transliterate } from "./unicode.ts";
 
-describe(withoutMarks, () => {
+describe(stringWithoutMarks, () => {
 	test("removes accents from French text", () => {
-		expect(withoutMarks("Crème Brûlée")).toBe("Creme Brulee");
+		expect(stringWithoutMarks("Crème Brûlée")).toBe("Creme Brulee");
 	});
 
 	test("removes accents from single word", () => {
-		expect(withoutMarks("café")).toBe("cafe");
+		expect(stringWithoutMarks("café")).toBe("cafe");
 	});
 
 	test("decomposes ligatures", () => {
-		expect(withoutMarks("ﬁle")).toBe("file");
+		expect(stringWithoutMarks("ﬁle")).toBe("file");
 	});
 
 	test("handles already ASCII text", () => {
-		expect(withoutMarks("hello world")).toBe("hello world");
+		expect(stringWithoutMarks("hello world")).toBe("hello world");
 	});
 
 	test("handles empty string", () => {
-		expect(withoutMarks("")).toBe("");
+		expect(stringWithoutMarks("")).toBe("");
 	});
 
 	test("handles mixed accented characters", () => {
-		expect(withoutMarks("àáâãäåèéêëìíîïòóôõöùúûü")).toBe("aaaaaaeeeeiiiiooooouuuu");
+		expect(stringWithoutMarks("àáâãäåèéêëìíîïòóôõöùúûü")).toBe("aaaaaaeeeeiiiiooooouuuu");
 	});
 
 	test("preserves case", () => {
-		expect(withoutMarks("CAFÉ")).toBe("CAFE");
+		expect(stringWithoutMarks("CAFÉ")).toBe("CAFE");
 	});
 
 	test("removes Devanagari vowel signs (Mark but not Diacritic)", () => {
 		// Devanagari vowel sign AA (U+093E) is Spacing_Mark (Mc), not in \p{Diacritic}
-		expect(withoutMarks("का")).toBe("क");
+		expect(stringWithoutMarks("का")).toBe("क");
 	});
 
 	test("preserves Latin-1 characters when allowLatin1 is true", () => {
-		expect(withoutMarks("café", { allowLatin1: true })).toBe("café");
-		expect(withoutMarks("Crème Brûlée", { allowLatin1: true })).toBe("Crème Brûlée");
+		expect(stringWithoutMarks("café", { allowLatin1: true })).toBe("café");
+		expect(stringWithoutMarks("Crème Brûlée", { allowLatin1: true })).toBe("Crème Brûlée");
 	});
 
 	test("decomposes non-Latin1 sequences when allowLatin1 is true", () => {
 		// Devanagari vowel signs (outside Latin-1) are decomposed
-		expect(withoutMarks("का", { allowLatin1: true })).toBe("क");
+		expect(stringWithoutMarks("का", { allowLatin1: true })).toBe("क");
 		// Vietnamese precomposed characters (Latin Extended-A) are outside Latin-1 and get decomposed
-		expect(withoutMarks("ế", { allowLatin1: true })).toBe("e"); // U+1EBF is outside Latin-1
+		expect(stringWithoutMarks("ế", { allowLatin1: true })).toBe("e"); // U+1EBF is outside Latin-1
 	});
 
 	test("edge cases with allowLatin1: surrogate pairs and mixed content", () => {
 		// Emojis (surrogate pairs, U+1F600+) - should be preserved
-		expect(withoutMarks("café💯test", { allowLatin1: true })).toBe("café💯test");
+		expect(stringWithoutMarks("café💯test", { allowLatin1: true })).toBe("café💯test");
 		// Variation selectors (U+FE0F) are combining marks and get removed
-		expect(withoutMarks("❤️", { allowLatin1: true })).toBe("❤"); // ❤️ (with variation selector) → ❤ (without)
+		expect(stringWithoutMarks("❤️", { allowLatin1: true })).toBe("❤"); // ❤️ (with variation selector) → ❤ (without)
 
 		// Mixed Latin-1 + CJK
-		expect(withoutMarks("café北京", { allowLatin1: true })).toBe("café北京");
+		expect(stringWithoutMarks("café北京", { allowLatin1: true })).toBe("café北京");
 
 		// Boundary testing: characters right at Latin-1 edge
 		// ÿ (U+00FF, Latin-1) preserved, Ā (U+0100, Latin Extended-A) decomposed to A
-		expect(withoutMarks("\u00FF\u0100", { allowLatin1: true })).toBe("\u00FFA"); // ÿĀ → ÿA
+		expect(stringWithoutMarks("\u00FF\u0100", { allowLatin1: true })).toBe("\u00FFA"); // ÿĀ → ÿA
 
 		// Multiple non-Latin1 sequences with Latin-1 in between
-		expect(withoutMarks("café北京résumé日本", { allowLatin1: true })).toBe("café北京résumé日本");
+		expect(stringWithoutMarks("café北京résumé日本", { allowLatin1: true })).toBe(
+			"café北京résumé日本",
+		);
 
 		// Combining marks on non-Latin1 base characters
-		expect(withoutMarks("北\u0301京", { allowLatin1: true })).toBe("北京"); // 北 + combining acute accent
+		expect(stringWithoutMarks("北\u0301京", { allowLatin1: true })).toBe("北京"); // 北 + combining acute accent
 
 		// Zero-width characters and invisible marks
-		expect(withoutMarks("test\u200Bcafé\u200B", { allowLatin1: true })).toBe(
+		expect(stringWithoutMarks("test\u200Bcafé\u200B", { allowLatin1: true })).toBe(
 			"test\u200Bcafé\u200B",
 		); // zero-width space
 
 		// Hangul (precomposed and will re-compose after NFC)
-		expect(withoutMarks("한글", { allowLatin1: true })).toBe("한글");
+		expect(stringWithoutMarks("한글", { allowLatin1: true })).toBe("한글");
 
 		// Mathematical alphanumerics (outside BMP initially, but NFKD decomposes them)
-		expect(withoutMarks("𝐇𝐞𝐥𝐥𝐨", { allowLatin1: true })).toBe("Hello"); // U+1D407 etc. → H e l l o via NFKD
+		expect(stringWithoutMarks("𝐇𝐞𝐥𝐥𝐨", { allowLatin1: true })).toBe("Hello"); // U+1D407 etc. → H e l l o via NFKD
 	});
 });
 
-describe(withoutComplexChars, () => {
+describe(stringWithoutComplexChars, () => {
 	test("removes non-ASCII characters", () => {
-		expect(withoutComplexChars("café")).toBe("caf");
-		expect(withoutComplexChars("北京")).toBe("");
-		expect(withoutComplexChars("Hello❤️World")).toBe("HelloWorld");
+		expect(stringWithoutComplexChars("café")).toBe("caf");
+		expect(stringWithoutComplexChars("北京")).toBe("");
+		expect(stringWithoutComplexChars("Hello❤️World")).toBe("HelloWorld");
 	});
 
 	test("preserves ASCII printable characters", () => {
-		expect(withoutComplexChars("hello world 123!")).toBe("hello world 123!");
+		expect(stringWithoutComplexChars("hello world 123!")).toBe("hello world 123!");
 	});
 
 	test("removes control characters", () => {
-		expect(withoutComplexChars("\x00\x1Ftext")).toBe("text");
-		expect(withoutComplexChars("hello\nworld")).toBe("helloworld");
+		expect(stringWithoutComplexChars("\x00\x1Ftext")).toBe("text");
+		expect(stringWithoutComplexChars("hello\nworld")).toBe("helloworld");
 	});
 
 	test("preserves Latin-1 when allowLatin1 is true", () => {
-		expect(withoutComplexChars("café", { target: "latin1" })).toBe("café");
-		expect(withoutComplexChars("Crème Brûlée", { target: "latin1" })).toBe("Crème Brûlée");
+		expect(stringWithoutComplexChars("café", { target: "latin1" })).toBe("café");
+		expect(stringWithoutComplexChars("Crème Brûlée", { target: "latin1" })).toBe("Crème Brûlée");
 	});
 
 	test("removes non-Latin1 when allowLatin1 is true", () => {
-		expect(withoutComplexChars("北京café", { target: "latin1" })).toBe("café");
-		expect(withoutComplexChars("Hello❤️World", { target: "latin1" })).toBe("HelloWorld");
+		expect(stringWithoutComplexChars("北京café", { target: "latin1" })).toBe("café");
+		expect(stringWithoutComplexChars("Hello❤️World", { target: "latin1" })).toBe("HelloWorld");
 	});
 
 	test("uses replacement string", () => {
-		expect(withoutComplexChars("café", { replacement: "?" })).toBe("caf?");
-		expect(withoutComplexChars("北京", { replacement: "?" })).toBe("??");
+		expect(stringWithoutComplexChars("café", { replacement: "?" })).toBe("caf?");
+		expect(stringWithoutComplexChars("北京", { replacement: "?" })).toBe("??");
 		// Note: Some emojis are multiple code points (e.g., ❤️ = heart + variation selector)
-		expect(withoutComplexChars("Hello❤World", { replacement: " " })).toBe("Hello World");
+		expect(stringWithoutComplexChars("Hello❤World", { replacement: " " })).toBe("Hello World");
 	});
 
 	test("handles empty string", () => {
-		expect(withoutComplexChars("")).toBe("");
+		expect(stringWithoutComplexChars("")).toBe("");
 	});
 });
 
@@ -129,7 +131,7 @@ describe(transliterate, () => {
 	test("imported", () => {
 		expect(transliterate("Я люблю единорогов")).toBe("Ya lyublyu edinorogov");
 		expect(transliterate("'أنا أحب حيدات'")).toBe("'ana ahb hydat'");
-		// Vietnamese diacritics are now handled by transliterate (which includes withoutMarks)
+		// Vietnamese diacritics are now handled by transliterate (which includes stringWithoutMarks)
 		expect(transliterate("tôi yêu những chú kỳ lân")).toBe("toi yeu nhung chu ky lan");
 		expect(transliterate("En–dashes and em—dashes are normalized")).toBe(
 			"En-dashes and em-dashes are normalized",
@@ -165,7 +167,7 @@ describe(transliterate, () => {
 	});
 
 	test("converts Nordic characters", () => {
-		// Ø and Å are handled by withoutMarks via NFKD normalization (now included in transliterate)
+		// Ø and Å are handled by stringWithoutMarks via NFKD normalization (now included in transliterate)
 		expect(transliterate("Ø")).toBe("O");
 		expect(transliterate("Å")).toBe("A");
 	});
@@ -228,7 +230,7 @@ describe(slug, () => {
 	});
 
 	test("handles text with control characters removed", () => {
-		// withoutComplexChars removes control characters like \n and \t (outside ASCII printable 0x20-0x7E)
+		// stringWithoutComplexChars removes control characters like \n and \t (outside ASCII printable 0x20-0x7E)
 		expect(slug("hello\nworld")).toBe("helloworld");
 		expect(slug("hello\tworld")).toBe("helloworld");
 	});

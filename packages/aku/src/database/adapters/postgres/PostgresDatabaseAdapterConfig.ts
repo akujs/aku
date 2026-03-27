@@ -1,5 +1,5 @@
 import type { Sql } from "postgres";
-import type { RetryOptions } from "../../../helpers/async/retry.ts";
+import type { WithRetryOptions } from "../../../helpers/async/retry.ts";
 import type { IsolationLevel } from "../../DatabaseClient.ts";
 
 /***/
@@ -23,7 +23,7 @@ export interface PostgresDatabaseAdapterConfig {
 	 * you must make sure your transaction handlers are idempotent - e.g. they
 	 * do not make any API calls that can't be safely repeated.
 	 */
-	transactionRetry: boolean | number | RetryOptions;
+	transactionRetry: boolean | number | WithRetryOptions;
 
 	/**
 	 * Default transaction isolation level for this adapter. Can be overridden

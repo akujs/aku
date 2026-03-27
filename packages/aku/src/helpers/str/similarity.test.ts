@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { findSimilar, levenshteinDistance } from "./similarity.ts";
+import { levenshteinDistance, stringFindSimilar } from "./similarity.ts";
 
 describe(levenshteinDistance, () => {
 	// Test vectors from sindresorhus/leven (MIT)
@@ -46,45 +46,45 @@ describe(levenshteinDistance, () => {
 	});
 });
 
-describe(findSimilar, () => {
+describe(stringFindSimilar, () => {
 	test("finds basic typo matches", () => {
-		expect(findSimilar("migrat", ["migrate", "serve", "list"])).toEqual(["migrate"]);
+		expect(stringFindSimilar("migrat", ["migrate", "serve", "list"])).toEqual(["migrate"]);
 	});
 
 	test("returns multiple matches sorted by distance", () => {
-		const result = findSimilar("test", ["tset", "testing", "best", "zzzzz"]);
+		const result = stringFindSimilar("test", ["tset", "testing", "best", "zzzzz"]);
 		expect(result[0]).toBe("best");
 		expect(result[1]).toBe("tset");
 		expect(result).toContain("testing");
 	});
 
 	test("returns exact match first", () => {
-		const result = findSimilar("serve", ["serve", "server", "sever"]);
+		const result = stringFindSimilar("serve", ["serve", "server", "sever"]);
 		expect(result[0]).toBe("serve");
 	});
 
 	test("returns empty array when no matches within threshold", () => {
-		expect(findSimilar("xyz", ["abcdefgh", "ijklmnop"])).toEqual([]);
+		expect(stringFindSimilar("xyz", ["abcdefgh", "ijklmnop"])).toEqual([]);
 	});
 
 	test("returns empty array for empty candidates", () => {
-		expect(findSimilar("hello", [])).toEqual([]);
+		expect(stringFindSimilar("hello", [])).toEqual([]);
 	});
 
 	test("respects custom threshold", () => {
-		expect(findSimilar("cat", ["car", "cab", "completely"], { threshold: 1 })).toEqual([
+		expect(stringFindSimilar("cat", ["car", "cab", "completely"], { threshold: 1 })).toEqual([
 			"cab",
 			"car",
 		]);
 	});
 
 	test("respects custom maxResults", () => {
-		const result = findSimilar("test", ["best", "rest", "nest", "fest"], { maxResults: 2 });
+		const result = stringFindSimilar("test", ["best", "rest", "nest", "fest"], { maxResults: 2 });
 		expect(result).toHaveLength(2);
 	});
 
 	test("uses alphabetical tie-breaking for equal distances", () => {
-		const result = findSimilar("test", ["best", "nest", "fest", "rest"]);
+		const result = stringFindSimilar("test", ["best", "nest", "fest", "rest"]);
 		expect(result).toEqual(["best", "fest", "nest"]);
 	});
 });

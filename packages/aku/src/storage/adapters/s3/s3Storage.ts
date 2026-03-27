@@ -8,7 +8,7 @@ import type { S3StorageConfig } from "./S3StorageConfig.ts";
 export function s3Storage(config: S3StorageConfig): StorageAdapter {
 	return {
 		build(container) {
-			return container.construct(S3Endpoint, config);
+			return container.new(S3Endpoint, config);
 		},
 	};
 }

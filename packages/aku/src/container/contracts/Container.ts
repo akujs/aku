@@ -1,5 +1,4 @@
-import type { AnyFunction, MethodNames, NoArgConstructor } from "../../utils.ts";
-import type { ContextualBindingBuilder } from "../ContextualBindingBuilder.ts";
+import type { NoArgConstructor } from "../../utils.ts";
 import type { KeyOrClass, TypeToken } from "../container-key.ts";
 import { createTypeToken } from "../container-key.ts";
 
@@ -25,8 +24,6 @@ type BindArgsWithoutFactory<T> = {
 	ifNotBound?: boolean;
 };
 
-type InstanceCallback<T> = (instance: T, container: Container) => void;
-
 /**
  * A type-safe Inversion of Control (IoC) container. Essentially a fancy map of
  * keys (class objects or type tokens) to values (instances of the types
@@ -51,8 +48,7 @@ export interface Container {
 	 * @param type a value to look up the binding by - a type token created with
 	 *            typeToken, or class object
 	 * @param options arguments to control how the value created:
-	 * @param options.class a class to instantiate. This will be used for
-	 *                      contextual binding. If the class has no required
+	 * @param options.class a class to instantiate. If the class has no required
 	 *                      arguments (default arguments e.g. dep =
 	 *                      inject(Dependency) are fine), it can also be used to
 	 *                      create an instance, otherwise a factory function is
@@ -318,22 +314,9 @@ export interface Container {
 
 	/**
 	 * Get an instance of the given type from the container if available,
-	 * or null if the dependency is not bound or if it's scoped but no scope is active.
-	 *
-	 * @returns The instance if available, null otherwise
+	 * or undefined if the dependency is not bound or if it's scoped but no scope is active.
 	 */
 	getIfAvailable<T>(type: KeyOrClass<T>): T | undefined;
-
-	/**
-	 * Alias a type to a different name. After setting up an alias,
-	 * `container.get(from)` will return the same value as `container.get(to)`
-	 */
-	alias<T>(args: { from: KeyOrClass<T>; to: KeyOrClass<T> }): void;
-
-	/**
-	 * Determine if the given type has been resolved.
-	 */
-	resolved(type: KeyOrClass): boolean;
 
 	/**
 	 * Get the lifecycle associated with the given type.
@@ -345,14 +328,11 @@ export interface Container {
 	 * independent instances within each scope.
 	 *
 	 * @param callback The async callback to execute within the scope
-	 * @returns The result of the callback
 	 */
 	withScope<T>(callback: () => T): T;
 
 	/**
 	 * Check if the container is currently executing within a scope.
-	 *
-	 * @returns True if currently inside a scope, false otherwise
 	 */
 	readonly hasScope: boolean;
 
@@ -371,141 +351,28 @@ export interface Container {
 	extend<T>(type: KeyOrClass<T>, callback: (instance: T, container: Container) => T): void;
 
 	/**
-	 * Register a listener to be called when a type is rebound
-	 *
-	 * @returns The container instance for chaining
-	 */
-	onRebinding<T>(type: KeyOrClass<T>, callback: InstanceCallback<T>): this;
-
-	/**
-	 * Get the type that the container is currently resolving or null if there is
-	 * no type being resolved.
-	 */
-	currentlyResolving(): KeyOrClass | null;
-
-	/**
-	 * Register a callback to be run after a type is resolved.
-	 *
-	 * The callback will be called when either:
-	 *
-	 * 1. the type is used in `container.get(type)`
-	 * 2. an instance of the type or a subclass is returned from
-	 *    container.get()
-	 *
-	 * Since all values extend `Object` in javascript, you can register a
-	 * callback that fires when _any_ value is resolved using
-	 * `onResolving(Object, callback)`.
-	 *
-	 * @returns The container instance for chaining
-	 */
-	onResolving<T>(type: KeyOrClass<T>, callback: InstanceCallback<T>): this;
-
-	/**
 	 * Call a closure in the context of the container, allowing
 	 * dependencies to be injected.
 	 *
 	 * @param closure The closure to call
-	 * @returns The return value of the closure
 	 */
 	withInject<R>(closure: () => R): R;
 
 	/**
-	 * Invoke a method on an object in the context of the container, allowing
-	 * dependencies to be injected into the method.
+	 * Construct an instance of a class in the context of the container, allowing
+	 * dependencies to be injected into the constructor.
 	 *
-	 * The method may declare injected arguments and contextual bindings can
-	 * be used to override the dependencies given to the object.
-	 *
-	 * @param object The object containing the method
-	 * @param methodName The name of the method to call
-	 * @param params The parameters to pass to the method
-	 * @returns The return value of the method
-	 *
-	 * @example
-	 * class FooCreator {
-	 *   createFoo(name: string, helper = inject(Helper)): Foo {
-	 *     ...
-	 *   }
-	 * }
-	 * // optionally use contextual bindings to override the dependency
-	 * container.when(FooCreator).needs(Helper).give(CustomHelper);
-	 * // call a method on a Foo instance
-	 * const creator = new FooCreator();
-	 * const result = container.invoke(creator, "createFoo", "myFoo");
-	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	invoke<T extends object, K extends MethodNames<T> & keyof T>(
-		object: T,
-		methodName: K,
-		...params: T[K] extends AnyFunction ? Parameters<T[K]> : never[]
-	): T[K] extends AnyFunction ? ReturnType<T[K]> : never;
-
-	/**
-	 * Invoke a method on an object, allowing dependencies to be injected into
-	 * the method.
-	 *
-	 * The method may declare injected dependencies and contextual bindings can
-	 * be used to override the dependencies given to the object.
-	 *
-	 * @param object The object containing the method
-	 * @param methodName The name of the method to call
-	 * @returns The return value of the method
+	 * @param cls The class to construct
+	 * @param args The arguments to pass to the constructor
 	 *
 	 * @example
 	 * class Foo {
 	 *   constructor(private name: string, private dispatcher = inject(Dispatcher)) {}
 	 * }
-	 * // optionally use contextual bindings to override the dependency
-	 * container.when(Foo).needs(Dispatcher).give(CustomDispatcher);
-	 * // create a Foo instance
-	 * const foo = container.construct(Foo, "myFoo");
+	 * const foo = container.new(Foo, "myFoo");
 	 */
-	construct<P extends unknown[], T>(cls: { new (...args: P): T }, ...args: P): T;
-
-	/**
-	 * Assign a set of tags to a given binding.
-	 *
-	 * @param keys The abstract types
-	 * @param tags The tags
-	 */
-	tag<T>(keys: KeyOrClass<T> | KeyOrClass<T>[], tags: TypeToken<T> | TypeToken<T>[]): void;
-
-	/**
-	 * Resolve all of the bindings for a given tag or tags.
-	 *
-	 * This method returns a generator so that you can iterate lazily over the
-	 * results and each service will not be created until required.
-	 *
-	 * @example
-	 * for (const report of container.tagged(reportTag)) {
-	 *     // process each report, lazily creating them
-	 * }
-	 * // eagerly create all reports
-	 * const reports = Array.from(container.tagged(reportTag));
-	 */
-	tagged<T>(tags: TypeToken<T> | TypeToken<T>[]): Generator<T, void, void>;
-
-	/**
-	 * Define a contextual binding.
-	 *
-	 * This allows you to override the value given to an object being created by
-	 * the container. The syntax is:
-	 *
-	 * ```
-	 * container.when(subject).needs(dependency).give(implementation)
-	 * ```
-	 *
-	 * - `subject`: the object being built
-	 * - `dependency`: the dependency requested by the subject
-	 * - `implementation`: the implementation to give, something that can be passed to container.get(implementation)
-	 *
-	 * @example
-	 * container
-	 *     .when(OrderProcessor)
-	 *     .needs(IPaymentGateway)
-	 *     .give(StripePaymentGateway)
-	 */
-	when(consumer: KeyOrClass | KeyOrClass[]): ContextualBindingBuilder;
+	// biome-ignore format: Human approved: required to prevent biome removing quotes which are required around "new"
+	"new"<P extends unknown[], T>(cls: { new (...args: P): T }, ...args: P): T;
 }
 
 /***/

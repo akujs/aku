@@ -2,24 +2,21 @@ import type { Container } from "../container/contracts/Container.ts";
 import type { Application } from "../core/contracts/Application.ts";
 import type { Configuration } from "../core/contracts/Configuration.ts";
 import { createApplication } from "../core/createApplication.ts";
-import { Router } from "../http/Router.ts";
 import { type CliTestHarness, createCliTestHarness } from "./cli-test-harness.ts";
 import { mockIntegrationContext } from "./mock-integration-context.ts";
 
 /**
  * A test harness for an Aku application, providing access to the application
- * instance, its container, router, and helpers for making HTTP requests and
+ * instance, its container, and helpers for making HTTP requests and
  * running CLI commands.
  */
-export interface TestApplication<RouteParams extends Record<string, string> = {}> {
+export interface TestApplication {
 	/** The application instance. */
-	app: Application<RouteParams>;
+	app: Application;
 	/** The application's dependency injection container. */
 	container: Container;
-	/** The application's HTTP router, used to register routes in tests. */
-	router: Router;
 	/**
-	 * Send an HTTP request through the application's middleware and routing pipeline.
+	 * Send an HTTP request through the application's handler.
 	 * Accepts a URL string, `URL` object, or `Request` object. String URLs starting with `/` are
 	 * prefixed with `https://example.com`; strings starting with `//` are prefixed with `https:`.
 	 */
@@ -32,16 +29,10 @@ export interface TestApplication<RouteParams extends Record<string, string> = {}
  * Create an application instance configured for testing, with helpers for
  * sending HTTP requests and running CLI commands.
  */
-export const createTestApplication = <RouteParams extends Record<string, string> = {}>(
-	config: Configuration<RouteParams> = {},
-): TestApplication<RouteParams> => {
-	const app = createApplication({
-		...config,
-		devMode: { autoRefresh: false, ...config.devMode },
-	});
+export const createTestApplication = (config: Configuration = {}): TestApplication => {
+	const app = createApplication(config);
 
 	const container = app.container;
-	const router = container.get(Router);
 
 	const request = async (input: string | URL | Request, init?: RequestInit) => {
 		let req: Request;
@@ -63,5 +54,5 @@ export const createTestApplication = <RouteParams extends Record<string, string>
 
 	const cli = createCliTestHarness(app);
 
-	return { app, container, router, request, cli };
+	return { app, container, request, cli };
 };

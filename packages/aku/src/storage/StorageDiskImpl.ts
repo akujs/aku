@@ -28,6 +28,10 @@ export class StorageDiskImpl extends DelegatesToDirectory implements StorageDisk
 		this.#directoryCache.set("/", this.#rootDirectory);
 	}
 
+	get root(): StorageDirectory {
+		return this.#rootDirectory;
+	}
+
 	getOrCreateFile(path: string): StorageFile {
 		let file = this.#fileCache.get(path);
 		if (!file) {

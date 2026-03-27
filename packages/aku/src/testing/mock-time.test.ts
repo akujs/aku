@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { durationStringToDate } from "../helpers/time/duration.ts";
+import { parseDurationStringAsDate } from "../helpers/time/duration.ts";
 import { getPrototypeChain } from "../utils.ts";
 import { mockCurrentTime, resetMockTime } from "./mock-time.ts";
 import { resetAllMocks } from "./mocks.ts";
@@ -134,11 +134,11 @@ describe("Time mocking", () => {
 		expect(elapsedNs).toBeLessThan(100_000_000n);
 	});
 
-	test("affects durationStringToDate when no relativeTo option", () => {
+	test("affects parseDurationStringAsDate when no relativeTo option", () => {
 		const mockedDate = new Date("2025-01-01T12:00:00Z");
 		mockCurrentTime(mockedDate);
 
-		const result = durationStringToDate("1h");
+		const result = parseDurationStringAsDate("1h");
 		expect(result.getTime()).toBe(mockedDate.getTime() + 60 * 60 * 1000);
 	});
 });

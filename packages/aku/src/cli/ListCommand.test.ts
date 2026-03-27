@@ -154,38 +154,6 @@ describe(listCommand.handler, () => {
 		`);
 	});
 
-	test("--format toon outputs TOON format", async () => {
-		const { cli } = createTestApplication({
-			providers: [TestCommandProvider],
-		});
-
-		const exitCode = await cli.run(["list", "--format", "toon"]);
-
-		expect(exitCode).toBe(0);
-		expect(cli.output).toMatchInlineSnapshot(`
-		  "commands[5]{command,description}:
-		    bar,Do bar things
-		    completions,Get tab completion for aku commands in your shell
-		    foo,Do foo things
-		    help,Show help for a command
-		    list,List all available commands"
-		`);
-	});
-
-	test("--format toon --pretty produces same output as --format toon", async () => {
-		const { cli: cli1 } = createTestApplication({
-			providers: [TestCommandProvider],
-		});
-		const { cli: cli2 } = createTestApplication({
-			providers: [TestCommandProvider],
-		});
-
-		await cli1.run(["list", "--format", "toon"]);
-		await cli2.run(["list", "--format", "toon", "--pretty"]);
-
-		expect(cli1.output).toBe(cli2.output);
-	});
-
 	test("--format with invalid value produces an error", async () => {
 		const { cli } = createTestApplication({
 			providers: [TestCommandProvider],
@@ -196,9 +164,7 @@ describe(listCommand.handler, () => {
 		expect(exitCode).toBe(1);
 		expect(cli.lastError).toBeDefined();
 		expect(cli.lastError!.isExpected).toBe(true);
-		expect(cli.lastError!.error.message).toBe(
-			'Unknown format: "invalid". Supported formats: json, toon',
-		);
+		expect(cli.lastError!.error.message).toBe('Unknown format: "invalid". Supported formats: json');
 	});
 
 	test("commands are listed in alphabetical order", async () => {
