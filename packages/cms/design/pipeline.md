@@ -1,12 +1,17 @@
 # Aku Analytics Pipeline — Design Specification
 
-**Note for contributing LLMs:** This is a design specification under active development. Your role is to propose, challenge assumptions, and improve phrasing — not to make technical decisions. All decisions require explicit approval from the human. Don't add content unless explicitly asked to. Don't interpret questions as instructions to edit. Propose content in chat, wait for explicit go-ahead before writing to this file. Write terse, information-dense prose — cut anything a competent engineer/LLM can infer from context.
+## Note for contributing LLMs
+
+This is a design specification under active development. Your role is to propose, challenge assumptions, and improve phrasing — not to make technical decisions. All decisions require explicit approval from the human. Don't add content unless explicitly asked to. Don't interpret questions as instructions to edit. Propose content in chat, wait for explicit go-ahead before writing to this file. Write terse, information-dense prose — cut anything a competent engineer/LLM can infer from context.
+
+Keep the document consistent. Section numbers are used to refer to other sections in the document, and there are summaries like the configuration section that reflect what is discussed later in the document. When changing a section, update the appropriate summary. If you notice an inconsistency, flag it along with a proposed fix. 
 
 The goal of this design process is to create a system that has exceptionally high levels of engineering rigour. This is the opposite of Vibe Coding - we're building a distributed system with finely specified behaviour and comprehensive tests that will never fail outside of well defined failure modes. Act accordingly. Question everything. Look for ways that any proposed solution can fail.
 
-- ⚠ TBD markers are intentional gaps awaiting a decision. Do not fill them with assumptions. If you identify a gap that needs a decision, add it to §8.
+- ⚠ TBD markers are intentional gaps awaiting a decision. Do not fill them with assumptions. If you become aware of a gap that needs filling, add a `⚠ TBD` marker or flag it to the human.
 - This document is intended to be a comprehensive map of data flows and error handling. If you see any gap where it's not clear where data comes from, goes to, how it is transformed, what errors can happen and how they are handled, or if these exist but you think they may be incomplete, proactively suggest adding a `⚠ TBD` marker.
 - If any text appears to rest on an unstated assumption — including text written by the human — flag it.
+- All configurable properties must be defined in §3.5. If a pipeline step introduces a value that could reasonably vary between deployments or be tuned, add it to §3.5 rather than hardcoding it in the step description.
 
 ## 1. Preamble
 
@@ -116,11 +121,43 @@ To prevent denial of wallet attacks and keep the analysis app working smoothly, 
 - Properties with keys longer than 40 chars or values longer than 100 chars are dropped with logged warning by client
 - Max 10 events per second per client, excess dropped with logged warning by client, designed to handle accidental client misbehaviour, not malicious attacks
 
+### 3.5 Configuration
+
+All configuration is server-side. The client is initialised with only `endpoint` and `project`. Every server response includes the current configuration, so clients pick up changes immediately.
+
+**Server configuration:**
+
+```json5
+{
+    // Events older than this (by transmit_time - create_time) are dropped
+    max_event_delay_hours: 48,
+    // Max KV pairs in properties bag; excess dropped
+    max_property_count: 25,
+    // Max property key length in chars; oversized dropped
+    max_property_key_length: 40,
+    // Max property value length in chars; oversized dropped
+    max_property_value_length: 100,
+    // Token refresh rate for client-side rate limiter
+    client_max_events_per_second: 10,
+    // Token bucket window — allows up to rate × window events in a sliding window
+    client_max_events_window_seconds: 10,
+}
+```
+
+**Client-only configuration (set at init, not from server):**
+
+```json5
+{
+    // URL of the server event capture endpoint (§5.2)
+    endpoint: "https://analytics.example.com/ingest",
+    // Project identifier, included on every event
+    project: "akujs.dev",
+}
+```
+
 ---
 
 ## 4. Pipeline Architecture Overview
-
-> ⚠ Flow diagram TBD once steps are defined in §5
 
 ### 4.1 Reliability and Error Handling
 
@@ -132,24 +169,6 @@ Each step should document the conditions under which it will drop and log events
 
 ## 5. Pipeline Steps
 
-> ⚠ Steps TBD — to be defined in subsequent design work
-
-Each step is documented with the following structure:
-
-- **Purpose** — what this step does and why it exists
-- **Inputs** — data received and from which primitive (queue, HTTP, cron trigger, etc.)
-- **Outputs** — data produced and to which primitive
-- **Infrastructure primitives consumed** — interfaces from §2 used by this step
-- **Concurrent-safety mechanism** — how the step is safe against concurrent execution of the same input
-- **Idempotency** — whether the step is idempotent in the happy path, and how
-- **Error handling** — complete description of every failure mode: retry policy, DLQ behaviour if applicable, partial-failure scenarios, and what state is left behind on failure.
-- **Discard policy** - exactly when will an event be discarded, and if so what will be logged.
-- **Behaviour under load** — what happens when this step receives input faster than it can process, or when downstream is slow/unavailable
-- **Key behaviours** — concrete rules the system follows, starting with happy path
-- **DST mock points** — interfaces that must be mocked for deterministic simulation testing
-
-Each step should fully define 
-
 ### 5.1 Client Event Capture
 
 **Purpose:** Receives events from [capture api](./client-capture-api.md), buffers in memory, transmits to server with retry.
@@ -158,30 +177,44 @@ Each step should fully define
 
 Events will be grouped together and sent in batches to the server.
 
-**Outputs:** HTTP POST containing one or more events to Server Request Handler (§5.2)
+**Outputs:** HTTP POST containing one or more events to Server Event Capture (§5.2)
 
 Format for events:
 
-```jsonc
+```json5
 {
+    type: "events-create",
     // ISO 8601 UTC, updated on each retry to current time
-    "transmit_time": "2026-04-05T14:23:02.100Z",
-    "events": [
+    transmit_time: "2026-04-05T14:23:02.100Z",
+    events: [
         {
-            // (string, required) — 64-bit random integer as string (JSON numbers lose precision above 2^53)
-            "id": "8371625098432175904",
+            // (string, required) — 64-bit random integer as string
+            id: "8371625098432175904",
+            // Event name
+            name: "pageview",
+            // Optional project identifier
+            project: "akujs.dev",
             // ISO 8601 UTC
-            "create_time": "2026-04-05T14:23:01.456Z",
+            create_time: "2026-04-05T14:23:01.456Z",
             // optional, ties sessions to business-level user identity
-            "user_id": "user-abc-123",
+            user_id: "user-abc-123",
+            // optional, groups requests together into sessions, use if the client
+            // has access to authoritative session info otherwise server will infer
+            session_id: "user-abc-123",
             // optional, current page URL
-            "page_url": "https://example.com/pricing",
+            page_url: "https://example.com/pricing",
             // optional, HTTP referrer
-            "page_referrer": "https://google.com",
+            page_referrer: "https://google.com",
             // optional, document.title
-            "page_title": "Pricing — Example",
+            page_title: "Pricing — Example",
+            // optional, viewport width in CSS pixels
+            viewport_width: 1280,
+            // optional, viewport height in CSS pixels
+            viewport_height: 720,
+            // optional, true if primary input is touch (matchMedia('(pointer: coarse)').matches)
+            is_touch: false,
             // optional, arbitrary per-event-type data
-            "properties": { "product_id": "abc", "price": 9.99, "query": "red shoes" },
+            properties: { "product_id": "abc", "price": 9.99, "query": "red shoes" },
         }
     ]
 }
@@ -206,14 +239,15 @@ Additionally, IP address, User-Agent, and geolocation data (via headers if deplo
 
 **Behaviour under load:** Applies rules in "Maximum Event Size & Volume" §3.4
 
+**Memory usage:** In-memory queue of unsent events. Rate limiter caps capture at 10/s, but if transmission fails, events accumulate for up to 48h before discard. Worst case: 10 events/s × 172,800s = 1,728,000 events. ⚠ TBD: may need a max queue size cap to bound memory in constrained environments.
+
 **Key behaviours:**
-- Happy path: capture event → add to in-memory queue → debounce → transmit → `response.ok` → remove from queue
-- Debounce: initial 10ms window to collect bursts, then repeating 2s window. Resets to 10ms if no events arrive within a 2s window.
-- Retry on failure — all non-`response.ok` responses and network errors are retriable
-- Retry on network re-establishment
-- Send best-effort beacon on page unload (`sendBeacon`) — no ack, queued events are lost on tab close
-- Stop retrying after 48 hours from creation time
+- Happy path: capture event -> add to in-memory queue -> debounce -> transmit -> `response.ok` -> remove from queue
+- Debounce: design good scheme. Consider short initial window to collect burst, then longer repeating window. Prevent queue draining at more than 64kB per request (keepAlive limit) and wait for ack before sending more. Timeout and cancel requests.
+- Retry on failure — all non-`response.ok` responses and network errors are retryable
+- `fetch()` calls use `keepAlive: true` to permit sending events during unload, content type text/plain to avoid CORS preflight.
 - Drop and console.error events above maximum size
+- Individually drop properties of events above the count/size thresholds, without dropping whole event
 - `transmit_time` updated on each retry attempt (consider envelope format that puts single `transmit_time` on wrapper and keeps events inside stringified)
 
 **DST mock points:**
@@ -225,124 +259,162 @@ Additionally, IP address, User-Agent, and geolocation data (via headers if deplo
 
 ---
 
-### 5.2 TO BE REFINED: Server Request Handler
+### 5.2 Server Event Capture
 
 **Purpose:** Receives events from clients, performs timestamp correction and privacy processing, writes to queue.
 
-**Inputs:** HTTP POST from Client Event Capture (§5.1), containing one or more events
+**Inputs:** HTTP POST from Client Event Capture (§5.1) or JS SDK function.
 
-**Outputs:** All events from one POST submitted as a group to Queue (consumed by §5.3). Events are not unwrapped — they are enqueued together as a batch.
+**Outputs:** Pushes batches of events onto the queue (consumed by §5.3).
 
-**Infrastructure primitives consumed:** HttpHandler, Queue, Clock, salt storage
+Events received as a batch are enqueued in one write, not unwrapped into individual messages.
 
-**Server-added fields:**
+```json5
+{
+    type: "events-ingest",
+    // ISO 8601, earliest ingest_time in this batch
+    min_ingest_time: "2026-04-05T14:23:01.456Z",
+    // NDJSON string of event data, newline terminated for future concatenation
+    events: "{\"id\":\"8371625098432175904\"..."
+}
+```
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `ingest_time` | timestamp | Server clock time at receipt. Primary timestamp for batching, grouping, and catch-up queries. |
-| `create_time` | timestamp | If client provided both `create_time` and `transmit_time`: `create_time = ingest_time - (transmit_time - create_time)`. If client provided neither: `create_time = ingest_time`. First ingestion wins — if a retry arrives with a different delta, the duplicate is discarded at sync. |
-| `client_id` | string | Hash(daily_salt + IP + User-Agent), Plausible-style. Rotated daily via salt rotation (§5.5). |
+Format of individual events
 
-IP address and User-Agent are used to compute `client_id` then discarded — neither is stored on the event or written downstream.
+```json5
+{
+    // Current server timestamp when event received from client
+    ingest_time: "2026-04-05T14:23:01.456Z",
+    // Even creation time after correction for unreliable client clocks
+    create_time: "2026-04-05T14:23:01.456Z",
+    // 32 bit hex privacy preserving hash of IP + user-agent + daily salt
+    anon_session_id: "2a64046d",
+    // anon_session_id calculated with the salt before the last rotation, for
+    // session tracking across salt rotation boundaries
+    prev_anon_session_id: "2a64046d",
 
-> ⚠ TBD: What if client provides `create_time` but not `transmit_time`, or vice versa? Current spec defines behaviour for "both" and "neither" only.
+    // Parsed from URL
+    page_path: "/pricing",
+    utm_source: "google",
+    utm_medium: "cpc",
+    utm_campaign: "summer-sale",
+    utm_term: "red-shoes",
+    utm_content: "shoes-sale",
+    click_param: "fbclid", // Name (not value) of click ID: gclid, gbraid, wbraid, msclkid, fbclid, twclid, dclid, ttclid, li_fat_id, null if not available
 
-> ⚠ TBD: Size bounds and validation rules for each field, both core and custom. Critical for robustness against denial-of-wallet attacks. Core fields can have strict size limits; custom fields need a policy for maximum per-field size, maximum field count, and maximum total event size. Events exceeding bounds should be dropped with logging, not crash the pipeline.
+    // Inferred from headers, supporting Cloudflare, Vercel and other common hosts, null if not available
+    geo_country: "GB",
+    geo_region: "London",
+    geo_city: "London",
+    geo_lat: 51.50853,
+    geo_lng: -0.07614,
 
-**Processing (per request):**
-1. Set `ingest_time` = Clock.now()
-2. For each event: validate core field types; apply timestamp correction rules above
-3. For each event: compute `client_id` = Hash(daily_salt + IP + User-Agent), discard IP and User-Agent
-4. Enqueue all events from this request as a group
-5. Respond to client — must respond **after** successful queue write, not before. If enqueue fails, return error so client retries.
+    // Parsed from user agent
+    browser_name: "Chrome",
+    browser_version: "122", // Major version only
+    os_name: "Windows",
+    
+    // Copied from source event
+    id: "8371625098432175904",
+    name: "pageview",
+    project: "akujs.dev",
+    user_id: "user-abc-123",
+    session_id: "session-xyz-789",
+    page_referrer: "https://google.com",
+    page_title: "Pricing — Example",
+    viewport_width: 1280,
+    viewport_height: 720,
+    is_touch: false,
+    properties: { ... },
+}
+```
+
+**Infrastructure primitives consumed:** HttpHandler, Queue, Clock, Object Storage (Via Salt Service)
 
 **Concurrent-safety mechanism:** Stateless request handler. Multiple instances can run concurrently. Salt is read, not written.
 
-**Idempotency:** Not idempotent — same event retried with different `transmit_time` produces different `create_time`. Dedup at sync stage (§5.7) by event `id`; first ingestion wins.
+**Idempotency:** Not idempotent — same event retried with different `transmit_time` produces different `create_time`. Deduplication happens later in pipeline.
 
 **Error handling:**
 - Queue enqueue failure: return error to client, client retries
-- Salt read failure: ⚠ TBD — fail the request? Use a cached salt? This needs a decision.
+- Salt read failure: return error to client, client retries
 
 **Discard policy:**
-- Drop events where `transmit_time - create_time > 48 hours` (stale)
-- Drop events where computed `create_time > ingest_time` (future — negative delta)
-- Log all discards
+- Drop events created more than 48h ago
+- Drop whole batches with zero valid events, do not write to queue, report success
 
-**Behaviour under load:** This is the main pressure point. Under extreme load, queue enqueue may slow or fail, causing HTTP errors, causing client retries, potentially amplifying load. ⚠ TBD: rate limiting / request size limits — in scope or out of scope?
+**Behaviour under load:** This is a high volume pressure point - potentially massive volume. Under extreme load, queue enqueue may slow or fail, causing HTTP errors, causing client retries, potentially amplifying load. This is not something we handle - the application needs to provide infrastructure that can handle this.
+
+**Memory usage:** Stateless per-request. Memory = one request body + one enriched batch being enqueued. Bounded by max request size (64kB). Important invariant: no accumulation across requests.
 
 **Key behaviours:**
-- Happy path: receive POST → set `ingest_time` → correct timestamps → compute `client_id` → discard IP and User-Agent → enqueue batch → respond success
-- Respond only after successful queue write — never report success if enqueue failed
-- Events from one POST are enqueued as a group, not unwrapped into individual messages
-- Drop stale events where `transmit_time - create_time > 48 hours`, log discard
-- Drop future events where corrected `create_time > ingest_time`, log discard
-- When no client timestamps provided, set `create_time = ingest_time`
-- Validate core field types before timestamp arithmetic — malformed timestamps produce garbage
-- Read current daily salt (or previous day's salt for midnight boundary) to compute `client_id`
+- Happy path: receive POST -> enrich event -> add to queue -> respond success
+- Tolerate missing or invalid data as much as possible, e.g. (non-exhaustive list, use your imagination):
+  - generate id if missing / too short
+  - allow some invalid events within a batch
+  - if timestamps missing/invalid/in future then fall back to ingest_time
+  - Apply maximum event size rules, discarding individual fields rather than the whole event (share impl function with client)
+  - Log these only in debug logging mode.
+- On failure of queue write or salt read, respond with error so client retries
+- Drop stale events where `transmit_time - create_time > 48 hours`, log discard only in debug mode
+- If client claims future event, clamp to ingest_time
 
 **DST mock points:**
 - Clock (for `ingest_time`)
 - Queue (enqueue — can fail)
-- Salt storage (read — can fail, may return stale value under eventual consistency)
-- HttpHandler (malformed requests, timeouts, connection drops)
-
-**Open questions:**
-- What if client provides `create_time` but not `transmit_time`, or vice versa?
-- HTTP response shape — does client need to know which events were accepted vs dropped?
-- Lower bound on corrected `create_time`? A far-past client clock could produce create_time in 1970.
-- Rate limiting / request size limits — in scope?
+- Object Storage via Salt Storage - salt read can fail if object store is unavailable and no recent cached value
+- HttpHandler (note the link between this and the client script needs design work, should be possible for request to reach server, be handled correctly, but advertised as a failure)
 
 ---
 
-### 5.3 TO BE REFINED: Transient Batch Ingester
+### 5.3 Transient Batch Writer
 
-**Purpose:** Consumes event groups from the queue, accumulates into batches, writes each batch to object storage as a single object.
+**Purpose:** Consumes event groups from the queue in larger batches, writes each batch to object storage as a single blob.
 
-Note: this is a single stage. The Queue (§2.2) is the infrastructure primitive used for communication between §5.2 and this stage. The batching/accumulation logic is part of this stage's implementation.
-
-**Inputs:** Event groups from Queue (written by §5.2)
+**Inputs:** `events-ingest` messages from Queue (written by §5.2), delivered in batches. Each message contains pre-serialised NDJSON in the `events` field and a pre-computed `min_ingest_time`. The queue batches messages together — a typical configuration might be "deliver 100 at a time, or 1 minute's worth, whichever comes first" — but this is configured at the infrastructure level, we're just given a queue interface, already configured.
 
 **Outputs:** Batch objects in ObjectStore, one object per batch. These are "transient batches" — not yet aggregated into daily batches.
 
-**Infrastructure primitives consumed:** Queue (consumer), ObjectStore, Clock (if batching uses time windows)
+The format of the transient batch files is newline-delimited JSON, one event per `\n`, same event structure as in the `events-ingest` messages. File ends with trailing `\n` (important for future concatenation):
+
+```json5
+{"id":"8371625098432175904","ingest_time":"2026-04-05T14:23:01.456Z",...}
+{"id":"3716843217590482509","ingest_time":"2026-04-05T14:23:03.385Z",...}
+```
+
+**Infrastructure primitives consumed:** Queue (consumer), ObjectStore
 
 **Processing:**
-1. Consume event groups from queue via handler function
-2. Accumulate events until batch threshold is met
-3. Serialize and write batch to ObjectStore
-4. Handler returns successfully → queue acknowledges messages
-5. If ObjectStore write fails → handler throws → queue redelivers
 
-**Concurrent-safety mechanism:** If queue redelivers (after write succeeded but ack failed), a duplicate batch object is written. Dedup at sync stage (§5.7) handles this via event `id`. Object key should include enough uniqueness to avoid overwriting a different batch.
+1. Skip any messages with empty `events` string
+2. Deduplicate messages by `events` string content (handles queue at-least-once redelivery of identical messages)
+3. Sort all NDJSON lines lexicographically across all messages (for deterministic hashing — not semantic ordering)
+4. Concatenate sorted lines, separated by `\n`, with trailing `\n`
+5. Hash the concatenated string (pre-compression bytes) to produce content hash
+6. Compute `min_ingest_time` as the minimum `min_ingest_time` across all messages
+7. Generate object name as `transient/{min_ingest_time}-{hash}.ndjson.gz` where `min_ingest_time` is ISO 8601 basic format (e.g. `20260405T142301.456Z`) and `hash` is the content hash
+8. Gzip compress and write to ObjectStore with `allowOverwrite: false`
 
-**Idempotency:** Not strictly idempotent — duplicate queue delivery may produce duplicate batch objects. This is acceptable; dedup at sync handles it.
+**Idempotency:** Object name includes hash of pre-compression content. If the queue redelivers the exact same messages, the hash matches and the write is a no-op via `allowOverwrite: false`. If the queue redelivers the same messages in a different batch composition (mixed with other messages), the hash differs, producing a separate object with overlapping events — acceptable, dedup at §5.7 handles it.
+
+**Concurrent-safety mechanism:** Writing to ObjectStore with `allowOverwrite: false` is concurrency-safe.
 
 **Error handling:**
 - ObjectStore write failure: handler throws, queue redelivers. Events are not lost.
-- ⚠ TBD: What if a single event in the batch is malformed in a way that prevents serialisation? Fail the whole batch? Skip the event?
 
-**Discard policy:** None at this stage — events have already been validated at §5.2.
+**Discard policy:** No events discarded. Events arrive pre-serialised from §5.2, no serialisation failures possible.
 
-**Behaviour under load:** Pulls from queue at its own rate. If it falls behind, the queue grows. Queue is assumed to have sufficient capacity (Redis, Cloudflare Queues, etc). ⚠ TBD: is there a queue depth alert threshold?
+**Behaviour under load:** This rests on basic cloud primitives, queue draining to object storage, assumed to be capable of very high throughput and not the bottleneck.
+
+**Memory usage:** One batch of NDJSON strings + gzip buffer. Max batch = 100 messages × 64KB = 6.4MB.
 
 **Key behaviours:**
-- Happy path: consume event group from queue → accumulate until batch threshold → serialise → write to ObjectStore → handler returns → queue acks
+- Happy path: receive batch of messages → skip empty → dedup → sort lines → hash → name → gzip → write to ObjectStore → handler returns → queue acks
 - On ObjectStore write failure, handler throws — queue redelivers the messages
-- On successful write but failed ack, queue redelivers — a duplicate batch object is created. Dedup at sync (§5.7) handles this.
-- Object key must encode `ingest_time` range (for catch-up queries in §5.6) and include enough uniqueness to avoid collisions across concurrent writers
 
 **DST mock points:**
 - Queue (consumer — duplicate delivery, out-of-order delivery)
-- ObjectStore (write failure, slow write)
-- Clock (if batching uses time windows for flush trigger)
-- Random number generator (if object key includes a random component)
-
-**Open questions:**
-- What triggers batch emission? Event count? Time window? Byte size? Combination?
-- Serialisation format for batch objects? JSON? Binary?
-- Object naming convention — exact format?
-- What if a single event in a batch prevents serialisation? Fail the whole batch? Skip the event?
+- ObjectStore (write failure, slow write, `allowOverwrite: false` rejection)
 
 ---
 
@@ -350,11 +422,11 @@ Note: this is a single stage. The Queue (§2.2) is the infrastructure primitive 
 
 **Purpose:** Rolls up transient batches into daily batches. Groups by `ingest_time` date — a "daily batch for April 5th" contains all events *received* on April 5th, regardless of corrected client timestamps.
 
-**Inputs:** Cron trigger (nightly). ⚠ TBD: should this use the cron→queue pattern for retry semantics?
+**Inputs:** Cron trigger (nightly). ⚠ TBD: should this use the cron->queue pattern for retry semantics?
 
 **Outputs:** Daily batch objects in ObjectStore. Deletion of aggregated transient batches.
 
-**Infrastructure primitives consumed:** CronScheduler (or Queue if cron→queue pattern), ObjectStore, Clock
+**Infrastructure primitives consumed:** CronScheduler (or Queue if cron->queue pattern), ObjectStore, Clock
 
 **Processing:**
 1. Triggered by cron
@@ -378,8 +450,10 @@ Note: this is a single stage. The Queue (§2.2) is the infrastructure primitive 
 
 **Behaviour under load:** Runs once nightly. Load concern is volume of transient batches to read. ⚠ TBD: what if a day has an extremely large number of transient batches?
 
+**Memory usage:** Reads all transient batches for one day, merges, writes daily batch. Memory = one full day of events. ⚠ TBD: for high-volume sites this could be very large. May need streaming merge or chunked processing.
+
 **Key behaviours:**
-- Happy path: cron triggers → list transient batches for target day → read all → write daily batch with deterministic key → confirm write → delete transient batches
+- Happy path: cron triggers -> list transient batches for target day -> read all -> write daily batch with deterministic key -> confirm write -> delete transient batches
 - Daily batch key is deterministic from the date — duplicate runs overwrite, not duplicate
 - Delete transient batches only after confirmed daily batch write
 - Deduplicate by id within the batch
@@ -393,7 +467,7 @@ Note: this is a single stage. The Queue (§2.2) is the infrastructure primitive 
 
 **Open questions:**
 - What defines "the target day"? Yesterday only? All days with un-aggregated transient batches?
-- Should this use cron→queue pattern for retry semantics?
+- Should this use cron->queue pattern for retry semantics?
 - What if a transient batch is malformed or unreadable? Skip it? Abort?
 - Is a daily batch one object per day, or could a high-volume day need multiple?
 - If eventual consistency causes a transient batch to be missed, when does it get picked up?
@@ -405,16 +479,16 @@ Note: this is a single stage. The Queue (§2.2) is the infrastructure primitive 
 
 **Purpose:** Rotates the salt used by §5.2 to compute `client_id`. Keeps the previous day's salt available so sessions spanning midnight are not split.
 
-**Inputs:** Cron trigger (daily). ⚠ TBD: should this use the cron→queue pattern for retry semantics?
+**Inputs:** Cron trigger (daily). ⚠ TBD: should this use the cron->queue pattern for retry semantics?
 
-**Outputs:** New salt written to salt storage. Previous salt retained.
+**Outputs:** New salt written to [persistent object store](./persistent-object.md). Previous salt retained.
 
-**Infrastructure primitives consumed:** CronScheduler (or Queue), salt storage, random number generator (DST mock point per §7.1)
+**Infrastructure primitives consumed:** CronScheduler (or Queue), [persistent object store](./persistent-object.md), random number generator (DST mock point per §7.1)
 
 **Processing:**
 1. Triggered by cron
 2. Generate new salt (random — DST mock point)
-3. Move current salt → previous salt
+3. Move current salt -> previous salt
 4. Write new salt as current
 
 **Concurrent-safety mechanism:** ⚠ TBD — what if cron fires twice?
@@ -425,21 +499,23 @@ Note: this is a single stage. The Queue (§2.2) is the infrastructure primitive 
 - Salt write failure: ⚠ TBD — request handlers continue using old salt? Is this acceptable?
 - DST must exercise salt rotation failures
 
-> ⚠ TBD: Design for how salt rotation works in practice — storage mechanism, atomicity, interaction with concurrent request handlers. If salt is in ObjectStore, eventual consistency means some request handlers could read the stale salt for an extended period after rotation.
+> ⚠ TBD: Design salt rotation using [persistent object store](./persistent-object.md). The persistent object store provides compare-and-swap and read caching, which should address atomicity and concurrent request handler reads. Needs a concrete design for the salt object shape (current + previous salt), rotation logic, and interaction with the caching layer.
 
 **Discard policy:** N/A
 
 **Behaviour under load:** N/A — runs once daily.
 
+**Memory usage:** Two salt values in memory. Negligible.
+
 **Key behaviours:**
-- Happy path: cron triggers → generate new salt → move current salt to previous → write new salt as current
+- Happy path: cron triggers -> generate new salt -> move current salt to previous -> write new salt as current
 - Previous day's salt is retained so `client_id` is stable across midnight for ongoing sessions
 - On rotation failure, request handlers continue using the current salt — stale salt is acceptable
 - Duplicate cron trigger would rotate twice, losing the previous salt prematurely
 
 **DST mock points:**
 - CronScheduler (duplicate trigger, missed trigger)
-- Salt storage (write failure, read returning stale value under eventual consistency)
+- [Persistent object store](./persistent-object.md) (write failure, read returning stale/cached value)
 - Random number generator (salt generation)
 
 **Open questions:**
@@ -477,10 +553,12 @@ Note: this is a single stage. The Queue (§2.2) is the infrastructure primitive 
 
 **Behaviour under load:** Read-only, scales horizontally. Concern is ObjectStore read throughput under many concurrent sync clients. ⚠ TBD: caching strategy?
 
+**Memory usage:** Per-request: reads batch object(s) from ObjectStore, serves to client. Memory = one batch object per concurrent request. Bounded by batch object size. No accumulation. ⚠ TBD: if catch-up query spans many batches, does the server stream or buffer all in memory?
+
 **Key behaviours:**
-- Happy path (catch-up): receive time range → identify matching transient batches by `ingest_time` → read from ObjectStore → return events
-- Happy path (batch load): receive batch name(s) → read from ObjectStore → return batch data
-- Happy path (manifest): list available batches (transient and daily) → return manifest
+- Happy path (catch-up): receive time range -> identify matching transient batches by `ingest_time` -> read from ObjectStore -> return events
+- Happy path (batch load): receive batch name(s) -> read from ObjectStore -> return batch data
+- Happy path (manifest): list available batches (transient and daily) -> return manifest
 - Catch-up queries index on `ingest_time`, not corrected client time
 - Clients should request ~10s wider than their exact desired range to account for server clock drift
 - If a batch is deleted by the aggregator (§5.4) between manifest and load, return 404 — client should re-request manifest
