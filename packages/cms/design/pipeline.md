@@ -387,17 +387,16 @@ The format of the transient batch files is newline-delimited JSON, one event per
 **Processing:**
 
 1. Skip any messages with empty `events` string
-2. Deduplicate messages by `events` string content (handles queue at-least-once redelivery of identical messages)
-3. Sort all NDJSON lines lexicographically across all messages (for deterministic hashing — not semantic ordering)
-4. Concatenate sorted lines, separated by `\n`, with trailing `\n`
-5. Hash the concatenated string (pre-compression bytes) to produce content hash
-6. Compute `min_ingest_time` as the minimum `min_ingest_time` across all messages
-7. Generate object name as `transient/{min_ingest_time}-{hash}.ndjson.gz` where `min_ingest_time` is ISO 8601 basic format (e.g. `20260405T142301.456Z`) and `hash` is the content hash
-8. Gzip compress and write to ObjectStore with `allowOverwrite: false`
+2. Sort messages by `events` content
+3. Deduplicate messages by `events` string content (easy once sorted)
+4. Hash the concatenated uncompressed NDJSON string to produce content hash
+5. Compute `min_ingest_time` as the minimum `min_ingest_time` across all messages
+6. Generate object name as `transient/{min_ingest_time}-{hash}.ndjson.gz` where `min_ingest_time` is ISO 8601 basic format (e.g. `20260405T142301.456Z`) and `hash` is the content hash
+7. Gzip compress and write to ObjectStore
 
-**Idempotency:** Object name includes hash of pre-compression content. If the queue redelivers the exact same messages, the hash matches and the write is a no-op via `allowOverwrite: false`. If the queue redelivers the same messages in a different batch composition (mixed with other messages), the hash differs, producing a separate object with overlapping events — acceptable, dedup at §5.7 handles it.
+**Idempotency:** Object name includes hash of pre-compression content. If the queue redelivers the exact same messages, the hash matches and the write has no effect. If the queue redelivers the same messages in a different batch composition, the hash differs, producing a separate object with overlapping events — acceptable, will be deduplicated in later stages.
 
-**Concurrent-safety mechanism:** Writing to ObjectStore with `allowOverwrite: false` is concurrency-safe.
+**Concurrent-safety mechanism:** Writing to ObjectStore is concurrency-safe.
 
 **Error handling:**
 - ObjectStore write failure: handler throws, queue redelivers. Events are not lost.
@@ -414,7 +413,7 @@ The format of the transient batch files is newline-delimited JSON, one event per
 
 **DST mock points:**
 - Queue (consumer — duplicate delivery, out-of-order delivery)
-- ObjectStore (write failure, slow write, `allowOverwrite: false` rejection)
+- ObjectStore (write failure, slow write)
 
 ---
 
@@ -429,14 +428,19 @@ The format of the transient batch files is newline-delimited JSON, one event per
 **Infrastructure primitives consumed:** CronScheduler (or Queue if cron->queue pattern), ObjectStore, Clock
 
 **Processing:**
-1. Triggered by cron
+1. Triggered by cron at 5 minutes past midnight after the target day ends.
 2. List transient batch objects for the target day
 3. Read all transient batches
 4. Write daily batch object with deterministic key (e.g. `daily/2026-04-05.batch`) — deterministic naming ensures duplicate runs overwrite rather than create duplicates
 5. Confirm write succeeded
-6. Delete transient batches
+6. Delete batches for the target day
 
-**Concurrent-safety mechanism:** Deterministic daily batch key means concurrent/duplicate runs produce the same object. Deletion of transient batches after write is idempotent (deleting already-deleted objects is a no-op or ignored).
+**Concurrent-safety mechanism:**
+- Cron job runs 5 minutes past midnight, giving time for all transient batches to be written, allowing for server clock skew and queue batching time
+⚠ TBD: Partial failure of transient batches followed by re-run of cron, potential data loss
+⚠ TBD: Deleting races with potential recreation, what happens here? Any mechanism for cleaning up old stale transient batches?
+⚠ TBD: Double-trigger of cron, what happens?
+⚠ TBD: What is the delete scope - batches I've included
 
 **Idempotency:** Yes, in the happy path — same input produces same output at same key.
 
@@ -492,6 +496,10 @@ The format of the transient batch files is newline-delimited JSON, one event per
 4. Write new salt as current
 
 **Concurrent-safety mechanism:** ⚠ TBD — what if cron fires twice?
+
+> ⚠ Concurrency concern: salt rotation race with concurrent requests. A request in §5.2 reads the current salt, then rotation moves current→previous and writes a new current. A second concurrent request reads the new salt. Both process the same IP+UA but produce different `anon_session_id` values for the same logical user — and neither is using the "previous" salt of the other.
+
+> ⚠ Concurrency concern: double cron trigger loses the previous salt. If rotation runs twice, the first rotation's "previous" salt is overwritten. Any in-flight §5.2 requests that read that salt to compute `prev_anon_session_id` produce a value matching no stored salt, breaking session continuity across the rotation boundary.
 
 **Idempotency:** Not idempotent — each run generates a new random salt. Duplicate triggers would rotate twice.
 
@@ -635,6 +643,12 @@ The format of the transient batch files is newline-delimited JSON, one event per
 > ⚠ TBD
 
 ### 6.2 DST Scenario Catalogue
+
+Design notes for DST
+
+- Every operation that can fail should have a chance of failure
+- Every async operation can take a variable amount of time
+- Variable delays within async operations that have structure - this is important, e.g. if two object store writes always are submitted together, having an internal variable delay before writing to the mock internal storage will ensure that the winner is randomly chosen. Without this, the first to be submitted will always win.
 
 Scenarios are added here as steps are defined in §5. Each scenario documents:
 
