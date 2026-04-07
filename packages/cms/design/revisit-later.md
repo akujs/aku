@@ -10,3 +10,8 @@ Queues have a Dead Letter Queue (DLQ) that is used to capture messages that cann
 The design of the pipeline is to handle all unrecoverable errors internally, e.g. drop malformed messages. The DLQ may catch bugs, or infrastructure misconfiguration eg queue consumer doesn't have permission to write to storage.
 
 Consider exposing DLQ in advanced UI for debugging.
+
+
+---
+
+Benchmark time taken at each step on real infrastructure, stress test
