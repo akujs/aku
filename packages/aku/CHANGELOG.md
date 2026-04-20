@@ -1,5 +1,17 @@
 # @akujs/aku
 
+## 0.1.0
+
+### Minor Changes
+
+- d39c511: Added cli module
+
+### Patch Changes
+
+- 3b0528d: Use PAT for release PRs to trigger CI workflows, and use default changesets PR title
+- Updated dependencies [d39c511]
+  - @akujs/cli@0.2.0
+
 ## 0.0.5
 
 ### Patch Changes
